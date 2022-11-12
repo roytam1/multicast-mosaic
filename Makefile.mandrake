@@ -24,13 +24,13 @@ CC = cc
 #### Standard gcc Linux FreeBSD NetBSD compiler flags (recommanded )
 #prereleaseflags = -Wall -g -fno-builtin -fwritable-strings -Wwrite-strings
 #prereleaseflags = -Wall -g -fwritable-strings  -O0
-#prereleaseflags = -Wall -g
+prereleaseflags = -Wall -g
 # for building a shared lib
 # prereleaseflags = $prereleaseflags -fPIC
 #### Qnx
 #prereleaseflags = -Oeax
 #### Sun Workshop C Compiler
-prereleaseflags = -v -g -xstrconst
+#prereleaseflags = -v -g -xstrconst
 #### Sun Workshop C++ Compiler
 #prereleaseflags = +w -g
 
@@ -50,7 +50,7 @@ RANLIB = /bin/true
 #### For SCO ODT 3.0, do -DSCO -DSVR4
 #### For Motorola SVR4 , Esix 4.0.4, do -DSVR4
 #### For Linux 
-#sysconfigflags = -DLINUX -Dlinux -DSVR4
+sysconfigflags = -DLINUX -Dlinux -DSVR4
 #### For OSF1 -std1 -DDECOSF1
 #### For Qnx  -DQNX
 #### for FreeBSD
@@ -58,7 +58,7 @@ RANLIB = /bin/true
 #### for NetBSD
 #sysconfigflags = -DNETBSD -DMOTIF1_2
 #### For Solaris2.5 & 2.5.1, do
-sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
+#sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
 
 #### Add some debug option for developper
 #### -DHTMLTRACE for verbose about html tag
@@ -84,7 +84,7 @@ sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
 #### For QNX 4.XX
 #syslibs = -lsocket
 #### For Solaris (2.x) and Motorola SVR4  .
-syslibs = -lsocket -lnsl
+#syslibs = -lsocket -lnsl
 
 #### X include file locations -- if your platform puts the X include
 #### files in a strange place, set this variable appropriately.  Else
@@ -93,9 +93,9 @@ syslibs = -lsocket -lnsl
 # xinc = -I/usr/include/X11
 # xinc = -I/usr/X11/include
 #### Linux Debian and FreeBSD
-#xinc = -I/usr/X11R6/include
+xinc = -I/usr/X11R6/include
 #### Solaris 2.x (Patched X11R5 and Motif libs)
-xinc = -I/usr/openwin/include -I/usr/dt/include
+#xinc = -I/usr/openwin/include -I/usr/dt/include
 
 #### X library locations.
 #### For nearly everyone:
@@ -111,24 +111,24 @@ xinc = -I/usr/openwin/include -I/usr/dt/include
 #### QNX
 #xlibs =  -L/usr/X11/lib -lXm_s -lXt_s -lX11_s -lXqnx_s  -lXt -lXmu -lXext
 #### Linux Debian, FreeBSD, NetBSD with Lesstif
-#xlibs = -L/usr/X11R6/lib -lXm -lXmu -lXt -lXext -lX11 -lm 
+xlibs = -L/usr/X11R6/lib -lXm -lXmu -lXt -lXext -lX11 -lm 
 #### For Solaris (2.x) (Use static to go from machine to machine)
-xlibs = -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/dt/lib -R/usr/dt/lib
-xlibs += -lXm -lXmu -lXt -lXext -lX11 -lm
+#xlibs = -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/dt/lib -R/usr/dt/lib
+#xlibs += -lXm -lXmu -lXt -lXext -lX11 -lm
 
 #### PNG SUPPORT
 #### For inline PNG support, the following should be defined:
 #### The libraries currently used are PNGLIB 0.99d and ZLIB 1.0.9
 
 # linux Mandrake
-#zlibdir = /usr/lib
-#pngdir = /usr
-#jpegdir = /usr
+zlibdir = /usr/lib
+pngdir = /usr
+jpegdir = /usr
 
 # Solaris
-zlibdir = /usr/local/lib
-pngdir = /usr/local
-jpegdir = /usr/local
+#zlibdir = /usr/local/lib
+#pngdir = /usr/local
+#jpegdir = /usr/local
 
 pnglibdir = $(pngdir)/lib
 pngincludedir = /$(pngdir)/include

@@ -1698,6 +1698,9 @@ static mo_status mo_fill_window (mo_window *win)
 	XtVaGetValues(win->scrolled_win, WbNview, (long)(&win->view), NULL);
 	XtAddEventHandler(win->view, KeyPressMask, False, 
 			mo_view_keypress_handler, win);
+	XtVaSetValues(form,
+		XmNinitialFocus, win->scrolled_win,
+		NULL);
 	/* now that the htmlWidget is created we can do this  */
 /*############################################################*/
 	mo_make_popup(win); /* c'est pour le cut&paste */

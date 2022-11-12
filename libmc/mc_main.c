@@ -1,4 +1,4 @@
-/* G.D. [Jan98] */
+/* G.D. [Jan2000] */
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -227,8 +227,12 @@ void McInit(mo_window * win)
 	uc_fd_rtp_r = UcOpenRead(uc_rtp_addr_ip, &uc_rtp_addr_port);
 /* open and bind */
 	uc_rtcp_addr_ip = mc_local_ip_addr;
-	uc_rtcp_addr_port = htons(ntohs(uc_rtp_addr_port+1));
+	uc_rtcp_addr_port = htons((ntohs(uc_rtp_addr_port)+1));
 	uc_fd_rtcp_r = UcOpenRead(uc_rtcp_addr_ip, &uc_rtcp_addr_port);
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"McInit: Unicast listen port, rtp %d, rtcp %d\n",
+		ntohs(uc_rtp_addr_port), ntohs(uc_rtcp_addr_port));
+#endif
 	uc_fd_rtcp_w = uc_fd_rtcp_r; /* we dont know yet where to send */
 				/* we will know when a sender send cname */
 /* kind of close */
@@ -236,8 +240,12 @@ void McInit(mo_window * win)
 
 /* choose an SSRC */
 	mc_local_srcid = McNewSrcid(mc_local_ip_addr);
-	sprintf(mc_local_cname,"%s@%s/%d/%d",mMosaicAppData.author_name,
+	sprintf(mc_local_cname,"%s@%s/%d/%u",mMosaicAppData.author_name,
 		mc_local_ip_addr_string,ntohs(uc_rtp_addr_port),rtp_init_time);
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"McInit: mc_local_cname %s\n",
+		mc_local_cname);
+#endif
 
 /* create the gui */
 	McCreateMemberlist();
@@ -422,11 +430,15 @@ static void UcRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 	RtpPacket rs;
 	Source * s;
 
+#ifdef DEBUG_MULTICAST
 	fprintf(stderr,"UcRtpReadCb\n");
+#endif
         len = UcRead(uc_fd_rtp_r, &buf, &addr_from, &port_from);
 	status = DewrapRtpData(buf, len, &rs);
         if (status <= 0 ) {
+#ifdef DEBUG_MULTICAST
 		fprintf(stderr, "error in RtpData Packet\n");
+#endif
                 return;
 	}
 
@@ -435,7 +447,9 @@ static void UcRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 /* do nothing until the source is well know */
 /* and not in collision */
 	if ( s == NULL) {
+#ifdef DEBUG_MULTICAST
 		fprintf(stderr,"UcRtpReadCb: NULL source\n");
+#endif
 		return;
 	}
 	if (s->is_sender == False) {
@@ -445,18 +459,25 @@ static void UcRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 /* Show the source data in the window */
 	switch (rs.data_type){
 	case HTML_STATE_DATA_TYPE:
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr,"UcRtpReadCb: calling McUpdateDataSourceWithState\n");
+#endif
 		McUpdateDataSourceWithState(s, rs.is_eod, rs.seqn=0,
 			rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
 		break;
 	case HTML_OBJECT_DATA_TYPE:
+#ifdef DEBUG_MULTICAST
 		fprintf(stderr,"UcRtpReadCb: calling McUpdateDataSourceWithObject\n");
+#endif
 		McUpdateDataSourceWithObject(s, rs.is_eod, rs.seqn=0,
                         rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
 		break;
 	default:
 		abort();        /* let me know !!! */
-
 	}
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"UcRtpReadCb: return\n");
+#endif
 }
 
 static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
@@ -471,8 +492,8 @@ static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
         len = McRead(mc_fd_rtp_r, &buf, &addr_from);
 	status = DewrapRtpData(buf, len, &rs);
         if (status <= 0 ) {
-#ifdef DEBUG_MULTICAT
-		fprintf(stderr, "error in RtpData Packet\n");
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr, "McRtpReadCb:error in RtpData Packet\n");
 #endif
                 return;
 	}
@@ -480,29 +501,45 @@ static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 
 /* do nothing until the source is well know */
 /* and not in collision */
-	if ( s == NULL)
+	if ( s == NULL) {
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr, "McRtpReadCb: NULL source\n");
+#endif
 		return;
+	}
 	if (s->is_sender == False) {
 		RegisterSender(s, &rs);
 	}
 
 	if (rs.pt == 0x63 ){	/* curseur */
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr, "McRtpReadCb: calling McMoveVirtualCursor x = %d, y=%d\n", rs.cur_pos_x, rs.cur_pos_y);
+#endif
 		McMoveVirtualCursor(s, rs.cur_pos_x, rs.cur_pos_y);
 		return;
 	}
 /* Show the source data in the window */
 	switch (rs.data_type){
 	case HTML_STATE_DATA_TYPE:
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr, "McRtpReadCb: calling McUpdateDataSourceWithState\n");
+#endif
 		McUpdateDataSourceWithState(s, rs.is_eod, rs.seqn=0,
 			rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
 		break;
 	case HTML_OBJECT_DATA_TYPE:
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr, "McRtpReadCb: calling McUpdateDataSourceWithObject\n");
+#endif
 		McUpdateDataSourceWithObject(s, rs.is_eod, rs.seqn=0,
                         rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
 		break;
 	default:
 		abort();	/* let me know !!! */
 	}
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr, "McRtpReadCb: returning\n");
+#endif
 }
  
 static void UcRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
@@ -514,11 +551,23 @@ static void UcRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 	unsigned short port_from;
 	Source * s;
 
+#ifdef DEBUG_MULTICAST
 	fprintf(stderr,"UcRtcpReadCb\n");
+#endif
         len = UcRead(uc_fd_rtcp_r, &buf, &addr_from, &port_from);
-	if (len <= 0 )
+	if (len <= 0 ) {
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr,"UcRtcpReadCb: read nothing\n");
+#endif
 		return;
+	}
+#ifdef DEBUG_MULTICAST
+        fprintf(stderr,"UcRtcpReadCb: calling UcProcessRtcpData\n");
+#endif
 	UcProcessRtcpData(buf, len, addr_from, port_from);
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"UcRtcpReadCb: return\n");
+#endif
 }
 
 static void McRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
@@ -529,10 +578,20 @@ static void McRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 	IPAddr addr_from;
 	Source * s;
 
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"McRtcpReadCb\n");
+#endif
         len = McRead(mc_fd_rtcp_r, &buf, &addr_from);
-	if (len <= 0 )
+	if (len <= 0 ) {
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr,"McRtcpReadCb: read nothing\n");
+#endif
 		return;
+	}
 	McProcessRtcpData(buf, len, addr_from);
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"McRtcpReadCb: return\n");
+#endif
 }
 
 static void McSendNewErrorObject(char *aurl, int status_code,

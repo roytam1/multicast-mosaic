@@ -20,7 +20,9 @@ unsigned int mc_local_srcid;
  */
 void UcRtcpWriteSdesCb(XtPointer clid, XtIntervalId * time_id)
 {
+#ifdef DEBUG_MULTICAST
 	fprintf(stderr, "UcRtcpWriteSdesCb ### FIXME\n");
+#endif
 }
 
 int McRcvrSrcAllocState(Source * s, int state_id)
@@ -719,28 +721,42 @@ void McProcessRtcpData(unsigned char *buf, int len, IPAddr addr_from)
         	if ( s == NULL) return; 
 		switch (rcs.pt){
 		case RTCP_PT_SR :
-			fprintf(stderr, "RTCP_SR\n");
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "McProcessRtcpData: RTCP_SR\n");
+#endif
 			break;
 		case RTCP_PT_RR :
-			fprintf(stderr, "RTCP_RR\n");
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "McProcessRtcpData: RTCP_RR\n");
+#endif
 			break;
 		case RTCP_PT_SDES :
-			fprintf(stderr, "RTCP_SDES\n");
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "McProcessRtcpData: RTCP_SDES\n");
+#endif
 			ProcessRtcpSdes(s, &rcs);
 			break;
 		case RTCP_PT_BYE :
-			fprintf(stderr, "RTCP_BYE\n");
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "McProcessRtcpData: RTCP_BYE\n");
+#endif
 			break;
 		case RTCP_PT_APP:
-			fprintf(stderr, "RTCP_APP\n");
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "McProcessRtcpData: RTCP_APP\n");
+#endif
 			break;
 		case RTCP_PT_STATR:	/* State report from sender */
-			fprintf(stderr, "RTCP_STATR\n");
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "McProcessRtcpData: RTCP_STATR\n");
+#endif
 			McQueryRepairFromStatr(s, &rcs);
 			break;
 /* a receiver wish to repair a packet */
 		case RTCP_PT_REPAIR:
-			fprintf(stderr, "RTCP_PT_REPAIR\n");
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "McProcessRtcpData: RTCP_PT_REPAIR\n");
+#endif
 			target_ssrc = ntohl( *((u_long*)rcs.d));
 			if ( target_ssrc != mc_local_srcid) /* not for me */
 				break;
@@ -751,7 +767,7 @@ void McProcessRtcpData(unsigned char *buf, int len, IPAddr addr_from)
 			McStoreQueryRepair(s, &rcs);
 			break;
 		default:
-			fprintf(stderr,"ProcessRtcpData: unknow pkt.type\n");
+			fprintf(stderr,"McProcessRtcpData: unknow pkt.type\n");
 			break;
 		}
 	}
@@ -769,44 +785,76 @@ void UcProcessRtcpData(unsigned char *buf, int len, IPAddr addr_from,
 /* we don't apply mixer's rule: FIXME### */ 
 /* this does not solve the contributor source */
 
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"UcProcessRtcpData\n");
+#endif
 	while (len > 0) {
 		lenp = DewrapRtcpData(&buf[ind], len, &rcs);
-		if (lenp <= 0)
+		if (lenp <= 0) {
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr,"UcProcessRtcpData: DewrapRtcpData return <= 0\n");
+#endif
 			return;
+		}
 		ind += lenp;
 		len -= lenp;
         	s = uc_rtcp_demux(rcs.ssrc, addr_from, port_from, &rcs); 
-        	if ( s == NULL)
+        	if ( s == NULL) {
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr,"UcProcessRtcpData: uc_rtcp_demux return NULL \n");
+#endif
                 	return; 
+		}
 		if (s->uc_rtp_port == 0){
 			s->uc_rtcp_port = port_from; /* net byte oder */
 			s->uc_rtp_port = htons(ntohs(port_from-1));
 			s->uc_rtp_ipaddr = addr_from;
 		}
 		if (s->uc_rtcp_port != port_from){
+#ifdef DEBUG_MULTICAST
 			fprintf(stderr, "BUG UcProcessRtcpData\007");
+#endif
 			s->uc_rtp_port =0;
 			return;
 		}
 		switch (rcs.pt){
 		case RTCP_PT_RR :
-			fprintf(stderr, "RTCP_RR\n");
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "UcProcessRtcpData: RTCP_RR\n");
+#endif
 			break;
 		case RTCP_PT_SDES :
-			fprintf(stderr, "RTCP_SDES\n");
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "UcProcessRtcpData: RTCP_SDES\n");
+#endif
 			break;
 		case RTCP_PT_BYE :
-			fprintf(stderr, "RTCP_BYE\n");
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "UcProcessRtcpData: RTCP_BYE\n");
+#endif
 			break;
 		case RTCP_PT_REPAIR:
-			fprintf(stderr, "RTCP_PT_REPAIR\n");
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "UcProcessRtcpData: RTCP_PT_REPAIR\n");
+#endif
 			target_ssrc = ntohl( *((u_long*)rcs.d));
-			if ( target_ssrc != mc_local_srcid) /* not for me */
+			if ( target_ssrc != mc_local_srcid) { /* not for me */
+#ifdef DEBUG_MULTICAST
+				fprintf(stderr, "UcProcessRtcpData: not target\n");
+#endif
 				break;
-			if ( !mc_send_win)	/* i am not a sender */
+			}
+			if ( !mc_send_win) {	/* i am not a sender */
+#ifdef DEBUG_MULTICAST
+				fprintf(stderr, "UcProcessRtcpData: not a sender\n");
+#endif
 				break;
+			}
 			/* query is for me. reply to 's' or multicast depending */
 			/* of the number of query and net parameter */
+#ifdef DEBUG_MULTICAST
+				fprintf(stderr, "UcProcessRtcpData: calling McStoreQueryRepair\n");
+#endif
 			McStoreQueryRepair(s, &rcs);
 			break;
 		default:
@@ -814,4 +862,7 @@ void UcProcessRtcpData(unsigned char *buf, int len, IPAddr addr_from,
 			return;
 		}
 	}
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr, "UcProcessRtcpData: return\n");
+#endif
 }

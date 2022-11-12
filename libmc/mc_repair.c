@@ -350,6 +350,9 @@ static void McSendStateRepairAnswerCb(XtPointer clid, XtIntervalId * id)
 	int rtp_ts, d_duration;
 	int have_send_multi = 0;
 
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"McSendStateRepairAnswerCb\n");
+#endif
 	deb_p = mc_rtp_packets_list; /* pointe au debut de la liste  */
         end_p = mc_rtp_packets_list;
  
@@ -437,7 +440,10 @@ static void McSendStateRepairAnswerCb(XtPointer clid, XtIntervalId * id)
 			int j;
 
 			for (j = 0; j< n_t ; j++) { /* FIXME: not a full bw */
-fprintf(stderr,"McSendStateRepairAnswerCb: sending unicast data -%s-\n", ptab[j]->d);
+#ifdef DEBUG_MULTICAST
+				fprintf(stderr,"McSendStateRepairAnswerCb: send unicast state\n%s\n", ptab[j]->d);
+				fprintf(stderr,"McSendStateRepairAnswerCb: calling UcRtpSendDataPacketTo\n");
+#endif
 				UcRtpSendDataPacketTo(p->addr_ip,p->port, ptab[j]);
 				free(ptab[j]);
 			}
@@ -451,6 +457,9 @@ fprintf(stderr,"McSendStateRepairAnswerCb: sending unicast data -%s-\n", ptab[j]
 	        	}                              
 	        	free(ptab);
 			have_send_multi = 1;
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr,"McSendStateRepairAnswerCb: send Multicast AppendTo mc_rtp_packets_list\n");
+#endif
 		}
 		pp =p;
 		p = p->next;
@@ -459,11 +468,16 @@ fprintf(stderr,"McSendStateRepairAnswerCb: sending unicast data -%s-\n", ptab[j]
 	}
 /* rearm if necessary */
         if (rearm_timer == True && have_send_multi == 1){      
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr,"McSendStateRepairAnswerCb: Rearm mc_write_rtp_data_timer_id\n");
+#endif
                 mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
                         mc_write_rtp_data_next_time,
                         McSendRtpDataTimeOutCb, NULL);
         }
-
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"McSendStateRepairAnswerCb: return\n");
+#endif
 }
 
 
@@ -481,6 +495,18 @@ typedef struct _RtcpRepaird {
 
 static XtIntervalId mc_queue_state_repair_query_timer_id;
 static int mc_queue_state_repair_query_time = 100;
+#ifdef DEBUG_MULTICAST
+void printQueueStateRepairEntry(McQueueStateRepairQuery *p)
+{
+	fprintf(stderr,"printQueueStateRepairEntry: State id %d, offset %d, len %d, addr_ip %d.%d.%d.%d, port %d, source_count %d\n",
+		p->id,
+		p->offset,
+		p->len,
+		(p->addr_ip >> 24)&0xff, (p->addr_ip >> 16)&0xff, (p->addr_ip>>8)&0xff, (p->addr_ip)&0xff,
+		p->port,
+		p->source_count);
+}
+#endif
 
 static void McScheduleStateRepairAnswer( Source *s, u_int32_t id,
 	u_int32_t offset, int len)
@@ -489,6 +515,9 @@ static void McScheduleStateRepairAnswer( Source *s, u_int32_t id,
 	McQueueStateRepairQuery *head = mc_queue_state_repair_query;
 	McQueueStateRepairQuery *p, *pp;
 
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"McScheduleStateRepairAnswer\n");
+#endif
 	if (!head) {
 		head = (McQueueStateRepairQuery *)malloc(
 				sizeof(McQueueStateRepairQuery));
@@ -504,6 +533,10 @@ static void McScheduleStateRepairAnswer( Source *s, u_int32_t id,
 		mc_queue_state_repair_query_timer_id = XtAppAddTimeOut(
 			mMosaicAppContext, mc_queue_state_repair_query_time,
 			McSendStateRepairAnswerCb, NULL);
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr,"McScheduleStateRepairAnswer: Create Queue\n");
+		printQueueStateRepairEntry(head);
+#endif
 		return;
 	}
 
@@ -513,6 +546,10 @@ static void McScheduleStateRepairAnswer( Source *s, u_int32_t id,
 	while (p) {
 		if ( p->id == id && p->offset == offset && p->len == len) {
 			p->source_count++;
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr,"McScheduleStateRepairAnswer: Old In Queue source_count++\n");
+		printQueueStateRepairEntry(p);
+#endif
 			return;
 		}
 		pp = p;	
@@ -531,6 +568,11 @@ static void McScheduleStateRepairAnswer( Source *s, u_int32_t id,
 	p->len = len;
 	pp->next = p;
 /*###	maybe recompute time if toomany query ###*/
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr,"McScheduleStateRepairAnswer: New In Queue Appending\n");
+		printQueueStateRepairEntry(p);
+#endif
+	return;
 }
 
 
@@ -780,6 +822,9 @@ void McStoreQueryRepair(Source *s , RtcpPacket* rcs)
 	u_int32_t id, len, offset,bits;
 	int qtype;
 
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr, "McStoreQueryRepair\n");
+#endif
 	queryed_ssrc = s->srcid;
 
 	my_ssrc = ntohl(psrd->target_ssrc);	/* that is me */
@@ -791,15 +836,28 @@ void McStoreQueryRepair(Source *s , RtcpPacket* rcs)
 
 	switch(qtype) {
 	case HTML_STATE_DATA_TYPE:
-		if( !McCheckStateQuery(id, offset, len) )
+		if( !McCheckStateQuery(id, offset, len) ) {
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "McStoreQueryRepair: StateQuery NOT exist return\n");
+#endif
 			return;
+		}
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr,"McStoreQueryRepair: receive a query for State id %d offset %d len %d\n", id , offset, len);
+		fprintf(stderr,"Calling McScheduleStateRepairAnswer\n");
+#endif
 		McScheduleStateRepairAnswer(s, id, offset, len);
 		break;
 	case HTML_OBJECT_DATA_TYPE:
-		if( !McCheckObjectQuery(id, offset, len) )
-			return;
+		if( !McCheckObjectQuery(id, offset, len) ) {
 #ifdef DEBUG_MULTICAST
-		fprintf(stderr,"McStoreQueryRepair: receive a query for id %d offset %d len %d\n", id , offset, len);
+			fprintf(stderr, "McStoreQueryRepair: ObjectQuery NOT exist return\n");
+#endif
+			return;
+		}
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr,"McStoreQueryRepair: receive a query for Object id %d offset %d len %d\n", id , offset, len);
+		fprintf(stderr,"Calling McScheduleObjectRepairAnswer\n");
 #endif
 		McScheduleObjectRepairAnswer(s, id, offset, len);
 		break;
@@ -808,4 +866,7 @@ void McStoreQueryRepair(Source *s , RtcpPacket* rcs)
 		abort();	/* let me know */
 		return;
 	}
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr, "McStoreQueryRepair: return\n");
+#endif
 }

@@ -687,6 +687,10 @@ void UcRtpSendDataPacketTo(IPAddr addr, unsigned short port , RtpPacket *p)
 	int cnt;
 	struct sockaddr_in addr_w;
 
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"UcRtpSendDataPacketTo\n");
+#endif
+
         memset(&addr_w,0,sizeof(addr_w));
         addr_w.sin_family = AF_INET;
         addr_w.sin_port = port;  /* net byteorder */
@@ -726,7 +730,9 @@ void UcRtpSendDataPacketTo(IPAddr addr, unsigned short port , RtpPacket *p)
         memcpy(&emit_buf[24], p->d, p->d_len);
 
 #ifdef DEBUG_MULTICAST
-	fprintf(stderr, "UcRtpSendDataPacketTo: seq=%d, ts=%u, srcid=%u, id=%u, offset=%u, d_len=%u, eod = %d\n",
+	fprintf(stderr, "UcRtpSendDataPacketTo: Toaddr %d.%d.%d.%d port %d\n",
+		(addr>>24)&0xff,(addr>>16)&0xff,(addr>>8)&0xff,addr&0xff,port);
+	fprintf(stderr, "UcRtpSendDataPacketTo: seq=%d, ts=%08x, my_srcid=%08x, id=%08x, offset=%08x, d_len=%08x, eod = %d\n",
 		0, p->rtp_ts, mc_local_srcid,
 		p->id, p->offset,p->d_len, p->is_eod);
 #endif
