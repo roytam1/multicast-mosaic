@@ -65,11 +65,6 @@
 #include "pixmaps/lock_domain.xpm"
 #include "pixmaps/lock_login.xpm"
 
-#include "pixmaps/xm_error.xpm"
-#include "pixmaps/xm_information.xpm"
-#include "pixmaps/xm_question.xpm"
-#include "pixmaps/xm_warning.xpm"
-
 #include "pixmaps/toolbar_save_1.xpm"
 #include "pixmaps/toolbar_ftp_put_1.xpm"
 #include "pixmaps/toolbar_ftp_mkdir_1.xpm"

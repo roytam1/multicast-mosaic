@@ -7,9 +7,6 @@
 
 #include "Xmx.h"
 
-/* Kludge for broken linux */
-extern Pixmap dialogError, dialogInformation, dialogQuestion, dialogWarning;
-
 /* ---------------------------- FILE VARIABLES ---------------------------- */
 
 /* Variables accessed through Xmx.h as extern. */
@@ -264,32 +261,12 @@ Widget XmxMakeLabel (Widget parent, String name)
 /* ------------------------------- DIALOGS -------------------------------- */
 
 /* args work */
-Widget XmxMakeErrorDialog (Widget parent, String name, String title)
-{
-  XmString message = XmStringCreateLtoR (name, XmSTRING_DEFAULT_CHARSET);
-  XmString dialog = XmStringCreateLtoR (title, XmSTRING_DEFAULT_CHARSET);
-  XmxSetArg (XmNmessageString, (XtArgVal)message);
-  XmxSetArg (XmNdialogTitle, (XtArgVal)dialog);
-  XmxSetArg (XmNsymbolPixmap, (XtArgVal)dialogError);
-
-  Xmx_w = XmCreateErrorDialog (parent, "error", Xmx_wargs, Xmx_n);
-  XtUnmanageChild (XmMessageBoxGetChild (Xmx_w, XmDIALOG_CANCEL_BUTTON));
-  XtUnmanageChild (XmMessageBoxGetChild (Xmx_w, XmDIALOG_HELP_BUTTON));
-  XmStringFree (message);
-  XmStringFree (dialog);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-
-/* args work */
 Widget XmxMakeInfoDialog (Widget parent, String name, String title)
 {
   XmString message = XmStringCreateLtoR (name, XmSTRING_DEFAULT_CHARSET);
   XmString dialog = XmStringCreateLtoR (title, XmSTRING_DEFAULT_CHARSET);
   XmxSetArg (XmNmessageString, (XtArgVal)message);
   XmxSetArg (XmNdialogTitle, (XtArgVal)dialog);
-  XmxSetArg (XmNsymbolPixmap, (XtArgVal)dialogInformation);
 
   Xmx_w = XmCreateInformationDialog (parent, "infozoid", Xmx_wargs, Xmx_n);
   XtUnmanageChild (XmMessageBoxGetChild (Xmx_w, XmDIALOG_CANCEL_BUTTON));
@@ -313,7 +290,6 @@ Widget XmxMakeQuestionDialog (Widget parent, String question, String title,
   XmxSetArg (XmNdialogTitle, (XtArgVal)dialog);
   XmxSetArg (XmNokLabelString, (XtArgVal)ok);
   XmxSetArg (XmNcancelLabelString, (XtArgVal)cancel);
-  XmxSetArg (XmNsymbolPixmap, (XtArgVal)dialogQuestion);
 
   Xmx_w = XmCreateQuestionDialog (parent, "question", Xmx_wargs, Xmx_n);
   XtUnmanageChild (XmMessageBoxGetChild (Xmx_w, XmDIALOG_HELP_BUTTON));
@@ -753,7 +729,6 @@ int XmxModalYesOrNo (Widget parent, XtAppContext app,
 	XmxSetArg (XmNmessageString, (XtArgVal)question);
 	XmxSetArg (XmNokLabelString, (XtArgVal)yes);
 	XmxSetArg (XmNcancelLabelString, (XtArgVal)no);
-	XmxSetArg (XmNsymbolPixmap, (XtArgVal)dialogQuestion);
 	dialog = XmCreateQuestionDialog(parent,"question_dialog",Xmx_wargs,Xmx_n);
 	Xmx_n = 0;
 	XtUnmanageChild (XmMessageBoxGetChild (dialog, XmDIALOG_HELP_BUTTON));
@@ -778,26 +753,26 @@ int XmxModalYesOrNo (Widget parent, XtAppContext app,
 	return answer;
 }
 
-#define XMX_NO_ANSWER "-*-no answer, dammit, but Xmx rules, yo yo yo-*-"
+static char * XMX_OK_ANSWER = "OK";
 
 /*SWP -- 7/6/95*/
 static void _XmxActivate (Widget w, char **answer, 
 	XmSelectionBoxCallbackStruct *cbs)
 {
-	*answer = XMX_NO_ANSWER;
+	*answer = XMX_OK_ANSWER;
 }
 
 static void _XmxPromptForStringResponse (Widget w, char **answer, 
 	XmSelectionBoxCallbackStruct *cbs)
 {
 	if (!XmStringGetLtoR (cbs->value, XmSTRING_DEFAULT_CHARSET, answer))
-		*answer = XMX_NO_ANSWER;
+		*answer = XMX_OK_ANSWER;
 }
 
 static void _XmxPromptForStringCancel (Widget w, char **answer, 
 	XmSelectionBoxCallbackStruct *cbs)
 {
-	*answer = XMX_NO_ANSWER;
+	*answer = XMX_OK_ANSWER;
 }
 
 /*SWP -- 7/4/95*/
@@ -816,7 +791,6 @@ void XmxMakeInfoDialogWait (Widget parent, XtAppContext app,
 	XmxSetArg (XmNdialogStyle, XmDIALOG_FULL_APPLICATION_MODAL);
 	XmxSetArg (XmNmessageString, (XtArgVal)info);
 	XmxSetArg (XmNokLabelString, (XtArgVal)yes);
-	XmxSetArg (XmNsymbolPixmap, (XtArgVal)dialogInformation);
 
 	dialog = XmCreateInformationDialog(parent, "information_dialog", 
 			Xmx_wargs, Xmx_n);
@@ -840,28 +814,63 @@ void XmxMakeInfoDialogWait (Widget parent, XtAppContext app,
 	XtDestroyWidget (dialog);
 }
 
- /*SWP -- 4/15/96*/
-void XmxMakeErrorDialogWait (Widget parent, XtAppContext app,
-	char *infostr, char *titlestr, char *yesstr)
+/*GD 24 Oct 97 */
+static void ErrorDialogDestroyCB(Widget w, XtPointer clid, XtPointer calld)
+{
+	XtUnmanageChild (w);         
+	XtDestroyWidget (w);         
+}
+
+/*GD 24 Oct 97 */
+/* An error dialog. non blocking version */
+void XmxMakeErrorDialog(Widget parent, char *istr, char *tstr)
 {     
 	Widget dialog;
-	XmString info, yes, title;
+	XmString info, title;
+      
+	info = XmStringCreateLtoR (istr, XmSTRING_DEFAULT_CHARSET);
+	title = XmStringCreateLtoR (tstr, XmSTRING_DEFAULT_CHARSET);
+      
+	XmxSetArg (XmNdialogTitle, (XtArgVal)title);
+	XmxSetArg (XmNdialogStyle, XmDIALOG_MODELESS);
+	XmxSetArg (XmNmessageString, (XtArgVal)info);
+	XmxSetArg (XmNmessageAlignment, (XtArgVal)XmALIGNMENT_CENTER);
+
+	dialog = XmCreateErrorDialog(parent, "error_dialog", Xmx_wargs, Xmx_n);
+	Xmx_n = 0;
+
+	XtUnmanageChild (XmMessageBoxGetChild (dialog, XmDIALOG_HELP_BUTTON));
+	XtUnmanageChild (XmMessageBoxGetChild (dialog, XmDIALOG_CANCEL_BUTTON));
+	XmStringFree (info);              
+	XmStringFree (title);             
+
+	XtAddCallback(dialog,XmNokCallback, ErrorDialogDestroyCB, NULL);
+	XtManageChild (dialog);           
+}
+
+ /*SWP -- 4/15/96*/
+void XmxMakeErrorDialogWait (Widget parent, XtAppContext app,
+	char *infostr, char *titlestr)
+{     
+	Widget dialog;
+	XmString info, title;
 	char *answer = NULL;
       
 	info = XmStringCreateLtoR (infostr, XmSTRING_DEFAULT_CHARSET);
-	yes = XmStringCreateLtoR (yesstr, XmSTRING_DEFAULT_CHARSET);
 	title = XmStringCreateLtoR (titlestr, XmSTRING_DEFAULT_CHARSET);
       
 	XmxSetArg (XmNdialogTitle, (XtArgVal)title);
 	XmxSetArg (XmNdialogStyle, XmDIALOG_FULL_APPLICATION_MODAL);
 	XmxSetArg (XmNmessageString, (XtArgVal)info);
-	XmxSetArg (XmNokLabelString, (XtArgVal)yes);
-	XmxSetArg (XmNsymbolPixmap, (XtArgVal)dialogError);
-                                    
-	dialog = XmCreateInformationDialog (parent, "information_dialog", Xmx_wargs, Xmx_n);                              
+	XmxSetArg (XmNmessageAlignment, (XtArgVal)XmALIGNMENT_CENTER);
+
+	dialog = XmCreateErrorDialog(parent, "error_dialog", Xmx_wargs, Xmx_n);                              
 	Xmx_n = 0;
+
 	XtUnmanageChild (XmMessageBoxGetChild (dialog, XmDIALOG_HELP_BUTTON));
 	XtUnmanageChild (XmMessageBoxGetChild (dialog, XmDIALOG_CANCEL_BUTTON));
+	XmStringFree (info);              
+	XmStringFree (title);             
 
 	XtAddCallback(dialog,XmNokCallback,(XtCallbackProc)_XmxActivate, &answer);
 	XtManageChild (dialog);           
@@ -872,11 +881,7 @@ void XmxMakeErrorDialogWait (Widget parent, XtAppContext app,
 	XtUnmanageChild (dialog);         
 	XSync (XtDisplay (dialog), 0);    
 	XmUpdateDisplay (dialog);         
-	XmStringFree (info);              
-	XmStringFree (yes);               
-	XmStringFree (title);             
 	XtDestroyWidget (dialog);         
-	return;
 }
 
 char *XmxModalPromptForString (Widget parent, XtAppContext app, 
@@ -923,14 +928,12 @@ char *XmxModalPromptForString (Widget parent, XtAppContext app,
 
   XtDestroyWidget (dialog);
 
-  if (!answer || strcmp (answer, XMX_NO_ANSWER) == 0)
+  if (!answer || strcmp (answer, XMX_OK_ANSWER) == 0)
     return NULL;
   else
     return answer;
 }
 
-
-#define XMX_NO_ANSWER "-*-no answer, dammit, but Xmx rules, yo yo yo-*-"
 
 static char *_passwd = NULL;
 
@@ -938,13 +941,13 @@ static void _XmxPromptForPasswordResponse (Widget w, char **answer,
                                            XmSelectionBoxCallbackStruct *cbs)
 {
   if (!XmStringGetLtoR (cbs->value, XmSTRING_DEFAULT_CHARSET, answer))
-    *answer = XMX_NO_ANSWER;
+    *answer = XMX_OK_ANSWER;
 }
 
 static void _XmxPromptForPasswordCancel (Widget w, char **answer, 
                                          XmSelectionBoxCallbackStruct *cbs)
 {
-  *answer = XMX_NO_ANSWER;
+  *answer = XMX_OK_ANSWER;
 }
 
 static void _XmxPromptForPasswordVerify (Widget text_w, XtPointer unused, 
@@ -1064,7 +1067,7 @@ char *XmxModalPromptForPassword (Widget parent, XtAppContext app,
 
   XtDestroyWidget (dialog);
 
-  if (!answer || strcmp (answer, XMX_NO_ANSWER) == 0 || !_passwd || !(*_passwd))
+  if (!answer || strcmp (answer, XMX_OK_ANSWER) == 0 || !_passwd || !(*_passwd))
     return NULL;
   else
     return strdup (_passwd);
@@ -1221,7 +1224,7 @@ XmxMenuRecord * XmxRMakeOptionMenu(Widget parent, String name,
 
 /* Possible deficiency: will not be able to grey out a submenu (cascade button).*/
 void _XmxRCreateMenubar (Widget menu, XmxMenubarStruct *menulist, 
-                    XmxMenuRecord *rec, struct mo_window * win)
+                    XmxMenuRecord *rec, struct _mo_window * win)
 {
 	int _i;
 	Widget *_buttons;

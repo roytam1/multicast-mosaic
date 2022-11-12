@@ -16,13 +16,9 @@
 #include "mosaic.h"
 #include "../libmc/mc_dispatch.h"
 #include "../libmc/mc_misc.h"
-#include "mo-www.h"
 
-/* Defined in gui.c */
-extern char *cached_url;
 
 /* Defined in gui-documents.c */
-extern int interrupted;
 
 void GetUrlData(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -30,15 +26,10 @@ void GetUrlData(Widget w, XtPointer clid, XtPointer calld)
 	EODataStruct * eods = (EODataStruct *) calld;
 	char * src = NULL;
 	char *fnam;
-	int rc;
 	McMoWType wtype;
         int internal_numeo;
 
 	eods->ret_filename = NULL;
-	if (w == NULL){
-		printf("[GetUrlData] NoWidget !!!!\n");
-		return;
-	}
 	if(eods->src)
 		src = strdup(eods->src);
 	if (!src)
@@ -48,9 +39,6 @@ void GetUrlData(Widget w, XtPointer clid, XtPointer calld)
 	wtype = win->mc_type;
 #endif
 	internal_numeo = eods->num_eo;
-
-	cached_url = win->cached_url ? win->cached_url : "lose";
-	win->cached_url = cached_url;
 
 #ifdef MULTICAST
         /* if it is a receiver do something . Reassemble data if possible*/
@@ -72,22 +60,14 @@ void GetUrlData(Widget w, XtPointer clid, XtPointer calld)
                 return ;
         }
 #endif
-	src = mo_url_canonicalize (src, cached_url);
+	src = mo_url_canonicalize (src, win->current_node->base_url);
 
-	if ( interrupted) {	 /* Return if interrupted is high. */
-		free (src);
-		eods->ret_filename = NULL;
-		return ;
-	}
 
 	/* We have to load the data. */
-	fnam = mo_tmpnam(src);
-	interrupted = 0;
-	rc = mo_pull_er_over_virgin (src, fnam,win);
-	if (!rc) {
-		free (fnam);
-		return;
-	}
+	fnam = tempnam (mMosaicTmpDir,"mMo");
+	fprintf(stderr, "GetUrlData: implement... Abort... Please report\n");
+	abort();
+/*	rc = mo_pull_er_over_virgin (src, fnam,win); */
 	eods->ret_filename = fnam;
 #ifdef MULTICAST
 	/* if this is a sender widget, save the original data for futur send*/
@@ -101,8 +81,4 @@ void GetUrlData(Widget w, XtPointer clid, XtPointer calld)
 	}
 	/* continue if wtype == MC_TYPE_NONE */
 #endif
-/*############
-        unlink(fnam);
-        free (fnam);
-*/
 }

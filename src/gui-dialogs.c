@@ -6,7 +6,12 @@
 #include "gui-dialogs.h" 
 #include "gui-documents.h"
 #include "gui.h"
-#include "mo-www.h"
+#include "mime.h"
+#include "URLParse.h"
+#include "util.h"
+#include "paf.h"
+#include "navigate.h"
+#include "mailto.h"
 
 #include <Xm/XmAll.h>
 
@@ -20,20 +25,14 @@ extern int HTML_Print_Headers;
 extern int HTML_Print_Footers;
 extern int HTML_Print_Paper_Size_A4;
 
-extern int is_uncompressed;
-
 /*swp -- for ~ expansion*/
-extern int sys_nerr;
-extern char *sys_errlist[];
 extern int errno;
 #define __MAX_HOME_LEN__ 256
 int pathEval(char *dest, char *src);
 char *getFileName(char *file_src);
 
-extern char *saveFileName;
-extern Widget tolevel;
-extern int cci_docommand;
 void print_sensitive(mo_window *win, int format) ;
+void application_user_info_wait (char *str);
 
 XmxOptionMenuStruct *format_opts;
 
@@ -131,100 +130,12 @@ static XmxCallback (print_print_us_cb)
 			   !XmToggleButtonGetState(win->print_us_toggle_print));
 }
 
-/* ----------------------------- SAVE WINDOW ------------------------------ */
-
-mo_status mo_save_window(mo_window *win, char *fname, 
-				mo_format_token save_format)
-{
-	char *efname = (char *)malloc (sizeof (char) * (__MAX_HOME_LEN__ * 2));
-	FILE *fp;
-
-	if (pathEval(efname, fname)<0) {
-		fprintf(stderr,"Error in evaluating the path. (gui-dialogs.c)\n");
-	}
-	fp = fopen (efname, "w");
-	if (!fp) {
-		char *buf, *final, tmpbuf[80];
-		int final_len;
-
-/* don't display dialog if command issued by cci application */
-		if (cci_docommand)
-			return mo_fail;
-
-		buf=my_strerror(errno);
-		if (!buf || !*buf || !strcmp(buf,"Error 0")) {
-			sprintf(tmpbuf,"Uknown Error" );
-			buf=tmpbuf;
-		}
-		final_len=30+((!efname || !*efname?3:strlen(efname))+13)+
-				15+(strlen(buf)+3);
-		final=(char *)calloc(final_len,sizeof(char));
-
-		sprintf(final,"\nUnable to save document:\n   %s\n\nSave Error:\n   %s\n" ,(!efname || !*efname?" ":efname),buf);
-
-		application_error(final,"Save Error");
-		if (final) {
-			free(final);
-			final=NULL;
-		}
-	} else {
-		if (!cci_docommand) {
-			HTML_Print_Headers=
-				XmToggleButtonGetState(win->print_header_toggle_save);
-			HTML_Print_Footers=
-				XmToggleButtonGetState(win->print_footer_toggle_save);
-			HTML_Print_Paper_Size_A4= 
-				XmToggleButtonGetState(win->print_a4_toggle_save);
-		} else { /* cci app telling mosaic to save a file */
-			if (save_format == mo_postscript) {
-				HTML_Print_Headers = 1;
-				HTML_Print_Footers = 1;
-				HTML_Print_Paper_Size_A4 = 0;
-			} else {
-				HTML_Print_Headers = 0;
-				HTML_Print_Footers = 0;
-				HTML_Print_Paper_Size_A4 = 0;
-			}
-		}
-
-		if (save_format == mo_plaintext) {
-			char *text = HTMLGetText (
-				win->scrolled_win, 0, win->current_node->url, 0);
-
-			if (text) {
-				fputs (text, fp);
-				free (text);
-			}
-		} else if (save_format == mo_formatted_text) {
-			char *text = HTMLGetText ( win->scrolled_win, 1, 
-					win->current_node->url, 0);
-			if (text) {
-				fputs (text, fp);
-				free (text);
-			}
-		} else if (save_format == mo_postscript) {
-			char *text = HTMLGetText (win->scrolled_win, 2 + win->font_family, 
-
-			win->current_node->url, win->current_node->last_modified);
-			if (text) {
-				fputs (text, fp);
-				free (text);
-			}
-		} else if (win->current_node && win->current_node->text) {
-/* HTML source */
-			fputs (win->current_node->text, fp);
-		}
-		fclose (fp);
-	}
-	free (efname);
-	return(mo_succeed);
-}
-
-/* ------------------------- mo_post_save_window -------------------------- */
+/* ------------------------- mo_save_document -------------------------- */
 
 static XmxCallback (save_win_cb)
 {
-  	char *fname = (char *)malloc (sizeof (char) * 128), efname[128+1];
+	FILE *fp;
+  	char *fname;
 	mo_window *win = (mo_window*)client_data;
   	char *ptr=NULL;
 
@@ -232,10 +143,43 @@ static XmxCallback (save_win_cb)
 	XmStringGetLtoR (((XmFileSelectionBoxCallbackStruct *)call_data)->value,
 		XmSTRING_DEFAULT_CHARSET,
 		&fname);
+	fp = fopen (fname, "w");
+	if (!fp) {
+		char * info = (char*) malloc(strlen(fname) + 100);
 
-  	pathEval (efname, fname);           
+		sprintf(info,"Can't save file :\n%s",fname);
+		XmxMakeErrorDialog(win->base, info, "File Error");
+		free(info);
+		return;
+	}
+	HTML_Print_Headers= XmToggleButtonGetState(win->print_header_toggle_save);
+	HTML_Print_Footers= XmToggleButtonGetState(win->print_footer_toggle_save);
+	HTML_Print_Paper_Size_A4= XmToggleButtonGetState(win->print_a4_toggle_save);
+	if (win->save_format == mo_plaintext) {
+		char *text = HTMLGetText(win->scrolled_win, 0, win->current_node->aurl, 0);
 
-	mo_save_window(win, efname, win->save_format);
+		if (text) {
+			fputs (text, fp);
+			free (text);
+		}
+	} else if (win->save_format == mo_formatted_text) {
+		char *text = HTMLGetText ( win->scrolled_win, 1, win->current_node->aurl, 0);
+		if (text) {
+			fputs (text, fp);
+			free (text);
+		}
+	} else if (win->save_format == mo_postscript) {
+		char *text = HTMLGetText (win->scrolled_win, 2 + win->font_family, win->current_node->aurl, win->current_node->last_modified);
+
+		if (text) {
+			fputs (text, fp);
+			free (text);
+		}
+	} else if (win->current_node && win->current_node->text) {
+/* HTML source */
+		fputs (win->current_node->text, fp);
+	}
+	fclose (fp);
 	free (fname);
 	return;
 }
@@ -337,8 +281,10 @@ XmxCallback (mo_html_cb)
 	format_sensitive(win,win->save_format);
 }
 
-mo_status mo_post_save_window (mo_window *win)
+void mo_save_document (Widget w, XtPointer clid, XtPointer calld)
 {
+	mo_window *win = (mo_window*) clid;
+
 	int i;
 	XmString sfn,fbfn;
 	char fileBuf[2048],*fileBoxFileName;
@@ -457,138 +403,17 @@ mo_status mo_post_save_window (mo_window *win)
 	if (!XmStringGetLtoR(fbfn,XmSTRING_DEFAULT_CHARSET,&fileBoxFileName)) {
 		fprintf(stderr,
 			"Internal Error In Save As... PLEASE REPORT THIS!\n");
-		return mo_fail;
+		abort();
 	}
 	if (*fileBoxFileName && win && win->current_node && 
-	    win->current_node->url && *(win->current_node->url)) {
+	    win->current_node->aurl ) {
 /*no need to check on NULL from getFileName as we know url exists*/
 		sprintf(fileBuf,"%s%s",fileBoxFileName,
-			getFileName(win->current_node->url));
+			getFileName(win->current_node->aurl));
 		sfn=XmStringCreateLtoR(fileBuf,XmSTRING_DEFAULT_CHARSET);
 		XtVaSetValues(win->save_win, XmNdirSpec, sfn, NULL);
 	}
 	XmxManageRemanage (win->save_win);
-	return mo_succeed;
-}
-
-/* -------------------------- SAVEBINARY WINDOW --------------------------- */
-
-/* This is used by libwww/HTFormat.c to present a user interface
-   for retrieving files in binary transfer mode.  Obviously a redesign
-   of the interface between the GUI and the commo library really needs
-   to happen -- hopefully libwww2 will make this easy.  HA!!! */
-
-/* Thanks to Martha Weinberg (lyonsm@hpwcsvp.mayfield.hp.com) for
-   idea and code starting point. */
-static char *temp_binary_fnam;
-
-static XmxCallback (savebinary_cancel_cb)
-{
-	mo_window *win = (mo_window*)client_data;
-
-	if (unlink(temp_binary_fnam)<0) {
-		char *buf, *final, tmpbuf[80];
-		int final_len;
-
-		buf=my_strerror(errno);
-		if (!buf || !*buf || !strcmp(buf,"Error 0")) {
-			sprintf(tmpbuf,"Uknown Error" );
-			buf=tmpbuf;
-		}
-
-		final_len=30+
-			((!temp_binary_fnam || !*temp_binary_fnam?3:strlen(temp_binary_fnam))+13)
-			+15+(strlen(buf)+13);
-		final=(char *)calloc(final_len,sizeof(char));
-
-		sprintf(final,"\nUnable to Remove Local File:\n   %s\n\nRemove Error:\n   %s\n" ,(!temp_binary_fnam || !*temp_binary_fnam?" ":temp_binary_fnam),buf);
-
-		XmxMakeErrorDialog (win->base, final, "Remove Error" );
-		XtManageChild (Xmx_w);
-
-		if (final) {
-			free(final);
-			final=NULL;
-		}
-	}
-
-/* This was dup'd down below... */
-	free (temp_binary_fnam);
-	return;
-}
-
-static XmxCallback (savebinary_win_cb)
-{
-	char *fname = (char *)malloc (sizeof (char) * 128), efname[128+1];
-	char *cmd;
-	mo_window *win = (mo_window*)client_data;
-	char retBuf[BUFSIZ];
-	int status;
-
-	XtUnmanageChild (win->savebinary_win);
-	XmStringGetLtoR (((XmFileSelectionBoxCallbackStruct *)call_data)->value,
-			XmSTRING_DEFAULT_CHARSET, &fname);
-
-  	pathEval (efname, fname);
-/*SWP -- New "mv" fucntion to take care of these /bin/mv things*/
-
-	if((status=my_move(temp_binary_fnam,efname,retBuf,BUFSIZ,1))!=
-		SYS_SUCCESS) {
-		application_user_info_wait(retBuf);
-	}
-	free (temp_binary_fnam); 	/* This was dup'd down below... */
-	free (fname);
-	return;
-}
-
-
-mo_status mo_rename_binary_file (mo_window *win, char *fnam)
-{
-	Widget Text;
-	XmString sfn,fbfn;
-	char fileBuf[2048],*fileBoxFileName;
-
-	temp_binary_fnam = strdup (fnam);
-  	if (!win->savebinary_win) {
-      		XmxSetArg (XmNdialogStyle, XmDIALOG_FULL_APPLICATION_MODAL);
-      		win->savebinary_win = XmxMakeFileSBDialog (win->base, 
-			"mMosaic: Save Binary File To Local Disk" , 
-         		"Name for binary file on local disk:" ,
-         		savebinary_win_cb, (XtPointer)win);
-      		XtAddCallback (win->savebinary_win, XmNcancelCallback, 
-                      	savebinary_cancel_cb, win);
-    	} else {
-      		XmFileSelectionDoSearch (win->savebinary_win, NULL);
-    	}
-
-  	/*SWP -- 9.21.95 -- Save File now goes to a specific filename*/
-  	XtVaGetValues(win->savebinary_win,
-			XmNdirSpec, &fbfn,
-			NULL);
-  	if (!XmStringGetLtoR(fbfn,XmSTRING_DEFAULT_CHARSET,&fileBoxFileName)) {
-		fprintf(stderr,"Internal Error In Save Binary... PLEASE REPORT THIS!\n");
-        	return mo_fail;
-  	}
-  	if (*fileBoxFileName && saveFileName && *saveFileName) {
-		char *sptr=NULL,*ptr=NULL;
-
-		/*no need to check on NULL from getFileName as we know url exists*/
-		sptr=getFileName(saveFileName);
-                if (is_uncompressed && (ptr=strrchr(sptr,'.'))) { /* There is a
-"." in it */                          
-                        if (!strncmp(ptr,".Z",2) || !strncmp(ptr,".gz",3)) { /*
-get rid of it! */                     
-                                *ptr='\0';
-                        }             
-                } 
-		sprintf(fileBuf,"%s%s",fileBoxFileName,sptr);
-		sfn=XmStringCreateLtoR(fileBuf,XmSTRING_DEFAULT_CHARSET);
-		XtVaSetValues(win->savebinary_win,
-		      	XmNdirSpec, sfn,
-		      	NULL);
-  	}
-  	XmxManageRemanage (win->savebinary_win);
-  	return mo_succeed;
 }
 
 /* ---------------------- mo_post_open_local_window ----------------------- */
@@ -598,6 +423,7 @@ static XmxCallback (open_local_win_cb)
   	char *fname = NULL, efname[128+1];
 	char *url;
 	mo_window *win = (mo_window*)client_data;
+	RequestDataStruct rds;
 
 	XtUnmanageChild (win->open_local_win);
 	XmStringGetLtoR (((XmFileSelectionBoxCallbackStruct *)call_data)->value,
@@ -609,7 +435,11 @@ static XmxCallback (open_local_win_cb)
 	url = mo_url_canonicalize_local (efname);
 	if (url[strlen(url)-1] == '/')
 		url[strlen(url)-1] = '\0';
-	mo_load_window_text (win, url, NULL);
+	rds.req_url = url;
+	rds.ct = NULL;
+	rds.post_data = NULL;
+	rds.is_reloading = True;
+	MMPafLoadHTMLDocInWin (win, &rds);
 	free (fname);
 	return;
 }
@@ -634,6 +464,7 @@ static XmxCallback (open_win_cb0)
 {
 	mo_window *win = (mo_window*) client_data;
 	char *url,*xurl;
+	RequestDataStruct rds;
 
 	XtUnmanageChild (win->open_win);
 	url = XmTextGetString (win->open_text);
@@ -643,8 +474,13 @@ static XmxCallback (open_win_cb0)
 	/* if URL is enclosed inside <brackets> then extract it */
 	if ( strstr(url, "<") )
 		url = strtok(url, "<>");
-	xurl=mo_url_prepend_protocol(url);
-	mo_load_window_text (win, xurl, NULL);
+	xurl=UrlGuess(url);
+	free(url);
+	rds.req_url = xurl;
+	rds.ct = NULL;
+	rds.post_data = NULL;
+	rds.is_reloading = False;
+	MMPafLoadHTMLDocInWin (win, &rds);
 }
 
 static XmxCallback (open_win_cb1)
@@ -658,8 +494,7 @@ static XmxCallback (open_win_cb2)
 	mo_window *win = (mo_window*) client_data;
 
 	mo_open_another_window (win, 
-			mo_assemble_help_url("docview-menubar-file.html"),
-			NULL, NULL);
+			mo_assemble_help_url("docview-menubar-file.html"));
 }
 static XmxCallback (open_win_cb3)
 {
@@ -677,7 +512,7 @@ mo_status mo_post_open_window (mo_window *win)
 	if (!win->open_win) {
 /* Create it for the first time. */
 		win->open_win = XmxMakeFormDialog(win->base,
-					"NCSA Mosaic: Open Document");
+					"mMosaic: Open Document");
 		dialog_frame = XmxMakeFrame (win->open_win, XmxShadowOut);
 
 /* Constraints for base. */
@@ -725,14 +560,19 @@ static XmxCallback (mail_win_cb1)
 
 	XtUnmanageChild (win->mail_win);
 }
-static XmxCallback (mail_win_cb2)
+static void mail_win_cb2(Widget w, XtPointer clid, XtPointer calld)
 {
-	mo_window *win = (mo_window*)client_data;
-
-	mo_open_another_window (win, 
-		mo_assemble_help_url ("docview-menubar-file.html"), 
-		NULL, NULL);
+	mo_window *win = (mo_window*)clid;
+        mo_window * neww;
+        RequestDataStruct rds;
+                                       
+        rds.ct = rds.post_data = NULL; 
+        rds.is_reloading = False;
+        rds.req_url = mo_assemble_help_url ("docview-menubar-file.html");
+        neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
+        MMPafLoadHTMLDocInWin (neww, &rds);
 }
+
 static XmxCallback (mail_win_cb0)
 {
 	mo_window *win = (mo_window*)client_data;
@@ -743,7 +583,7 @@ static XmxCallback (mail_win_cb0)
 
 	HTML_Print_Headers=XmToggleButtonGetState(win->print_header_toggle_mail);
 	HTML_Print_Footers=XmToggleButtonGetState(win->print_footer_toggle_mail);
-       HTML_Print_Paper_Size_A4=XmToggleButtonGetState(win->print_a4_toggle_mail);
+	HTML_Print_Paper_Size_A4=XmToggleButtonGetState(win->print_a4_toggle_mail);
 	to = XmTextGetString (win->mail_to_text);
 	if (!to)
 		return;
@@ -755,32 +595,30 @@ static XmxCallback (mail_win_cb0)
 		subj = strdup ("\0");
 
 	if (win->mail_format == mo_plaintext) {
-		text =HTMLGetText(win->scrolled_win, 0, win->current_node->url,0);
+		text =HTMLGetText(win->scrolled_win, 0, win->current_node->aurl,0);
 		content_type = "text/plain";
 		free_text = 1;
-	} else 
-		if (win->mail_format == mo_formatted_text) {
-			text = HTMLGetText (win->scrolled_win, 1, win->current_node->url,0);
-			content_type = "text/plain";
-			free_text = 1;
-		} else 
-			if (win->mail_format == mo_postscript) {
-				text = HTMLGetText (win->scrolled_win, 2 + win->font_family, win->current_node->url, win->current_node->last_modified);
-				content_type = "application/postscript";
-				free_text = 1;
-			} else 
-				if(win->current_node && win->current_node->text) {
+	} else if (win->mail_format == mo_formatted_text) {
+		text = HTMLGetText (win->scrolled_win, 1, win->current_node->aurl,0);
+		content_type = "text/plain";
+		free_text = 1;
+	} else if (win->mail_format == mo_postscript) {
+		text = HTMLGetText (win->scrolled_win, 2 + win->font_family, win->current_node->aurl, win->current_node->last_modified);
+		content_type = "application/postscript";
+		free_text = 1;
+	} else if(win->current_node && win->current_node->text) {
 							/* HTML source. */
-					text = win->current_node->text;
-					content_type = "text/x-html";
-					free_text = 0;
-				}
+		text = win->current_node->text;
+		content_type = "text/x-html";
+		free_text = 0;
+	}
 
 	if (text)
 		mo_send_mail_message (text, to, subj, 
 			XmToggleButtonGetState(win->print_url_only)?
 				"url_only" : content_type,
-			win->current_node ? win->current_node->url : NULL);
+			win->current_node ? win->current_node->aurl :
+				(char*) NULL);
 	if (free_text && text)
 		free (text);
 	free (to);
@@ -901,7 +739,7 @@ mo_status mo_post_mail_window (mo_window *win)
 	if (!win->mail_win) {
 
 /* Create it for the first time. */
-		win->mail_win = XmxMakeFormDialog(win->base, "NCSA Mosaic: Mail Document" );
+		win->mail_win = XmxMakeFormDialog(win->base, "mMosaic: Mail Document" );
 		dialog_frame = XmxMakeFrame (win->mail_win, XmxShadowOut);
 
 /* Constraints for base. */
@@ -1063,42 +901,30 @@ mo_status mo_print_window(mo_window *win,
 	char *fnam, *cmd;
 	FILE *fp;
 
-	fnam = mo_tmpnam(win->current_node->url);
+	fnam = tempnam (mMosaicTmpDir,"mMo");
 
-	if (cci_docommand) {
-		if (print_format == mo_postscript) {
-			HTML_Print_Headers= 1;
-			HTML_Print_Footers= 1;
-			HTML_Print_Paper_Size_A4=0;
-		} else {
-			HTML_Print_Headers= 0;
-			HTML_Print_Footers= 0;
-			HTML_Print_Paper_Size_A4=0;
-		}
-	} else {
-		HTML_Print_Headers=XmToggleButtonGetState(win->print_header_toggle_print);
-		HTML_Print_Footers=XmToggleButtonGetState(win->print_footer_toggle_print);
-		HTML_Print_Paper_Size_A4=XmToggleButtonGetState(win->print_a4_toggle_print);
-	}
+	HTML_Print_Headers=XmToggleButtonGetState(win->print_header_toggle_print);
+	HTML_Print_Footers=XmToggleButtonGetState(win->print_footer_toggle_print);
+	HTML_Print_Paper_Size_A4=XmToggleButtonGetState(win->print_a4_toggle_print);
 
 	fp = fopen (fnam, "w");
 	if (!fp)
 		goto oops;
 	if (win->print_format == mo_plaintext) {
-		char *text = HTMLGetText (win->scrolled_win, 0, win->current_node->url,0);
+		char *text = HTMLGetText (win->scrolled_win, 0, win->current_node->aurl,0);
 
 		if (text) {
 			fputs (text, fp);
 			free (text);
 		}
 	} else if (win->print_format == mo_formatted_text) {
-		char *text = HTMLGetText (win->scrolled_win, 1, win->current_node->url,0);
+		char *text = HTMLGetText (win->scrolled_win, 1, win->current_node->aurl,0);
 		if (text) {
 			fputs (text, fp);
 			free (text);
 		}
 	} else if (win->print_format == mo_postscript) {
-		char *text = HTMLGetText (win->scrolled_win, 2 + win->font_family, win->current_node->url,win->current_node->last_modified);
+		char *text = HTMLGetText (win->scrolled_win, 2 + win->font_family, win->current_node->aurl,win->current_node->last_modified);
 		if (text) {
 			fputs (text, fp);
 			free (text);
@@ -1147,8 +973,7 @@ static XmxCallback (print_win_cb2)
 	char *lpr;
 
 	mo_open_another_window (win, 
-		mo_assemble_help_url ("docview-menubar-file.html"),
-		NULL, NULL);
+		mo_assemble_help_url ("docview-menubar-file.html"));
 }
 
 XmxCallback (mo_plaintext_print_cb) 
@@ -1391,7 +1216,7 @@ mo_status mo_post_print_window (mo_window *win)
 	return mo_succeed;
 }
 
-/* ----------------------- mo_post_source_window ------------------------ */
+/* ----------------------- mo_document_source ------------------------ */
 
 /*
 Okay...forward caseless search works...I think forward caseful search works.
@@ -1423,11 +1248,6 @@ mo_status mo_source_search_window(mo_window *win,char *str, int backward,
 
 	searchlen=strlen(win->current_node->text);
 
-/* search the first hit every time if by cci application */
-	if (cci_docommand) {
-		win->src_search_pos=0;
-	}
-                                     
 /*                           
 * If we are going forwards, the start position is the current
 *   search position.        
@@ -1565,8 +1385,7 @@ static XmxCallback(source_search_win_cb3)  /* help */
 	mo_window *win= (mo_window *)client_data;
 
 	mo_open_another_window(win, mo_assemble_help_url(
-					"docview-menubar-file.html"),
-				    NULL, NULL);
+					"docview-menubar-file.html"));
 }                    
 
 mo_status mo_post_source_search_window(mo_window *win) 
@@ -1578,7 +1397,7 @@ mo_status mo_post_source_search_window(mo_window *win)
                         
                 /* Create it for the first time. */ 
                 win->src_search_win= XmxMakeFormDialog(win->base,
-                                          "NCSA Mosaic: Search in Source View");
+                                          "mMosaic: Search in Source View");
                 dialog_frame= XmxMakeFrame(win->src_search_win, XmxShadowOut);
 
                 /* Constraints for base. */
@@ -1664,8 +1483,7 @@ static XmxCallback (source_win_cb1)  /* Help */
 	mo_window *win = (mo_window*)client_data;
 
 	mo_open_another_window (win, 
-		mo_assemble_help_url ("docview-menubar-file.html"),
-		NULL, NULL);
+		mo_assemble_help_url ("docview-menubar-file.html"));
 }
 
 static XmxCallback (source_win_cb2)  /* Search */
@@ -1674,8 +1492,10 @@ static XmxCallback (source_win_cb2)  /* Search */
 	mo_post_source_search_window(win);
 }
 
-mo_status mo_post_source_window (mo_window *win)
+void mo_document_source (Widget w, XtPointer clid, XtPointer calld)
 {
+	mo_window *win = (mo_window*) clid;
+
 	if (!win->source_win) {
 		Widget dialog_frame;
 		Widget dialog_sep, buttons_form;
@@ -1752,11 +1572,10 @@ mo_status mo_post_source_window (mo_window *win)
 	XmxManageRemanage (win->source_win);
 	if (win->current_node) {
 		XmxTextSetString (win->source_text, win->current_node->text);
-		XmxTextSetString (win->source_url_text, win->current_node->url);
+		XmxTextSetString (win->source_url_text, win->current_node->aurl);
 		XmxTextSetString(win->source_date_text,
 			(win->current_node->last_modified?win->current_node->last_modified:"Unknown")); 
 	}
-	return mo_succeed;
 }
 
 mo_status mo_search_window(mo_window *win,char *str, int backward, int caseless,
@@ -1764,8 +1583,7 @@ mo_status mo_search_window(mo_window *win,char *str, int backward, int caseless,
 {
 	int rc;
 
-/* search the first hit every time if by cci application */ 
-	if (cci_docommand|| news) {
+	if (news) {
 		((ElementRef *)win->search_start)->id = 0;
 	}
 
@@ -1796,24 +1614,17 @@ mo_status mo_search_window(mo_window *win,char *str, int backward, int caseless,
 	}
 
 	if (rc == -1) {
-		if (cci_docommand) {             
-			if (news) {                  
-				((ElementRef *)win->search_start)->id = 0;
-			}                            
-			return mo_fail;               
-		} else {
 /* No match was found. */
-			if (!news) {                  
-				if (((ElementRef *)win->search_start)->id)
-					application_user_info_wait("Sorry, no more matches in this document.");
-				else
-					application_user_info_wait("Sorry, no matches in this document.");
-			}
-			if (news) {                   
-				((ElementRef *)win->search_start)->id = 0;
-			}                            
-			return mo_fail;
+		if (!news) {                  
+			if (((ElementRef *)win->search_start)->id)
+				application_user_info_wait("Sorry, no more matches in this document.");
+			else
+				application_user_info_wait("Sorry, no matches in this document.");
 		}
+		if (news) {                   
+			((ElementRef *)win->search_start)->id = 0;
+		}                            
+		return mo_fail;
 	} else {
 /* Now search_start and search_end are starting and ending points of the match. */
 		HTMLGotoId(win->scrolled_win,
@@ -1868,8 +1679,7 @@ static XmxCallback (search_win_cb3)  /* help */
 	mo_window *win = (mo_window*)client_data;
 
 	mo_open_another_window(win,
-		mo_assemble_help_url("docview-menubar-file.html"),
-		NULL, NULL);
+		mo_assemble_help_url("docview-menubar-file.html"));
 }
 
 mo_status mo_post_search_window (mo_window *win)
@@ -1951,6 +1761,7 @@ mo_status mo_post_search_window (mo_window *win)
 void mo_done_editing(EditFile *e, int pid)
 {
 	char *url;
+	RequestDataStruct rds;
 
 	/****** Check to see if e->win still exists */
 
@@ -1965,7 +1776,11 @@ void mo_done_editing(EditFile *e, int pid)
 		url[strlen(url)-1] = '\0';
 	}
 
-	mo_load_window_text(e->win, url, e->url);
+	rds.req_url = url;
+	rds.ct = NULL;
+	rds.post_data = NULL;
+	rds.is_reloading = True;
+	MMPafLoadHTMLDocInWin (e->win, &rds);
 
 	/* should I stay or should I go...du du dun da dun da da */
 	/*unlink(e->fileName); */
@@ -2022,7 +1837,7 @@ mo_status mo_edit_source(mo_window *win)
 	}
 /* write out source to tmp file with .html extension */
 	sourceFileName = (char*)malloc(1024);
-	strcpy(sourceFileName, mo_tmpnam(NULL));
+	strcpy(sourceFileName, tempnam (mMosaicTmpDir,"mMo"));
 	strcat(sourceFileName, ".html");
 
 	if (!(fp = fopen(sourceFileName,"w"))) {
@@ -2077,7 +1892,7 @@ mo_status mo_edit_source(mo_window *win)
 
 	sprintf(editorCommand,"%s %s",editorName,sourceFileName);
 	sprintf(editorTitle,"(mMosaic) Editing Copy of: %s",
-		win->current_node->url);
+		win->current_node->aurl);
 
 	argCount=0;
 	if (mMosaicAppData.edit_command_use_xterm) {
@@ -2118,7 +1933,7 @@ mo_status mo_edit_source(mo_window *win)
 		return mo_fail;
 	}
 	e->fileName = sourceFileName;
-	e->url = strdup(win->current_node->url);
+	e->url = strdup(win->current_node->aurl);
 	e->win = win;
 	AddChildProcessHandler(pid, mo_done_editing, e);
 	return mo_succeed;
@@ -2153,17 +1968,13 @@ int pathEval(char *dest, char *src)
 	char *sptr, *hptr, home[__MAX_HOME_LEN__];
 	struct passwd *pwdent;
 
-	/*
-	 * There is no place to store the result...punt.
-	 */
+/* There is no place to store the result...punt.  */
 	if (!dest) {
 		fprintf(stderr,"No place to put the Evaluated Path!\n");
 		return(-1);
 	}
 
-	/*
-	 * There's nothing to expand
-	 */
+/* There's nothing to expand */
 	if (!src || !*src) {
 		*dest='\0';
 		return(0);
@@ -2173,12 +1984,10 @@ int pathEval(char *dest, char *src)
 		return(0);
 	}
 
-	/*
-	 * Once here, we are gonna need to know what the expansion is...
-	 *
-	 * Try the HOME environment variable, then the password file, and
-	 *   finally give up and use /tmp.
-	 */
+/* Once here, we are gonna need to know what the expansion is...
+ * Try the HOME environment variable, then the password file, and
+ *   finally give up and use /tmp.
+ */
 	if (!(hptr=getenv("HOME"))) {
 		if (!(pwdent=getpwuid(getuid()))) {
 			strcpy(home,"/tmp");
@@ -2191,43 +2000,37 @@ int pathEval(char *dest, char *src)
 
 	sptr=src;
 	sptr++;
-	/*
-	 * Nothing after the tilda, just give dest a value and return...
-	 */
+/* Nothing after the tilda, just give dest a value and return... */
 	if (!sptr || !*sptr) {
 		strcpy(dest,home);
 		return(1);
 	}
 
-	/*
-	 * The next character is a slash...so prepend home to the rest of
-	 *   src and return.
-	 */
+/* The next character is a slash...so prepend home to the rest of src and return.
+ */
 	if (*sptr=='/') {
 		strcpy(dest,home);
 		strcat(dest,sptr);
 		return(1);
 	}
 
-	/*
-	 * Make the assumption that they want whatever comes after to be
-	 *   appended to the "HOME" path, sans the last directory (e.g.
-	 *   HOME=/opt/home/spowers, we would use /opt/home<REST OF "src">)
-	 */
-	/*
-	 * Search backwards through home for a "/" on the conditions that
-	 *   this is not the slash that could possibly be at the _very_ end
-	 *   of home, home[i] is not a slash, and i is >= 0.
-	 *
-	 * If a slash is not found (i<0), then we assume that HOME is a
-	 *   directory off of the root directory, or something strange like
-	 *   that...so we simply ignore "home" and return the src without
-	 *   the ~.
-	 *
-	 * If we do find a slash, we set the position of the slash + 1 to
-	 *   NULL and store that in dest, then cat the rest of src onto
-	 *   dest and return.
-	 */
+/* Make the assumption that they want whatever comes after to be
+ * appended to the "HOME" path, sans the last directory (e.g.
+ * HOME=/opt/home/spowers, we would use /opt/home<REST OF "src">)
+ *
+ * Search backwards through home for a "/" on the conditions that
+ *   this is not the slash that could possibly be at the _very_ end
+ *   of home, home[i] is not a slash, and i is >= 0.
+ *
+ * If a slash is not found (i<0), then we assume that HOME is a
+ *   directory off of the root directory, or something strange like
+ *   that...so we simply ignore "home" and return the src without
+ *   the ~.
+ *
+ * If we do find a slash, we set the position of the slash + 1 to
+ *   NULL and store that in dest, then cat the rest of src onto
+ *   dest and return.
+ */
 	for (i=strlen(home); (i>=0 && home[i]!='/') || i==strlen(home); i--);
 	if (i<0) {
 		strcpy(dest,sptr);
@@ -2237,4 +2040,41 @@ int pathEval(char *dest, char *src)
 		strcat(dest,sptr);
 	}
 	return(1);
+}
+
+/*void application_error(char *str, char *title)
+ *{
+ *      XmxMakeErrorDialogWait(mMosaicToplevelWidget, mMosaicAppContext, str, title);
+ *}
+*/
+/* Feedback from the library. */
+/*void application_user_feedback (char *str, mo_window * win)
+{
+  XmxMakeInfoDialog (win->base, str, "mMosaic: Application Feedback");
+  XmxManageRemanage (Xmx_w);
+}
+*/
+ 
+void application_user_info_wait (char *str)
+{
+	XmxMakeInfoDialogWait(mMosaicToplevelWidget, mMosaicAppContext,
+		str, "mMosaic: Application Feedback", "OK");
+}
+ 
+char *prompt_for_string (char *questionstr,mo_window * win)
+{
+  return XmxModalPromptForString (win->base, mMosaicAppContext,
+                                  questionstr, "OK", "Cancel");
+}
+ 
+char *prompt_for_password (char *questionstr,mo_window * win)
+{
+  return XmxModalPromptForPassword (win->base, mMosaicAppContext,
+                                    questionstr, "OK", "Cancel");
+}
+ 
+int prompt_for_yes_or_no (char *questionstr, mo_window * win)
+{
+  return XmxModalYesOrNo (win->base, mMosaicAppContext,
+                          questionstr, "Yes", "No");
 }

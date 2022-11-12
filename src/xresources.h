@@ -11,7 +11,7 @@
 
 #define offset(x) XtOffset (AppDataPtr, x)
 
-static Boolean false = False;
+static Boolean faux = False;
 static int Izero = 0;
 static int ttl192 = 192;
 
@@ -45,10 +45,6 @@ static XtResource resources[] = {
       offset (mail_filter_command), XtRString, NULL },
   { "printCommand", "PrintCommand", XtRString, sizeof (char *),
       offset (print_command), XtRString, "lpr" },
-  { "cciPort","CCIPort",XtRInt,sizeof (int),
-      offset (cciPort), XtRString, "0" },
-  { "maxNumCCIConnect","MaxNumCCIConnect",XtRInt,sizeof (int),
-      offset (max_num_of_cci_connections), XtRString, "0" },
   { "loadLocalFile","LoadLocalFile",XtRInt,sizeof(int),
       offset (load_local_file), XtRString, "1"},
   { "editCommand", "EditCommand", XtRString, sizeof (char *),
@@ -79,8 +75,6 @@ static XtResource resources[] = {
   { "trackVisitedAnchors", "TrackVisitedAnchors", XtRBoolean, sizeof (Boolean),
       offset (track_visited_anchors), XtRString, "True" },
 
-  { "uncompressCommand", "UncompressCommand", XtRString, sizeof (char *), 
-      offset (uncompress_command), XtRString, "uncompress" },
   { "gunzipCommand", "GunzipCommand", XtRString, 
       sizeof (char *), offset (gunzip_command), XtRString, "gunzip -f -n" },
   { "initialWindowIconic", "InitialWindowIconic", XtRBoolean, sizeof (Boolean),
@@ -108,20 +102,8 @@ static XtResource resources[] = {
 
   { "maxWaisResponses", "MaxWaisResponses", XtRInt, sizeof (int),
       offset (max_wais_responses), XtRString, "200" },
-  { "delayImageLoads", "DelayImageLoads", XtRBoolean, sizeof (Boolean),
-      offset (delay_image_loads), XtRString, "False" },
-
-  { "useDefaultExtensionMap", "UseDefaultExtensionMap", 
-      XtRBoolean, sizeof (Boolean),
-      offset (use_default_extension_map), XtRString, "True" },
-  { "useDefaultTypeMap", "UseDefaultTypeMap", 
-      XtRBoolean, sizeof (Boolean),
-      offset (use_default_type_map), XtRString, "True" },
-  { "twirlingTransferIcon", "TwirlingTransferIcon", 
-      XtRBoolean, sizeof (Boolean),
-      offset (twirling_transfer_icon), XtRString, "True" },
-  { "twirlIncrement", "TwirlIncrement", XtRInt, sizeof (int),
-      offset (twirl_increment), XtRString, "4096" },
+  { "delayObjectLoads", "DelayObjectLoads", XtRBoolean, sizeof (Boolean),
+      offset (delay_object_loads), XtRString, "False" },
 
   { "securityIcon", "securityIcon", 
       XtRBoolean, sizeof (Boolean),
@@ -156,9 +138,6 @@ static XtResource resources[] = {
   { "installColormap", "InstallColormap", XtRBoolean, sizeof (Boolean),
       offset (install_colormap), XtRString, "False" },
 
-  { "imageViewInternal", "ImageViewInternal", XtRBoolean, sizeof (Boolean),
-      offset (imageViewInternal), XtRString, "False" },
-
   { "urlExpired", "UrlExpired", XtRInt, sizeof (int),
       offset (urlExpired), XtRString, "30" },
 
@@ -167,9 +146,6 @@ static XtResource resources[] = {
 
   { "htmlwTrace", "HtmlwTrace", XtRBoolean, sizeof (Boolean),
       offset (htmlwTrace), XtRString, "False" },
-
-  { "cciTrace", "CciTrace", XtRBoolean, sizeof (Boolean),
-      offset (cciTrace), XtRString, "False" },
 
   { "srcTrace", "SrcTrace", XtRBoolean, sizeof (Boolean),
       offset (srcTrace), XtRString, "False" },
@@ -196,15 +172,6 @@ static XtResource resources[] = {
   { "ftpRedial", "FtpRedial", XtRInt, sizeof (int),
       offset (ftpRedial), XtRString, "10" },
 
-  { "ftpFilenameLength", "FtpFilenameLength", XtRInt, sizeof (int),
-      offset (ftpFilenameLength), XtRString, "18" },
-
-  { "ftpEllipsisLength", "FtpEllipsisLength", XtRInt, sizeof (int),
-      offset (ftpEllipsisLength), XtRString, "3" },
-
-  { "ftpEllipsisMode", "FtpEllipsisMode", XtRInt, sizeof (int),
-      offset (ftpEllipsisMode), XtRString, "2" },
-
   { "screenGamma", "ScreenGamma", XtRFloat, sizeof (float),
       offset (screen_gamma), XtRString, "2.2" },
   { "useScreenGamma", "UseScreenGamma", XtRBoolean, sizeof(Boolean),
@@ -219,7 +186,7 @@ static XtResource resources[] = {
     sizeof(int), offset(newsBackgroundFlushTime), XtRString, "300" },
 #ifdef MULTICAST
     {"debug", "Debug", XtRBoolean, sizeof(Boolean),
-    offset(mc_debug), XtRBoolean, (caddr_t) & false},
+    offset(mc_debug), XtRBoolean, (caddr_t) & faux},
     {"sessionName", "sessionName", XtRString, sizeof(char *),
     offset(mc_sess_name), XtRString, (caddr_t) "Mosaic Multicast Session"},
     {"mediaName", "mediaName", XtRString, sizeof(char *),
@@ -260,8 +227,6 @@ static XrmOptionDescRec options[] = {
 #ifdef __sgi
   {"-dm",     "*debuggingMalloc",     XrmoptionNoArg,  "True"},
 #endif
-  {"-cciPort",  "*cciPort",   	      XrmoptionSepArg,  "0"},
-  {"-maxNumCCIConnect",  "*maxNumCCIConnect",  XrmoptionSepArg,  "0"},
   {"-installColormap",  "*installColormap",     XrmoptionNoArg,  "True"},
 #ifdef MULTICAST
     {"-v", ".debug", XrmoptionNoArg, "True"},

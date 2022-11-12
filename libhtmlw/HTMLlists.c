@@ -46,12 +46,16 @@ void FreeMarkUpList(struct mark_up *List)
 			}
 		}
 
+#ifdef APROG
 		if (mptr->s_aps){	/* aprog */
 			_FreeAprogStruct(mptr->s_aps);
 		}
+#endif
+#ifdef APPLET
 		if (mptr->s_ats){	/* applet */
 			_FreeAppletStruct(mptr->s_ats);
 		}
+#endif
 		if (mptr->t_p1){	/* table */
 			_FreeTableStruct(mptr->t_p1);
 		}
@@ -99,7 +103,7 @@ char * MaxTextWidth(char *txt, int *cnt)
 /* Free up the passed linked list of formatted elements, freeing
  * all memory associates with each element.
  */
-void FreeLineList( struct ele_rec *list, Widget w, Boolean save_obj)
+void FreeLineList( struct ele_rec *list, Widget w)
 {
 	HTMLWidget hw = (HTMLWidget)w;
 	struct ele_rec *current;
@@ -116,11 +120,12 @@ void FreeLineList( struct ele_rec *list, Widget w, Boolean save_obj)
 		/*############*/
 /*		eptr->anchor_tag_ptr = NULL_ANCHOR_PTR;  */
 		eptr->anchor_tag_ptr = NULL;
+/* free this somewhere in img.c ##########
 		if((eptr->type == E_IMAGE) && eptr->pic_data->fetched ) {
-                         /*
-                          * Don't free internal images
-                          */
-			if((eptr->pic_data->image != (Pixmap)NULL)&&
+       /*                  /*
+       /*                   * Don't free internal images
+       /*                   */
+/*			if((eptr->pic_data->image != (Pixmap)NULL)&&
 			   (eptr->pic_data->internal != 1) ){
 				XFreePixmap(XtDisplay(w), eptr->pic_data->image);
 				eptr->pic_data->image = (Pixmap)NULL;
@@ -132,16 +137,17 @@ void FreeLineList( struct ele_rec *list, Widget w, Boolean save_obj)
 				/* don't free because cache do it ### */
 				/*free(eptr->pic_data->colrs);*/
 				/*eptr->pic_data->colrs = NULL;*/
-				free(eptr->pic_data->image_data);
-				eptr->pic_data->image_data = NULL;
-				free(eptr->pic_data->clip_data);
-				eptr->pic_data->clip_data=NULL;
-				/* src is canonized by cache */
-				free(eptr->pic_data->src);
-				eptr->pic_data->src = NULL;
-			}
-			free(eptr->pic_data);
+/*				free(eptr->pic_data->image_data);
+/*				eptr->pic_data->image_data = NULL;
+/*				free(eptr->pic_data->clip_data);
+/*				eptr->pic_data->clip_data=NULL;
+/*				/* src is canonized by cache */
+/*				free(eptr->pic_data->src);
+/*				eptr->pic_data->src = NULL;
+/*			}
+/*			free(eptr->pic_data);
 		}
+*/
 		if(eptr->type == E_APPLET){
 /* this is done in FreeMarkUpList */
 		}

@@ -29,7 +29,7 @@ void FramePlace(HTMLWidget hw, struct mark_up *mptr,PhotoComposeContext * pcc)
  * find out if we've visited it before */
 		if (hw->html.previously_visited_test != NULL) {
 			if((*(visitTestProc)
-				(hw->html.previously_visited_test)) ((Widget)hw, tptr)) {   
+				(hw->html.previously_visited_test)) ((Widget)hw, tptr, hw->html.base_url)) {   
 				pcc->fg = hw->html.visitedAnchor_fg;
 				pcc->underline_number = hw->html.num_visitedAnchor_underlines;            
 				pcc->dashed_underlines= hw->html.dashed_visitedAnchor_lines;                             

@@ -11,6 +11,17 @@
 #define naPOST       0x0010L
 #define naSEQUENCED  0x0020L
 
+/* Thread Chain Structure */
+typedef struct NEWSART {
+    struct NEWSART *prev, *next, *prevt, *nextt;    /* Article List pointers */
+    char *FirstRef, *LastRef;                       /* Thread List pointers */
+    long num;                                       /* Article Header Info */
+    char *ID;                         
+    char *SUBJ;
+    char *FROM;
+} NewsArt;
+
+
 typedef struct newsgroup_T {
   char *name;                    /* Group name */
   char *description;             /* Group description */
@@ -26,6 +37,8 @@ typedef struct newsgroup_T {
 } newsgroup_t;
 
 
+void HTSetNewsConfig (int, int, int, int, int, int, int, int );
+extern newsgroup_t *NewsGroupS;
 int isread (newsgroup_t *, long);
 void markread (newsgroup_t *, long);
 void markunread (newsgroup_t *, long);

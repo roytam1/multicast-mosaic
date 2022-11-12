@@ -124,25 +124,16 @@ mo_status mo_been_here_before_huh_dad (char *url)
 	return status;
 }
 
-/* name:    mo_here_we_are_son
- * purpose: Add a URL to the global history, if it's not already there.
+/* purpose: Add a URL to the global history, if it's not already there.
  * inputs:  
  *   - char *url: URL to add.
- * returns: 
- *   mo_succeed
- * remarks: 
- *   We canonicalize the URL (stripping out the target anchor, 
- *   if one exists).
  */
-mo_status mo_here_we_are_son (char *url)
+void MMUpdateGlobalHistory (char *aurl)
 {
-	char *curl = mo_url_canonicalize (url, "");
 	time_t foo = time (NULL);
 
-	if (!been_here_before (curl))
-		add_url_to_bucket (hash_url (curl), curl, foo);
-	free (curl);
-	return mo_succeed;
+	if (!been_here_before (aurl))
+		add_url_to_bucket (hash_url (aurl), aurl, foo);
 }
 
 /* name:    MMInitHistory
@@ -225,10 +216,9 @@ void MMWriteHistory()
 	fprintf (fp, "<body>\n");
 	for (i = 0; i < HASH_TABLE_SIZE; i++) {
 		for (l = hhash_table[i].head; l != NULL; l = l->next) {
-			fprintf (fp, "<a href=%s last_visited=%d>%s</a>\n",
+			fprintf (fp, "<a href=\"%s\" last_visited=%d> </a>\n",
 				l->url,
-				l->last_visited,
-				l->url);
+				l->last_visited);
 		}
 	}
 	fprintf (fp, "</body>\n");
@@ -245,45 +235,17 @@ void MMWriteHistory()
  */
 void mo_wipe_global_history (mo_window *win)
 {
+	FILE *fp;
+
+	if (!(fp = fopen(lhistory_name, "w")) ) {
+		return;
+	}
+	fprintf (fp, "<html>\n");
+	fprintf (fp, "<head><title>mMosaic History Index</title></head>\n");
+	fprintf (fp, "<body>\n");
+	fprintf (fp, "</body>\n");
+	fprintf (fp, "</html>\n");
+	fclose(fp);
+	
 	MMInitHistory (mMosaicRootDirName);	/* Memory leak! @@@ */
-}
-
-/****************************************************************************
- * name:    mo_cache_data
- * purpose: Cache a piece of data associated with a given URL.
- * inputs:  
- *   - char  *url: The URL.
- *   - void *info: The piece of data to cache (currently either
- *                 an ImageInfo struct for an image named as SRC
- *                 in an IMG tag, or the filename corresponding to the
- *                 local copy of a remote HDF file).
- *   - int   type: The type of data to cache (currently either
- *                 0 for an ImageInfo struct or 1 for a local name).
- * returns: 
- *   mo_succeed, unless something goes badly wrong
- * remarks: 
- *   We do *not* do anything to the URL.  If there is a target
- *   anchor in it, fine with us.  This means the target anchor
- *   should have been stripped out someplace else if it needed to be.
- ****************************************************************************/
-mo_status mo_cache_data (char *url, void *info, int type)
-{
-	int hash = hash_url (url);
-	entry *l;
-	time_t foo = time (NULL);
-
-
-/* First, register ourselves if we're not already registered.
- * Now, the same URL can be registered multiple times with different
- * (or, in one instance, no) internal anchor. */
-	if (!been_here_before (url))
-		add_url_to_bucket (hash_url (url), url,foo);
-
-/* Then, find the right entry. */
-	if (hhash_table[hash].count)
-		for (l = hhash_table[hash].head; l != NULL; l = l->next) {
-			if (!strcmp (l->url, url))
-				return mo_succeed;
-		}
-	return mo_fail;
 }

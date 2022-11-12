@@ -1,0 +1,144 @@
+From mjr@pc29.dfg.de Thu Feb  5 13:08:46 1998
+From: Michael Ritzert <mjr@pc29.dfg.de>
+Message-Id: <199802051209.NAA02122@pc29.dfg.de>
+Subject: connct.linux
+To: dauphin@sig.enst.fr
+X-Mailer: ELM [version 2.4ME+ PL32 (25)]
+MIME-Version: 1.0
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Content-Length: 4052
+X-Lines: 149
+
+
+
+
+CONNECT(2)          Linux Programmer's Manual          CONNECT(2)
+
+
+NNAAMMEE
+       connect - initiate a connection on a socket
+
+SSYYNNOOPPSSIISS
+       ##iinncclluuddee <<ssyyss//ttyyppeess..hh>>
+       ##iinncclluuddee <<ssyyss//ssoocckkeett..hh>>
+
+       iinntt  ccoonnnneecctt((iinntt  _s_o_c_k_f_d,, ssttrruucctt ssoocckkaaddddrr **_s_e_r_v___a_d_d_r,, iinntt
+       aaddddrrlleenn ));;
+
+DDEESSCCRRIIPPTTIIOONN
+       The parameter _s_o_c_k_f_d is  a  socket.   If  it  is  of  type
+       SSOOCCKK__DDGGRRAAMM,  this  call  specifies the peer with which the
+       socket is to be associated; this address is that to  which
+       datagrams  are to be sent, and the only address from which
+       datagrams are to be received.  If the socket  is  of  type
+       SSOOCCKK__SSTTRREEAAMM  ,,  this call attempts to make a connection to
+       another  socket.   The  other  socket  is   specified   by
+       sseerrvv__aaddddrr, which is an address in the communications space
+       of the socket.  Each communications space  interprets  the
+       sseerrvv__aaddddrr,  parameter  in  its own way.  Generally, stream
+       sockets may successfully ccoonnnneecctt only once; datagram sock­
+       ets may use ccoonnnneecctt multiple times to change their associ­
+       ation.  Datagram sockets may dissolve the  association  by
+       connecting  to an invalid address, such as a null address.
+
+RREETTUURRNN VVAALLUUEE
+       If the connection or binding succeeds, zero  is  returned.
+       On  error, -1 is returned, and _e_r_r_n_o is set appropriately.
+
+EERRRROORRSS
+       This lists is general socket errors only.   There  may  be
+       other domain-specific error codes.
+
+       EEBBAADDFF  Bad descriptor.
+
+       EEFFAAUULLTT The   socket  structure  address  is  outside  your
+              address space.
+
+       EENNOOTTSSOOCCKK
+              The descriptor is not associated with file which is
+              not a socket.
+
+       EEIISSCCOONNNN
+              The socket is already connected.
+
+       EECCOONNNNRREEFFUUSSEEDD
+              Connection refused at server.
+
+       EETTIIMMEEDDOOUUTT
+              Timeout while attempting connection.
+
+       EENNEETTUUNNRREEAACCHH
+              Network is unreachable.
+
+
+
+Linux 0.99.11              23 July 1993                         1
+
+
+
+
+
+CONNECT(2)          Linux Programmer's Manual          CONNECT(2)
+
+
+       EEAADDDDRRIINNUUSSEE
+              Address is already in use.
+
+CCOONNFFOORRMMIINNGG TTOO
+       SVr4,  4.4BSD  (the ccoonnnneecctt function first appeared in BSD
+       4.2).  SVr4 documents additional general error codes  EAD­
+       DRNOTAVAIL, EINVAL, EAFNOSUPPORT, EALREADY, EINTR, EPROTO­
+       TYPE, ENOSR.  It also documents many additional error con­
+       ditions not described here.
+
+SSEEEE AALLSSOO
+       aacccceepptt(2), bbiinndd(2), lliisstteenn(2), ssoocckkeett(2), ggeettssoocckknnaammee(2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Linux 0.99.11              23 July 1993                         2
+
+

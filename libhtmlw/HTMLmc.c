@@ -1,13 +1,4 @@
-/* HTMLmc.c
- * Author: Gilles Dauphin
- * Version 2.7b4m3 [May96]
- *
- * Copyright (C) 1996 - G.Dauphin, P.Dax
- * See the file "license.mMosaic" for information on usage and redistribution
- * of this file, and for a DISCLAIMER OF ALL WARRANTIES. 
- *
- * Bug report :  dauphin@sig.enst.fr dax@inf.enst.fr
- */
+#ifdef MULTICAST
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -25,7 +16,7 @@
  * Function returns an array of ele_rec and fills num_ele_rec passed.
  * If there are no ele_rec NULL returned.
  */
-struct ele_rec ** HTMLGetEoEleRec(Widget w, int *num_ele_rec)
+/*struct ele_rec ** HTMLGetEoEleRec(Widget w, int *num_ele_rec)
 {
         HTMLWidget hw = (HTMLWidget)w;
         struct ele_rec *eptr;
@@ -56,6 +47,7 @@ struct ele_rec ** HTMLGetEoEleRec(Widget w, int *num_ele_rec)
         }
         return(earray);
 }
+*/
 
 /* image converter fonction (from ImageResolve in img.c) */
 
@@ -92,6 +84,7 @@ struct ele_rec ** HTMLGetEoEleRec(Widget w, int *num_ele_rec)
 
 /* return the file name or NULL */
 
+/*
 char * McGetEOFileData(Widget w, char * buf, int len_buf, McUser *u,int num_eo)
 {
 	char * fnam = NULL;
@@ -100,7 +93,7 @@ char * McGetEOFileData(Widget w, char * buf, int len_buf, McUser *u,int num_eo)
 	if (u->filename[num_eo])
 		return u->filename[num_eo];
 
-	fnam = mo_tmpnam(NULL);
+	fnam = tempnam (mMosaicTmpDir,"mMo");
 	tmpfd = open(fnam,O_WRONLY|O_CREAT,0644);
 	write(tmpfd,buf,len_buf);
 	close(tmpfd);
@@ -108,3 +101,5 @@ char * McGetEOFileData(Widget w, char * buf, int len_buf, McUser *u,int num_eo)
 
 	return fnam;
 }
+*/
+#endif

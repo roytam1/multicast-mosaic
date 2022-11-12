@@ -766,8 +766,6 @@ void CBResetForm( Widget w, caddr_t client_data, caddr_t call_data)
 		case W_OPTIONMENU:
 			if (wptr->value != NULL) {
 				Widget hist = (Widget)wptr->value;
-				Cardinal argcnt;
-				Arg arg[5];
 
 				argcnt = 0;
 				XtSetArg(arg[argcnt], XmNmenuHistory, hist);
@@ -1435,7 +1433,7 @@ WidgetInfo * MakeWidget( HTMLWidget hw, char *text,
 			int return_cnt;
 			char **vlist;
 			int vlist_cnt;
-			int i, mult, size;
+			int i, mult;
 
 			type = -1;
 			tptr = ParseMarkTag(text, MT_INPUT, "HINT");

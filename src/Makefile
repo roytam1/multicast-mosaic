@@ -2,36 +2,29 @@ All: $(MOSAIC)
 
 LIBHTMLW_DIR = ../libhtmlw
 
-PROGRAM_LIBS = $(LIBWWW_DIR)/libwww.a $(LIBHTMLW_DIR)/libhtmlw.a $(LIBNUT_DIR)/libnut.a $(LIBMC_DIR)/libmc.a
-LIBS = $(PROGRAM_LIBS) $(X_LIBS) $(DTM_LIBS) $(HDF_LIBS) $(WAIS_LIBS) $(JPEG_LIBS) $(PNG_LIBS) $(KRB_LIBS) $(MATH_LIB) $(SYS_LIBS)
+# PROGRAM_LIBS = $(LIBWWW_DIR)/libwww.a $(LIBHTMLW_DIR)/libhtmlw.a $(LIBNUT_DIR)/libnut.a $(LIBMC_DIR)/libmc.a
+PROGRAM_LIBS = $(LIBHTMLW_DIR)/libhtmlw.a $(LIBNUT_DIR)/libnut.a $(LIBMC)
+LIBS = $(PROGRAM_LIBS) $(X_LIBS) $(JPEG_LIBS) $(PNG_LIBS) $(KRB_LIBS) $(MATH_LIB) $(SYS_LIBS)
 
 CFILES = main.c gui.c  gui-dialogs.c gui-menubar.c gui-documents.c gui-news.c\
-  newsrc.c\
-  gui-extras.c mo-www.c hotlist.c history.c\
-  globalhist.c img.c\
-  picread.c xpmhash.c xpmread.c gifread.c pixmaps.c\
-  child.c mailto.c\
-  accept.c cciServer.c cciBindings.c cciBindings2.c support.c bla.c\
-  md5.c proxy-dialogs.c gui-popup.c gui-ftp.c\
-  get_url_data.c readJPEG.c readPNG.c cache.c Xmx.c
+  newsrc.c gui-extras.c hotlist.c navigate.c globalhist.c\
+  img.c picread.c xpmhash.c xpmread.c gifread.c pixmaps.c child.c mailto.c\
+  md5.c URLParse.c telnet-proto.c compress.c\
+  proxy-dialogs.c gui-popup.c readJPEG.c\
+  readPNG.c cache.c Xmx.c paf.c converter.c www-con.c file-proto.c http-proto.c MIME.c ftp-proto.c util.c
 
 OBJS = main.o gui.o gui-dialogs.o gui-menubar.o gui-documents.o gui-news.o\
-  newsrc.o\
-  gui-extras.o mo-www.o hotlist.o history.o\
-  globalhist.o img.o\
-  picread.o xpmhash.o xpmread.o gifread.o pixmaps.o\
-  child.o mailto.o\
-  accept.o cciServer.o cciBindings.o cciBindings2.o support.o bla.o\
-  md5.o proxy-dialogs.o gui-popup.o gui-ftp.o\
-  get_url_data.o readJPEG.o readPNG.o cache.o Xmx.o
+  newsrc.o gui-extras.o hotlist.o navigate.o globalhist.o\
+  img.o picread.o xpmhash.o xpmread.o gifread.o pixmaps.o child.o mailto.o\
+  md5.o URLParse.o telnet-proto.o compress.o\
+  proxy-dialogs.o gui-popup.o readJPEG.o\
+  readPNG.o cache.o Xmx.o paf.o converter.o www-con.o file-proto.o http-proto.o MIME.o ftp-proto.o util.o
 
 globalhist.o: globalhist.c ../libhtmlw/HTML.h
 	$(CC) -c $(CFLAGS) $(AUX_CFLAGS) globalhist.c
 
-$(MOSAIC): $(OBJS) $(HDFOBJS) $(PROGRAM_LIBS) $(DTM_LIBS)
-	$(PURIFY) $(CC) $(LDFLAGS) -o $(MOSAIC) $(OBJS) $(HDFOBJS) $(LIBS) 
-	mv $(MOSAIC) mMosaic
-
+$(MOSAIC): $(OBJS) $(PROGRAM_LIBS)
+	$(CC) $(LDFLAGS) -o $(MOSAIC) $(OBJS) $(LIBS) 
 
 
 HFILES = mosaic.h xresources.h ../libmc/mc_defs.h
@@ -48,10 +41,8 @@ Xmx.o : Xmx.h
 
 #$(PIXMAPS)
 
-wipe:
-	-rm -f Mosaic Mosaic-p Mosaic-q $(OBJS) core
 clean:
-	-rm -f Mosaic Mosaic-p Mosaic-q *.o core mMosaic
+	-rm -f *.o core mMosaic
 	-rm -rf .sb
 tags:
 	etags -t *.[ch]

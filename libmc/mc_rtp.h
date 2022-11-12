@@ -243,7 +243,7 @@ struct rtcp_rr {
 #define RTCP_PT_BYE	203	/* end of participation */
 #define RTCP_PT_APP	204	/* application specific functions */
 
-#define RTCP_PT_LRMP	206	/* Light-weight Reliable Multicast Protocol */
+#define RTCP_PT_RMP	208	/* Reliable Multicast Protocol */
 
 
 #define		RTCP_SDES_MIN	0

@@ -24,3 +24,8 @@ int compact_string(char *main_string, char *ellipsis_string,
                     int num_chars, int mode, int eLength);
 char *strcasechr(char *src, char srch);
 char *strrcasechr(char *src, char srch);
+
+extern char *HTSortFetch (int i);
+extern void HTSortSort (void);
+extern void HTSortAdd (char *str);
+extern void HTSortInit (void);

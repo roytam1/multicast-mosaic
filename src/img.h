@@ -11,4 +11,11 @@
  * Bug report :  dax@inf.enst.fr  dauphin@sig.enst.fr
  */
 
-extern void ImageResolve(Widget w, XtPointer clid, XtPointer calld);
+extern void MMPreParseInputTagImage(mo_window * win, ImageInfo *picd, struct mark_up *mptr);
+extern void MMPreParseImageTag(mo_window * win, ImageInfo *picd, struct mark_up *mptr);
+extern void MMPreParseImageBody(mo_window * win, ImageInfo *picd, struct mark_up *mptr);
+extern void MMGetImageFromCache(Widget hw, ImageInfo * picd, char * url,
+	char *base_url);
+extern void MMPreloadImage(mo_window *win, struct mark_up *mptr, MimeHeaderStruct *mhs,
+	char *fname);
+

@@ -125,6 +125,7 @@ typedef struct _PhotoComposeContext {
 	int		ignore ;	/* ignore some tag when formating */
 	SelectInfo *	current_select ; /* SELECT in FORM */
 	Boolean		in_select;	/* is in_select ? */
+	Boolean		is_in_paragraph; /* am I in paragraph block ? */
 /*#############################*/
 	int		is_index ;
 	int		Width ;
@@ -149,11 +150,8 @@ typedef struct _HTMLPart {
 	Widget                  frame;
 
 	XtCallbackList		anchor_callback;
-	XtCallbackList		link_callback;
 	XtCallbackList		form_callback;
 
-	char			*title;
-	char			*raw_text;
 /*
  * Without motif we have to define our own forground resource
  * instead of using the manager's
@@ -164,7 +162,6 @@ typedef struct _HTMLPart {
 	Pixel			activeAnchor_bg;
 
         Boolean                 body_colors;
-        Boolean                 body_images;
 
 	int			max_colors_in_image;
 	int			bg_image;
@@ -214,9 +211,7 @@ typedef struct _HTMLPart {
 /* end amb */
 
         XtPointer		previously_visited_test;
-	XtCallbackList		image_callback;
-	Boolean			delay_image_loads;
-	XtCallbackList		get_url_data_cb;
+	char *			base_url;
         XtCallbackList		pointer_motion_callback;
 
 	/* PRIVATE */
@@ -251,9 +246,6 @@ typedef struct _HTMLPart {
         Boolean                 obscured;
 	struct ele_rec		*last_formatted_elem;
 	struct ele_rec		*cur_elem_to_format;
-#ifdef MULTICAST
-	McMoWType 		mc_wtype;
-#endif
 } HTMLPart;
 
 
@@ -277,9 +269,10 @@ typedef struct _HTMLRec {
 extern HTMLPart * McGetInternalHtmlPart( Widget w);
 extern void ReformatWindow( HTMLWidget hw, Boolean save_obj);
 extern int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj);
-extern void FreeLineList( struct ele_rec *list, Widget w, Boolean save_obj);
 extern void RefreshElement(HTMLWidget hw,struct ele_rec *eptr);
 extern void LineBreak(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc);
+extern void HtmlGetImage(HTMLWidget hw, ImageInfo *picd,
+	PhotoComposeContext *pcc, int force_load);
 
 extern void _FreeAprogStruct(AprogInfo * aps);
 extern void _FreeAppletStruct(AppletInfo * ats);

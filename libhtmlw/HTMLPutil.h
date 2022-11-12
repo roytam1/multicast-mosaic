@@ -4,7 +4,7 @@
 
 
 extern void 		FreeMarkUpList(struct mark_up *List);
-extern void 		FreeLineList(struct ele_rec *, Widget, Boolean );
+extern void 		FreeLineList(struct ele_rec *, Widget );
 extern int 		ElementLessThan(struct ele_rec *s, struct ele_rec *e,
 				int start_pos, int end_pos);
 extern int 		SwapElements( struct ele_rec *start, struct ele_rec *end,
@@ -42,12 +42,12 @@ extern void 		FormatChunk( HTMLWidget hw, struct mark_up * start_mark,
         			PhotoComposeContext * pcc, Boolean save_obj);
 extern void 		PlaceLine( HTMLWidget hw, int line);
 extern struct ele_rec * LocateElement( HTMLWidget hw, int x, int y, int *pos);
-extern char * 		ParseTextToString( struct ele_rec *elist,
+extern char * 		ParseTextToString(
 				struct ele_rec *startp, struct ele_rec *endp,
         			int start_pos, int end_pos,
         			int space_width, int lmargin);
 extern char * 		ParseTextToPrettyString( HTMLWidget hw,
-        			struct ele_rec *elist, struct ele_rec *startp,
+        			struct ele_rec *startp,
 				struct ele_rec *endp,
         			int start_pos, int end_pos,
         			int space_width, int lmargin);
@@ -68,7 +68,6 @@ extern XImage * 	MakeImage( Display *dsp, unsigned char *data,
 extern int 		AnchoredHeight(HTMLWidget hw);
 extern char * 		IsMapForm(HTMLWidget hw);
 extern int 		IsIsMapForm(HTMLWidget hw, char *href);
-extern ImageInfo * 	DelayedImageData( HTMLWidget hw );
 extern ImageInfo * 	NoImageData( HTMLWidget hw);
 extern Pixmap 		InfoToImage( HTMLWidget hw, ImageInfo *img_info,int clip);
 extern void 		ImagePlace(HTMLWidget hw, struct mark_up *mptr, 
@@ -98,7 +97,8 @@ extern String 		ParseTextToPSString(HTMLWidget hw, struct ele_rec *el,
 
 
 
-extern void		hw_do_bg(HTMLWidget, char*,PhotoComposeContext *);
+extern void		hw_do_bg(HTMLWidget, PhotoComposeContext *,
+				struct mark_up *mptr);
 extern void		hw_do_color(HTMLWidget,char*,char*,PhotoComposeContext * pcc);
 
 extern void 		TablePlace(HTMLWidget hw, struct mark_up **mptr, 
@@ -115,7 +115,4 @@ extern void 		AppletRefresh(HTMLWidget hw, struct ele_rec *eptr);
 
 extern void 		ViewClearAndRefresh( HTMLWidget hw);
 extern void		ScrollWidgets(HTMLWidget hw);
-#ifdef MULTICAST
-extern char * McGetEOFileData(Widget w, char * buf, int len_buf, McUser *u,int num_eo);
-#endif
 #endif

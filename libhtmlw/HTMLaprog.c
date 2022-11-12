@@ -6,6 +6,8 @@
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES. 
  */
 
+#ifdef APROG
+
 #include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
@@ -88,10 +90,10 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 			pcc->x,pcc->y,pcc->width_of_viewable_part);
 
 	codetypePtr = ParseMarkTag(amptr->start, MT_APROG, "CODETYPE");
-	if (caseless_equal(codetypePtr, "BINARY"))/*si c'est du binaire on doit*/
+	if (!strcasecmp(codetypePtr, "BINARY"))/*si c'est du binaire on doit*/
 				/* l'avoir sur place : c'est un plugins */
 		codetype = CODE_TYPE_BIN;
-	if (caseless_equal(codetypePtr, "SOURCE")) /* si c'est du source faut */
+	if (!strcasecmp(codetypePtr, "SOURCE")) /* si c'est du source faut */
 				/* le rapatrie, */
 				/* le compiler et le mettre en plugins */
 		codetype = CODE_TYPE_SRC;
@@ -146,9 +148,9 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 	}
 				/* Check if this image will be top aligned */
 	alignPtr = ParseMarkTag(amptr->start, MT_APROG, "ALIGN");
-	if (caseless_equal(alignPtr, "TOP")) {
+	if (!strcasecmp(alignPtr, "TOP")) {
 		valignment = VALIGN_TOP;
-	} else if (caseless_equal(alignPtr, "MIDDLE")) {
+	} else if (!strcasecmp(alignPtr, "MIDDLE")) {
 		valignment = VALIGN_MIDDLE;
 	} else {
 		valignment = VALIGN_BOTTOM;
@@ -177,9 +179,6 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 	aps->url_arg = (char **) malloc( sizeof(char *)); /* alloc one */
 	aps->url_arg[aps->url_arg_count] = NULL;
 
-#ifdef MULTICAST
-	aps->wtype = hw->html.mc_wtype;
-#endif
 	aps->internal_numeos = (int*)malloc( sizeof(int)); /*alloc one */
 	aps->ret_filenames = (char **) malloc( sizeof(char *)); /* alloc one */
 	aps->internal_numeos[aps->url_arg_count] = pcc->internal_mc_eo;
@@ -332,22 +331,22 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 				eo.src = aps->url_arg[i];
 				eo.ret_filename = NULL;
 				eo.num_eo = pcc->internal_mc_eo;
-#ifdef MULTICAST
-				eo.wtype = hw->html.mc_wtype;
-#endif
 				eo.cw_only = pcc->cw_only;
-				if (hw->html.get_url_data_cb){
-					strcat(cmdline," ");
-					XtCallCallbackList((Widget) hw,
-						hw->html.get_url_data_cb,
-						(XtPointer) &eo);
-					pcc->internal_mc_eo++;
-					if(eo.ret_filename!=NULL){
-						strcat(cmdline, eo.ret_filename);
-						get_cnt++;
-						aps->ret_filenames[i] = 
-							eo.ret_filename;
-					}
+				strcat(cmdline," ");
+/* bug ###### */
+/*				XtCallCallbackList((Widget) hw,
+					hw->html.get_url_data_cb,
+					(XtPointer) &eo);
+*/
+				GetUrlData((Widget) hw,
+					/* mo_window*/ NULL,
+					(XtPointer) &eo);
+				pcc->internal_mc_eo++;
+				if(eo.ret_filename!=NULL){
+					strcat(cmdline, eo.ret_filename);
+					get_cnt++;
+					aps->ret_filenames[i] = 
+						eo.ret_filename;
 				}
 			}
 			if (get_cnt == aps->url_arg_count){
@@ -444,3 +443,4 @@ void AprogRefresh(HTMLWidget hw, struct ele_rec *eptr)
 	XtSetValues(eptr->aps->frame, args,2);
 	XtSetMappedWhenManaged(eptr->aps->frame, True);
 }
+#endif

@@ -106,7 +106,7 @@ AtomMake(				/* makes an atom */
  *
  */
 
-xpmHashAtom * xpmHashSlot( xpmHashTable *table, char *s)
+xpmHashAtom * _MMxpmHashSlot( xpmHashTable *table, char *s)
 {
     xpmHashAtom *atomTable = table->atomTable;
     unsigned int hash;
@@ -150,11 +150,11 @@ static int HashTableGrows( xpmHashTable *table)
 	*--p = NULL;
     for (i = 0, p = t; i < oldSize; i++, p++)
 	if (*p) {
-	    xpmHashAtom *ps = xpmHashSlot(table, (*p)->name);
+	    xpmHashAtom *ps = _MMxpmHashSlot(table, (*p)->name);
 
 	    *ps = *p;
 	}
-    XpmFree(t);
+    _MMXpmFree(t);
     return (XpmSuccess);
 }
 
@@ -163,11 +163,11 @@ static int HashTableGrows( xpmHashTable *table)
  * an xpmHashAtom is created if name doesn't exist, with the given data.
  */
 
-int xpmHashIntern( xpmHashTable *table, char *tag, void *data)
+int _MMxpmHashIntern( xpmHashTable *table, char *tag, void *data)
 {
     xpmHashAtom *slot;
 
-    if (!*(slot = xpmHashSlot(table, tag))) {
+    if (!*(slot = _MMxpmHashSlot(table, tag))) {
 	/* undefined, make a new atom with the given data */
 	if (!(*slot = AtomMake(tag, data)))
 	    return (XpmNoMemory);
@@ -188,7 +188,7 @@ int xpmHashIntern( xpmHashTable *table, char *tag, void *data)
  *  must be called before allocating any atom
  */
 
-int xpmHashTableInit( xpmHashTable *table)
+int _MMxpmHashTableInit( xpmHashTable *table)
 {
     xpmHashAtom *p;
     xpmHashAtom *atomTable;
@@ -209,14 +209,14 @@ int xpmHashTableInit( xpmHashTable *table)
  *   frees a hashtable and all the stored atoms
  */
 
-void xpmHashTableFree( xpmHashTable *table)
+void _MMxpmHashTableFree( xpmHashTable *table)
 {
     xpmHashAtom *p;
     xpmHashAtom *atomTable = table->atomTable;
 
     for (p = atomTable + table->size; p > atomTable;)
 	if (*--p)
-	    XpmFree(*p);
-    XpmFree(atomTable);
+	    _MMXpmFree(*p);
+    _MMXpmFree(atomTable);
     table->atomTable = NULL;
 }

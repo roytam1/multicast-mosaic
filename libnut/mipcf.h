@@ -16,6 +16,10 @@
 #ifndef mipcf_h
 #define mipcf_h
 
+#ifdef _HPUX_SOURCE
+/* mjr: arrrgggghhhhhh!!!!!!!!!!!! HPUX: High Prices, Uncomfortable uniX*/
+# include <sys/types.h>
+#endif
 #include <netinet/in.h>
 
 #include "mosaic-types.h"
@@ -23,7 +27,7 @@
 #ifdef IPV6
 typedef struct in6_addr IPAddr;
 #else
-typedef u_int32_t	IPAddr;
+typedef u_int32_t 	IPAddr;
 #endif
 
 #define ADDRCMP66(a,b)	( \

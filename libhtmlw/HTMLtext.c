@@ -558,6 +558,9 @@ void PartialRefresh(HTMLWidget hw, struct ele_rec *eptr,
 	x = x - hw->html.scroll_x;
 	y = y - hw->html.scroll_y;
 
+	if (y > hw->html.view_height || y + eptr->height < 0)
+		return;                 /* not visible */
+
 	/*
 	 * May be safe to used the cached full width of this
 	 * string, and thus avoid a call to XTextExtents
@@ -579,8 +582,7 @@ void PartialRefresh(HTMLWidget hw, struct ele_rec *eptr,
 	}
 	width = all.width;
 
-	if(bg!=hw->html.view->core.background_pixel ||
-	   !hw->html.body_images || !hw->html.bg_image) {
+	if(bg!=hw->html.view->core.background_pixel || !hw->html.bg_image) {
 		XSetForeground(XtDisplay(hw), hw->html.drawGC, bg);
 		XSetBackground(XtDisplay(hw), hw->html.drawGC, fg);
 
@@ -763,7 +765,7 @@ void BulletPlace( HTMLWidget hw, struct mark_up * mptr,
 	}
 /*	pcc->x = pcc->x + pcc->cur_font->max_bounds.width; ###*/
 	pcc->x = pcc->x ;
-	pcc->is_bol = 0;
+	pcc->is_bol = 1;
 }
 
 /* Redraw a formatted bullet element */

@@ -19,19 +19,12 @@
 /* defines and structures used for the HTML parser, and the parsed object list. */
 
 typedef enum {
-        MC_MO_TYPE_UNICAST,
-        MC_MO_TYPE_MAIN,         /* only the Main can send */
-        MC_MO_TYPE_RCV_URL_ONLY,
-        MC_MO_TYPE_RCV_ALL
-} McMoWType;
-
-typedef enum {
 	DIV_ALIGN_LEFT,
 	DIV_ALIGN_CENTER,
 	DIV_ALIGN_RIGHT
 } DivAlignType;
 
-typedef int (*visitTestProc)(Widget, char*);
+typedef int (*visitTestProc)(Widget, char* , char *);
 typedef void (*pointerTrackProc)();
 
 typedef struct ele_ref_rec {
@@ -40,7 +33,6 @@ typedef struct ele_ref_rec {
 
 typedef struct link_rec {
 	char *href;
-	char *role;
 } LinkInfo;
 
 extern int htmlwTrace;
@@ -57,15 +49,17 @@ extern void HTMLFreeWidgetInfo (void *ptr);
 extern LinkInfo *HTMLGetLinks (Widget w, int *num_links);
 extern int HTMLPositionToId(Widget w, int x, int y);
 extern int HTMLIdToPosition(Widget w, int element_id, int *x, int *y);
+extern void HTMLGotoAnchor(Widget w, char *target_anchor);
 extern int HTMLAnchorToPosition(Widget w, char *name, int *x, int *y);
 extern int HTMLAnchorToId(Widget w, char *name);
 extern void HTMLGotoId(Widget w, int element_idi,int correction);
 extern int HTMLLastId(Widget w);
-extern void HTMLRetestAnchors(Widget w, visitTestProc testFunc);
+extern void HTMLRetestAnchors(Widget w, visitTestProc testFunc, char *);
 extern void HTMLClearSelection (Widget w);
 extern void HTMLSetSelection (Widget w, ElementRef *start, ElementRef *end);
-extern void HTMLSetText (Widget w, char *text, int element_id,
-			char *target_anchor);
+extern void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
+	char *target_anchor, char * base_url);
+
 extern int HTMLSearchText (Widget w, char *pattern,
 	ElementRef *m_start, ElementRef *m_end, int backward, int caseless);
 extern int HTMLSearchNews(Widget w,ElementRef *m_start, ElementRef *m_end);
@@ -161,6 +155,7 @@ typedef struct image_rec {
 	int width;
 	int req_width;		/* required width specified in WIDTH=nnn */
 	int border;
+	int req_border;
 	int hspace;
 	int vspace;
 	char *usemap; 
@@ -180,8 +175,6 @@ typedef struct image_rec {
 	int transparent;
 	Pixmap image;
 	Pixmap clip;
-/*	McMoWType wtype;	*/
-	int look_only_cache;
 	int internal_numeo;
 	int cw_only;
 } ImageInfo;
@@ -246,6 +239,8 @@ typedef struct _RowList {
 
 typedef struct _TableRec {
 	int	borders;
+	int	cellPadding;	/* from malber@easynet.fr */
+	int	cellSpacing;
 	unsigned int relative_width; /*### for <table width=50%> */
 				     /* it's relative to window width */
 	int	num_col;
@@ -325,7 +320,6 @@ typedef struct _AppletRec {
 	char **param_value_t;
 	int url_arg_count;
 	char **url_arg;
-	McMoWType wtype;
 	int *internal_numeos;
 	char ** ret_filenames;
 	Boolean cw_only;
@@ -348,7 +342,6 @@ typedef struct _AprogRec {
 	char **param_value_t;
 	int url_arg_count;
 	char **url_arg;
-	McMoWType wtype;
 	int *internal_numeos;
 	char ** ret_filenames;
 	Boolean cw_only;
@@ -360,7 +353,6 @@ typedef struct _EODataStruct {
 	char * src;
 	char * ret_filename;
 	int num_eo;
-	McMoWType wtype;
 	Boolean cw_only;
 } EODataStruct;
 
@@ -398,7 +390,6 @@ struct ele_rec {
 	struct ele_rec *next;
 	struct ele_rec *prev;
 	struct ele_rec *line_next;
-	McMoWType wtype;
 	int internal_numeo;
 };
 
@@ -412,16 +403,8 @@ struct ele_rec {
  * New resource names
  */
 
-#ifdef MULTICAST
-#define WbNmctype		"mctype"
-#define WbCMctype		"Mctype"
-#endif
-
 #define	WbNmarginWidth		"marginWidth"
 #define	WbNmarginHeight		"marginHeight"
-#define	WbNtext			"text"
-#define	WbNfooterAnnoText	"footerAnnoText"
-#define	WbNtitleText		"titleText"
 #define	WbNanchorUnderlines	"anchorUnderlines"
 #define	WbNvisitedAnchorUnderlines	"visitedAnchorUnderlines"
 #define	WbNdashedAnchorUnderlines	"dashedAnchorUnderlines"
@@ -431,7 +414,6 @@ struct ele_rec {
 #define	WbNactiveAnchorFG	"activeAnchorFG"
 #define	WbNactiveAnchorBG	"activeAnchorBG"
 #define	WbNimageBorders		"imageBorders"
-#define	WbNdelayImageLoads	"delayImageLoads"
 #define	WbNisIndex		"isIndex"
 #define	WbNitalicFont		"italicFont"
 #define	WbNboldFont		"boldFont"
@@ -452,27 +434,20 @@ struct ele_rec {
 #define	WbNplainitalicFont	"plainitalicFont"
 #define	WbNlistingFont		"listingFont"
 #define	WbNanchorCallback	"anchorCallback"
-#define	WbNlinkCallback		"linkCallback"
 #define	WbNsubmitFormCallback	"submitFormCallback"
 #define	WbNpreviouslyVisitedTestFunction "previouslyVisitedTestFunction"
 #define WbNmaxColorsInImage	"maxColorsInImage"
-#define WbNimageCallback	"imageCallback"
-#define WbNgetUrlDataCB		"getUrlDataCB"
 
 #define	WbNpercentVerticalSpace "percentVerticalSpace"
 #define WbNpointerMotionCallback "pointerMotionCallback"
 #define WbNview			 "view"
 #define WbNsupSubFont            "supSubFont"    /* amb */
 #define WbNbodyColors            "bodyColors"
-#define WbNbodyImages            "bodyImages"
 /*
  * New resource classes
  */
 #define	WbCMarginWidth		"MarginWidth"
 #define	WbCMarginHeight		"MarginHeight"
-#define	WbCText			"Text"
-#define	WbCFooterAnnoText	"FooterAnnoText"
-#define	WbCTitleText		"TitleText"
 #define	WbCAnchorUnderlines	"AnchorUnderlines"
 #define	WbCVisitedAnchorUnderlines	"VisitedAnchorUnderlines"
 #define	WbCDashedAnchorUnderlines	"DashedAnchorUnderlines"
@@ -482,7 +457,6 @@ struct ele_rec {
 #define	WbCActiveAnchorFG	"ActiveAnchorFG"
 #define	WbCActiveAnchorBG	"ActiveAnchorBG"
 #define	WbCImageBorders		"ImageBorders"
-#define	WbCDelayImageLoads	"DelayImageLoads"
 #define	WbCIsIndex		"IsIndex"
 #define	WbCItalicFont		"ItalicFont"
 #define	WbCBoldFont		"BoldFont"
@@ -504,8 +478,6 @@ struct ele_rec {
 #define	WbCListingFont		"ListingFont"
 #define	WbCPreviouslyVisitedTestFunction "PreviouslyVisitedTestFunction"
 #define WbCMaxColorsInImage	"MaxColorsInImage"
-#define WbCImageCallback	"ImageCallback"
-#define WbCGetUrlDataCB		"GetUrlDataCB"
 
 #define	WbCPercentVerticalSpace "PercentVerticalSpace"
 #define WbCPointerMotionCallback "PointerMotionCallback"

@@ -15,11 +15,9 @@
 
 extern void MMWriteHistory();
 extern void MMInitHistory(char * rootdir);
+extern void MMUpdateGlobalHistory (char *aurl);
 
 mo_status mo_been_here_before_huh_dad (char *);
-mo_status mo_here_we_are_son (char *);
-mo_status mo_init_global_history (void);
 mo_status mo_wipe_global_history (mo_window *);
-mo_status mo_cache_data (char *, void *, int);
 
 #endif

@@ -12,9 +12,9 @@
 #ifndef __GUIDIALOGS_H__
 #define __GUIDIALOGS_H__
 
-mo_status mo_post_save_window (mo_window *);
+extern void  mo_save_document (Widget w, XtPointer clid, XtPointer calld);
+extern void mo_document_source (Widget w, XtPointer clid, XtPointer calld);
 /* called from libwww */
-extern mo_status mo_rename_binary_file (mo_window *, char *);
 mo_status mo_post_open_local_window (mo_window *);
 mo_status mo_post_open_window (mo_window *);
 #ifdef HAVE_DTM
@@ -23,7 +23,6 @@ mo_status mo_post_dtmout_window (mo_window *);
 #endif
 mo_status mo_post_mail_window (mo_window *);
 mo_status mo_post_print_window (mo_window *);
-mo_status mo_post_source_window (mo_window *);
 mo_status mo_post_search_window (mo_window *);
 mo_status mo_post_subscribe_win (mo_window *);
 

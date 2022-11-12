@@ -8,7 +8,6 @@
 #include "newsrc.h"
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
-#include "../libwww2/HTAlert.h"
 
 #include <Xm/MessageB.h>
 

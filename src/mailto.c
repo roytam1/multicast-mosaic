@@ -3,15 +3,18 @@
 
 /* Interface for mailto: URLs, stolen from techsupport.c */
 
+#include "../libnut/url-utils.h"
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
 
-#include "../libnut/url-utils.h"
+#include "gui.h"
 #include "gui-dialogs.h"
+#include "mime.h"
+#include "paf.h"
+#include "mailto.h"
+#include "URLParse.h"
 
-extern int do_post;
-extern char *post_content_type;
-extern char *post_data;
+char *post_content_type;
 extern char pre_title[80];
 
 static mo_status mo_post_mailto_form_win (mo_window *win,char *to_address, char *subject);
@@ -103,7 +106,7 @@ static XmxCallback (mailto_win_cb0)		/* send */
 		return;
 	to = XmTextGetString (win->mailto_tofield);
 	subj = XmTextGetString (win->mailto_subfield);
-	mo_send_mailto_message(msg,to,subj,"text/plain",win->current_node->url);
+	mo_send_mailto_message(msg,to,subj,"text/plain",win->current_node->aurl);
 	free (msg);
 	free (to);
 	free (subj);
@@ -117,10 +120,14 @@ static XmxCallback (mailto_win_cb1)		/* dismiss */
 static XmxCallback (mailto_win_cb2)		/* help */
 {
 	mo_window *win = (mo_window*)client_data;
+	mo_window * neww;
+	RequestDataStruct rds;
 
-	mo_open_another_window (win, 
-		mo_assemble_help_url ("help-on-mailto.html"),
-		NULL, NULL);
+	rds.ct = rds.post_data = NULL;
+	rds.is_reloading = False;
+	rds.req_url = mo_assemble_help_url ("help-on-mailto.html");
+	neww = mo_make_window(win,MC_MO_TYPE_UNICAST);
+	MMPafLoadHTMLDocInWin (neww, &rds);
 }
 static XmxCallback (mailto_win_cb3)		/* insert file */
 {
@@ -142,14 +149,14 @@ static XmxCallback (mailto_win_cb4)		/* insert url */
 	mo_window *win = (mo_window*)client_data;
 	long pos;
 
-        if(win->current_node->url){   
+        if(win->current_node->aurl){   
             XmTextInsert (win->mailto_text,
                           pos = XmTextGetInsertionPosition (win->mailto_text),
-                          win->current_node->url);
+                          win->current_node->aurl);
                 /* move insertion position to past this line
                    to avoid inserting the lines in reverse order */
             XmTextSetInsertionPosition (win->mailto_text,
-                                        pos + strlen(win->current_node->url));
+                                        pos + strlen(win->current_node->aurl));
         }  
 }
 
@@ -186,11 +193,15 @@ static XmxCallback (mailto_form_win_cb1)		/* dismiss */
 
 static XmxCallback (mailto_form_win_cb2)		/* help */
 {
-	mo_window *win =  (mo_window*)client_data;
+	mo_window *win = (mo_window*)client_data;
+	mo_window * neww;
+	RequestDataStruct rds;
 
-	mo_open_another_window (win, 
-		mo_assemble_help_url ("help-on-mailto-form.html"),
-		NULL, NULL);
+	rds.ct = rds.post_data = NULL;
+	rds.is_reloading = False;
+	rds.req_url = mo_assemble_help_url ("help-on-mailto-form.html");
+	neww = mo_make_window(win,MC_MO_TYPE_UNICAST);
+	MMPafLoadHTMLDocInWin (neww, &rds);
 }
 
 mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject)
@@ -199,7 +210,10 @@ mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject)
 	long pos;
 	char namestr[1024],tmp[1024];
 
-	if (do_post) {
+	if (win->post_data) {
+		fprintf(stderr, "Bug, please report...\n");
+		fprintf(stderr,"mo_post_mailto_win: win with post_data\n");
+		abort();
 		if (!subject || !*subject) {
 			char str[BUFSIZ];
 
@@ -380,8 +394,7 @@ char *b=NULL;
 	sprintf(buf,"\n");
 	for(; (b && *b) ;) {
 		val = makeword(b,'&');
-		plustospace(val);
-		unescape_url(val);
+		val = UnEscapeUrl(val);
 		name = makeword(val,'=');
 		if (condense) { /*take out all "multiple isspace()"*/
 			eatSpace(val);
@@ -406,9 +419,6 @@ char *b=NULL;
 static mo_status mo_post_mailto_form_win (mo_window *win,char *to_address, char *subject)
 {
   char namestr[1024],*buf=NULL;
-
-  if (!do_post)
-	return(mo_fail);
 
   if (!win->mailto_form_win) {
       Widget dialog_frame;
@@ -519,9 +529,9 @@ static mo_status mo_post_mailto_form_win (mo_window *win,char *to_address, char 
   else
   	XmTextFieldSetString(win->mailto_form_subfield,"");
 
-  win->post_data=strdup(post_data);
+/*  win->post_data=strdup(post_data); */
 
-  buf=makeReadable(post_data,1);
+  buf=makeReadable(win->post_data,1);
   XmTextSetString (win->mailto_form_text, buf);
   if (buf)
 	free(buf);
@@ -533,8 +543,8 @@ static mo_status mo_post_mailto_form_win (mo_window *win,char *to_address, char 
 /* SWP -- 11.15.95 -- ACTION=mailto support for Forms */
 void do_mailto_post(mo_window *win, char *to, char *from, char *subject, char *body) {
 
-	if (!win || !win->current_node || !win->current_node->url ||
-	    !*(win->current_node->url) || !to || !*to || !from || !*from ||
+	if (!win || !win->current_node ||
+	    !to || !*to || !from || !*from ||
 	    !body || !*body || !subject || !*subject) {
 		return;
 	}
@@ -547,7 +557,7 @@ void do_mailto_post(mo_window *win, char *to, char *from, char *subject, char *b
 			fprintf(stderr,"To: [%s]\nFrom: [%s]\nSubj: [%s]\nBody: [%s]\n",to,from,subject,buf);
 		}
 		mo_send_mailto_message(buf, to, subject, post_content_type, 
-				       win->current_node->url);
+				       win->current_node->base_url);
 		if (buf)
 			free(buf);
 	} else {
@@ -556,7 +566,7 @@ void do_mailto_post(mo_window *win, char *to, char *from, char *subject, char *b
 		}
 
 		mo_send_mailto_message(body, to, subject, post_content_type, 
-				       win->current_node->url);
+				       win->current_node->base_url);
 	}
 }
 
@@ -620,3 +630,78 @@ mo_status mo_send_mailto_message (char *text, char *to, char *subj,
 	mo_finish_sending_mailto_message ();
 	return mo_succeed;
 }
+
+/* Originally in whine.c and then in techsupport.c...now it's here. - SWP */
+/* ------------------------------------------------------------------------ */
+  
+FILE *mo_start_sending_mail_message (char *to, char *subj,
+                                     char *content_type, char *url)
+{ 
+        char cmd[2048];
+        char *tmp;
+        
+        if (!to)
+                return NULL;
+        
+        if(!strcmp(content_type,"url_only")){
+                content_type = "text/plain";
+        }
+/* Try listing address on command line. */
+        for (tmp = to; *tmp; tmp++)
+                if (*tmp == ',')
+                        *tmp = ' ';
+        
+        if (mMosaicAppData.mail_filter_command && content_type &&
+            strcmp (content_type, "application/postscript")) {
+                sprintf (cmd, "%s | %s %s", mMosaicAppData.mail_filter_command,
+                        mMosaicAppData.sendmail_command, to);
+        } else {
+                sprintf(cmd, "%s %s", mMosaicAppData.sendmail_command, to);
+        }
+        if ((_fp = popen (cmd, "w")) == NULL)
+                return NULL;
+        
+        fprintf (_fp, "To: %s\n", to);
+        fprintf (_fp, "Subject: %s\n", subj);
+        fprintf (_fp, "Reply-To: %s <%s>\n",mMosaicAppData.author_full_name,mMosaicAppData.author_email);
+        fprintf (_fp, "Content-Type: %s\n", content_type);
+        fprintf (_fp, "Mime-Version: 1.0\n");
+        fprintf (_fp, "X-Mailer: mMosaic %s on %s\n", MO_VERSION_STRING, MO_MACHINE_TYPE);
+        if (url)
+                fprintf (_fp, "X-URL: %s\n", url);
+        fprintf (_fp, "\n");
+/* Stick in BASE tag as appropriate. */
+        if (url && content_type && strcmp (content_type, "text/x-html") == 0)
+                fprintf (_fp, "<base href=\"%s\">\n", url);
+        return _fp;
+}       
+
+mo_status mo_finish_sending_mail_message (void)
+{ 
+        if (_fp)
+                pclose (_fp);
+        _fp = NULL;
+        return mo_succeed;
+} 
+/* ------------------------------------------------------------------------ */
+  
+mo_status mo_send_mail_message (char *text, char *to, char *subj,
+                                char *content_type, char *url)
+{ 
+        FILE *fp;
+        
+        fp = mo_start_sending_mail_message (to, subj, content_type, url);
+        if (!fp)
+                return mo_fail;
+        
+        if(!strcmp(content_type,"url_only")){
+                fputs(url,fp);
+                fputs("\n\n",fp);
+        } else {
+                fputs (text, fp);
+        }
+        mo_finish_sending_mail_message ();
+        return mo_succeed;
+}       
+ 
+

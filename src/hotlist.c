@@ -17,10 +17,13 @@
 #include "../libnut/system.h"
 #include "hotlist.h"
 #include "gui.h"
-#include "mo-www.h"
 #include "gui-popup.h"
 #include "gui-dialogs.h"
 #include "gui-documents.h"
+#include "util.h"
+#include "mailto.h"
+#include "mime.h"
+#include "paf.h"
 
 /* ####Prendre le format netscape: Voir ~/.netscape/bookmark.html##### */
 /* <!DOCTYPE NETSCAPE-Bookmark-file-1>
@@ -210,7 +213,7 @@ static mo_hotlist *mo_copy_hot_hier (mo_hotlist *list)
 	mo_hotlist *hotlist = (mo_hotlist *)malloc(sizeof(mo_hotlist));
 
 	hotlist->title = strdup(list->title);
-	hotlist->desc = list->desc? strdup(list->desc):NULL;
+	hotlist->desc = list->desc? strdup(list->desc) : (char*) NULL;
 	hotlist->type = mo_t_list;
 	hotlist->nodelist = hotlist->nodelist_last = 0;
 	for (item = list->nodelist; item; item = item->any.next)
@@ -219,7 +222,8 @@ static mo_hotlist *mo_copy_hot_hier (mo_hotlist *list)
 			hot->type = mo_t_url;
 			hot->title = strdup(item->hot.title);
 			hot->url = strdup(item->hot.url);
-			hot->desc = item->hot.desc? strdup(item->hot.desc):NULL;
+			hot->desc = item->hot.desc? strdup(item->hot.desc):
+							(char*)NULL;
 /*hot->lastdate = strdup(item->hot.lastdate);*/
 			hot->lastdate = (char *) 0;
 			mo_append_item_to_hotlist(hotlist, (mo_hot_item *)hot);
@@ -307,7 +311,7 @@ mo_status mo_add_item_to_hotlist (mo_hotlist *list, mo_item_type type,
 			hotnode->title = strdup (title);
 		else
 			hotnode->title = strdup ("Unnamed");
-		hotnode->desc = desc ? strdup(desc):NULL;
+		hotnode->desc = desc ? strdup(desc) : (char*) NULL;
 		mo_convert_newlines_to_spaces (hotnode->title);
 		mo_convert_newlines_to_spaces (hotnode->desc);
 		hotnode->url = strdup (url);
@@ -322,7 +326,7 @@ mo_status mo_add_item_to_hotlist (mo_hotlist *list, mo_item_type type,
 			hotlist->title = strdup (title);
 		else
 			hotlist->title = strdup ("Unnamed");
-		hotlist->desc = desc ? strdup(desc):NULL;
+		hotlist->desc = desc ? strdup(desc):(char*)NULL;
 		mo_convert_newlines_to_spaces (hotlist->title);
 		mo_convert_newlines_to_spaces (hotlist->desc);
 		hotlist->nodelist = hotlist->nodelist_last = 0;
@@ -417,7 +421,7 @@ static void mo_parse_hotlist_list(mo_hotlist *list, struct mark_up  **current)
 /* if there is a title attribute in the anchor, take it,
  * otherwise take the last text */
 			node->title = url_title ;
-			node->desc = url_desc ? strdup(url_desc) : NULL;
+			node->desc = url_desc ? strdup(url_desc) : (char*)NULL;
 			mo_convert_newlines_to_spaces (node->title);
 			mo_convert_newlines_to_spaces (node->desc);
 			mo_append_item_to_hotlist (list, (mo_hot_item *)node);
@@ -460,12 +464,12 @@ static void mo_parse_hotlist_list(mo_hotlist *list, struct mark_up  **current)
 				url_desc = fold_desc = NULL;
 				break;
 			case mo_t_url:
-				url_desc = have_dd ? last_text : NULL;
+				url_desc = have_dd ? last_text : (char*)NULL;
 				fold_desc = NULL;
 				break;
 			case mo_t_list:
 				url_desc = NULL;
-				fold_desc = have_dd ? last_text : NULL;
+				fold_desc = have_dd ? last_text : (char*)NULL;
 				break;
 			}
 		}
@@ -478,7 +482,7 @@ static void mo_parse_hotlist_list(mo_hotlist *list, struct mark_up  **current)
 			hotlist->nodelist = hotlist->nodelist_last = 0;
 			hotlist->parent = list;
 			hotlist->title = fold_title;
-			hotlist->desc = fold_desc ? strdup(fold_desc): NULL;
+			hotlist->desc = fold_desc ? strdup(fold_desc): (char*)NULL;
 			mo_convert_newlines_to_spaces (hotlist->title);
 			mo_convert_newlines_to_spaces (hotlist->desc);
 			mo_append_item_to_hotlist(list, (mo_hot_item *)hotlist);
@@ -494,7 +498,7 @@ static void mo_parse_hotlist_list(mo_hotlist *list, struct mark_up  **current)
 /* if there is a title attribute in the anchor, take it,
  * otherwise take the last text */
 				node->title = url_title ;
-				node->desc = url_desc ? strdup(url_desc) : NULL;
+				node->desc = url_desc ? strdup(url_desc) : (char*)NULL;
 				mo_convert_newlines_to_spaces (node->title);
 				mo_convert_newlines_to_spaces (node->desc);
 				mo_append_item_to_hotlist (list, (mo_hot_item *)node);
@@ -584,18 +588,18 @@ static void mo_read_hotlist(mo_hotlist *list, FILE *fp)
 			case M_NONE:		/* text, not tag */
 				if (notSpacesOrNewLine(mptr->text)) {
 					last_text = mptr->text;
-					desc = have_dd ? last_text : NULL;
+					desc = have_dd ? last_text : (char*)NULL;
 				}
 				have_dd = 0;
 				break;
 			case M_DESC_LIST:
-				desc = desc ? strdup(desc) : NULL;
+				desc = desc ? strdup(desc) : (char*)NULL;
 				done = 1;
 				break;
 			case M_TITLE:
 				if(mptr->is_end){
 					title = last_text ?
-						strdup(last_text): NULL;
+						strdup(last_text): (char*)NULL;
 				}
 				have_dd = 0;
 				break;
@@ -609,7 +613,7 @@ static void mo_read_hotlist(mo_hotlist *list, FILE *fp)
 		}
 /* after this loop, mptr is positionned just after the dl tag */
 		desc = mo_convert_newlines_to_spaces(desc);
-		title = title ? mo_convert_newlines_to_spaces(title) : NULL;
+		title = title ? mo_convert_newlines_to_spaces(title) : (char*)NULL;
 		list->title = title;
 		list->desc = desc;
 		mo_parse_hotlist_list(list, &mptr);
@@ -709,12 +713,17 @@ static void mo_load_hotlist_list (mo_window *win, Widget list)
 static void mo_visit_hotlist_position (mo_window *win, int position)
 {
 	mo_hot_item *hotnode;
+	RequestDataStruct rds;
 
 	for (hotnode = win->current_hotlist->nodelist; hotnode != NULL; hotnode = hotnode->any.next) {
 		if (hotnode->any.position == position)
-			if (hotnode->type == mo_t_url)
-				mo_load_window_text (win, hotnode->hot.url,NULL);
-			else {
+			if (hotnode->type == mo_t_url){
+				rds.req_url = hotnode->hot.url;
+				rds.post_data = NULL;
+				rds.ct = NULL;
+				rds.is_reloading = False;
+				MMPafLoadHTMLDocInWin(win,&rds);
+			} else {
 				char *path =mo_compute_hot_path(&(hotnode->list));
 
 				win->current_hotlist = &(hotnode->list);
@@ -738,7 +747,7 @@ static XmxCallback (edit_or_insert_hot_cb2) 		/* Help... (Edit) */
 	mo_window *win = (mo_window*)client_data;
 
 	mo_open_another_window (win, 
-		mo_assemble_help_url ("help-on-hotlist-view.html"), NULL, NULL);
+		mo_assemble_help_url("help-on-hotlist-view.html"));
 }
 static XmxCallback (edit_or_insert_hot_cb4) 		/* Dismiss Insert */
 {
@@ -752,7 +761,7 @@ static XmxCallback (edit_or_insert_hot_cb5)		/* Help... (Insert) */
 	mo_window *win = (mo_window*)client_data;
 
 	mo_open_another_window (win, 
-		mo_assemble_help_url ("help-on-hotlist-view.html"), NULL, NULL);
+		mo_assemble_help_url("help-on-hotlist-view.html"));
 }
 static XmxCallback (edit_or_insert_hot_cb0)		/* Commit Edit */
 {
@@ -1437,8 +1446,7 @@ static XmxCallback (mailhot_win_cb2)
 	mo_window *win = (mo_window*)client_data;
 
 	mo_open_another_window (win, 
-		mo_assemble_help_url ("help-on-hotlist-view.html"), 
-		NULL, NULL);
+		mo_assemble_help_url ("help-on-hotlist-view.html"));
 }
 static XmxCallback (mailhot_win_cb0)
 {
@@ -1594,8 +1602,7 @@ static XmxCallback (hotlist_win_cb2)
 	mo_window *win = (mo_window*)client_data;
 
 	mo_open_another_window (win, 
-		mo_assemble_help_url ("help-on-hotlist-view.html"),
-		NULL, NULL);
+		mo_assemble_help_url ("help-on-hotlist-view.html"));
 }
 static XmxCallback (hotlist_win_cb3)
 {
@@ -1872,10 +1879,8 @@ mo_status mo_post_hotlist_win (mo_window *win)
 
 mo_status mo_add_node_to_current_hotlist (mo_window *win)
 {
-  if (!win->hotlist_win)
-    win->current_hotlist = (mo_hotlist *)mMosaicHotList;
-  return mo_add_item_to_hotlist (win->current_hotlist, mo_t_url,
+  	return mo_add_item_to_hotlist (mMosaicHotList, mo_t_url,
 				 win->current_node->title,
-				 win->current_node->url,
+				 win->current_node->aurl,
 				 NULL, 0);
 }

@@ -70,8 +70,6 @@ typedef struct PopupItem {
 XmxCallbackPrototype (image_cb);
 XmxCallbackPrototype (metadata_cb);
 XmxCallbackPrototype (user_defs_cb);
-XmxCallbackPrototype (ftp_rmbm_cb);
-XmxCallbackPrototype (fsb_OKCallback);
 XmxCallbackPrototype (fsb_CancelCallback);
 XmxCallbackPrototype (copy_link_cb);
 XmxCallbackPrototype (rbm_ballonify);
@@ -80,7 +78,6 @@ extern void mo_make_popup(mo_window * win);
 char *getFileName(char *file_src);
 void mo_popup_set_something(char *what, int to, PopupItem *items);
 PopupItem *popup_build_user_defs();
-extern char *mo_escape_part();
 
 extern Boolean have_popup;
 extern Widget popup ;
@@ -91,4 +88,5 @@ extern PopupItem popup_items[];
 
 extern void mo_add_to_rbm_history(mo_window *win, char *url, char *title);
 extern void mo_delete_rbm_history_win(mo_window *win);
+extern void PopSaveLinkFsbDialog(char * url);
 #endif

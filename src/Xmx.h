@@ -55,7 +55,7 @@ typedef struct _XmxOptionMenuStruct
 	String namestr;
 	XtCallbackProc data;
 	int set_state;
-	struct mo_window * win;
+	struct _mo_window * win;
 } XmxOptionMenuStruct;
 
 
@@ -120,8 +120,8 @@ extern void XmxSetConstraints (Widget, int, int, int, int, Widget, Widget,
                                Widget, Widget);
 extern void XmxAdjustLabelText (Widget, String);
 extern Widget XmxMakeLabel (Widget, String);
-extern Widget XmxMakeErrorDialog (Widget, String, String);
-extern Widget XmxMakeInfoDialog (Widget, String, String);
+extern void  XmxMakeErrorDialog (Widget, char *, char *);
+extern Widget XmxMakeInfoDialog (Widget, char *, char *);
 extern Widget XmxMakeQuestionDialog (Widget, String, String, XtCallbackProc, 
                                      XtCallbackProc, XtPointer);
 extern XmString XmxMakeXmstrFromString (String);
@@ -179,11 +179,11 @@ extern XmxMenuRecord *XmxRMakeOptionMenu (Widget, String,
 extern XmxMenuRecord *XmxRMakeMenubar (Widget, XmxMenubarStruct *);
 extern XmxMenuRecord * _XmxMenuCreateRecord (Widget base);
 extern void _XmxRCreateMenubar (Widget menu, XmxMenubarStruct *menulist,
-                    XmxMenuRecord *rec, struct mo_window * win);
+                    XmxMenuRecord *rec, struct _mo_window * win);
 
 extern void XmxMakeInfoDialogWait (Widget parent, XtAppContext app,
         char *infostr, char *titlestr, char *yesstr);
 extern void XmxMakeErrorDialogWait (Widget parent, XtAppContext app,
-        char *infostr, char *titlestr, char *yesstr);
+        char *infostr, char *titlestr);
 extern void _XmxRDestroyMenubar(XmxMenuRecord * rec);
 #endif /* __XMX_H__ */

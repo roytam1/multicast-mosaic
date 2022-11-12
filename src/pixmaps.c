@@ -10,15 +10,9 @@
 /*for memcpy*/
 #include <memory.h>
 
-
-
 Pixmap IconsBig[25], IconsSmall[25];
 
-/* Icons Exported to gui.c */
 Pixmap *IconPix=NULL,*IconPixBig,*IconPixSmall;
-int IconsMade = 0;
-
-Pixmap dialogError, dialogInformation, dialogQuestion, dialogWarning;
 
 Pixmap toolbarBack, toolbarForward, toolbarHome, toolbarReload,
     toolbarOpen, toolbarSave, toolbarClone, toolbarNew, toolbarClose,
@@ -133,11 +127,6 @@ struct pixload_info {
     {tearv_xpm,&tearv,0},        
     {tearh_xpm,&tearh,0},        
 
-    {xm_error_xpm,&dialogError,0},        
-    {xm_question_xpm,&dialogQuestion,0},        
-    {xm_information_xpm,&dialogInformation,0},        
-    {xm_warning_xpm,&dialogWarning,0},        
-
     {not_secure_xpm, &enc_not_secure, 0},
     {NULL, NULL,0}
 };
@@ -155,78 +144,17 @@ static struct color_rec {
         struct color_rec *hash_next;
 } *Hash[256];
 
-static char **LoadPixmapFile(char *file);
 static void FindIconColor(Display *dsp, Colormap colormap, XColor *colr);
 static void PixAddHash(int red, int green, int blue, int pixval);
 static int highbit(unsigned long ul);
 static Pixmap PixmapFromData(Widget wid, unsigned char *data, int width,
                              int height, XColor *colrs, int gray);
 
-#define PBUF 1024
-/* Quick 'n Dirty XPM reader */
-static char **LoadPixmapFile(char *file)
-{
-    char **pdata;
-    char buf[256],*p;
-    FILE *fp;
-    int x,y,c,i;
-
-    if(!(fp = fopen(file,"r")))
-        return NULL;
-    if(!fgets(buf,PBUF,fp) && strncmp("/* XPM */",buf,9))
-        return NULL;
-    while(!feof(fp)) {
-        if(!fgets(buf,PBUF,fp)) return NULL;
-        if(buf[0]=='"') {
-            
-            if(sscanf(&buf[1],"%d %d %d ",&x,&y,&c) != 3) {
-                fclose(fp);
-                return NULL;
-            }
-            for(p=&buf[1];*p && *p!='"';p++);
-            if(!*p) {
-                fclose(fp);
-                return NULL;
-            } else {  
-                *p=0;
-            }
-            pdata = (char **) malloc(sizeof(char *) * (y+c+2));
-            pdata[0] = strdup(&buf[1]);
-            for(i=1;i<(y+c+1);i++) {
-                if(feof(fp) || !fgets(buf,PBUF,fp)){
-                    fclose(fp);
-                    return NULL;
-                }
-                if(buf[0]=='"') {
-                    for(p=&buf[1];*p && *p!='"';p++);
-                    if(!*p) {
-                        while(i<0) free(pdata[--i]);
-                        free(pdata);    
-                        fclose(fp);
-                        return NULL;
-                    } else {
-                        *p=0;
-                    }
-                    pdata[i] = strdup(&buf[1]);
-                } else {
-                    i--; /* skip comments, etc */
-                }
-                
-            }
-            pdata[y+c+1]=NULL; /*for ease of deletion - trust me. -bjs */
-            fclose(fp);
-            return pdata;
-        }
-    }
-    return NULL;
-}
-
 static XColor def_colrs[256];
 static int init_colors = 1;
 
-/*
- * Find the closest color by allocating it, or picking an already allocated
- * color
+/* Find the closest color by allocating it, or picking an already
+ * allocated color
  */
 static void FindIconColor(Display *dsp, Colormap colormap, XColor *colr)
 {
@@ -579,7 +507,7 @@ void MakePixmaps(Widget wid)
 
 /* load pixmaps */
 	for(i=0;pix_info[i].raw;i++) {
-		data =ProcessXpm3Data(wid, pix_info[i].raw, &w, &h, colrs, &bg);
+		data =_MMProcessXpm3Data(wid, pix_info[i].raw, &w, &h, colrs, &bg);
 		*(pix_info[i].handle) = PixmapFromData(wid, data, w, h,
 			colrs, pix_info[i].gray);
 	}

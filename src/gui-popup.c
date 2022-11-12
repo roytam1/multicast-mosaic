@@ -4,8 +4,6 @@
 #include "../libhtmlw/HTMLP.h"
 #include "mosaic.h"  
 #include "gui.h"
-#include "gui-ftp.h"
-#include "mo-www.h"
 #include "gui-popup.h"
 #include <X11/Xmu/StdSel.h>
 #include "../libnut/system.h"
@@ -14,8 +12,12 @@
 #include "gui-documents.h"
 #include "gui-dialogs.h"
 #include "gui-menubar.h"
+#include "URLParse.h"
+#include "mime.h"
+#include "paf.h"
+#include "navigate.h"
 
-extern int do_meta;	/*############*/
+int do_meta;	/*############*/
 Boolean 	have_popup;
 Widget 		popup = NULL;
 static void	fsb(mo_window *win, char *src);
@@ -31,10 +33,9 @@ static void fmenu_cb ( Widget w , XtPointer clid, XtPointer calld)
         struct ele_rec *eptr;
         int which;
 	mo_window * win = acst->win;
-              
+	RequestDataStruct rds;
               
         which = (int)acst->act_code;
-
         switch (which) { 
         case M_FileData:              
         	if(!acst || !acst->eptr)
@@ -43,7 +44,11 @@ static void fmenu_cb ( Widget w , XtPointer clid, XtPointer calld)
         	if(!eptr)                     
                 	return; /* oh, well */
                do_meta=1;
-               mo_load_window_text(win, win->current_node->url,NULL);
+		rds.req_url = win->current_node->aurl_wa;
+		rds.post_data = NULL;
+		rds.ct = NULL;
+		rds.is_reloading = False;
+               MMPafLoadHTMLDocInWin(win, &rds);
                do_meta=0;             
                break;    
         default:                      
@@ -56,6 +61,105 @@ static void fmenu_cb ( Widget w , XtPointer clid, XtPointer calld)
 static void hotmenu_cb ( Widget w , XtPointer clid, XtPointer calld)
 {
 /* ###############*/
+}
+
+static Widget save_link_fsb_dialog = NULL;
+
+static void save_link_as_ok_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	XmFileSelectionBoxCallbackStruct *cbs =
+		(XmFileSelectionBoxCallbackStruct *) calld;
+	char *filename, *url = (char *) clid, efilename[MO_LINE_LENGTH];
+
+/* Remove the widget from the screen.  */
+	XtUnmanageChild ( w );
+/* Retrieve the character string from the compound string format.  */
+	XmStringGetLtoR ( cbs->value, XmSTRING_DEFAULT_CHARSET, &filename );
+
+/* Next step is to alloc an environnement and popup a autonom scale */
+/* we have the url to get and the filename for saving data. */
+/* that is enought to copy url data to filename */
+
+	MMPafSaveData(mMosaicToplevelWidget, url, filename);
+}
+
+static void save_link_as_cancel_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	XtUnmanageChild ( w );
+}
+
+void PopSaveLinkFsbDialog(char * url)
+{
+	XmString defdir;
+	char * sdefdir;
+	char * fname;
+	int i;
+	Arg args[2];
+
+	fname = getFileName(url);
+	fname = strdup(fname);
+
+/* Now we have the canon URL and the filename part of this url */
+/* Next step is to create a Unique fsb with XmDIALOG_FULL_APPLICATION_MODAL */
+/* if it does not exist yet */
+	if (!save_link_fsb_dialog) { /* create an fsb */
+		i = 0;
+		XtSetArg(args[i], XmNdialogStyle,
+			XmDIALOG_FULL_APPLICATION_MODAL);i++;
+		save_link_fsb_dialog = XmCreateFileSelectionDialog(
+			mMosaicToplevelWidget,
+			"Save Link As", args, i);
+		i = 0;
+		XtAddCallback(save_link_fsb_dialog,
+			XmNcancelCallback, save_link_as_cancel_cb, NULL);
+		XtAddCallback(save_link_fsb_dialog,
+			XmNokCallback, save_link_as_ok_cb, url);
+
+		XtSetSensitive(XmFileSelectionBoxGetChild(save_link_fsb_dialog,
+                                XmDIALOG_HELP_BUTTON), False);
+		XtVaSetValues(save_link_fsb_dialog,
+				XmNfileTypeMask, XmFILE_REGULAR, NULL);
+	} else {
+		/* delete previous callback not need */
+		XtRemoveAllCallbacks(save_link_fsb_dialog,XmNokCallback);
+		/* add our callback */
+		XtAddCallback( save_link_fsb_dialog,
+			XmNokCallback, save_link_as_ok_cb, url);
+		/* Init the box */
+		XmFileSelectionDoSearch(save_link_fsb_dialog,NULL);
+	}	
+/* set default file string in selection box */
+	XtVaGetValues(save_link_fsb_dialog, XmNdirSpec, &defdir, NULL);
+	XmStringGetLtoR(defdir,XmSTRING_DEFAULT_CHARSET,&sdefdir);
+	XmStringFree(defdir);
+	if (sdefdir){
+		char * tmpbuf;
+		tmpbuf = (char*) malloc ( strlen(sdefdir) + strlen(fname) + 10);
+		sprintf(tmpbuf, "%s%s",sdefdir,fname);
+		defdir = XmStringCreateLtoR(tmpbuf,XmSTRING_DEFAULT_CHARSET);
+		XtVaSetValues(save_link_fsb_dialog, XmNdirSpec,defdir, NULL);
+		XmStringFree(defdir);
+		free(tmpbuf);
+	}
+	XtManageChild(save_link_fsb_dialog);
+}
+
+static void save_link_as_cb ( Widget w , XtPointer clid, XtPointer calld)
+{
+        act_struct *acst = (act_struct *) clid;
+        struct ele_rec *eptr;
+	mo_window * win = acst->win;
+	char * url ;
+
+        if(!acst || !acst->eptr)
+                return;              
+        eptr = acst->eptr;           
+        if(!eptr && !eptr->anchor_tag_ptr && !eptr->anchor_tag_ptr->anc_href)
+                return;		/* no ref for this anchor !!! */
+
+	url = eptr->anchor_tag_ptr->anc_href;
+	url = mo_url_canonicalize(url, win->current_node->base_url);
+	PopSaveLinkFsbDialog(url);
 }
 
 PopupItem image_menu[] = {
@@ -118,6 +222,10 @@ PopupItem popup_items[] = {		 /* Permanent stuff */
    {0, NULL, NULL},                  
    NULL, 0, NULL, NULL, NULL, NULL, 1},
                                      
+/* Load to local Disk  when in an anchor (binary mode) */
+  {PushButton, E_ANCHOR | E_IMAGE, LOOSE, moMODE_ALL, LOOSE, "Save Link As ...",
+   {0, NULL, NULL}, save_link_as_cb, 0, NULL, NULL, NULL, NULL, 1},
+
   {PushButton, E_ANCHOR | E_IMAGE, LOOSE, moMODE_ALL, LOOSE, COPY_URL_LABEL,
    {0, NULL, NULL}, copy_link_cb, 0, NULL, NULL, NULL, NULL, 1},
                                      
@@ -156,23 +264,7 @@ PopupItem popup_items[] = {		 /* Permanent stuff */
    {0, NULL, NULL}, 
    NULL, 0, NULL, NULL, image_menu, NULL, 1},
 
-/* Stuff if on a ftp page 
----------------------------------------------------------------*/
-
-  {Separator, ALL_TYPES, LOOSE, moMODE_FTP, TIGHT, "Separator", 
-   {0, NULL, NULL},
-   NULL, 0, NULL, NULL, NULL, NULL, 1}, 
-
-  {PushButton, ALL_TYPES, LOOSE, moMODE_FTP, TIGHT, "Put ...", 
-   {mo_ftp_put, NULL, NULL},
-   ftp_rmbm_cb, 0, NULL, NULL, NULL, NULL, 1},
-
-  {PushButton, ALL_TYPES, LOOSE, moMODE_FTP, TIGHT, "Make Directory", 
-   {mo_ftp_mkdir, NULL, NULL}, ftp_rmbm_cb, 0, NULL, NULL, NULL,  NULL, 1},
-
-  {PushButton, E_ANCHOR, TIGHT, moMODE_FTP, TIGHT, "Remove", 
-   {(XtCallbackProc)mo_ftp_remove, NULL, NULL}, ftp_rmbm_cb, 0, NULL, NULL, NULL,  NULL, 1},
-
+#ifdef NEWS
 /* Stuff if on a news page and not a link
 ---------------------------------------------------------------*/
 
@@ -244,6 +336,7 @@ PopupItem popup_items[] = {		 /* Permanent stuff */
   {PushButton, E_ANCHOR, LOOSE, moMODE_NEWS, TIGHT, "Mark Group Read",
    {mo_news_mread_anchor, NULL, NULL},
    hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+#endif
 
   { LastItem },
 };
@@ -486,6 +579,7 @@ void metadata_cb(Widget w, XtPointer client_data, XtPointer call_data)
 	struct ele_rec *eptr;                
 	int which;                           
 	mo_window * win;
+	RequestDataStruct rds;
 
         if(!acst || !acst->eptr)
                 return;              
@@ -502,9 +596,13 @@ void metadata_cb(Widget w, XtPointer client_data, XtPointer call_data)
                if (!eptr->pic_data) { /* do what? */
                                 return;
                }            
-               xurl=mo_url_prepend_protocol(eptr->pic_data->src);
+               xurl=eptr->pic_data->src;
                do_meta=1;   
-               mo_load_window_text(win, xurl, NULL);
+		rds.req_url = xurl;
+		rds.post_data = NULL;
+		rds.ct = NULL;
+		rds.is_reloading = False;
+               MMPafLoadHTMLDocInWin(win, &rds);
                do_meta=0;   
                break; 
         case M_LinkData:   
@@ -512,9 +610,13 @@ void metadata_cb(Widget w, XtPointer client_data, XtPointer call_data)
                		return;
                }            
                xurl=mo_url_canonicalize(eptr->anchor_tag_ptr->anc_href,
-               		strdup(win->current_node->url));
+               		win->current_node->base_url);
                do_meta=2;
-               mo_load_window_text(win, xurl, NULL);
+		rds.req_url = xurl;
+		rds.post_data = NULL;
+		rds.ct = NULL;
+		rds.is_reloading = False;
+               MMPafLoadHTMLDocInWin(win, &rds);
                do_meta=0;   
                break;       
         default:
@@ -531,6 +633,7 @@ void image_cb(Widget w, XtPointer client_data, XtPointer call_data)
 	struct ele_rec *eptr;
 	int which,tmp; 
 	mo_window * win;
+	RequestDataStruct rds;
 
 	eptr = acst->eptr;
 	which = (int)acst->act_code;
@@ -542,102 +645,42 @@ void image_cb(Widget w, XtPointer client_data, XtPointer call_data)
 	}
 
 	switch(which) {
+/* #### look at save_link_as_cb  ###
 	case I_Save:
-				/* FIXME: this should be 
-				fsb(eptr->edata); */
+		/* FIXME: this should be fsb(eptr->edata); */
+/*
 		fsb(win,eptr->pic_data->src);
 		break;
+### */
 	case I_ViewExternal:
-		xurl=mo_url_prepend_protocol(eptr->pic_data->src);
-		tmp=imageViewInternal;
-		imageViewInternal=0;
-		mo_load_window_text (win, xurl, NULL);
-		imageViewInternal=tmp;
+		xurl=eptr->pic_data->src;
+		rds.req_url = xurl;
+		rds.post_data = NULL;
+		rds.ct = NULL;
+		rds.is_reloading = False;
+               MMPafLoadHTMLDocInWin(win, &rds);
 		break;
 	case I_ViewInternal:
-		xurl=mo_url_prepend_protocol(eptr->pic_data->src);
+		xurl=eptr->pic_data->src;
+/*
 		tmp=imageViewInternal;
 		imageViewInternal=1;
-		mo_load_window_text (win, xurl, NULL);
+*/
+		rds.req_url = xurl;
+		rds.post_data = NULL;
+		rds.ct = NULL;
+		rds.is_reloading = False;
+               MMPafLoadHTMLDocInWin(win, &rds);
+/*
 		imageViewInternal=tmp;
+*/
 		break;
 	case I_Reload:
-		mo_reload_window_text (win);
+		mo_reload_document(w, (XtPointer) win, NULL);
 		break;
 	}
 }
 
-static char *last_src=NULL;
-void fsb(mo_window * win, char *src)
-{
-	static Widget dialog;
-	XmString str,fbfn;
-	char *fname, fBuf[1024];
-  
-	if ( !dialog ) {
-		last_src=strdup(src);
-		dialog = XmCreateFileSelectionDialog (win->view, 
-				"Save Image File", 
-				NULL, 0 );
-		XtAddCallback(dialog,XmNcancelCallback, fsb_CancelCallback, NULL);
-		XtAddCallback(dialog, XmNokCallback, fsb_OKCallback, win);
-
-		XtSetSensitive(XmFileSelectionBoxGetChild(dialog, 
-				XmDIALOG_HELP_BUTTON), False);
-		XtVaSetValues(dialog, XmNfileTypeMask, XmFILE_REGULAR, NULL);
-	} else {
-		/*Dance with the callbacks so we get the correct URL later--SWP */
-		XtRemoveCallback(dialog, XmNokCallback, fsb_OKCallback, win);
-		if (last_src) 
-			free(last_src);
-		last_src=strdup(src);
-		XtAddCallback(dialog, XmNokCallback, fsb_OKCallback, win);
-				/* Re-Init the Stupid Box -- SWP */
-		XmFileSelectionDoSearch(dialog,NULL);
-	}
-			/* set the save file string */
-	XtVaGetValues(dialog, XmNdirSpec, &str, NULL);
-	XmStringGetLtoR(str,XmSTRING_DEFAULT_CHARSET,&fname);
-	XmStringFree(str);
-
-	if (fname) {
-		if(src && *src)
-			sprintf(fBuf,"%s%s",fname,getFileName(src));
-		else
-			sprintf(fBuf,"%s",fname);
-		str=XmStringCreateLtoR(fBuf,XmSTRING_DEFAULT_CHARSET);
-		XtVaSetValues(dialog, XmNdirSpec, str, NULL);
-		XmStringFree(str);
-		free(fname);
-	}
-	XtManageChild ( dialog );
-}
-
-void fsb_OKCallback ( Widget w, XtPointer clid, XtPointer calld)
-{
-	XmFileSelectionBoxCallbackStruct *cbs = 
-		(XmFileSelectionBoxCallbackStruct *) calld;
-	char *filename, *url = (char *) last_src, efilename[MO_LINE_LENGTH];
-	mo_window * win = (mo_window*) clid;
-  
-			/* Remove the widget from the screen, and kill it.  */
-	XtUnmanageChild ( w );
-	/* Retrieve the character string from the compound string format.  */
-	XmStringGetLtoR ( cbs->value, XmSTRING_DEFAULT_CHARSET, &filename );
-			/* Expand any ~ */                 
-	pathEval (efilename, filename); 
-		/* FIXME: the code below should just copy a file but since
-		we don't keep the files around we have to beam it down again.
-		This should be fixed with the disk cache */
-
-		/* now copy src to filename */
-
-	mo_pull_er_over_virgin(url, efilename,win);
-		/* We need to reset the icons and let the user know -- SWP */
-	mo_gui_done_with_icon(win);
-	mo_gui_notify_progress("Image has been downloaded and saved.",win);
-}
-                
 void fsb_CancelCallback ( Widget w, XtPointer clientData, XtPointer callData )
 {
 	XtUnmanageChild ( w );
@@ -663,7 +706,7 @@ void copy_link_cb(Widget w, XtPointer clid, XtPointer calld)
 		return;
 
 	url = mo_url_canonicalize(acst->eptr->anchor_tag_ptr->anc_href, 
-			strdup(win->current_node->url));
+			win->current_node->base_url);
 
 	if(XtOwnSelection(win->scrolled_win, XA_PRIMARY, 
 	    cbs->event->xbutton.time, convert_selection,
@@ -745,10 +788,15 @@ static void session_cb(Widget w, XtPointer clid, XtPointer calld)
 {                                     
 	char *xurl = (char *) clid;  
 	mo_window * win;
+	RequestDataStruct rds;
 
 	XtVaGetValues(w, XmNuserData, (XtPointer) &win, NULL);
 
-	mo_load_window_text (win, xurl, NULL);
+	rds.req_url = xurl;
+	rds.post_data = NULL;
+	rds.ct = NULL;
+	rds.is_reloading = False;
+        MMPafLoadHTMLDocInWin(win, &rds);
 }                                     
 
 void mo_add_to_rbm_history(mo_window *win, char *url, char *title)

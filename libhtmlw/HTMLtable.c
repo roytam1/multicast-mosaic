@@ -6,7 +6,7 @@
  * See the file "license.mMosaic" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES. 
  *
- * Bug report :  dauphin@sig.enst.fr dax@inf.enst.fr
+ * 3D table from : malber@easynet.fr
  */
 
 #include <stdio.h>
@@ -23,7 +23,8 @@
 #include "HTML.h"
 #include "list.h"
 
-#define TBL_CELL_MARGIN_WIDTH	2
+#define TBL_CELL_DEFAULT_PADDING 1
+#define TBL_CELL_DEFAULT_SPACING 2
 
 #if 0
 static void TableDump( TableInfo *t);
@@ -125,6 +126,7 @@ void UpateColList( ColumnList ** col_list, int td_count,
 		cells[cur_cell_num].cell_type = M_TD_CELL_PAD;
 		cells[cur_cell_num].height = 0;
 		cells[cur_cell_num].width = 0;
+		cells[cur_cell_num].line_bottom = 0;
 		cur_cell_num++;
 		ns--;
 	}
@@ -151,18 +153,20 @@ void AddPadAtEndColList(ColumnList ** cl, int toadd)
 			(*cl)->cells[i].td_end = NULL;
 			(*cl)->cells[i].height = 0;
 			(*cl)->cells[i].width = 0;
+			(*cl)->cells[i].line_bottom = 0;
 			(*cl)->cells[i].is_colspan = 0;
 			(*cl)->cells[i].is_rowspan = 0;
 			(*cl)->cells[i].cell_type = M_TD_CELL_PAD;
 	}
 	(*cl)->cell_count = (*cl)->cell_count+toadd;
 }
+
+/* from = 0 to= low_cur_line_num (exclu)  mettre PAD */
+/* de low_cur_line_num inclu a row_count-1 mettre FREE */
+
 static void AddPadAtEndRowList(
 	RowList * rl,
-	int toadd,	/* # of cells to add at end of line */
-	int from,	/*from = 0*/
-	int to)		/*to= low_cur_line_num*/ /*exclu*/
-			/* de low_cur_line_num inclu a row_count-1 mettre FREE */
+	int toadd)	/* # of cells to add at end of line */
 {
 	int i,j;
 
@@ -183,6 +187,7 @@ static void AddPadAtEndRowList(
 			rl->cells_lines[i][j].td_end = NULL;
 			rl->cells_lines[i][j].height = 0;
 			rl->cells_lines[i][j].width = 0;
+			rl->cells_lines[i][j].line_bottom = 0;
 			rl->cells_lines[i][j].is_colspan = 0;
 			rl->cells_lines[i][j].is_rowspan = 0;
 			rl->cells_lines[i][j].cell_type = M_TD_CELL_PAD;
@@ -240,9 +245,7 @@ static void AddFreeLineToRow(RowList * rl, int toadd)
 }
 
 static void UpdateRowList(RowList ** row_list, int tr_count,
-		ColumnList ** cl,
-		struct mark_up * tr_start_mark,
-		struct mark_up * tr_end_mark)
+		ColumnList ** cl)
 {
 	RowList * rl;
 	CellStruct work_cell;
@@ -337,8 +340,7 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 		printf("BUG: number of TD/TH is false for this TABLE or span count is false.\n");
 		printf("     padding the TABLE!!! Adjust....\n");
 		AddPadAtEndRowList(rl,
-				ncell_for_this_cl - n_rl_free_cell,
-				/*from =*/ 0, /*to=*/ low_cur_line_num /*exclu*/);
+				ncell_for_this_cl - n_rl_free_cell );
 		/* de low_cur_line_num inclu a row_count-1 mettre FREE */
 	}
 	this_line = (*cl)->cells;
@@ -443,6 +445,8 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	lt.end_other_mark =NULL;
 	lt.relative_width = 0;
 	lt.borders = 0;
+	lt.cellSpacing = TBL_CELL_DEFAULT_SPACING;
+	lt.cellPadding = TBL_CELL_DEFAULT_PADDING;
 	lt.row_list = NULL;
 	lt.width = 0;
 	lt.height = 0;
@@ -465,11 +469,11 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 		free(tptr);
 	}
 	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLSPACING")) {
-		printf("[MakeTable] %s not yet implemented\n","CELLSPACING");
+		lt.cellSpacing = atoi(tptr);
 		free(tptr);
 	}
 	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLPADDING")) {
-		printf("[MakeTable] %s not yet implemented\n","CELLPADDING");
+		lt.cellPadding = atoi(tptr);
 		free(tptr);
 	}
 
@@ -644,8 +648,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 				tr_end_mark = psm;
 				tr_count++;
 				if (col_list){
-					UpdateRowList(&row_list,tr_count,&col_list,
-						tr_start_mark,tr_end_mark);
+					UpdateRowList(&row_list,tr_count,&col_list);
 					FreeColList(col_list);
 					col_list = NULL;
 					td_count =0;
@@ -677,8 +680,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			tr_count++;
 			tr_end_mark = sm;
 			if(col_list){
-				UpdateRowList(&row_list,tr_count,&col_list,
-					tr_start_mark,tr_end_mark);
+				UpdateRowList(&row_list,tr_count,&col_list);
 				FreeColList(col_list);
 				col_list = NULL;
 				td_count =0;
@@ -706,8 +708,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 				tr_end_mark = psm;
 				tr_count++;
 				if(col_list){
-					UpdateRowList(&row_list,tr_count,&col_list,
-						tr_start_mark,tr_end_mark);
+					UpdateRowList(&row_list,tr_count,&col_list);
 					FreeColList(col_list);
 					col_list = NULL;
 					td_count =0;
@@ -800,6 +801,9 @@ void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_
 		t->col_w[i] = 0;
 	}
 
+	estimate_height = t->num_row * 2 * (t->cellPadding + 2)
+		+ (t->num_row + 1) * t->cellSpacing + 2 * t->borders;
+
 	for(i=0; i< t->num_row; i++){
 		line = t->row_list->cells_lines[i];
 		h_row = 0;
@@ -828,6 +832,7 @@ void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_
 			line[j].height = h_row;
 		estimate_height += h_row;
 	}
+#if 0
 	line_min_w = 0;
 	line_max_w = 0;
 	for(i=0;i<t->num_col;i++){
@@ -838,6 +843,26 @@ void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_
 	line_max_w += (t->num_col -1) * t->borders;
 	line_min_w += 2 * t->borders - t->borders/2;
 	line_max_w += 2 * t->borders - t->borders/2;
+#endif
+/*                             
+ *	at | we will draw a line with top ot bottom shadow color
+ *		bbbb is the border in top or bottom shadow
+ *	p the cellPadding
+ *	cccc, the cell         
+ *	s the cellSpacing      
+ *
+ *	bbbbs|pccccp|s|pccccp|s|pccccp|sbbbb
+ *	  bbbbs|pppppp|s|pppppp|
+ *	bbbbs--------s--------
+ *	bbbbssssssssssssssssss
+*/ 
+	line_min_w = t->num_col * 2 * (t->cellPadding + 1)
+		+ (t->num_col + 1) * t->cellSpacing + 2 * t->borders;
+	line_max_w = line_min_w;
+	for(i=0;i<t->num_col;i++){     
+		line_min_w += t->col_min_w[i];
+		line_max_w += t->col_max_w[i];
+        }
 
 	t->min_width = line_min_w;
 	t->max_width = line_max_w;
@@ -849,7 +874,6 @@ void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc,
 {
 	struct mark_up *sm;
 	TableInfo *t;
-	int w_cell;
 	int h_def_height_cell;
 	CellStruct * line;
 	CellStruct cell;
@@ -862,9 +886,6 @@ void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc,
 	struct ele_rec * cr_eptr;
 	struct ele_rec * eptr;
 	int w_in_cell;
-	int tbl_border;
-	int line_som_bdw;
-	int hbw;
 	int to_add_col;
 	int wanted_w;
 
@@ -969,14 +990,11 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	}
 
 /* maintenant on peut calculer la largeur de la table */
-	w_table = 0;
+	w_table = t->num_col * 2 * (t->cellPadding + 1)
+		+ (t->num_col + 1) * t->cellSpacing + 2 * t->borders;
 	for(i=0; i<t->num_col;i++){
-		w_table += t->col_w[i]+ 2 * TBL_CELL_MARGIN_WIDTH;
+		w_table += t->col_w[i];
 	}
-	w_table +=  (t->num_col -1) * t->borders;
-	tbl_border = t->borders;
-	hbw = t->borders/2;
-	w_table = w_table + 2 * tbl_border- hbw;	/* Pour un TEST */
 
 	wanted_w = (t->relative_width * pcc->cur_line_width) /100;
 	if (wanted_w > w_table ) { /* add width to each col */
@@ -1006,36 +1024,33 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	tbl_pcc = *pcc;
 	
 /* now compute the real width of cell and create element in cell */
-/*somme des bords dans une ligne */
-	line_som_bdw = (t->num_col - 1) * tbl_border; 
 
 /* set the default height of cell */
 	h_def_height_cell = pcc->cur_font->ascent+pcc->cur_font->descent;
 	line_pcc = tbl_pcc;
-	line_pcc.y = tbl_pcc.y ;
+	line_pcc.y = tbl_pcc.y + t->borders + t->cellSpacing;
 	line_pcc.eoffsetx = tbl_pcc.left_margin+tbl_pcc.eoffsetx;
 	max_line_bot = line_pcc.y+ h_def_height_cell;
 	for(i=0; i< t->num_row; i++){
 		int cell_offset;
 
 		line = t->row_list->cells_lines[i];
-		cell_offset =0;
+		cell_offset =t->borders + t->cellSpacing;
 		for(j=0; j<t->num_col; j++){ /* prendre chaque element */
 			int add_offset;
 
-			w_cell = t->col_w[j]; /* set final width of cell */
-					/* just for test: set equal width */
-			w_in_cell = w_cell;
+			w_in_cell = t->col_w[j]; /* set final width of cell */
 			cell = line[j];		/* un element */
 			work_pcc = line_pcc;	/* en prendre un pour travailler*/
 /* what is the type of this cell */
 			add_offset = w_in_cell +
-				2*(TBL_CELL_MARGIN_WIDTH + t->borders)-hbw;
+				t->cellSpacing  + 2 + 2 * t->cellPadding;
 			cell.width = w_in_cell +
-				 2*(TBL_CELL_MARGIN_WIDTH + t->borders) - hbw;
+				 2 * (t->cellPadding + 1);
 			cell.y = line_pcc.y; 
-			cell.height = work_pcc.cur_line_height;
-			cell.line_bottom = line_pcc.y+
+			cell.height = work_pcc.cur_line_height
+				+ 2 * (t->cellPadding + 1);
+			cell.line_bottom = line_pcc.y+ t->cellPadding + 1 +
                                                 line_pcc.cur_line_height;
 			switch (cell.cell_type){
 			case M_TD_CELL_PAD:
@@ -1052,19 +1067,19 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 				for(k=1; k< cell.colspan;k++){
 					w_in_cell = w_in_cell + t->col_w[j+k];
 				}
-				w_in_cell = w_in_cell + (cell.colspan -1)*
-				           (2*TBL_CELL_MARGIN_WIDTH + t->borders);
-				work_pcc.left_margin = TBL_CELL_MARGIN_WIDTH +
-							t->borders;
-				work_pcc.right_margin = TBL_CELL_MARGIN_WIDTH;
+				w_in_cell += (cell.colspan -1)*
+				    (t->cellSpacing + 2 + 2 * t->cellPadding+1);
+				work_pcc.left_margin = t->cellPadding + 1;
+				work_pcc.right_margin = t->cellPadding + 1;
 				work_pcc.cur_line_width = w_in_cell;
 				work_pcc.eoffsetx = line_pcc.eoffsetx+cell_offset;
 				work_pcc.x = work_pcc.eoffsetx + 
 					     work_pcc.left_margin;
-				work_pcc.y = line_pcc.y;
+				work_pcc.y = line_pcc.y + t->cellPadding + 1;
 				work_pcc.have_space_after = 0;
 				if(cell.cell_type == M_TABLE_HEADER){
 					work_pcc.cur_font = hw->html.bold_font;
+/* comment faire pour centrer les titres ? */
 				}
 				work_pcc.cur_line_height = work_pcc.cur_font->ascent + line_pcc.cur_font->descent;
 				work_pcc.cur_baseline = work_pcc.cur_font->ascent;
@@ -1084,18 +1099,19 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 /*difference des pcc pour determiner la hauteur*/
 				cell.x = cell_offset + line_pcc.eoffsetx;
 				cell.width = w_in_cell +
-					   2*(TBL_CELL_MARGIN_WIDTH + t->borders)
-					   - hbw;
+					   2 * (t->cellPadding + 1);
 				cell.y = line_pcc.y; 
-				cell.height = work_pcc.y - line_pcc.y+
-						line_pcc.cur_font->ascent/2;
-				cell.line_bottom = work_pcc.y+
-                                                line_pcc.cur_font->ascent/2;
+				cell.height = work_pcc.y - line_pcc.y
+					/* + line_pcc.cur_font->ascent/2 */
+					+ t->cellPadding + 1;
+				cell.line_bottom = work_pcc.y
+					/* + line_pcc.cur_font->ascent/2 */
+					+ t->cellPadding + 1;
 				break;
 			default:
 				printf("BUG: Unknow cell type in TABLE\n");
 			}
-			cell_offset += add_offset - t->borders+hbw;
+			cell_offset += add_offset ;
 /* if (cellule_seule ou cellule_fin_rowspan) */
 			if(cell.rowspan == 1){
 				if (cell.line_bottom > max_line_bot)
@@ -1132,7 +1148,7 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 		}
 /* stocker la hauteur de la table */
 		h_table = max_line_bot - pcc->y;
-		line_pcc.y = max_line_bot;
+		line_pcc.y = max_line_bot + t->cellSpacing;
 	}
 
 	pcc->widget_id = line_pcc.widget_id;
@@ -1142,6 +1158,7 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	pcc->applet_id = line_pcc.applet_id ;
 
 	t->width = w_table;
+	h_table += t->cellSpacing + t->borders;
 	t->height = h_table;
 /* creer l'element graphique qui entoure la table */
 	eptr = CreateElement(hw,E_TABLE, pcc->cur_font,
@@ -1161,12 +1178,19 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 /* do a linefeed */
 	LinefeedPlace(hw,t->tb_end_mark,pcc);
 
+	sm->t_p1=NULL;
 #if 0
 	if (htmlwTrace)
 		TableDump(t);
 #endif
 }
 
+/* put this in widget ! #### */
+static GC ttopGC, tbotGC;            
+
+#define shadowpm_width 2             
+#define shadowpm_height 2            
+static char shadowpm_bits[] = { 0x02, 0x01};
 
 /* display table */
 void TableRefresh( HTMLWidget hw, struct ele_rec *eptr)
@@ -1176,46 +1200,244 @@ void TableRefresh( HTMLWidget hw, struct ele_rec *eptr)
 	CellStruct cell;
 	CellStruct **cells_lines;
 	int i,j;
-	int hbw;			/* half border-width */
+	XPoint pt[6];                  
+	Display *dsp = XtDisplay(hw);  
+	Screen *scn = XtScreen(hw);    
+	GC ltopGC, lbotGC;             
+#define MAX_SEG 128                  
+	XSegment segT[MAX_SEG], segB[MAX_SEG];
+	int iseg;                      
+                                       
+	t = eptr->table_data; 
 
 /* ### trace seulement les contours de la table */
-	if(! eptr->table_data->borders )
+	if(! t->borders )
 		return;
 	x = eptr->x;
 	y = eptr->y;
 	x = x - hw->html.scroll_x;
 	y = y - hw->html.scroll_y;
-	t = eptr->table_data;
-	hbw = t->borders/2;
-	XSetLineAttributes(XtDisplay(hw), hw->html.drawGC,
-			   t->borders,
-			   LineSolid, CapNotLast, JoinMiter);
-	XSetForeground(XtDisplay(hw), hw->html.drawGC, eptr->fg);
-	XSetBackground(XtDisplay(hw), hw->html.drawGC, eptr->bg);
 
-	XDrawRectangle(XtDisplay(hw), XtWindow(hw->html.view),
-		hw->html.drawGC, 
-		x+hbw, y+hbw,
-		eptr->width - t->borders+hbw,
-		eptr->height - t->borders+hbw);
+	if (y > hw->html.view_height || y + eptr->height < 0)
+		return;                 /* not visible */
 
+	if (ttopGC == NULL) {          
+		char dash_list[2];         
+		unsigned long valuemask;   
+		XGCValues values;
+
+/*
+values.tile = XCreatePixmapFromBitmapData(dsp, RootWindowOfScreen(scn),
+shadowpm_bits, shadowpm_width, shadowpm_height,
+BlackPixelOfScreen(scn), WhitePixelOfScreen(scn), DefaultDepthOfScreen(scn));
+*/                     
+		values.stipple = XCreateBitmapFromData(dsp,
+			RootWindowOfScreen(scn),
+			shadowpm_bits, shadowpm_width, shadowpm_height);
+		values.fill_style = FillSolid;
+/*
+valuemask = GCFunction|GCPlaneMask|GCForeground| GCBackground|
+GCFillStyle | GCStipple;
+*/
+		valuemask = GCFillStyle | GCStipple ;
+		ttopGC = XCreateGC(dsp, RootWindow(dsp, DefaultScreen(dsp))
+			, valuemask, &values);
+		tbotGC = XCreateGC(dsp, RootWindow(dsp, DefaultScreen(dsp))
+			, valuemask, &values);
+
+		XSetLineAttributes(dsp, ttopGC, 1, LineOnOffDash,
+			CapNotLast, JoinMiter); 
+		XSetForeground(dsp, ttopGC, WhitePixel(dsp, DefaultScreen(dsp)));                  
+		XSetLineAttributes(dsp, tbotGC, 0, LineOnOffDash,
+			CapNotLast, JoinMiter); 
+		XSetForeground(dsp, tbotGC, BlackPixel(dsp,
+			DefaultScreen(dsp)));                  
+		dash_list[0] = '\1';       
+		dash_list[1] = '\1';       
+		XSetDashes(dsp, ttopGC, 1, dash_list, 2);
+		XSetDashes(dsp, tbotGC, 1, dash_list, 2);
+	}                              
+	XSetTSOrigin(dsp, ttopGC, hw->html.scroll_x % 2, hw->html.scroll_y % 2);                
+	XSetTSOrigin(dsp, tbotGC, hw->html.scroll_x % 2, hw->html.scroll_y % 2);
+
+	if (hw->html.bg_image) {       
+		ltopGC = ttopGC;           
+		lbotGC = tbotGC;           
+	} else {                       
+		ltopGC = hw->manager.top_shadow_GC;
+		lbotGC = hw->manager.bottom_shadow_GC;
+	}                              
+	if (t->borders == 1) {         
+		int y0, y1;                
+
+/* top */                  
+		if (y >= 0) {              
+			XDrawLine(dsp, XtWindow(hw->html.view)
+				, ltopGC, x, y, x + eptr->width - 1, y);
+			y0 = y;                
+		} else                     
+			y0 = 0;                
+
+		if (y + eptr->height <=  hw->html.view_height) {
+			y1 = y + eptr->height - 1;  
+			XDrawLine(dsp, XtWindow(hw->html.view)
+				, lbotGC, x, y1, x + eptr->width - 1, y1);
+		} else                     
+			y1 = hw->html.view_height;  
+
+/* draw left line */       
+		XDrawLine(dsp, XtWindow(hw->html.view)
+			, ltopGC, x, y0, x, y1);
+		XDrawLine(dsp, XtWindow(hw->html.view)
+			, lbotGC, x + eptr->width - 1, y0
+			, x + eptr->width - 1, y1);
+	} else {                       
+		if (hw->html.bg_image) {   
+			XSetFillStyle(dsp, ltopGC, FillStippled);
+			XSetFillStyle(dsp, lbotGC, FillStippled);
+		}                          
+/* Draw shadows. Points are numbered as follows:
+*                             
+*     5 __________________________________________
+*      |\                                        /4
+*      | \                                      / |
+*      |  \                                    /  |
+*      |   2_________________________________ 3   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |__________________________________|   |
+*      |   1                                   \  |
+*      |  /                                     \ |
+*      | /_______________________________________\|
+*       0                     
+*                             
+*                             
+*/                            
+
+		pt[0].x = x;
+		pt[0].y = y + eptr->height - 1; 
+		pt[1].x = x + t->borders;  
+		pt[1].y = y + eptr->height - t->borders - 1;
+		pt[2].x = x + t->borders;  
+		pt[2].y = y + t->borders;  
+		pt[3].x = x + eptr->width - t->borders - 1;
+		pt[3].y = y + t->borders;  
+		pt[4].x = x + eptr->width - 1;  
+		pt[4].y = y;               
+		pt[5].x = x;               
+		pt[5].y = y;               
+		XFillPolygon(dsp, XtWindow(hw->html.view)
+			, ltopGC, pt, 6, Complex, CoordModeOrigin);
+/* Draw shadows. Points are numbered as follows:
+*                             
+*       __________________________________________
+*      |\                                        /4
+*      | \                                      / |
+*      |  \                                    /  |
+*      |   \_________________________________ 3   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |                                  |   |
+*      |   |__________________________________2   |
+*      |   1                                   \  |
+*      |  /                                     \ |
+*      | /_______________________________________\5
+*       0                     
+*                             
+* only 2 and 5 changes        
+*/                            
+		pt[2].x = x + eptr->width - t->borders - 1;
+		pt[2].y = y + eptr->height - t->borders - 1;
+		pt[5].x = x + eptr->width - 1;  
+		pt[5].y = y + eptr->height - 1; 
+		XFillPolygon(dsp, XtWindow(hw->html.view)
+			, lbotGC, pt, 6, Complex, CoordModeOrigin);
+
+		if (hw->html.bg_image) {   
+			XSetFillStyle(dsp, ltopGC, FillSolid);
+			XSetFillStyle(dsp, lbotGC, FillSolid);
+		}                          
+	} 
 	cells_lines = t->row_list->cells_lines;
-	for (i = 0; i < t->num_row; i++) {
+	iseg = 0;                      
+
+/*printf("scroll_x=%d, scroll_y=%d, view w=%d h=%d doc w=%d
+h=%d\n"                                
+, hw->html.scroll_x, hw->html.scroll_y
+, hw->html.view_width, hw->html.view_height
+, hw->html.doc_width, hw->html.doc_height);
+*/
+
+	for (i = 0; i < t->num_row; i++) {  
 		for (j = 0; j < t->num_col; j++) {
+			int cw1, ch1, cx, cy;  
+
 			cell = cells_lines[i][j];
+			cw1 = cell.width - 1;  
+			ch1 = cell.height - 1; 
+			cx = cell.x - hw->html.scroll_x;
+			cy = cell.y - hw->html.scroll_y;
+			if (cy + ch1 < 0)      
+				continue;   /* not visible : before */                                     
+			if (cy - 1 > hw->html.view_height)
+				continue;   /* not visible : after */
+
 			if( (cell.back_rs == 0) && (cell.back_cs == 0) ) {
-				XDrawRectangle(XtDisplay(hw), 
-					XtWindow(hw->html.view),
-					hw->html.drawGC, 
-					cell.x+hbw - hw->html.scroll_x,
-					cell.y+hbw - hw->html.scroll_y,
-					cell.width-t->borders+hbw, 
-					cell.height-t->borders+hbw);
-			}
-		}
-	}	
-	XSetLineAttributes(XtDisplay(hw), hw->html.drawGC,
-			   1, LineSolid, CapNotLast, JoinMiter);
+				XSegment *pseg = segB + iseg;
+/* top line */     
+				pseg->x1 = cx;     
+				pseg->y1 = cy;     
+				pseg->x2 = cx + cw1;
+				pseg->y2 = cy;     
+				pseg++;            
+/* left line */    
+				pseg->x1 = cx;     
+				pseg->y1 = cy;     
+				pseg->x2 = cx;     
+				pseg->y2 = cy + ch1;
+
+				pseg = segT + iseg;
+/* bottom line */  
+				pseg->x1 = cx;     
+				pseg->y1 = cy + ch1;
+				pseg->x2 = cx + cw1;
+				pseg->y2 = cy + ch1;
+				pseg++;            
+/* draw right line */
+				pseg->x1 = cx + cw1;
+				pseg->y1 = cy;     
+				pseg->x2 = cx + cw1;
+				pseg->y2 = cy + ch1;
+				iseg += 2;         
+				if (iseg > MAX_SEG - 1) {
+					XDrawSegments(dsp, XtWindow(hw->html.view)
+						, lbotGC, segB, iseg);
+					XDrawSegments(dsp, XtWindow(hw->html.view)
+						, ltopGC, segT, iseg);
+					iseg = 0;      
+				}                  
+			}                      
+		}                          
+	}
+	if (iseg > 0) {                
+		XDrawSegments(dsp, XtWindow(hw->html.view), lbotGC, segB, iseg);
+		XDrawSegments(dsp, XtWindow(hw->html.view), ltopGC, segT, iseg);
+	}                              
 }
 
 #if 0

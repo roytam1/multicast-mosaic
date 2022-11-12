@@ -58,7 +58,7 @@ typedef unsigned long Pixel;		/* Index into colormap */
 #define XpmColorFailed  -4
 
 /* the following should help people wanting to use their own functions */
-#define XpmFree(ptr) free(ptr)
+#define _MMXpmFree(ptr) free(ptr)
 
 typedef struct {
     char *name;				/* Symbolic color name */
@@ -172,90 +172,90 @@ typedef struct {
 extern "C" {
 #endif
 
-    FUNC(XpmCreatePixmapFromData, int, (Display *display,
+    FUNC(_MMXpmCreatePixmapFromData, int, (Display *display,
 					Drawable d,
 					char **data,
 					Pixmap *pixmap_return,
 					Pixmap *shapemask_return,
 					XpmAttributes *attributes));
 
-    FUNC(XpmCreateDataFromPixmap, int, (Display *display,
+    FUNC(_MMXpmCreateDataFromPixmap, int, (Display *display,
 					char ***data_return,
 					Pixmap pixmap,
 					Pixmap shapemask,
 					XpmAttributes *attributes));
 
-    FUNC(XpmReadFileToPixmap, int, (Display *display,
+    FUNC(_MMXpmReadFileToPixmap, int, (Display *display,
 				    Drawable d,
 				    char *filename,
 				    Pixmap *pixmap_return,
 				    Pixmap *shapemask_return,
 				    XpmAttributes *attributes));
 
-    FUNC(XpmWriteFileFromPixmap, int, (Display *display,
+    FUNC(_MMXpmWriteFileFromPixmap, int, (Display *display,
 				       char *filename,
 				       Pixmap pixmap,
 				       Pixmap shapemask,
 				       XpmAttributes *attributes));
 
-    FUNC(XpmCreateImageFromData, int, (Display *display,
+    FUNC(_MMXpmCreateImageFromData, int, (Display *display,
 				       char **data,
 				       XImage **image_return,
 				       XImage **shapemask_return,
 				       XpmAttributes *attributes));
 
-    FUNC(XpmCreateDataFromImage, int, (Display *display,
+    FUNC(_MMXpmCreateDataFromImage, int, (Display *display,
 				       char ***data_return,
 				       XImage *image,
 				       XImage *shapeimage,
 				       XpmAttributes *attributes));
 
-    FUNC(XpmReadFileToImage, int, (Display *display,
+    FUNC(_MMXpmReadFileToImage, int, (Display *display,
 				   char *filename,
 				   XImage **image_return,
 				   XImage **shapeimage_return,
 				   XpmAttributes *attributes));
 
-    FUNC(XpmWriteFileFromImage, int, (Display *display,
+    FUNC(_MMXpmWriteFileFromImage, int, (Display *display,
 				      char *filename,
 				      XImage *image,
 				      XImage *shapeimage,
 				      XpmAttributes *attributes));
 
-    FUNC(XpmCreateImageFromBuffer, int, (Display *display,
+    FUNC(_MMXpmCreateImageFromBuffer, int, (Display *display,
 					 char *buffer,
 					 XImage **image_return,
 					 XImage **shapemask_return,
 					 XpmAttributes *attributes));
 
-    FUNC(XpmCreatePixmapFromBuffer, int, (Display *display,
+    FUNC(_MMXpmCreatePixmapFromBuffer, int, (Display *display,
 					  Drawable d,
 					  char *buffer,
 					  Pixmap *pixmap_return,
 					  Pixmap *shapemask_return,
 					  XpmAttributes *attributes));
 
-    FUNC(XpmCreateBufferFromImage, int, (Display *display,
+    FUNC(_MMXpmCreateBufferFromImage, int, (Display *display,
 					 char **buffer_return,
 					 XImage *image,
 					 XImage *shapeimage,
 					 XpmAttributes *attributes));
 
-    FUNC(XpmCreateBufferFromPixmap, int, (Display *display,
+    FUNC(_MMXpmCreateBufferFromPixmap, int, (Display *display,
 					  char **buffer_return,
 					  Pixmap pixmap,
 					  Pixmap shapemask,
 					  XpmAttributes *attributes));
 
-    FUNC(XpmReadFileToBuffer, int, (char *filename, char **buffer_return));
-    FUNC(XpmWriteFileFromBuffer, int, (char *filename, char *buffer));
+    FUNC(_MMXpmReadFileToBuffer, int, (char *filename, char **buffer_return));
+    FUNC(_MMXpmWriteFileFromBuffer, int, (char *filename, char *buffer));
 
-    FUNC(XpmReadFileToData, int, (char *filename, char ***data_return));
-    FUNC(XpmWriteFileFromData, int, (char *filename, char **data));
+    FUNC(_MMXpmReadFileToData, int, (char *filename, char ***data_return));
+    FUNC(_MMXpmWriteFileFromData, int, (char *filename, char **data));
 
-    FUNC(XpmAttributesSize, int, ());
-    FUNC(XpmFreeAttributes, void, (XpmAttributes *attributes));
-    FUNC(XpmFreeExtensions, void, (XpmExtension *extensions,
+    FUNC(_MMXpmAttributesSize, int, ());
+    FUNC(_MMXpmFreeAttributes, void, (XpmAttributes *attributes));
+    FUNC(_MMXpmFreeExtensions, void, (XpmExtension *extensions,
 				   int nextensions));
 
 #ifdef __cplusplus
@@ -274,9 +274,9 @@ extern "C" {
 #define XpmPixmapColorFailed XpmColorFailed
 
 #define XpmReadPixmapFile(dpy, d, file, pix, mask, att) \
-    XpmReadFileToPixmap(dpy, d, file, pix, mask, att)
+    _MMXpmReadFileToPixmap(dpy, d, file, pix, mask, att)
 #define XpmWritePixmapFile(dpy, file, pix, mask, att) \
-    XpmWriteFileFromPixmap(dpy, file, pix, mask, att)
+    _MMXpmWriteFileFromPixmap(dpy, file, pix, mask, att)
 
 /* for version 3.0b */
 #define PixmapColorError  XpmColorError
@@ -289,13 +289,13 @@ extern "C" {
 #define ColorSymbol XpmColorSymbol
 
 #define XReadPixmapFile(dpy, d, file, pix, mask, att) \
-    XpmReadFileToPixmap(dpy, d, file, pix, mask, att)
+    _MMXpmReadFileToPixmap(dpy, d, file, pix, mask, att)
 #define XWritePixmapFile(dpy, file, pix, mask, att) \
-    XpmWriteFileFromPixmap(dpy, file, pix, mask, att)
+    _MMXpmWriteFileFromPixmap(dpy, file, pix, mask, att)
 #define XCreatePixmapFromData(dpy, d, data, pix, mask, att) \
-    XpmCreatePixmapFromData(dpy, d, data, pix, mask, att)
+    _MMXpmCreatePixmapFromData(dpy, d, data, pix, mask, att)
 #define XCreateDataFromPixmap(dpy, data, pix, mask, att) \
-    XpmCreateDataFromPixmap(dpy, data, pix, mask, att)
+    _MMXpmCreateDataFromPixmap(dpy, data, pix, mask, att)
 
 
 /* the following should help people wanting to use their own functions */
@@ -340,7 +340,7 @@ typedef struct {
     char *Eoa;				/* string ending assignment */
 }      xpmDataType;
 
-extern xpmDataType xpmDataTypes[];
+extern xpmDataType _MMxpmDataTypes[];
 
 /*
  * rgb values and ascii names (from rgb text file) rgb values,
@@ -354,7 +354,7 @@ typedef struct {
 /* Maximum number of rgb mnemonics allowed in rgb text file. */
 #define MAX_RGBNAMES 1024
 
-extern char *xpmColorKeys[];
+extern char *_MMxpmColorKeys[];
 
 #define TRANSPARENT_COLOR "None"	/* this must be a string! */
 
@@ -388,68 +388,66 @@ typedef struct {
 
 /* XPM private routines */
 
-FUNC(xpmWriteData, int, (xpmData * mdata,
+FUNC(_MMxpmWriteData, int, (xpmData * mdata,
 		    xpmInternAttrib * attrib, XpmAttributes * attributes));
 
-FUNC(xpmCreateData, int, (char ***data_return,
+FUNC(_MMxpmCreateData, int, (char ***data_return,
 		    xpmInternAttrib * attrib, XpmAttributes * attributes));
 
-FUNC(xpmCreateImage, int, (Display * display,
+FUNC(_MMxpmCreateImage, int, (Display * display,
 			   xpmInternAttrib * attrib,
 			   XImage ** image_return,
 			   XImage ** shapeimage_return,
 			   XpmAttributes * attributes));
 
-FUNC(xpmParseData, int, (xpmData * data,
+FUNC(_MMxpmParseData, int, (xpmData * data,
 			 xpmInternAttrib * attrib_return,
 			 XpmAttributes * attributes));
 
-FUNC(xpmScanImage, int, (Display * display,
+FUNC(_MMxpmScanImage, int, (Display * display,
 			 XImage * image,
 			 XImage * shapeimage,
 			 XpmAttributes * attributes,
 			 xpmInternAttrib * attrib));
 
-FUNC(xpmFreeColorTable, void, (char ***colorTable, int ncolors));
+FUNC(_MMxpmInitInternAttrib, void, (xpmInternAttrib * xmpdata));
 
-FUNC(xpmInitInternAttrib, void, (xpmInternAttrib * xmpdata));
+FUNC(_MMxpmFreeInternAttrib, void, (xpmInternAttrib * xmpdata));
 
-FUNC(xpmFreeInternAttrib, void, (xpmInternAttrib * xmpdata));
-
-FUNC(xpmSetAttributes, void, (xpmInternAttrib * attrib,
+FUNC(_MMxpmSetAttributes, void, (xpmInternAttrib * attrib,
 			      XpmAttributes * attributes));
 
-FUNC(xpmInitAttributes, void, (XpmAttributes * attributes));
+FUNC(_MMxpmInitAttributes, void, (XpmAttributes * attributes));
 
 /* I/O utility */
 
-FUNC(xpmNextString, int, (xpmData * mdata));
-FUNC(xpmNextUI, int, (xpmData * mdata, unsigned int *ui_return));
-FUNC(xpmGetString, int, (xpmData * mdata, char **sptr, unsigned int *l));
+FUNC(_MMxpmNextString, int, (xpmData * mdata));
+FUNC(_MMxpmNextUI, int, (xpmData * mdata, unsigned int *ui_return));
+FUNC(_MMxpmGetString, int, (xpmData * mdata, char **sptr, unsigned int *l));
 
-#define xpmGetC(mdata) \
+#define _MMxpmGetC(mdata) \
 	((!mdata->type || mdata->type == XPMBUFFER) ? \
 	 (*mdata->cptr++) : (getc(mdata->stream.file)))
 
-FUNC(xpmNextWord, unsigned int, (xpmData * mdata, char *buf));
-FUNC(xpmGetCmt, int, (xpmData * mdata, char **cmt));
-FUNC(xpmReadFile, int, (char *filename, xpmData * mdata));
-FUNC(xpmWriteFile, int, (char *filename, xpmData * mdata));
-FUNC(xpmOpenArray, void, (char **data, xpmData * mdata));
-FUNC(xpmDataClose, int, (xpmData * mdata));
-FUNC(xpmParseHeader, int, (xpmData * mdata));
-FUNC(xpmOpenBuffer, void, (char *buffer, xpmData * mdata));
+FUNC(_MMxpmNextWord, unsigned int, (xpmData * mdata, char *buf));
+FUNC(_MMxpmGetCmt, int, (xpmData * mdata, char **cmt));
+FUNC(_MMxpmReadFile, int, (char *filename, xpmData * mdata));
+FUNC(_MMxpmWriteFile, int, (char *filename, xpmData * mdata));
+FUNC(_MMxpmOpenArray, void, (char **data, xpmData * mdata));
+FUNC(_MMxpmDataClose, int, (xpmData * mdata));
+FUNC(_MMxpmParseHeader, int, (xpmData * mdata));
+FUNC(_MMxpmOpenBuffer, void, (char *buffer, xpmData * mdata));
 
 /* RGB utility */
 
-FUNC(xpmReadRgbNames, int, (char *rgb_fname, xpmRgbName * rgbn));
-FUNC(xpmGetRgbName, char *, (xpmRgbName * rgbn, int rgbn_max,
+FUNC(_MMxpmReadRgbNames, int, (char *rgb_fname, xpmRgbName * rgbn));
+FUNC(_MMxpmGetRgbName, char *, (xpmRgbName * rgbn, int rgbn_max,
 			     int red, int green, int blue));
-FUNC(xpmFreeRgbNames, void, (xpmRgbName * rgbn, int rgbn_max));
+FUNC(_MMxpmFreeRgbNames, void, (xpmRgbName * rgbn, int rgbn_max));
 
-FUNC(xpm_xynormalizeimagebits, void, (register unsigned char *bp,
+FUNC(_MMxpm_xynormalizeimagebits, void, (register unsigned char *bp,
 				      register XImage * img));
-FUNC(xpm_znormalizeimagebits, void, (register unsigned char *bp,
+FUNC(_MMxpm_znormalizeimagebits, void, (register unsigned char *bp,
 				     register XImage * img));
 
 /*
@@ -517,10 +515,10 @@ typedef struct {
     xpmHashAtom *atomTable;
 }      xpmHashTable;
 
-FUNC(xpmHashTableInit, int, (xpmHashTable * table));
-FUNC(xpmHashTableFree, void, (xpmHashTable * table));
-FUNC(xpmHashSlot, xpmHashAtom *, (xpmHashTable * table, char *s));
-FUNC(xpmHashIntern, int, (xpmHashTable * table, char *tag, void *data));
+FUNC(_MMxpmHashTableInit, int, (xpmHashTable * table));
+FUNC(_MMxpmHashTableFree, void, (xpmHashTable * table));
+FUNC(_MMxpmHashSlot, xpmHashAtom *, (xpmHashTable * table, char *s));
+FUNC(_MMxpmHashIntern, int, (xpmHashTable * table, char *tag, void *data));
 
 #define HashAtomData(i) ((void *)i)
 #define HashColorIndex(slot) ((unsigned int)((*slot)->data))

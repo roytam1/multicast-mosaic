@@ -24,7 +24,29 @@
 #include <X11/cursorfont.h>
 #include "Xmx.h"
 #include "toolbar.h"
-#include "cci.h"
+
+typedef struct _MimeHeaderStruct *MimeHeaderStructPtr;
+
+typedef enum {
+        MC_MO_TYPE_UNICAST,
+        MC_MO_TYPE_MAIN,         /* only the Main can send */
+        MC_MO_TYPE_RCV_URL_ONLY,
+        MC_MO_TYPE_RCV_ALL
+} McMoWType;
+
+
+typedef struct _RequestDataStruct {
+	char *req_url;
+	char *post_data;
+	char *ct;	/* Content-Type of post_data */
+	int is_reloading;
+} RequestDataStruct;
+
+typedef struct _TwirlStruct {
+	Widget logo_widget;
+	int logo_count;
+	XtIntervalId time_id;
+} TwirlStruct;
 
 typedef struct {
 					/* anchors */
@@ -45,7 +67,7 @@ typedef struct {
 	char *default_font_choice;
 					/* images */
 	int colors_per_inlined_image;
-	Boolean delay_image_loads;
+	Boolean delay_object_loads;
 					/* mail */
 	char *author_full_name;
 	char *author_name;
@@ -54,10 +76,7 @@ typedef struct {
 	char *mail_mode;
 					/* MIME */
 	char *print_command;
-	char *uncompress_command;
 	char *gunzip_command;
-	Boolean use_default_extension_map;
-	Boolean use_default_type_map;
 	Boolean tweak_gopher_types;
 					/* news */
 					/* printing */
@@ -66,8 +85,6 @@ typedef struct {
 	Boolean print_footnotes;
 	Boolean print_us;
 					/* services */
-	int cciPort;
-	int max_num_of_cci_connections;
 	int max_wais_responses;
 	Boolean kiosk;
 	Boolean kioskPrint;
@@ -77,9 +94,7 @@ typedef struct {
 	int default_width;                    
 	int default_height;                   
 	Boolean initial_window_iconic;
-	Boolean twirling_transfer_icon;
 	Boolean securityIcon;
-	int twirl_increment;
 					/* Save file stuff */
 	char *save_mode;
 					/* miscellaneous */
@@ -96,18 +111,13 @@ typedef struct {
 	char * meterFontBackground;
 	char * acceptlanguage_str;
 	int ftpRedial;
-	int ftpFilenameLength;
-	int ftpEllipsisLength;
-	int ftpEllipsisMode;
 	Boolean use_screen_gamma;
 	float screen_gamma;
 					/* newer in 2.7 */
 	Boolean wwwTrace;
 	Boolean htmlwTrace;
-	Boolean cciTrace;
 	Boolean srcTrace;
 	Boolean install_colormap;
-	Boolean imageViewInternal;
 	int urlExpired;
 	int popupCascadeMappingDelay;
 				/* newest in 2.7 (ha top that) */
@@ -119,7 +129,7 @@ typedef struct {
 	int             mc_life_time;
 	int             mc_ttl;
 	char           *mc_alias_name;
-	char	   *mc_dest;		/* multicast dest addr/port */
+	char		*mc_dest;		/* multicast dest addr/port */
 #endif
 					/* newest in 2.7b5 double haha; */
 	int numberOfItemsInRBMHistory;
@@ -137,10 +147,20 @@ extern int	mMosaicVisualClass;	/* visual class for 24bit support hack */
 extern Widget	mMosaicToplevelWidget;	/* the toplevel widget */
 extern Display *mMosaicDisplay;		/* the display */
 extern Colormap mMosaicColormap;	/* the colormap */
+extern Window	mMosaicRootWindow;	/* DefaultRootWindow */
 
-extern int	mMosaicCCITrace; 
+extern Pixmap	mMosaicWinIconPixmap;
+extern Pixmap	mMosaicWinIconMaskPixmap;
+extern Cursor	mMosaicBusyCursor;
+
 extern int	mMosaicSrcTrace; 
 
+extern char	*mMosaicBalloonTranslationTable;
+
+extern char 	*mMosaicAppVersion;
+
+extern char	*mMosaicPersonalTypeMap;
+extern char	*mMosaicPersonalExtensionMap;
 
 /*###############################*/
 typedef enum {
@@ -156,7 +176,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.2.3"
+#define MO_VERSION_STRING "3.3.0"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@sig.enst.fr"
@@ -296,7 +316,7 @@ typedef enum {
 
 typedef struct _AgentSpoofCBStruct {
 	Widget w;
-	struct mo_window * win;
+	struct _mo_window * win;
 	int d;
 } AgentSpoofCBStruct;
 /* ------------------------------ mo_window ------------------------------- */
@@ -309,15 +329,14 @@ typedef struct _AgentSpoofCBStruct {
 
 /* mo_window contains everything related to a single Document View
  * window, including subwindow details. */
-typedef struct mo_window {
+typedef struct _mo_window {
 	Widget base;
 	int mode;
     
 /* Subwindows. */
 	Widget source_win;
 	Widget save_win;
-	Widget upload_win;
-	Widget savebinary_win;  /* for binary transfer mode */
+/*######*/
 	Widget open_win;
 	Widget mail_fsb_win;
 	Widget mail_win;
@@ -335,7 +354,6 @@ typedef struct mo_window {
 	Widget news_sub_win;       /* News Subscribe Window */
 	Widget src_search_win;         /* source window document search */
 	Widget search_win;         /* internal document search */
-	Widget cci_win;	     /* common client interface control window */
 	Widget mailto_win;
 	Widget mailto_form_win;
 	Widget links_win;     /* window with list of links */
@@ -343,8 +361,6 @@ typedef struct mo_window {
 	XmString *links_items;
 	int links_count;
 
-	Widget ftpput_win, ftpremove_win, ftpremove_text, 
-		ftpmkdir_win, ftpmkdir_text;
 	char *ftp_site;
 
 	Widget session_menu;
@@ -360,9 +376,11 @@ typedef struct mo_window {
 
 	XmxMenuRecord *menubar;
 
-	Widget url_text;
+	Widget url_widget;
+	Widget dest_widget;		/* for a load to file */
+
 	Widget scrolled_win, view;
-	Widget tracker_label, logo, security;
+	Widget tracker_widget, logo, security;
 	Widget button_rc, button2_rc, encrypt;
 	Widget toolbarwin, topform;
 	int toolset;
@@ -377,10 +395,9 @@ typedef struct mo_window {
 	char *meter_text;
 	XFontStruct *meter_font;
 
-	struct mo_node *history;
+/* navigation data structure */
+	struct mo_node *first_node;
 	struct mo_node *current_node;
-
-	char *target_anchor;
 
 /* Document source window. */
 	Widget source_text;
@@ -464,8 +481,6 @@ typedef struct mo_window {
 	Widget include_fsb;
 	int editing_id;
 
-	char *cached_url;
-
 	Widget search_win_text;
 	Widget search_caseless_toggle;
 	Widget search_backwards_toggle;
@@ -477,37 +492,41 @@ typedef struct mo_window {
 	Widget src_search_backwards_toggle;
 	int src_search_pos;
 
-	Widget cci_win_text;
-	Widget cci_accept_toggle;
-	Widget cci_off_toggle;
-
-	int binary_transfer;
-	int delay_image_loads;
+	int delay_object_loads;
 /*SWP*/
 	Boolean body_color;
-	Boolean body_images;
 	int image_view_internal;
 
 /* PLB */
 	Widget subgroup;
 	Widget unsubgroup;
 
-	struct mo_window *next;
+	struct _mo_window *next;
 
 	int agent_state;
 	AgentSpoofCBStruct * agspd_cbd;
 	Widget agent_state_pulldown;
 
+	struct _PafDocDataStruct * pafd;
 #ifdef MULTICAST
 	McMoWType mc_type;	/* MC_MO_TYPE_UNICAST   */
 				/* MC_MO_TYPE_MAIN	*/
 				/* only the Main can send */
 				/* MC_MO_TYPE_RCV_URL_ONLY */
 				/* MC_MO_TYPE_RCV_ALL */
+	void (*mc_callme_on_new_doc)(char *fname, char *aurl_wa, 
+		MimeHeaderStructPtr mhs);
+	void (*mc_callme_on_new_object)(char *fname, char *aurl_wa, 
+		MimeHeaderStructPtr mhs);
 	struct _mc_user *mc_user;
 #endif
 	int delete_position_from_current_hotlist;
 } mo_window;
+
+typedef struct _BalloonInfoData {
+        mo_window * win;
+        char * msg;
+} BalloonInfoData;
 
 typedef struct {
         mo_window *win;
@@ -515,31 +534,27 @@ typedef struct {
         char *url;
 } EditFile;
 
-#ifdef MULTICAST
-#include "../libmc/mc_defs.h"
-extern IPAddr 	mc_addr_ip_group;
-extern unsigned short 	mc_port;
-extern unsigned short 	mc_rtcp_port;
-#endif
-
 /* ------------------------------- mo_node -------------------------------- */
 
 /* mo_node is a component of the linear history list.  A single
    mo_node will never be effective across multiple mo_window's;
    each window has its own linear history list. */
-typedef struct mo_node
-{
+typedef struct mo_node {
 	char *title;
-	char *url;
+	char *aurl_wa;	/* the full absolute url with anchor */
+	char *aurl;	/* THE absolute url of this document */
+	char *base_url;	/* a tag <BASE> is dectect, else aurl */
+	char *goto_anchor;	/* #target in url */
 	char *last_modified;
 	char *expires;
-	char *ref;	/*how the node was referred to from a previous anchor,*/
-			/*if such an anchor existed. */
 	char *text;	/* a copy of html text , need to be freed */
 			/* when the node is released */
+	struct mark_up * m_list;
 	int position;	 /* Position in the list, starting at 1; last item is*/
 			  /* effectively 0 (according to the XmList widget). */
 	int docid; 	/* This is returned from HTMLPositionToId. */
+	struct _MimeHeaderStruct * mhs;
+
 	int authType; 	/* Type of authorization */
 	struct mo_node *previous;
 	struct mo_node *next;
@@ -552,33 +567,9 @@ typedef enum {
 	mo_succeed
 } mo_status;
 
-/* ---------------------------- a few globals ----------------------------- */
-
-extern Display *dsp;
-extern XtAppContext app_context;
-#ifdef MULTICAST
-extern int 			mc_debug;
-extern int 			mc_fdread; 
-extern int 			mc_rtcp_fdread; 
-extern int 			mc_fdwrite;
-extern int 			mc_rtcp_fdwrite;
-extern time_t 			mc_init_gmt;
-extern unsigned short  		mc_my_pid;
-extern unsigned char 		mc_len_alias ;
-extern char *			mc_alias_name;
-extern unsigned int		mc_local_url_id;
-extern unsigned char		mc_len_local_url;
-extern char                     mc_local_url[MC_MAX_URL_SIZE+1];
-extern char * 			mc_sess_name;
-extern char * 			mc_media_name;
-extern time_t			mc_init_local_time;
-extern unsigned char		mc_ttl;
-#endif
-
 /* ------------------------------- menubar -------------------------------- */
 
-typedef enum
-{
+typedef enum {
 	mo_regular_fonts_tkn,
 	mo_small_fonts_tkn,
 	mo_large_fonts_tkn,
@@ -595,68 +586,30 @@ typedef enum
 	mo_l1_underlines_tkn,
 	mo_l2_underlines_tkn,
 	mo_l3_underlines_tkn,
-	mo_no_underlines_tkn,
-
-  mo_ftp_remove,
-  mo_ncsa_document_tkn,
-  mo_cc_tkn,
-  mo_checkout_tkn, mo_checkin_tkn
-
-/*##############*/
-   /*mo_news_sub_anchor, mo_news_unsub_anchor,*/
-   /*mo_news_mread_anchor,*/
-/* Password cash stuff */
-   /*mo_clear_passwd_cache,*/
-
+	mo_no_underlines_tkn
 } mo_token;
 
 /* ------------------------------ PROTOTYPES ------------------------------ */
 
 /* gui.c */
-extern mo_window *mo_fetch_window_by_id (int);
-extern char *mo_assemble_help_url (char *);
-extern mo_status mo_redisplay_window (mo_window *);
-extern mo_status mo_set_dtm_menubar_functions (mo_window *);
-extern mo_status mo_delete_window (mo_window *);
-extern mo_window *mo_duplicate_window (mo_window *);
-extern mo_window *mo_open_another_window (mo_window *, char *, char *, char *);
-extern mo_status mo_open_initial_window (void);
 extern int IconWidth, IconHeight, WindowWidth, WindowHeight;
 extern Pixmap *IconPix,*IconPixSmall,*IconPixBig;
-extern void MoCCISendEventOutput(CCI_events event_type);
 
-extern int force_dump_to_file;
-extern char *HTAppVersion;
-char *MakeFilename();
-long GetCardCount(char *fname);
-extern int imageViewInternal;
-extern int do_comment;
-int anchor_visited_predicate (Widget, char *);
 extern Pixmap securityKerberos4, securityBasic, securityMd5, securityNone,
 	securityUnknown, securityKerberos5, securityDomain, securityLogin;
-extern mo_status mo_post_access_document (mo_window *win, char *url,
-                                          char *content_type,
-                                          char *post_data);
-void mo_assemble_controls(mo_window *win, int detach);
 
 /* gui-extras.c */
 extern mo_status mo_post_links_window(mo_window *);
 extern mo_status mo_update_links_window(mo_window *);
 
-/* gui-dialogs.c */
-extern mo_status mo_post_save_window (mo_window *);
 /* called from libwww */
 extern mo_status mo_post_open_local_window (mo_window *);
 extern mo_status mo_post_open_window (mo_window *);
 extern mo_status mo_post_mail_window (mo_window *);
 extern mo_status mo_post_print_window (mo_window *);
-extern mo_status mo_post_source_window (mo_window *);
 extern mo_status mo_post_search_window (mo_window *);
 extern char *my_strerror(int);
-extern mo_status mo_post_news_win (mo_window *);
 extern mo_status mo_post_subscribe_win (mo_window *);
-extern mo_status mo_post_follow_win (mo_window *);
-extern mo_status mo_post_generic_news_win (mo_window *, int follow);
 
 /* gui-menubar.c */
 extern mo_status mo_set_fonts (mo_window *, int);
@@ -667,145 +620,14 @@ extern mo_status mo_write_default_hotlist (void);
 extern mo_status mo_post_hotlist_win (mo_window *);
 extern mo_status mo_add_node_to_current_hotlist (mo_window *);
 
-/* main.c */
-extern void mo_exit (void);
-
-/* mo-www.c */
-extern char *mo_tmpnam (char *);
-extern char *mo_convert_newlines_to_spaces (char *);
-extern mo_status mo_re_init_formats (void);
-
-extern char *mo_url_prepend_protocol(char *);
-extern char *mo_url_canonicalize (char *, char *);
-extern char *mo_url_canonicalize_keep_anchor (char *, char *);
-extern char *mo_url_canonicalize_local (char *);
-extern char *mo_url_to_unique_document (char *);
-extern char *mo_url_extract_anchor (char *);
-
-extern void application_user_info_wait (char *str);
-extern char *mo_escape_part (char *);
-extern char *mo_unescape_part (char *);
-
 /* pixmaps.c */
 extern void AnimatePixmapInWidget(Widget, Pixmap);
 extern void MakeAnimationPixmaps(Widget);
 
-/* techsupport.c */
-extern mo_status mo_send_mail_message (char *, char *, char *, char *, char *);
-extern FILE *mo_start_sending_mail_message (char *, char *, char *, char *);
-extern mo_status mo_finish_sending_mail_message (void);
-
-/* HTNews.c -- this should be elsewhere */
-extern void news_prev(char *url);
-extern void news_next(char *url);
-extern void news_prevt(char *url);
-extern void news_nextt(char *url);
-extern void news_index(char *url);
-extern void gui_news_index(mo_window *win);
-extern void gui_news_list(mo_window *win);
-extern void gui_news_prev(mo_window *win);
-extern void gui_news_next(mo_window *win);
-extern void gui_news_prevt(mo_window *win);
-extern void gui_news_nextt(mo_window *win);
-
-/* gui-ftp.c */
-extern mo_status mo_post_ftpput_window(mo_window *); 
-extern mo_status mo_post_ftpremove_window(mo_window *); 
-extern mo_status mo_post_ftpmkdir_window(mo_window *); 
-extern mo_status mo_post_ftpbar_window(mo_window *); 
-
 /* callback menubar_cb */
-void mo_back(Widget w, XtPointer clid, XtPointer calld);
-void mo_forward(Widget w, XtPointer clid, XtPointer calld);
-void mo_reload_document(Widget w, XtPointer clid, XtPointer calld);
-void mo_home_document(Widget w, XtPointer clid, XtPointer calld);
-void mo_history_list(Widget w, XtPointer clid, XtPointer calld);
-void mo_links_window(Widget w, XtPointer clid, XtPointer calld);
-void mo_open_document(Widget w, XtPointer clid, XtPointer calld);
-void mo_open_local_document(Widget w, XtPointer clid, XtPointer calld);
-void mo_reload_document_and_images(Widget w, XtPointer clid, XtPointer calld);
-void mo_refresh_document(Widget w, XtPointer clid, XtPointer calld);
-void mo_save_document(Widget w, XtPointer clid, XtPointer calld);
-void mo_new_window(Widget w, XtPointer clid, XtPointer calld);
-void mo_clone_window(Widget w, XtPointer clid, XtPointer calld);
-void mo_close_window(Widget w, XtPointer clid, XtPointer calld);
-void mo_register_node_in_default_hotlist(Widget w,XtPointer clid, XtPointer calld);
-void mo_network_starting_points(Widget w, XtPointer clid, XtPointer calld);
-void mo_internet_metaindex(Widget w, XtPointer clid, XtPointer calld);
-void mo_help_about(Widget w, XtPointer clid, XtPointer calld);
-void mo_mosaic_manual(Widget w, XtPointer clid, XtPointer calld);
-void mo_whats_new(Widget w, XtPointer clid, XtPointer calld);
-void mo_mosaic_demopage(Widget w, XtPointer clid, XtPointer calld);
-void mo_help_onversion(Widget w, XtPointer clid, XtPointer calld);
-void mo_help_onwindow(Widget w, XtPointer clid, XtPointer calld);
-void mo_help_faq(Widget w, XtPointer clid, XtPointer calld);
-void mo_help_html(Widget w, XtPointer clid, XtPointer calld);
-void mo_help_url(Widget w, XtPointer clid, XtPointer calld);
-void mo_techsupport(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_fmt0(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_fmt1(Widget w, XtPointer clid, XtPointer calld);
-void mo_search(Widget w, XtPointer clid, XtPointer calld);
-void mo_document_source(Widget w, XtPointer clid, XtPointer calld);
-void mo_document_edit(Widget w, XtPointer clid, XtPointer calld);
-void mo_document_date(Widget w, XtPointer clid, XtPointer calld);
-void mo_print_document(Widget w, XtPointer clid, XtPointer calld);
-void mo_mail_document(Widget w, XtPointer clid, XtPointer calld);
-void mo_cci(Widget w, XtPointer clid, XtPointer calld);
 #ifdef KRB5
 void mo_kerberosv5_login(Widget w, XtPointer clid, XtPointer calld);
 #endif
-void mo_proxy(Widget w, XtPointer clid, XtPointer calld);
-void mo_no_proxy(Widget w, XtPointer clid, XtPointer calld);
-void mo_exit_program(Widget w, XtPointer clid, XtPointer calld);
-void mo_regular_fonts_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_small_fonts_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_large_fonts_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_regular_helvetica_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_small_helvetica_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_large_helvetica_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_regular_newcentury_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_small_newcentury_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_large_newcentury_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_regular_lucidabright_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_small_lucidabright_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_large_lucidabright_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_default_underlines_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_l1_underlines_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_l2_underlines_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_l3_underlines_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_no_underlines_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_binary_transfer(Widget w, XtPointer clid, XtPointer calld);
-void mo_table_support(Widget w, XtPointer clid, XtPointer calld);
-void mo_body_color(Widget w, XtPointer clid, XtPointer calld);
-void mo_body_images(Widget w, XtPointer clid, XtPointer calld);
-void mo_image_view_internal(Widget w, XtPointer clid, XtPointer calld);
-void mo_delay_image_loads(Widget w, XtPointer clid, XtPointer calld);
-void mo_expand_images_current(Widget w, XtPointer clid, XtPointer calld);
-void mo_re_init(Widget w, XtPointer clid, XtPointer calld);
-void mo_clear_global_history(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_groups(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_list(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_index(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_prevt(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_prev(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_next(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_nextt(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_post(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_follow(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_sub(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_unsub(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_grp0(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_grp1(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_grp2(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_art0(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_art1(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_mread(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_munread(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_maunread(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_flush(Widget w, XtPointer clid, XtPointer calld);
-void mo_news_flushgroup(Widget w, XtPointer clid, XtPointer calld);
-void mo_ftp_put(Widget w, XtPointer clid, XtPointer calld);
-void mo_ftp_mkdir(Widget w, XtPointer clid, XtPointer calld);
 #ifdef MULTICAST
 void mo_multicast_send_tog(Widget w, XtPointer clid, XtPointer calld);
 void mo_multicast_show_participant(Widget w, XtPointer clid, XtPointer calld);
@@ -817,35 +639,15 @@ void mo_postscript_cb(Widget w, XtPointer clid, XtPointer calld);
 void mo_html_cb(Widget w, XtPointer clid, XtPointer calld);
 
 extern void InitChildProcessor();
-extern int MoCCIFormToClient( char *, char *, char *, char *, int);
 extern mo_status mo_edit_source(mo_window *win);
-extern void CommentCard(mo_window *win);
 extern void mo_init_menubar();
 extern mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t);
-
-extern void GetUrlData(Widget w, XtPointer clid, XtPointer calld);
 
 extern void System(char *cmd, char *title);
 extern mo_window *mo_main_next_window (mo_window *win);
 extern mo_status mo_source_date(mo_window *win);
-extern mo_status MoDisplayCCIWindow( mo_window *win);
 extern void ShowNoProxyDialog(mo_window *win);
 extern void ShowProxyDialog(mo_window *win);
-extern void gui_news_subgroup(mo_window *win);
-extern void gui_news_unsubgroup(mo_window *win);
-extern void gui_news_flush(mo_window *win);
-extern void gui_news_flushgroup(mo_window *win);
-extern void gui_news_showAllGroups (mo_window *win);
-extern void gui_news_showGroups (mo_window *win);
-extern void gui_news_showReadGroups (mo_window *win);
-extern void gui_news_showAllArticles (mo_window *win);
-extern void gui_news_showArticles (mo_window *win);
-extern void gui_news_markGroupRead (mo_window *win);
-extern void gui_news_markGroupUnread (mo_window *win);
-extern void gui_news_markArticleUnread (mo_window *win);
-extern mo_status mo_handle_ftpput(mo_window *win);
-extern mo_status mo_handle_ftpmkdir(mo_window *win);
-extern void mo_switch_mode(mo_window *win);
 
 mo_status mo_save_window(mo_window *win, char *fname,
                                         mo_format_token save_format);
@@ -855,6 +657,21 @@ mo_status mo_print_window(mo_window *win,
 mo_status mo_search_window(mo_window *win,char *str,int backward, int caselessi,
 	int news);
 
-extern void loadAgents();
-
+#if 0
+/* ACCES AUTHORIZATION part : extract from libwww2 */
+/* The enumeration HTAAScheme represents the possible authentication schemes
+ * used by the WWW Access Authorization. */
+typedef enum {
+    HTAA_UNKNOWN,
+    HTAA_NONE,                        
+    HTAA_BASIC,                       
+    HTAA_PUBKEY,
+    HTAA_KERBEROS_V4,
+    HTAA_KERBEROS_V5,                 
+    HTAA_MD5,                         
+    HTAA_DOMAIN,
+    HTAA_MAX_SCHEMES, /* THIS MUST ALWAYS BE LAST! Number of schemes */
+    HTAA_LOGIN /*No...this must always be last because it is a FTP hack*/
+} HTAAScheme;
+#endif
 #endif /* not __MOSAIC_H__ */

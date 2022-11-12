@@ -6,7 +6,6 @@
 #include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
-#include "../src/mo-www.h"
 #include "../src/mosaic.h"
 #include "HTMLform.h"
 
@@ -130,7 +129,7 @@ void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
 		}
 		def_w = m_w * cols;
 	}else {
-		if ( strcasecmp(tptr, "text") == 0 ){
+		if ( !strcasecmp(tptr, "text") ){
 			input_type = InputTypeText;
 			cols = 40;
 			sptr = ParseMarkTag(text, MT_INPUT, "SIZE");
@@ -139,7 +138,7 @@ void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
 				free(sptr);
 			}
 			def_w = m_w * cols;
-		} else if ( strcasecmp(tptr, "password") == 0 ){
+		} else if ( !strcasecmp(tptr, "password") ){
 			input_type = InputTypePassword;
 			cols = 40;
 			sptr = ParseMarkTag(text, MT_INPUT, "SIZE");
@@ -148,13 +147,13 @@ void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
 				free(sptr);
 			}
 			def_w = m_w * cols;
-		} else if ( strcasecmp(tptr, "checkbox") == 0 ){
+		} else if ( !strcasecmp(tptr, "checkbox") ){
 			input_type = InputTypeCheckbox;
 			def_w = 2 * m_w ;
-		} else if ( strcasecmp(tptr, "radio") == 0 ){
+		} else if ( !strcasecmp(tptr, "radio") ){
 			input_type = InputTypeRadio;
 			def_w = 2 * m_w ;
-		} else if ( strcasecmp(tptr, "submit") == 0 ){
+		} else if ( !strcasecmp(tptr, "submit") ){
 			input_type = InputTypeSubmit;
 			value = ParseMarkTag(text, MT_INPUT, "VALUE");
 			if ((value == NULL)||(*value == '\0')) {
@@ -163,7 +162,7 @@ void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
 			l = strlen ( value);
 			def_w = m_w * l;
 			free(value);
-		} else if ( strcasecmp(tptr, "reset") == 0 ){
+		} else if ( !strcasecmp(tptr, "reset") ){
 			input_type = InputTypeReset;
 			value = ParseMarkTag(text, MT_INPUT, "VALUE");
 			if ((value == NULL)||(*value == '\0')) {
@@ -172,7 +171,7 @@ void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
 			l = strlen ( value);
 			def_w = m_w * l;
 			free(value);
-		} else if ( strcasecmp(tptr, "file") == 0 ){
+		} else if ( !strcasecmp(tptr, "file") ){
 			input_type = InputTypeFile;
 			cols = 40;
 			sptr = ParseMarkTag(text, MT_INPUT, "SIZE");
@@ -181,11 +180,11 @@ void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
 				free(sptr);
 			}
 			def_w = m_w * cols;
-		} else if ( strcasecmp(tptr, "hidden") == 0 ){
+		} else if ( !strcasecmp(tptr, "hidden") ){
 			input_type = InputTypeHidden;
 			def_w = 0;
 			def_h = 0;
-		} else if ( strcasecmp(tptr, "image") == 0 ){
+		} else if ( !strcasecmp(tptr, "image") ){
 			input_type = InputTypeImage;
 			def_w = 20;	/* ######## pour l'instant !!! */
 			def_h = 20;	/* a calculer.. ######## */
@@ -212,7 +211,7 @@ void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
 		return;
 	}
 
-	if (tptr && caseless_equal(tptr, "image")) {
+	if (tptr && !strcasecmp(tptr, "image")) {
 		free(tptr);
 		tptr = (char *)malloc( strlen((*mptr)->start) +
 				strlen(" ISMAP") + strlen(MT_IMAGE) -
@@ -225,7 +224,7 @@ void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
 		ImagePlace(hw, *mptr, pcc);
 		(*mptr)->start = tptr2;
 		free(tptr);
-	} else if (tptr && caseless_equal(tptr, "hidden")) {
+	} else if (tptr && !strcasecmp(tptr, "hidden")) {
 /* hidden inputs have no element associated with them, just a widget record. */
 		free(tptr);
 		pcc->widget_id++;

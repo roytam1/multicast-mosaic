@@ -15,19 +15,20 @@
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
 #include "../libhtmlw/HTMLPutil.h"
-#include "mo-www.h"
+#include "mime.h"
 #include "cache.h"
+#include "util.h"
 
 typedef struct _CacheEntry {
 	char *url;              /* Canonical URL for this document. */
 	int exist;		/* Is this entry in used ? */
 	time_t last_modify;
+	char *content_type;
+	int content_encoding;
 	int size;
 } CacheEntry;
 
-/* An entry in a hash bucket, containing a URL (in canonical,
- * absolute form)
-*/
+/* An entry in a hash bucket, containing a URL (in canonical, absolute form) */
 typedef struct _HashEntry {
 	char *url;              /* Canonical URL for this document. */
 	int cid;
@@ -53,8 +54,7 @@ static Bucket * hash_tab;
 static int lnext_cid = 0;
 
 
-/* Given a URL, hash it and return the hash value, mod'd by the size
- * of the hash table. */
+/* Given a URL, return the hash value */
 static int hash_url (char *url)
 {       
         int len, i, val; 
@@ -68,8 +68,7 @@ static int hash_url (char *url)
         return val % HASH_TABLE_SIZE;
 }
 
-/* Assume url isn't already in the bucket; add it by
- * creating a new entry. */     
+/* if url isn't already in the bucket; add it by creating a new entry. */     
 static void add_url_to_bucket (int buck, char *url, int cid)
 { 
         Bucket *bkt = &(hash_tab[buck]);
@@ -114,7 +113,6 @@ static void remove_url_to_bucket(int buck, char * url)
 	}
 }
 	
-
 /* initialize the cache in ~/.mMosaic */
 /* check for dirname/cache.db file and the dirname/cache directory */
 /* the default dirname is ~/.mMosaic */
@@ -172,12 +170,11 @@ void MMCacheInit( char * root_dirname)
 	mptr = mlist = HTMLParse(data);
 	t = time(NULL);
 	hcid =0;
-/*	allouer et regarder le nombre de fichier max pour le cache (1000)
-	allouer la structure. cache_entry[MAX_N_FILE_CACHE]
-*/
-	cid_cache = (CacheEntry *) malloc( MAX_N_FILE_CACHE * sizeof(CacheEntry));
-/*	creer une table hash-code pour les url et donnant le cid. */
 
+/* alloc and look at max number of file MAX_N_FILE_CACHE */
+	cid_cache = (CacheEntry *) malloc( MAX_N_FILE_CACHE * sizeof(CacheEntry));
+
+/* create a hash-code table and a reverse cid table */
 	hash_tab = (Bucket *) malloc( MAX_N_FILE_CACHE * sizeof(Bucket));
 	for( i=0 ; i<MAX_N_FILE_CACHE; i++){
 		cid_cache[i].exist = 0;
@@ -187,21 +184,33 @@ void MMCacheInit( char * root_dirname)
 	}
 	while (mptr != NULL) {
 		char * fname;
+		char * content_type;
+		char * scontent_encoding;
+		int content_encoding;
 		int h;
 
 		if (mptr->type == M_ANCHOR && !mptr->is_end) {
 			href = ParseMarkTag(mptr->start, MT_ANCHOR, "href");
 			scid = ParseMarkTag(mptr->start, MT_ANCHOR, "cid");
+			content_type = ParseMarkTag(mptr->start, MT_ANCHOR, "content_type");
+			scontent_encoding = ParseMarkTag(mptr->start, MT_ANCHOR, "content_encoding");
+			if(!scontent_encoding || !content_type || !scid || !href) {
+				mptr = mptr->next;
+				continue;
+			}
 			fname = (char*) malloc(llen_cachedir_name +
 				strlen(scid) + 2);
 			sprintf(fname,"%s/%s",lcachedir_name,scid);
 			cid = atoi(scid);
+			content_encoding = atoi(scontent_encoding);
 			status = stat(fname, &s);
 			if ( status || cid >= MAX_N_FILE_CACHE || cid <= 0 ) { /* nofile */
 				unlink(fname);
 				free(fname);
 				free(scid);
 				free(href);
+				free(scontent_encoding);
+				free(content_type);
 				mptr = mptr->next;
 				continue;
 			}
@@ -210,6 +219,8 @@ void MMCacheInit( char * root_dirname)
 				free(fname);
 				free(scid);
 				free(href);
+				free(scontent_encoding);
+				free(content_type);
 				mptr = mptr->next;
 				continue;
 			}
@@ -219,6 +230,8 @@ void MMCacheInit( char * root_dirname)
 			cid_cache[cid].exist = 1;
 			cid_cache[cid].last_modify = s.st_mtime;
 			cid_cache[cid].size = s.st_size;
+			cid_cache[cid].content_type = content_type;
+			cid_cache[cid].content_encoding = content_encoding;
 
 			h = hash_url(href);
 			add_url_to_bucket(h, href, cid);
@@ -255,58 +268,112 @@ void MMCacheInit( char * root_dirname)
 		lnext_cid = 1;
 }
 
-/* -input :
-	the absolute url to fetch in the cache
-   - output :
-	fname_ret is the filename containing the data.
-	fname_ret is allocated
-   - return the size of the file
-*/
-int MMCacheFetchCachedData(char * url , char ** fname_ret)
+/* A suggest from mjr@pc29.dfg.de*/
+static int IsCacheableUrl( char * aurl_wa)
 {
+	int len;
+
+/* URL with '?' */
+	if( (char *)strchr(aurl_wa, '?' ) != NULL ) {
+		return 0;
+	}
+/* minimum len for url : 
+ * 	proto : 3
+ * 	://h/ : 5
+ * total : 8
+ */
+	len = strlen(aurl_wa);
+	if (len < 8)
+		return 0;
+	if ( !strcasecmp( aurl_wa + len - 4, ".cgi") )
+		return 0;
+	return 1;
+}
+
+/* aurl_wa : full url
+ * aurl :    cannon url. The reference to find in cache
+ * fdw : file des to write
+ * mhs : a Struct to fill
+ * return 0/1 : Notfound/Found
+ */
+int MMCacheFindData(char *aurl_wa, char *aurl, int fdw, MimeHeaderStruct *mhs)
+{
+#define CACHE_BUFSIZ 8192
+	char buf[CACHE_BUFSIZ];
 	int status = 0;
-	int h;
+	int h,i;
 	HashEntry * deb;
 	time_t t = time(NULL);
 	char scid[40];
 	int cid;
+	int fdr;
+	char * fname;
 
-	h = hash_url(url);
+	if (! IsCacheableUrl(aurl_wa))	/* dont't find uncacheable url */
+		return 0;
+	
+	h = hash_url(aurl);
 	deb = hash_tab[h].head;
 	while (deb != NULL){
-		if (strcmp(url,deb->url) == 0) {
+		if (strcmp(aurl,deb->url) == 0) {
 			cid = deb->cid;
 			sprintf(scid,"%ld",cid);
-			*fname_ret = (char *) malloc(llen_cachedir_name +
+			fname = (char *) malloc(llen_cachedir_name +
 						strlen(scid)+ 2);
-			sprintf(*fname_ret, "%s/%s", lcachedir_name, scid); /* the filename */
-			status = cid_cache[cid].size; 
-			return status;
+			sprintf(fname, "%s/%s", lcachedir_name, scid); /* the filename */
+			mhs->content_length = cid_cache[cid].size; 
+			mhs->content_encoding = cid_cache[cid].content_encoding;
+			mhs->content_type = strdup(cid_cache[cid].content_type);
+			mhs->last_modified = strdup( 
+				rfc822ctime(cid_cache[cid].last_modify));
+			fdr = open(fname, O_RDONLY);
+			while ( (i = read(fdr,buf,CACHE_BUFSIZ)) >0)
+				write(fdw, buf, i);
+			close (fdr);
+			free(fname);
+			return 1;
 		}
 		deb = deb->next;
 	}
-	*fname_ret = NULL;
 	return 0;
 }
 
 /* - input :
-	data, the data to cache in a file.
-	len, the len of data.
-	url, the absolute url.
-   - output :
-	fname_ret, the name of the file containing the cached data.
-   - return the len of the file (same as len or 0)
+	fname_r, file to read.
+	aurl_wa, the full url (with optional query)
+	aurl, the cannon url. Reference for cache
+	mhs, mime header struct
 */
-int MMCachePutDataInCache(char * data, int len, char * url, char ** fname_ret)
+void MMCachePutDataInCache(char *fname_r, char *aurl_wa, char *aurl,
+	MimeHeaderStruct * mhs)
 {
+	char buf[CACHE_BUFSIZ];
 	HashEntry * deb;
 	char scid[40];
-	int cid, lenget, h, fd;
+	int cid, lenget, h, i;
 	time_t t = time(NULL);
+	int exist = 0;
+	char *fname_w;
+	int fdr, fdw;
 
-	lenget = MMCacheFetchCachedData(url,fname_ret);
-	if (lenget == 0){
-		h = hash_url(url);
+	if (! IsCacheableUrl(aurl_wa))	/* dont't cache uncacheable url */
+		return ;
+
+	if ( mhs->cache_control & CACHE_CONTROL_NO_CACHE)
+		return;
+
+/* look if an entry still exist */
+	h = hash_url(aurl);
+	deb = hash_tab[h].head;
+	while (deb != NULL){
+		if (strcmp(aurl,deb->url) == 0) {
+			exist = 1;
+			break;
+		}
+		deb = deb->next;
+	}
+	if ( !exist ){
+		h = hash_url(aurl);
 		cid = lnext_cid;
 		if (cid_cache[cid].url) {
 			remove_url_to_bucket(hash_url(cid_cache[cid].url), cid_cache[cid].url);
@@ -315,73 +382,59 @@ int MMCachePutDataInCache(char * data, int len, char * url, char ** fname_ret)
 		lnext_cid++;
 		if ( lnext_cid >= MAX_N_FILE_CACHE)
 			lnext_cid = 1;
-		add_url_to_bucket(h, url, cid);
+		add_url_to_bucket(h, aurl, cid);
 		sprintf(scid,"%ld",cid); 
-		*fname_ret = (char *) malloc(llen_cachedir_name +
+		fname_w = (char *) malloc(llen_cachedir_name +
 			strlen(scid)+ 2);
-		sprintf(*fname_ret, "%s/%s", lcachedir_name, scid); /* the filename */
-		cid_cache[cid].url = strdup(url);
-		cid_cache[cid].size = len;
+		sprintf(fname_w, "%s/%s", lcachedir_name, scid); /* the filename */
+		cid_cache[cid].url = strdup(aurl);
+		cid_cache[cid].size = mhs->content_length;
 		cid_cache[cid].last_modify = t;
+		cid_cache[cid].content_type = strdup(mhs->content_type);
+		cid_cache[cid].content_encoding = mhs->content_encoding;
 		cid_cache[cid].exist = 1;
-		fd = open(*fname_ret,O_WRONLY | O_CREAT | O_TRUNC,0744);
-		write(fd,data,len);
-		close (fd);
-		return len;
+		fdr = open(fname_r,O_RDONLY);
+		fdw = open(fname_w,O_WRONLY | O_CREAT | O_TRUNC,0744);
+		while ( (i = read(fdr,buf,CACHE_BUFSIZ)) >0)
+			write(fdw, buf, i);
+		close (fdw);
+		close (fdr);
+		free(fname_w);
+		return ;
 	}
 /* there is still data in cache: force the remplacment */
-	h = hash_url(url);     
+	h = hash_url(aurl);     
 	deb = hash_tab[h].head;
 	while (deb != NULL){               
-		if (strcmp(url,deb->url) == 0) {
+		if (strcmp(aurl,deb->url) == 0) {
 			cid = deb->cid;
 			sprintf(scid,"%ld",cid); 
-			*fname_ret = (char *) malloc(llen_cachedir_name +
-			strlen(scid)+ 2);
-			sprintf(*fname_ret, "%s/%s", lcachedir_name, scid); /* the filename */
+			fname_w = (char *) malloc(llen_cachedir_name +
+				strlen(scid)+ 2);
+			sprintf(fname_w, "%s/%s", lcachedir_name, scid); /* the filename */
 				/* cid_cache[cid].url = strdup(url); */
-			cid_cache[cid].size = len;
+			cid_cache[cid].size = mhs->content_length;
 			cid_cache[cid].last_modify = t;
+			cid_cache[cid].content_type = strdup(mhs->content_type);
+			cid_cache[cid].content_encoding = mhs->content_encoding;
 			cid_cache[cid].exist = 1;
-			fd = open(*fname_ret,O_WRONLY | O_CREAT | O_TRUNC,0744);
-			write(fd,data,len);
-			close (fd);
-			return len;
+			fdr = open(fname_r,O_RDONLY);
+			fdw = open(fname_w,O_WRONLY | O_CREAT | O_TRUNC,0744);
+			while ( (i = read(fdr,buf,CACHE_BUFSIZ)) >0)
+				write(fdw, buf, i);
+			close (fdw);
+			close (fdr);
+			free(fname_w);
+			return ;
 		}
 		deb = deb->next;
 	}
 /* NEVER GOES HERE !!! */
+	fprintf(stderr, "This a Bug. Please report\n");
+	fprintf(stderr, "MMCachePutDataInCache :Problem in cache\n");
+	fprintf(stderr, "Aborting ...\n");
 	abort();
-	*fname_ret = NULL;
-	return 0;
-}
-
-/*
-   Force the load and cache the data
-
-   - input :
-	url, get the data from this url throught libwww.
-   - output :
-	fname_ret, the data go in this file
-	ldata_ret, the size of the file.
-   - return a status like 'mo_pull_er_over_virgin'
-*/
-int MMCacheGetDataAndCache(char * url, char ** fname_ret, int * ldata_ret, mo_window * win)
-{
-	int len_ret, cid, rv;
-	struct stat s;
-
-/* put temp data to create a file and entry in cache */
-	len_ret = MMCachePutDataInCache("", 1, url, fname_ret);
-
-/* fname is now the file where to put data */
-	rv = mo_pull_er_over_virgin(url, *fname_ret, win);
-
-/* now adjust the size */
-	stat(*fname_ret, &s);
-	cid = atoi( strrchr(*fname_ret,'/') + 1);
-	*ldata_ret = cid_cache[cid].size = s.st_size;
-	return rv;
+	return ;
 }
 
 /* Reset the cache. Delete all cached data */
@@ -443,7 +496,9 @@ void MMCacheWriteCache(void )
 	 for( i=0 ; i<MAX_N_FILE_CACHE; i++){
 		if (! cid_cache[i].url)
 			continue;
-		fprintf (fp, "<li><a size=%u cid=%d mdate=%u href=\"%s\">%s</a>\n",
+		fprintf (fp, "<li><a content_type=%s content_encoding=%d size=%u cid=%d mdate=%u href=\"%s\">%s</a>\n",
+			cid_cache[i].content_type,
+			cid_cache[i].content_encoding,
 			cid_cache[i].size,
 			i,
 			cid_cache[i].last_modify,

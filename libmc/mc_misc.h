@@ -14,8 +14,12 @@
  * dauphin@sig.enst.fr
  */
 
+#ifdef MULTICAST
 
 extern time_t McDate();
 extern void SendGotoDataTimeOutCb(XtPointer clid, XtIntervalId * id);
 extern void McSendUserInfoTimeOutCb(XtPointer clid, XtIntervalId * id);
 extern char * McReadEo( char* fnam, unsigned int * len_ret);
+extern u_int32_t McRtpTimeStamp(struct timeval ts);
+
+#endif

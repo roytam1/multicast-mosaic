@@ -64,6 +64,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <math.h>
+#include <stdlib.h>
 #ifdef __bsdi__
 #include <sys/malloc.h>
 #else
@@ -188,9 +189,6 @@ int HTML_Print_Footers     = 1;	/* Flag whether footnote printing enabled */
 
 int HTML_Print_Paper_Size_A4 = DEFAULT_PAGE_SIZE;
 
-extern int installed_colormap;
-extern Colormap installed_cmap;
-
 /*
  * GetDpi - return Dots-per-inch of the screen
  *
@@ -263,7 +261,7 @@ static int PSprintf(char *format, ...)
     len = vsprintf(PS_string+PS_len, format, args);
     /* this is a hack to make it work on systems were vsprintf(s,.)
      * returns s, instead of the len. */
-    if (len != EOF && len != NULL)
+    if (len != EOF && len != 0)
         PS_len += strlen(PS_string+PS_len);
     va_end(args);
     return(len);
@@ -1510,18 +1508,8 @@ String ParseTextToPSString(HTMLWidget	 	hw,
 		   NULL);
     fg_color.pixel = fg_pixel;
     bg_color.pixel = bg_pixel;
-    XQueryColor(XtDisplay(hw->html.view),
-		(installed_colormap ?
-		 installed_cmap :
-		 DefaultColormap(XtDisplay(hw->html.view),
-				DefaultScreen(XtDisplay(hw->html.view)))),
-		&fg_color);
-    XQueryColor(XtDisplay(hw->html.view),
-		(installed_colormap ?
-		 installed_cmap :
-		 DefaultColormap(XtDisplay(hw->html.view),
-				 DefaultScreen(XtDisplay(hw->html.view)))),
-		&bg_color);
+    XQueryColor(XtDisplay(hw->html.view), hw->core.colormap , &fg_color);
+    XQueryColor(XtDisplay(hw->html.view), hw->core.colormap , &bg_color);
     
     /*  this piece of code is needed if the user selects a portion
      *  of the document with the mouse.
@@ -1574,7 +1562,7 @@ String ParseTextToPSString(HTMLWidget	 	hw,
     Pixels_Page = (int) (page_dimens.text_height / Points_Pixel);		
 	
     PSinit();
-    PSheader(hw->html.title, fontfamily, url, time_str);
+    PSheader("tilte:" /*hw->html.title*/, fontfamily, url, time_str);
     PSnewpage();
 
     last = start;

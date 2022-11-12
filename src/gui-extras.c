@@ -11,9 +11,9 @@
 #include "gui.h"
 #include "gui-documents.h"
 #include "gui-dialogs.h"
-#include "mo-www.h"
-
-#include "mo-www.h"
+#include "URLParse.h"
+#include "mime.h"
+#include "paf.h"
 
 #include "libnut/system.h"
 
@@ -22,12 +22,18 @@ static XmxCallback (links_win_cb0)		 /* GOTO */
 	mo_window *win = (mo_window*)client_data;
 	int *posns, pcount;
 	char *text;
+	RequestDataStruct rds;
   
 	if(XmListGetSelectedPos(win->links_list, &posns, &pcount)){
 		if(pcount && XmStringGetLtoR(win->links_items[posns[0]-1],
 		   XmSTRING_DEFAULT_CHARSET, &text)){
-			if(strncmp(text,"===",3))
-				mo_load_window_text(win,text,NULL);
+			if(strncmp(text,"===",3)){
+				rds.req_url = text;
+				rds.post_data = NULL;
+				rds.ct = NULL;
+				rds.is_reloading = True;
+				MMPafLoadHTMLDocInWin(win, &rds);
+			}
 			XtFree(text);
 		}
 		XtFree((char *)posns);
@@ -46,9 +52,7 @@ static XmxCallback (links_win_cb2) 		/* HELP */
 {
 	mo_window *win = (mo_window*)client_data;
   
-	mo_open_another_window (win, 
-		mo_assemble_help_url ("help-on-links.html"),
-		NULL, NULL);
+	mo_open_another_window(win, mo_assemble_help_url("help-on-links.html"));
 }
 static XmxCallback (links_win_cb3)	 /* SAVE TO FILE */
 {
@@ -61,9 +65,9 @@ static XmxCallback (links_win_cb3)	 /* SAVE TO FILE */
 		   XmSTRING_DEFAULT_CHARSET, &text)){
 			if(strncmp(text,"===",3)){
 				url = mo_url_canonicalize(
-						text,win->current_node->url);
-				if(mo_pull_er_over_virgin(url,fnam = mo_tmpnam(text),win))
-					mo_rename_binary_file(win, fnam);
+						text,win->current_node->base_url);
+				fnam = tempnam (mMosaicTmpDir,"mMo");
+				MMPafSaveData(mMosaicToplevelWidget,url,fnam);
 				free(url);
 				free(fnam);
 			}
@@ -71,7 +75,6 @@ static XmxCallback (links_win_cb3)	 /* SAVE TO FILE */
 		}
 		XtFree((char *)posns);
 	}
-	mo_gui_done_with_icon(win);
 }
 
 static void links_list_cb(Widget w, XtPointer client, XtPointer call)
@@ -79,11 +82,17 @@ static void links_list_cb(Widget w, XtPointer client, XtPointer call)
 	mo_window *win = (mo_window *) client;
 	char *text;
 	XmListCallbackStruct *cs = (XmListCallbackStruct *) call;
+	RequestDataStruct rds;
   
 	if(XmStringGetLtoR(win->links_items[cs->item_position-1],
 	   XmSTRING_DEFAULT_CHARSET, &text)){
-		if(strncmp(text,"===",3))
-			mo_load_window_text(win,text,NULL);
+		if(strncmp(text,"===",3)){
+			rds.req_url = text;
+			rds.post_data = NULL;
+			rds.ct = NULL;
+			rds.is_reloading = True;
+			MMPafLoadHTMLDocInWin(win, &rds);
+		}
 		XtFree(text);
 	}
 /* Don't unmanage the list. */
@@ -254,7 +263,7 @@ void System(char *cmd, char *title)
 	} else if (*buf) {
 		/*give them the output*/
 		sprintf(final,"%s%s",final,buf);
-		application_error(final,title);
+		XmxMakeErrorDialogWait(mMosaicToplevelWidget,mMosaicAppContext,final,title);
 		return;
 	}
 	return;

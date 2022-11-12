@@ -1,0 +1,156 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+
+<head>
+<meta http-equiv="Content-Type"
+content="text/html; charset=iso-8859-1">
+<meta name="GENERATOR" content="Microsoft FrontPage 2.0">
+<title>Data Synchronization</title>
+</head>
+
+<body bgcolor="#FFFFFF">
+
+<pre>
+From frank@ctcqnx4.ctc.cummins.com
+Anyway, here is an example, if you click the hyperlink at
+the top of the page, it will take a while (compared to
+old Mosaic, or other browsers) to jump to the right place.
+
+By the way, it seems like if you have a image background
+and while you are scrolling the page or pageup/pagedown, 
+the display screen blinks a lot.
+<pre>
+
+<ul>
+    <li><p align="left"><a href="#Overview"><font
+        size="4"><b><i>Overview</i></b></font></a></p>
+    </li>
+    <li><p align="left"><a href="#Concepts"><font
+        size="4"><b><i>Concepts</i></b></font></a></p>
+    </li>
+    <li><p align="left"><a href="#Specifications"
+        ><font size="4"><b><i>Specifications</i></b></font></a></p>
+    </li>
+</ul>
+
+<h1 align="right"><font size="7"><b>2</b></font></h1>
+
+<h1 align="right"><font size="7"><b>Data </b></font></h1>
+
+<h1 align="right"><font size="7"><b>Synchronization</b></font></h1>
+
+<p><a name="Overview"><font size="4"><b><i>Overview</i></b></font></a></p>
+
+
+<p><font size="2"></font>&nbsp;</p>
+
+<h2><a name="Concepts"><font size="4"><b><i>Concepts</i></b></font></a></h2>
+
+<p>Some data synchronization concepts are summarized here to
+provide a basic understanding of the data synchronization
+capability:</p>
+
+<p align="center"><font size="2"><img src="images/image2.gif"
+width="532" height="259"></font></p>
+
+<h2><a name="Specifications"><font size="4"><b><i>Specifications</i></b></font></a></h2>
+
+<p>The data synchronization tool is configured with a
+specification file and command to activate the specifications, as
+follows:</p>
+
+<blockquote>
+    <p>ds_specs data_sync.421</p>
+</blockquote>
+
+<p>The specification file is divided into different sections. The
+types of sections contained in the file are:</p>
+
+<blockquote>
+    <blockquote>
+        <blockquote>
+            <ul>
+                <li>header</li>
+                <li>collector</li>
+                <li>output</li>
+                <li>collector group</li>
+            </ul>
+        </blockquote>
+    </blockquote>
+</blockquote>
+
+<p><font size="1"><i>Table 1 - Information Contained in the
+Header</i></font></p>
+
+<table border="1" cellpadding="7" width="590" bordercolor="#7F7F7F">
+    <tr>
+        <td width="37%"><strong>Information</strong></td>
+        <td width="63%"><strong>Description</strong></td>
+    </tr>
+    <tr>
+        <td width="37%">Collection Start Event:</td>
+        <td width="63%">This event should be set by the user or gp-test to
+	request the start of a synchronized data collection. Required.</td>
+    </tr>
+    <tr>
+        <td width="37%">Collection Stop Event:</td>
+        <td width="63%">The name of an event which will be set by
+        the user to request the synchronized data collection in
+        progress be stopped and the data collected up to the stop
+        point be stored. Required.</td>
+    </tr>
+    <tr>
+        <td width="37%">Collection Abort Event:</td>
+        <td width="63%">The name of an event which will be set by
+        the user to request the synchronized data collection in
+        progress be aborted and all data gathered and not yet
+        stored be discarded. Required.</td>
+    </tr>
+    <tr>
+        <td width="37%">Data Synchronization Variable</td>
+        <td width="63%">The label of an integer variable which
+        will be incremented at the start of a new synchronized
+        collection. The variable has to exist already in the
+        ASSET system and will typically be a general usage
+        variable. The variable is used as part of the key for
+        storing data. The variable should be identified as a
+        saved parameter if there is an interest in maintaining a
+        unique key over a long period of time. Optional.</td>
+    </tr>
+</table>
+<p>An example of a header section is:</p>
+<p><font size="2" face="Courier New">#AbortOnErr</font></p>
+<p><font size="1"><i>Table 2 - Information in the Collector Section</i></font></p>
+
+<p><font size="2"></font>&nbsp;</p>
+<p>An example of a collector section is:</p>
+<p><font size="2" face="Courier New">$Collector</font></p>
+<h3><b>Output Header:</b></h3>
+
+<p>The information contained in an output section header is:</p>
+
+<p><font size="1"><i>Table 3 - Information in the Output Section
+Header</i></font></p>
+
+<p><font size="1"><i>Table 5 - Information in a PAM Flat File
+Specification Section</i></font></p>
+
+<table border="1" cellpadding="7" width="590" bordercolor="#7F7F7F">
+    <tr>
+        <td width="28%"><strong>Information</strong></td>
+        <td width="72%"><strong>Description</strong></td>
+    </tr>
+    <tr>
+        <td width="28%">PAM Spec File Name:</td>
+        <td width="72%">The path of a file which contains the
+        specifications for a PAM data point. See the User Manual
+        section on PAM for more information about this
+        specification file format.</td>
+    </tr>
+</table>
+
+<p><font size="1"><i>Table 6 - Information in a Collector Group
+Section</i></font></p>
+
+</body>
+</html>

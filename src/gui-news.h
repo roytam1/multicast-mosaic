@@ -37,6 +37,7 @@ void gui_news_prev(mo_window *win);
 void gui_news_next(mo_window *win);
 void gui_news_prevt(mo_window *win);
 void gui_news_nextt(mo_window *win);
+void news_status(char *url, int *prevt, int *nextt, int *prev, int *next, int *follow);
 
 #endif
 

@@ -41,7 +41,7 @@ struct timezone Tz;
 /*for memset*/
 #include <memory.h>
 
-char *xpmColorKeys[] = {
+char *_MMxpmColorKeys[] = {
     "s",				/* key #1: symbol */
     "m",				/* key #2: mono visual */
     "g4",				/* key #3: 4 grays visual */
@@ -49,21 +49,17 @@ char *xpmColorKeys[] = {
     "c"					/* key #5: color visual */
 };
 
-xpmDataType xpmDataTypes[] = {
-    "", "!", "\n", '\0', '\n', "", "", "", "",	/* Natural type */
-    "C", "/*", "*/", '"', '"', ",\n", "static char *", "[] = {\n", "};\n",
-    "Lisp", ";", "\n", '"', '"', "\n", "(setq ", " '(\n", "))\n",
-#ifdef VMS
-    NULL
-#else
-    NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL
-#endif
+xpmDataType _MMxpmDataTypes[] = {
+    {"", "!", "\n", '\0', '\n', "", "", "", ""},	/* Natural type */
+    {"C", "/*", "*/", '"', '"', ",\n", "static char *", "[] = {\n", "};\n"},
+    {"Lisp", ";", "\n", '"', '"', "\n", "(setq ", " '(\n", "))\n"},
+    {NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL}
 };
 
 /*
  * Free the computed color table
  */
-void xpmFreeColorTable_( char ***colorTable, int ncolors)
+static void _MMxpmFreeColorTable_( char ***colorTable, int ncolors)
 {
     int a, b;
     char ***ct, **cts;
@@ -73,10 +69,10 @@ void xpmFreeColorTable_( char ***colorTable, int ncolors)
 	    if (*ct) {
 		for (b = 0, cts = *ct; b <= NKEYS; b++, cts++)
 		    if (*cts)
-			XpmFree(*cts);
-		XpmFree(*ct);
+			_MMXpmFree(*cts);
+		_MMXpmFree(*ct);
 	    }
-	XpmFree(colorTable);
+	_MMXpmFree(colorTable);
     }
 }
 
@@ -85,7 +81,7 @@ void xpmFreeColorTable_( char ***colorTable, int ncolors)
  * Intialize the xpmInternAttrib pointers to Null to know
  * which ones must be freed later on.
  */
-void xpmInitInternAttrib( xpmInternAttrib *attrib)
+void _MMxpmInitInternAttrib( xpmInternAttrib *attrib)
 {
     attrib->ncolors = 0;
     attrib->colorTable = NULL;
@@ -99,30 +95,30 @@ void xpmInitInternAttrib( xpmInternAttrib *attrib)
 /*
  * Free the xpmInternAttrib pointers which have been allocated
  */
-void xpmFreeInternAttrib( xpmInternAttrib *attrib)
+void _MMxpmFreeInternAttrib( xpmInternAttrib *attrib)
 {
     unsigned int a, ncolors;
     char **sptr;
 
     if (attrib->colorTable)
-	xpmFreeColorTable_(attrib->colorTable, attrib->ncolors);
+	_MMxpmFreeColorTable_(attrib->colorTable, attrib->ncolors);
     if (attrib->pixelindex)
-	XpmFree(attrib->pixelindex);
+	_MMXpmFree(attrib->pixelindex);
     if (attrib->xcolors)
-	XpmFree(attrib->xcolors);
+	_MMXpmFree(attrib->xcolors);
     if (attrib->colorStrings) {
 	ncolors = attrib->ncolors;
 	for (a = 0, sptr = attrib->colorStrings; a < ncolors; a++, sptr++)
 	    if (*sptr)
-		XpmFree(*sptr);
-	XpmFree(attrib->colorStrings);
+		_MMXpmFree(*sptr);
+	_MMXpmFree(attrib->colorStrings);
     }
 }
 
 /*
  * open the given file to be read as an xpmData which is returned.
  */
-int xpmReadFile( char *filename, xpmData *mdata)
+int _MMxpmReadFile( char *filename, xpmData *mdata)
 {
 #ifdef ZPIPE
     char *compressfile, buf[BUFSIZ];
@@ -157,7 +153,7 @@ int xpmReadFile( char *filename, xpmData *mdata)
 	    if (!stat(compressfile, &status)) {
 		sprintf(buf, "uncompress -c %s", compressfile);
 		if (!(mdata->stream.file = popen(buf, "r"))) {
-		    XpmFree(compressfile);
+		    _MMXpmFree(compressfile);
 		    return (XpmOpenFailed);
 		}
 		mdata->type = XPMPIPE;
@@ -167,7 +163,7 @@ int xpmReadFile( char *filename, xpmData *mdata)
 		if (!stat(compressfile, &status)) {
 		    sprintf(buf, "gunzip -c %s", compressfile);
 		    if (!(mdata->stream.file = popen(buf, "r"))) {
-			XpmFree(compressfile);
+			_MMXpmFree(compressfile);
 			return (XpmOpenFailed);
 		    }
 		    mdata->type = XPMPIPE;
@@ -175,7 +171,7 @@ int xpmReadFile( char *filename, xpmData *mdata)
 #endif
 		    if (!(mdata->stream.file = fopen(filename, "r"))) {
 #ifdef ZPIPE
-			XpmFree(compressfile);
+			_MMXpmFree(compressfile);
 #endif
 			return (XpmOpenFailed);
 		    }
@@ -183,7 +179,7 @@ int xpmReadFile( char *filename, xpmData *mdata)
 #ifdef ZPIPE
 		}
 	    }
-	    XpmFree(compressfile);
+	    _MMXpmFree(compressfile);
 	}
 #endif
     }
@@ -195,7 +191,7 @@ int xpmReadFile( char *filename, xpmData *mdata)
 /*
  * close the file related to the xpmData if any
  */
-int xpmDataClose( xpmData *mdata)
+int _MMxpmDataClose( xpmData *mdata)
 {
     switch (mdata->type) {
     case XPMARRAY:
@@ -327,7 +323,7 @@ static int ParseComment( xpmData *mdata)
 /*
  * skip to the end of the current string and the beginning of the next one
  */
-int xpmNextString( xpmData *mdata)
+int _MMxpmNextString( xpmData *mdata)
 {
     if (!mdata->type)
 	mdata->cptr = (mdata->stream.data)[++mdata->line];
@@ -377,7 +373,7 @@ int xpmNextString( xpmData *mdata)
     return 0;
 }
 
-unsigned int atoui( register char *p, unsigned int l, unsigned int *ui_return)
+static unsigned int atoui( register char *p, unsigned int l, unsigned int *ui_return)
 {
     register int n, i;
 
@@ -406,22 +402,22 @@ static int ParseValues( xpmData *data, unsigned int *width, unsigned int *height
     /*
      * read values: width, height, ncolors, chars_per_pixel
      */
-    if (!(xpmNextUI(data, width) && xpmNextUI(data, height)
-	  && xpmNextUI(data, ncolors) && xpmNextUI(data, cpp)))
+    if (!(_MMxpmNextUI(data, width) && _MMxpmNextUI(data, height)
+	  && _MMxpmNextUI(data, ncolors) && _MMxpmNextUI(data, cpp)))
 	return (XpmFileInvalid);
 
     /*
      * read optional information (hotspot and/or XPMEXT) if any
      */
-    l = xpmNextWord(data, buf);
+    l = _MMxpmNextWord(data, buf);
     if (l) {
 	*extensions = l == 6 && !strncmp("XPMEXT", buf, 6);
 	if (*extensions)
-	    *hotspot = xpmNextUI(data, x_hotspot)
-		&& xpmNextUI(data, y_hotspot);
+	    *hotspot = _MMxpmNextUI(data, x_hotspot)
+		&& _MMxpmNextUI(data, y_hotspot);
 	else {
-	    *hotspot = atoui(buf, l, x_hotspot) && xpmNextUI(data, y_hotspot);
-	    l = xpmNextWord(data, buf);
+	    *hotspot = atoui(buf, l, x_hotspot) && _MMxpmNextUI(data, y_hotspot);
+	    l = _MMxpmNextWord(data, buf);
 	    *extensions = l == 6 && !strncmp("XPMEXT", buf, 6);
 	}
     }
@@ -447,10 +443,10 @@ static int ParseColors( xpmData *data, unsigned int ncolors,
 	return (XpmNoMemory);
 
     for (a = 0, ct = colorTable; a < ncolors; a++, ct++) {
-	xpmNextString(data);		/* skip the line */
+	_MMxpmNextString(data);		/* skip the line */
 	cts = *ct = (char **) XpmCalloc((NKEYS + 1), sizeof(char *));
 	if (!cts) {
-	    xpmFreeColorTable_(colorTable, ncolors);
+	    _MMxpmFreeColorTable_(colorTable, ncolors);
 	    return (XpmNoMemory);
 	}
 
@@ -459,20 +455,20 @@ static int ParseColors( xpmData *data, unsigned int ncolors,
 	 */
 	*cts = (char *) XpmMalloc(cpp + 1);	/* + 1 for null terminated */
 	if (!*cts) {
-	    xpmFreeColorTable_(colorTable, ncolors);
+	    _MMxpmFreeColorTable_(colorTable, ncolors);
 	    return (XpmNoMemory);
 	}
 	for (b = 0, s = *cts; b < cpp; b++, s++)
-	    *s = xpmGetC(data);
+	    *s = _MMxpmGetC(data);
 	*s = '\0';
 
 	/*
 	 * store the string in the hashtable with its color index number
 	 */
 	if (USE_HASHTABLE) {
-	    ErrorStatus = xpmHashIntern(hashtable, *cts, HashAtomData(a));
+	    ErrorStatus = _MMxpmHashIntern(hashtable, *cts, HashAtomData(a));
 	    if (ErrorStatus != XpmSuccess) {
-		xpmFreeColorTable_(colorTable, ncolors);
+		_MMxpmFreeColorTable_(colorTable, ncolors);
 		return (ErrorStatus);
 	    }
 	}
@@ -482,9 +478,9 @@ static int ParseColors( xpmData *data, unsigned int ncolors,
 	 */
 	curkey = 0;
 	lastwaskey = 0;
-	while (l = xpmNextWord(data, buf)) {
+	while (l = _MMxpmNextWord(data, buf)) {
 	    if (!lastwaskey) {
-		for (key = 0, sptr = xpmColorKeys; key < NKEYS; key++, sptr++)
+		for (key = 0, sptr = _MMxpmColorKeys; key < NKEYS; key++, sptr++)
 		    if ((strlen(*sptr) == l) && (!strncmp(*sptr, buf, l)))
 			break;
 	    }
@@ -492,7 +488,7 @@ static int ParseColors( xpmData *data, unsigned int ncolors,
 		if (curkey) {		/* flush string */
 		    s = cts[curkey] = (char *) XpmMalloc(strlen(curbuf) + 1);
 		    if (!s) {
-			xpmFreeColorTable_(colorTable, ncolors);
+			_MMxpmFreeColorTable_(colorTable, ncolors);
 			return (XpmNoMemory);
 		    }
 		    strcpy(s, curbuf);
@@ -502,7 +498,7 @@ static int ParseColors( xpmData *data, unsigned int ncolors,
 		lastwaskey = 1;
 	    } else {
 		if (!curkey) {		/* key without value */
-		    xpmFreeColorTable_(colorTable, ncolors);
+		    _MMxpmFreeColorTable_(colorTable, ncolors);
 		    return (XpmFileInvalid);
 		}
 		if (!lastwaskey)
@@ -513,12 +509,12 @@ static int ParseColors( xpmData *data, unsigned int ncolors,
 	    }
 	}
 	if (!curkey) {			/* key without value */
-	    xpmFreeColorTable_(colorTable, ncolors);
+	    _MMxpmFreeColorTable_(colorTable, ncolors);
 	    return (XpmFileInvalid);
 	}
 	s = cts[curkey] = (char *) XpmMalloc(strlen(curbuf) + 1);
 	if (!s) {
-	    xpmFreeColorTable_(colorTable, ncolors);
+	    _MMxpmFreeColorTable_(colorTable, ncolors);
 	    return (XpmNoMemory);
 	}
 	strcpy(s, curbuf);
@@ -552,14 +548,14 @@ static int ParsePixels( xpmData *data, unsigned int width, unsigned int height,
 		colidx[colorTable[a][0][0]] = a + 1;
 
 	    for (y = 0; y < height; y++) {
-		xpmNextString(data);
+		_MMxpmNextString(data);
 		for (x = 0; x < width; x++, iptr++) {
-		    int idx = colidx[xpmGetC(data)];
+		    int idx = colidx[_MMxpmGetC(data)];
 
 		    if (idx != 0)
 			*iptr = idx - 1;
 		    else {
-			XpmFree(iptr2);
+			_MMXpmFree(iptr2);
 			return (XpmFileInvalid);
 		    }
 		}
@@ -577,15 +573,15 @@ static int ParsePixels( xpmData *data, unsigned int width, unsigned int height,
 		cidx[colorTable[a][0][0]][colorTable[a][0][1]] = a + 1;
 
 	    for (y = 0; y < height; y++) {
-		xpmNextString(data);
+		_MMxpmNextString(data);
 		for (x = 0; x < width; x++, iptr++) {
-		    int cc1 = xpmGetC(data);
-		    int idx = cidx[cc1][xpmGetC(data)];
+		    int cc1 = _MMxpmGetC(data);
+		    int idx = cidx[cc1][_MMxpmGetC(data)];
 
 		    if (idx != 0)
 			*iptr = idx - 1;
 		    else {
-			XpmFree(iptr2);
+			_MMXpmFree(iptr2);
 			return (XpmFileInvalid);
 		    }
 		}
@@ -604,13 +600,13 @@ static int ParsePixels( xpmData *data, unsigned int width, unsigned int height,
 		xpmHashAtom *slot;
 
 		for (y = 0; y < height; y++) {
-		    xpmNextString(data);
+		    _MMxpmNextString(data);
 		    for (x = 0; x < width; x++, iptr++) {
 			for (a = 0, s = buf; a < cpp; a++, s++)
-			    *s = xpmGetC(data);
-			slot = xpmHashSlot(hashtable, buf);
+			    *s = _MMxpmGetC(data);
+			slot = _MMxpmHashSlot(hashtable, buf);
 			if (!*slot) {	/* no color matches */
-			    XpmFree(iptr2);
+			    _MMXpmFree(iptr2);
 			    return (XpmFileInvalid);
 			}
 			*iptr = HashColorIndex(slot);
@@ -618,15 +614,15 @@ static int ParsePixels( xpmData *data, unsigned int width, unsigned int height,
 		}
 	    } else {
 		for (y = 0; y < height; y++) {
-		    xpmNextString(data);
+		    _MMxpmNextString(data);
 		    for (x = 0; x < width; x++, iptr++) {
 			for (a = 0, s = buf; a < cpp; a++, s++)
-			    *s = xpmGetC(data);
+			    *s = _MMxpmGetC(data);
 			for (a = 0; a < ncolors; a++)
 			    if (!strcmp(colorTable[a][0], buf))
 				break;
 			if (a == ncolors) {	/* no color matches */
-			    XpmFree(iptr2);
+			    _MMXpmFree(iptr2);
 			    return (XpmFileInvalid);
 			}
 			*iptr = a;
@@ -644,7 +640,7 @@ static int ParsePixels( xpmData *data, unsigned int width, unsigned int height,
 /*
  * skip whitespace and return the following word
  */
-unsigned int xpmNextWord( xpmData *mdata, char *buf)
+unsigned int _MMxpmNextWord( xpmData *mdata, char *buf)
 {
     register unsigned int n = 0;
     int c;
@@ -681,12 +677,12 @@ unsigned int xpmNextWord( xpmData *mdata, char *buf)
  * skip whitespace and compute the following unsigned int,
  * returns 1 if one is found and 0 if not
  */
-int xpmNextUI( xpmData *mdata, unsigned int *ui_return)
+int _MMxpmNextUI( xpmData *mdata, unsigned int *ui_return)
 {
     char buf[BUFSIZ];
     int l;
 
-    l = xpmNextWord(mdata, buf);
+    l = _MMxpmNextWord(mdata, buf);
     return atoui(buf, l, ui_return);
 }
 
@@ -694,7 +690,7 @@ int xpmNextUI( xpmData *mdata, unsigned int *ui_return)
 /*
  * parse xpm header
  */
-int xpmParseHeader( xpmData *mdata)
+int _MMxpmParseHeader( xpmData *mdata)
 {
     char buf[BUFSIZ];
     int l, n = 0;
@@ -703,39 +699,39 @@ int xpmParseHeader( xpmData *mdata)
 	mdata->Bos = '\0';
 	mdata->Eos = '\n';
 	mdata->Bcmt = mdata->Ecmt = NULL;
-	xpmNextWord(mdata, buf);	/* skip the first word */
-	l = xpmNextWord(mdata, buf);	/* then get the second word */
+	_MMxpmNextWord(mdata, buf);	/* skip the first word */
+	l = _MMxpmNextWord(mdata, buf);	/* then get the second word */
 	if ((l == 3 && !strncmp("XPM", buf, 3)) ||
 	    (l == 4 && !strncmp("XPM2", buf, 4))) {
 	    if (l == 3)
 		n = 1;			/* handle XPM as XPM2 C */
 	    else {
-		l = xpmNextWord(mdata, buf);	/* get the type key word */
+		l = _MMxpmNextWord(mdata, buf);	/* get the type key word */
 
 		/*
 		 * get infos about this type
 		 */
-		while (xpmDataTypes[n].type
-		       && strncmp(xpmDataTypes[n].type, buf, l))
+		while (_MMxpmDataTypes[n].type
+		       && strncmp(_MMxpmDataTypes[n].type, buf, l))
 		    n++;
 	    }
-	    if (xpmDataTypes[n].type) {
+	    if (_MMxpmDataTypes[n].type) {
 		if (n == 0) {		/* natural type */
-		    mdata->Bcmt = xpmDataTypes[n].Bcmt;
-		    mdata->Ecmt = xpmDataTypes[n].Ecmt;
-		    xpmNextString(mdata);	/* skip the end of
+		    mdata->Bcmt = _MMxpmDataTypes[n].Bcmt;
+		    mdata->Ecmt = _MMxpmDataTypes[n].Ecmt;
+		    _MMxpmNextString(mdata);	/* skip the end of
 						 * headerline */
-		    mdata->Bos = xpmDataTypes[n].Bos;
+		    mdata->Bos = _MMxpmDataTypes[n].Bos;
 		} else {
-		    xpmNextString(mdata);	/* skip the end of
+		    _MMxpmNextString(mdata);	/* skip the end of
 						 * headerline */
-		    mdata->Bcmt = xpmDataTypes[n].Bcmt;
-		    mdata->Ecmt = xpmDataTypes[n].Ecmt;
-		    mdata->Bos = xpmDataTypes[n].Bos;
+		    mdata->Bcmt = _MMxpmDataTypes[n].Bcmt;
+		    mdata->Ecmt = _MMxpmDataTypes[n].Ecmt;
+		    mdata->Bos = _MMxpmDataTypes[n].Bos;
 		    mdata->Eos = '\0';
-		    xpmNextString(mdata);	/* skip the assignment line */
+		    _MMxpmNextString(mdata);	/* skip the assignment line */
 		}
-		mdata->Eos = xpmDataTypes[n].Eos;
+		mdata->Eos = _MMxpmDataTypes[n].Eos;
 	    } else
 		return XpmFileInvalid;
 	} else
@@ -748,7 +744,7 @@ int xpmParseHeader( xpmData *mdata)
 /*
  * get the current comment line
  */
-int xpmGetCmt( xpmData *mdata, char **cmt)
+int _MMxpmGetCmt( xpmData *mdata, char **cmt)
 {
     if (!mdata->type)
 	*cmt = NULL;
@@ -765,18 +761,18 @@ int xpmGetCmt( xpmData *mdata, char **cmt)
 
 #undef RETURN
 #define RETURN(status) \
-  { if (colorTable) xpmFreeColorTable_(colorTable, ncolors); \
-    if (pixelindex) XpmFree(pixelindex); \
-    if (hints_cmt)  XpmFree(hints_cmt); \
-    if (colors_cmt) XpmFree(colors_cmt); \
-    if (pixels_cmt) XpmFree(pixels_cmt); \
+  { if (colorTable) _MMxpmFreeColorTable_(colorTable, ncolors); \
+    if (pixelindex) _MMXpmFree(pixelindex); \
+    if (hints_cmt)  _MMXpmFree(hints_cmt); \
+    if (colors_cmt) _MMXpmFree(colors_cmt); \
+    if (pixels_cmt) _MMXpmFree(pixels_cmt); \
     return(status); }
 
 /*
  * This function parses an Xpm file or data and store the found informations
  * in an an xpmInternAttrib structure which is returned.
  */
-int xpmParseData( xpmData *data, xpmInternAttrib *attrib_return,
+int _MMxpmParseData( xpmData *data, xpmInternAttrib *attrib_return,
     XpmAttributes *attributes)
 {
     /* variables to return */
@@ -794,7 +790,7 @@ int xpmParseData( xpmData *data, xpmInternAttrib *attrib_return,
     /*
      * parse the header
      */
-    ErrorStatus = xpmParseHeader(data);
+    ErrorStatus = _MMxpmParseHeader(data);
     if (ErrorStatus != XpmSuccess)
 	return (ErrorStatus);
 
@@ -810,13 +806,13 @@ int xpmParseData( xpmData *data, xpmInternAttrib *attrib_return,
      * store the hints comment line
      */
     if (attributes && (attributes->valuemask & XpmReturnInfos))
-	xpmGetCmt(data, &hints_cmt);
+	_MMxpmGetCmt(data, &hints_cmt);
 
     /*
      * init the hastable
      */
     if (USE_HASHTABLE) {
-	ErrorStatus = xpmHashTableInit(&hashtable);
+	ErrorStatus = _MMxpmHashTableInit(&hashtable);
 	if (ErrorStatus != XpmSuccess)
 	    return (ErrorStatus);
     }
@@ -832,7 +828,7 @@ int xpmParseData( xpmData *data, xpmInternAttrib *attrib_return,
      * store the colors comment line
      */
     if (attributes && (attributes->valuemask & XpmReturnInfos))
-	xpmGetCmt(data, &colors_cmt);
+	_MMxpmGetCmt(data, &colors_cmt);
 
     /*
      * read pixels and index them on color number
@@ -844,7 +840,7 @@ int xpmParseData( xpmData *data, xpmInternAttrib *attrib_return,
      * free the hastable
      */
     if (USE_HASHTABLE)
-	xpmHashTableFree(&hashtable);
+	_MMxpmHashTableFree(&hashtable);
 
     if (ErrorStatus != XpmSuccess)
 	RETURN(ErrorStatus);
@@ -853,7 +849,7 @@ int xpmParseData( xpmData *data, xpmInternAttrib *attrib_return,
      * store the pixels comment line
      */
     if (attributes && (attributes->valuemask & XpmReturnInfos))
-	xpmGetCmt(data, &pixels_cmt);
+	_MMxpmGetCmt(data, &pixels_cmt);
 
     /*
      * store found informations in the xpmInternAttrib structure
@@ -884,7 +880,7 @@ int xpmParseData( xpmData *data, xpmInternAttrib *attrib_return,
 /*
  * open the given array to be read or written as an xpmData which is returned
  */
-void xpmOpenArray( char **data, xpmData *mdata)
+void _MMxpmOpenArray( char **data, xpmData *mdata)
 {
     mdata->type = XPMARRAY;
     mdata->stream.data = data;
@@ -895,7 +891,7 @@ void xpmOpenArray( char **data, xpmData *mdata)
     mdata->Bos = mdata->Eos = '\0';
 }
 
-unsigned char *ReadXpm3Pixmap( Widget view, FILE *fp, char *datafile, int *w, int *h,
+unsigned char *_MMReadXpm3Pixmap( Widget view, FILE *fp, char *datafile, int *w, int *h,
 	XColor *colrs, int *bg)
 {
 	xpmData mdata;
@@ -916,16 +912,16 @@ unsigned char *ReadXpm3Pixmap( Widget view, FILE *fp, char *datafile, int *w, in
 
 	attributes.valuemask = XpmReturnPixels;
 
-	if ((ErrorStatus = xpmReadFile(datafile, &mdata)) != XpmSuccess) {
+	if ((ErrorStatus = _MMxpmReadFile(datafile, &mdata)) != XpmSuccess) {
 		return(NULL);
 	}
 
-	xpmInitInternAttrib(&attrib);
+	_MMxpmInitInternAttrib(&attrib);
 
-	ErrorStatus = xpmParseData(&mdata, &attrib, &attributes);
+	ErrorStatus = _MMxpmParseData(&mdata, &attrib, &attributes);
 	if (ErrorStatus != XpmSuccess) {
-		xpmFreeInternAttrib(&attrib);
-		xpmDataClose(&mdata);
+		_MMxpmFreeInternAttrib(&attrib);
+		_MMxpmDataClose(&mdata);
 		return(NULL);
 	}
 
@@ -970,8 +966,8 @@ unsigned char *ReadXpm3Pixmap( Widget view, FILE *fp, char *datafile, int *w, in
         if (pix_data == NULL) {
 		fprintf(stderr, "Not enough memory for data.\n");
 
-		xpmFreeInternAttrib(&attrib);
-		xpmDataClose(&mdata);
+		_MMxpmFreeInternAttrib(&attrib);
+		_MMxpmDataClose(&mdata);
                 return((unsigned char *)NULL);
         }
 	bptr = pix_data;
@@ -985,13 +981,13 @@ unsigned char *ReadXpm3Pixmap( Widget view, FILE *fp, char *datafile, int *w, in
                 pixels++;
         }
 
-	xpmFreeInternAttrib(&attrib);
-	xpmDataClose(&mdata);
+	_MMxpmFreeInternAttrib(&attrib);
+	_MMxpmDataClose(&mdata);
 
         return(pix_data);
 }
 
-unsigned char *ProcessXpm3Data( Widget wid, char **xpmdata,
+unsigned char *_MMProcessXpm3Data( Widget wid, char **xpmdata,
 	int *w, int *h, XColor *colrs, int *bg)
 {
 	xpmData mdata;
@@ -1010,12 +1006,12 @@ unsigned char *ProcessXpm3Data( Widget wid, char **xpmdata,
 	*w = 0;
 	*h = 0;
 	attributes.valuemask = XpmReturnPixels;
-	xpmOpenArray(xpmdata, &mdata);
-	xpmInitInternAttrib(&attrib);
-	ErrorStatus = xpmParseData(&mdata, &attrib, &attributes);
+	_MMxpmOpenArray(xpmdata, &mdata);
+	_MMxpmInitInternAttrib(&attrib);
+	ErrorStatus = _MMxpmParseData(&mdata, &attrib, &attributes);
 	if (ErrorStatus != XpmSuccess) {
-		xpmFreeInternAttrib(&attrib);
-		xpmDataClose(&mdata);
+		_MMxpmFreeInternAttrib(&attrib);
+		_MMxpmDataClose(&mdata);
 		return(NULL);
 	}
 
@@ -1060,8 +1056,8 @@ unsigned char *ProcessXpm3Data( Widget wid, char **xpmdata,
 	pix_data = (unsigned char *)malloc((*w) * (*h));
         if (pix_data == NULL) {
 		fprintf(stderr, "Not enough memory for data.\n");
-		xpmFreeInternAttrib(&attrib);
-		xpmDataClose(&mdata);
+		_MMxpmFreeInternAttrib(&attrib);
+		_MMxpmDataClose(&mdata);
                 return((unsigned char *)NULL);
         }
 	bptr = pix_data;
@@ -1075,8 +1071,8 @@ unsigned char *ProcessXpm3Data( Widget wid, char **xpmdata,
                 pixels++;
         }
 
-	xpmFreeInternAttrib(&attrib);
-	xpmDataClose(&mdata);
+	_MMxpmFreeInternAttrib(&attrib);
+	_MMxpmDataClose(&mdata);
 
 	if (mMosaicSrcTrace) {
 		gettimeofday(&Tv, &Tz);

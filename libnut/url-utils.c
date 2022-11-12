@@ -8,13 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef LF
-#define LF 10
-#endif
-#ifndef CR
-#define CR 13
-#endif
-
 char *makeword(char *line, char stop)
 {
     int x = 0,y;
@@ -29,34 +22,4 @@ char *makeword(char *line, char stop)
 
     while(line[y++] = line[x++]);
     return word;
-}
-
-char x2c(char *what)
-{
-    register char digit;
-
-    digit = (what[0] >= 'A' ? ((what[0] & 0xdf) - 'A')+10 : (what[0] - '0'));
-    digit *= 16;
-    digit += (what[1] >= 'A' ? ((what[1] & 0xdf) - 'A')+10 : (what[1] - '0'));
-    return(digit);
-}
-
-void unescape_url(char *url)
-{
-    register int x,y;
-
-    for(x=0,y=0;url[y];++x,++y) {
-        if((url[x] = url[y]) == '%') {
-            url[x] = x2c(&url[y+1]);
-            y+=2;
-        }
-    }
-    url[x] = '\0';
-}
-
-void plustospace(char *str)
-{
-    register int x;
-
-    for(x=0;str[x];x++) if(str[x] == '+') str[x] = ' ';
 }

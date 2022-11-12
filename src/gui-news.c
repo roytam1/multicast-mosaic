@@ -1,6 +1,7 @@
 /* Please read copyright.ncsa. Don't remove next line */
 #include "copyright.ncsa"
 
+#ifdef NEWS
 #include <Xm/LabelG.h>
 #include <Xm/PushB.h>
 #include <Xm/ScrolledW.h>
@@ -16,15 +17,447 @@
 #include "libhtmlw/HTML.h"
 #include "mosaic.h"
 
-#include "../libwww2/HText.h"
+#include "../libnut/list.h"
 #include "newsrc.h"
-#include "libwww2/HTNews.h"
-#include "libwww2/HTAlert.h"
 #include "gui.h"
 #include "gui-news.h"
 #include "libnut/system.h"
 #include "gui-dialogs.h"
 #include "gui-documents.h"
+#include "gui-menubar.h"
+#include "mime.h"
+#include "paf.h"
+
+/*###### */
+/*      Module-wide variables */
+int ConfigView = 0;                      /* view format configure */
+int newsShowAllArticles = 0;
+int newsShowReadGroups = 0;
+char *NewsGroup = NULL;
+newsgroup_t *NewsGroupS = NULL;
+int newsGotList = 0;
+int newsShowAllGroups = 0;
+NewsArt *CurrentArt = NULL;
+
+
+#define LINE_LENGTH 512            /* Maximum length of line of ARTICLE etc */
+
+/* Goto the previous (unread) thread */
+void news_prevt(char *url)
+{
+	abort();
+/*
+  NewsArt *art, *p;
+
+  if (art = is_news_url (url)) {
+    if ((p = prevUnreadThread (art)) != NULL) {
+      sprintf (url, "news:%s", p->ID);
+      return;
+    }
+  }
+  url[0] = 0;
+*/
+}
+
+/* Goto next (unread) article in this thread */ 
+void news_next(char *url)  
+{  
+	abort();
+/*
+  NewsArt *art, *p;                   
+      
+  if ((art = is_news_url(url)) == NULL) {
+    url[0] = 0;
+    return;
+  }   
+  url[0] = 0;
+  if ((p=nextUnread (art, 0))) {
+    sprintf (url, "news:%s", p->ID);
+  } else if (!newsNoThreadJumping) {
+    if ((p = nextUnreadThread (art))) {
+      sprintf (url, "news:%s", p->ID);
+    } 
+  }   
+*/
+} 
+
+   
+/* Goto first (unread) article in next (unread) thread */
+void news_nextt(char *url)            
+{  
+	abort();
+/*
+  NewsArt *art, *p;
+                                      
+  if ((art = is_news_url(url)) != NULL) {
+    if ((p=nextUnreadThread (art))) {
+      sprintf (url, "news:%s", p->ID);
+      return;
+    }
+  }
+  url[0] = 0;                         
+*/
+}                                     
+  
+/* Goto the previous (unread) article */
+void news_prev(char *url)
+{                                     
+	abort();
+/*
+    NewsArt *art, *p;
+                                      
+    if ((art = is_news_url(url)) == NULL) { 
+      url[0] = 0;                     
+      return;                         
+    }                                 
+ 
+    url[0] = 0;                       
+    if ((p = prevUnread (art,0)) != NULL) { 
+      sprintf (url, "news:%s", p->ID);
+    } else if (!newsNoThreadJumping) {
+      if ((p=prevUnreadThread (art))) {
+        sprintf (url, "news:%s", p->ID);
+      }
+    }
+*/
+}                                     
+
+void news_index(char *url)            
+{
+	abort();
+/*
+    if(NewsGroup && is_news_url(url))
+        sprintf(url,"news:%s",NewsGroup);
+    else                              
+        url[0] = 0;                  
+*/
+}                                     
+ 
+/* Returns the status of the news buttons */
+void news_status(char *url, int *prevt, int *nextt, int *prev, int *next, int *follow)
+{ 
+	abort();
+/*
+    NewsArt *art;
+  
+    if( art = is_news_url(url) ) {
+      if(prevUnread(art,!newsNoThreadJumping))
+        *prev = 1;                    
+      else                            
+        *prev = 0;
+      if(prevUnreadThread(art))       
+        *prevt = 1;
+      else
+        *prevt = 0;                   
+      if (nextUnread (art,!newsNoThreadJumping))
+        *next = 1;                    
+      else                            
+        *next = 0;                    
+      if (nextUnreadThread (art))     
+        *nextt = 1;                   
+      else                            
+        *nextt = 0;                   
+      *follow = 1;                    
+    } else {                          
+      *follow=0;                      
+      *prevt=0;                       
+      *nextt=0;                       
+      *next=0;                        
+      *prev=0;                        
+    }                                 
+*/
+}                                     
+
+                
+int NNTPgetarthdrs(char *art,char **ref, char **grp, char **subj, char **from,
+        caddr_t appd)
+{   
+	abort();
+/*
+    int status, done;                 
+    char *aname,*p;                   
+    char line[LINE_LENGTH+1]; 
+    char buffer[LINE_LENGTH+1];       
+                                      
+    *ref = *grp = *subj = *from = NULL;
+                                      
+    if (!initialized)                 
+        initialized = initialize();   
+    if (!initialized){                
+        if(wWWParams.trace) fprintf(stderr,"No init?\n");
+        HTProgress ("Could not set up news connection.",appd);
+*/
+        return -1;
+/*
+    }                                 
+    if(s < 0) {                       
+        HTProgress("Attempting to connect to news server",appd);
+        if(OpenNNTP(appd)){           
+            if(wWWParams.trace) fprintf(stderr,"No OpenNNTP?\n");
+            HTProgress ("Could not connect to news server.",appd);
+            return -1;
+        }                             
+    }                                 
+
+/* FLUSH!!! */                    
+/*
+    HTInitInput(s);                   
+    sprintf(buffer, "HEAD <%s>%c%c", art, CR, LF);
+    status = response(buffer,appd);   
+
+    if (status == 221) {        /* Head follows - parse it:*/
+/*
+        p = line;                               /* Write pointer */
+/*
+        done = NO;                    
+        while(!done){                 
+            char ch = *p++ = HTGetCharacter (appd);
+            if (ch==(char)EOF) {      
+                abort_socket(appd);     /* End of file, close socket */
+/*
+                return HT_LOADED;               /* End of file on response */
+/*
+            }                         
+                                      
+            if ((ch == LF)            
+                || (p == &line[LINE_LENGTH]) ) {
+                                      
+                *--p=0;         /* Terminate  & chop LF*/
+/*
+                p = line;               /* Restart at beginning */
+/*
+                if (wWWParams.trace) fprintf(stderr, "G %s\n", line);
+                switch(line[0]) {     
+                                      
+                case '.':             
+                    done = (line[1]<' ');       /* End of article? */
+/*
+                    break;            
+                                      
+                case 'S':             
+                case 's':             
+                    if (match(line, "SUBJECT:"))
+                        StrAllocCopy(*subj, line+9);/* Save subject */
+/*
+                    break;            
+                                      
+                case 'R':             
+                case 'r':             
+                    if (match(line, "REFERENCES:")) {
+                        p = line + 12;
+                        StrAllocCopy(*ref,p+1);
+                        StrAllocCopy(*ref,p+1);
+                    }                 
+                    break;            
+                                      
+                case 'N':             
+                case 'n':             
+                    if (match(line, "NEWSGROUPS:")) {
+                        p = line + 11;
+                        StrAllocCopy(*grp,p+1);
+                    }                 
+                    break;            
+                                      
+                case 'f':             
+                case 'F':             
+                    if (match(line, "FROM:")) {
+                      char author[1024+1]; 
+                        parseemail (strchr(line,':')+1, author, NULL);
+                        aname = author;
+                        if (aname && *aname){
+                          StrAllocCopy(*from, aname);
+                          p = *from + strlen(*from) - 1;
+                          if (*p==LF) *p = 0;   /* Chop off newline */
+/*
+                        } else {      
+                          StrAllocCopy(*from, "Unknown");
+                        }             
+                    }                 
+                    break;            
+                                      
+                } /* end switch on first character */
+/*
+                                      
+                p = line;               /* Restart at beginning */
+/*
+            } /* if end of line */    
+/*
+        } /* Loop over characters */  
+/*
+    } /* If good response */
+/*
+*/
+}
+
+                 
+int NNTPpost(char *from, char *subj, char *ref, char *groups, char *msg,
+        caddr_t appd)
+{
+	abort();
+/*
+    char buf[1024];
+                                      
+    if (!initialized)                 
+        initialized = initialize();   
+    if (!initialized){                
+        if(wWWParams.trace) fprintf(stderr,"No init?\n");
+        HTProgress ("Could not set up news connection.",appd);
+*/
+        return -1;
+/*
+    }
+                                      
+    if(s < 0) {
+        HTProgress("Attempting to connect to news server",appd);
+        if(OpenNNTP(appd)){           
+            if(wWWParams.trace) fprintf(stderr,"No OpenNNTP?\n");
+            HTProgress ("Could not connect to news server.",appd);
+            return -1;
+        }                             
+    }                                 
+                                      
+    if(response("POST\r\n",appd) != 340) { 
+        HTProgress("Server does not allow posting.",appd);
+        return 0;                     
+    }                                 
+ 
+    HTProgress("Posting your article...",appd);
+    sprintf(buf,"From: %s\r\n",from);
+    newswrite(buf);                   
+    sprintf(buf,"Subject: %s\r\n",subj);
+    newswrite(buf);                   
+    if(ref){ 
+    if(ref){                          
+        sprintf(buf,"References: %s\r\n",ref);
+        newswrite(buf);               
+    }                                 
+    sprintf(buf,"Newsgroups: %s\r\n",groups);
+    newswrite(buf);                   
+    sprintf(buf,"X-Newsreader: NCSA Mosaic\r\n\r\n");
+    newswrite(buf);                   
+    newswrite(msg);                   
+    if(response("\r\n.\r\n",appd) != 240)  
+        HTProgress("Article was not posted.",appd);
+    else                              
+        HTProgress("Article was posted successfully.",appd);
+                                      
+    HTDoneWithIcon (appd);            
+*/
+}                                     
+    
+      
+/* this is VERY non-reentrant.... */
+/* static char qline[LINE_LENGTH+1]; */
+char *NNTPgetquoteline(char *art, caddr_t appd)
+{       
+	abort();
+/*
+    char *p;
+    int i,status ;
+            
+    if (!initialized)
+        initialized = initialize();
+    if (!initialized){                
+        if(wWWParams.trace) fprintf(stderr,"No init?\n");
+        HTProgress ("Could not set up news connection.",appd);
+        return NULL;                  
+    }                                 
+    if(s < 0) {
+        HTProgress("Attempting to connect to news server",appd);
+        if(OpenNNTP(appd)){
+            if(wWWParams.trace) fprintf(stderr,"No OpenNNTP?\n");
+            HTProgress ("Could not connect to news server.",appd);
+            return NULL;
+        }                             
+    }                                 
+    if(art){ /* FLUSH!!! */           
+/*
+        HTInitInput(s);               
+        sprintf(qline, "BODY <%s>%c%c", art, CR, LF);
+        status = response(qline,appd);
+        if (status != 222) return NULL;
+    }                                 
+    qline[0] = '>';                   
+    qline[1] = ' ';                   
+    for(p = &qline[2],i=0;;p++,i++){  
+        *p = HTGetCharacter(appd);    
+        if (*p==(char)EOF) { 
+            abort_socket(appd); /* End of file, close socket */
+/*
+            return NULL;        /* End of file on response */
+/*
+        }                             
+        if(*p == '\n'){               
+            *++p = 0;                 
+            break;                    
+        }                             
+        if(i == LINE_LENGTH-4){       
+            *p = 0;                   
+            break;                    
+        }                             
+    }                                 
+    if(qline[2]=='.' && qline[3] < ' ') return NULL;
+    return qline;                     
+*/
+	return NULL;
+}    
+
+
+    
+/* HTSetNewsConfig ()
+   Expects: artView    -- Article View configuration: 0 = Article View,
+                          1 = Thread View
+            artAll     -- Show All Articles? 0 = No, non zero = yes
+            grpAll     -- Show All Groups? 0 = no, non zero = yes
+            grpRead    -- Show Read Groups? 0 = no, non zero = yes
+            noThrJmp   -- Don't jump threads? 0 = no, non zero = yes
+            newsRC     -- Use the newsrc? 0 = no, non zero = yes
+            nxtUnread  -- Next thread should be the next unread?
+                          0 = no, non zero = yes
+            prevUnread -- Prev thread should be the prev unread?
+                          0 = no, non zero = yes
+    Returns: Nothing
+    
+    Sets the current news config.
+*/
+   
+void HTSetNewsConfig (int artView, int artAll, int grpAll, int grpRead,
+                      int noThrJmp, int newsRC, int nxtUnread, int prevUnread)
+{  
+	abort();
+/*
+  if (artView != NO_CHANGE) {
+    ConfigView = !artView;
+  }                                   
+                                      
+  if (artAll != NO_CHANGE) {          
+    newsShowAllArticles = artAll;     
+  }                                   
+                                      
+  if (grpAll != NO_CHANGE) {          
+    newsShowAllGroups = grpAll;       
+  }                                   
+                                      
+  if (grpRead != NO_CHANGE) { 
+    newsShowReadGroups = grpRead;     
+  }                                   
+                                      
+  if (noThrJmp != NO_CHANGE) {        
+    newsNoThreadJumping = noThrJmp;   
+  }                                   
+                                      
+  if (nxtUnread != NO_CHANGE) {       
+    newsNextIsUnread = nxtUnread;     
+  }                                   
+                                      
+  if (prevUnread != NO_CHANGE) {      
+    newsPrevIsUnread = prevUnread;    
+  }                                   
+*/                                    
+}                                     
+       
+
+/*###### */
 
 #define MAX_BUF 512
 
@@ -111,7 +544,7 @@ void gui_news_flushgroup(mo_window *win)
 
 void gui_news_list(mo_window *win)
 {
-	mo_load_window_text(win,"news:*",NULL);
+/*	MMPafLoadHTMLDocInWin(win,"news:*"); */
 }
 
 void gui_news_showAllGroups (mo_window *win)
@@ -120,7 +553,7 @@ void gui_news_showAllGroups (mo_window *win)
 	newsGotList = 0;
 	HTSetNewsConfig (-1, -1, 1, 1, -1, -1,-1,-1);
 	gui_news_updateprefs (win);
-	mo_load_window_text (win, "news:*", NULL);
+/*	MMPafLoadHTMLDocInWin (win, "news:*"); */
 }
 
 void gui_news_showGroups (mo_window *win)
@@ -128,14 +561,14 @@ void gui_news_showGroups (mo_window *win)
 	/* Show only subbed groups */
 	HTSetNewsConfig (-1,-1,0,0,-1,-1,-1,-1);
 	gui_news_updateprefs (win);
-	mo_load_window_text (win, "news:*", NULL);
+/*	MMPafLoadHTMLDocInWin (win, "news:*"); */
 }
 
 void gui_news_showReadGroups (mo_window *win)
 {
 	HTSetNewsConfig (-1,-1,0,1,-1,-1,-1,-1); 
 	gui_news_updateprefs (win);
-	mo_load_window_text (win, "news:*", NULL);
+/*	MMPafLoadHTMLDocInWin (win, "news:*"); */
 }
 
 void gui_news_showAllArticles (mo_window *win)
@@ -151,7 +584,7 @@ void gui_news_showAllArticles (mo_window *win)
 		sprintf (buf, "news:%s", NewsGroupS->name);
 	else 
 		sprintf (buf, "news:%s", NewsGroup);
-	mo_load_window_text (win, buf, NULL);
+/*	MMPafLoadHTMLDocInWin (win, buf); */
 }
 
 void gui_news_showArticles (mo_window *win)
@@ -167,7 +600,7 @@ void gui_news_showArticles (mo_window *win)
 		sprintf (buf, "news:%s", NewsGroup);
 	else 
 		sprintf (buf, "news:%s", NewsGroupS->name);
-	mo_load_window_text (win, buf, NULL);
+/*	MMPafLoadHTMLDocInWin (win, buf); */
 }
 
 void gui_news_markGroupRead (mo_window *win)
@@ -182,7 +615,7 @@ void gui_news_markGroupRead (mo_window *win)
 
 /* Return to newsgroup list */
 	sprintf (buf, "news:*");
-	mo_load_window_text (win, buf, NULL);
+/*	MMPafLoadHTMLDocInWin (win, buf); */
 }
 
 void gui_news_markGroupUnread (mo_window *win)
@@ -196,7 +629,7 @@ void gui_news_markGroupUnread (mo_window *win)
 	mo_gui_notify_progress (buf,win);
 /* Return to newsgroup list */
 	sprintf (buf, "news:*");
-	mo_load_window_text (win, buf, NULL);
+/*	MMPafLoadHTMLDocInWin (win, buf); */
 }
 
 void gui_news_markArticleUnread (mo_window *win)
@@ -209,7 +642,7 @@ void gui_news_markArticleUnread (mo_window *win)
 	sprintf (buf, "Article %s marked unread", CurrentArt->ID);
 	mo_gui_notify_progress (buf,win);
 	sprintf (buf, "news:%s", NewsGroup);
-	mo_load_window_text (win, buf, NULL);
+/*	MMPafLoadHTMLDocInWin (win, buf); */
 }
 
 void gui_news_initflush (mo_window *win)
@@ -222,46 +655,45 @@ void gui_news_index(mo_window *win)
 	char url[128];
 
 	newsrc_flush ();
-	strcpy(url,win->current_node->url);
+	strcpy(url,win->current_node->aurl_wa);
 	news_index(url);
-	if(url[0]) 
-		mo_load_window_text(win,url,NULL);
+/*	if(url[0]) MMPafLoadHTMLDocInWin(win,url); */
 }
 
 void gui_news_prev(mo_window *win)
 {
 	char url[128];
 
-	strcpy(url,win->current_node->url);
+	strcpy(url,win->current_node->aurl_wa);
 	news_prev(url);
-	if(url[0]) mo_load_window_text(win,url,NULL);
+/*	if(url[0]) MMPafLoadHTMLDocInWin(win,url); */
 }
 
 void gui_news_next(mo_window *win)
 {
 	char url[128];
 
-	strcpy(url,win->current_node->url);
+	strcpy(url,win->current_node->aurl_wa);
 	news_next(url);
-	if(url[0]) mo_load_window_text(win,url,NULL);
+/*	if(url[0]) MMPafLoadHTMLDocInWin(win,url); */
 }
 
 void gui_news_prevt(mo_window *win)
 {
 	char url[128];
 
-	strcpy(url,win->current_node->url);
+	strcpy(url,win->current_node->aurl_wa);
 	news_prevt(url);
-	if(url[0]) mo_load_window_text(win,url,NULL);
+/*	if(url[0]) MMPafLoadHTMLDocInWin(win,url); */
 }
 
 void gui_news_nextt(mo_window *win)
 {
 	char url[128];
 
-	strcpy(url,win->current_node->url);
+	strcpy(url,win->current_node->aurl_wa);
 	news_nextt(url);
-	if(url[0]) mo_load_window_text(win,url,NULL);
+/*	if(url[0]) MMPafLoadHTMLDocInWin(win,url); */
 }
 
 static XmxCallback (include_fsb_cb)
@@ -372,9 +804,7 @@ static XmxCallback (news_win_cb2) 		/* HELP */
 {
 	mo_window *win = (mo_window*)client_data;
 
-	mo_open_another_window (win, 
-		mo_assemble_help_url ("help-on-news.html"),
-		NULL, NULL);
+	mo_open_another_window (win, mo_assemble_help_url("help-on-news.html"));
 }
 static XmxCallback (news_win_cb3) 		/* INSERT FILE */
 {
@@ -436,8 +866,7 @@ static XmxCallback (follow_win_cb2)		/* HELP */
 {
 	mo_window *win = (mo_window*)client_data;
 
-	mo_open_another_window (win, mo_assemble_help_url ("help-on-news.html"),
-		NULL, NULL);
+	mo_open_another_window (win, mo_assemble_help_url("help-on-news.html"));
 }
 static XmxCallback (follow_win_cb3)		/* INSERT FILE */
 {
@@ -490,11 +919,11 @@ mo_status mo_post_follow_win (mo_window *win)
 {
     char *s;
 
-    if(strncmp("news:",win->current_node->url,5)) 
+    if(strncmp("news:",win->current_node->aurl_wa,5)) 
 	return mo_fail; /* fix me ########### */
     
 
-    NNTPgetarthdrs(&(win->current_node->url)[5], 
+    NNTPgetarthdrs(&(win->current_node->aurl_wa)[5], 
 		   &(win->newsfollow_ref), 
 		   &(win->newsfollow_grp), 
 		   &(win->newsfollow_subj), 
@@ -511,16 +940,16 @@ mo_status mo_post_follow_win (mo_window *win)
     }
 
     /* add this article to ref */
-    win->newsfollow_artid = (char*)malloc(strlen(win->current_node->url));
-    strcpy(win->newsfollow_artid, &(win->current_node->url)[5]);
+    win->newsfollow_artid = (char*)malloc(strlen(win->current_node->aurl_wa));
+    strcpy(win->newsfollow_artid, &(win->current_node->aurl_wa)[5]);
 
     if(!win->newsfollow_ref){
-	win->newsfollow_ref = (char*)malloc(strlen(win->current_node->url));
-	sprintf(win->newsfollow_ref,"<%s>",&(win->current_node->url)[5]);
+	win->newsfollow_ref = (char*)malloc(strlen(win->current_node->aurl_wa));
+	sprintf(win->newsfollow_ref,"<%s>",&(win->current_node->aurl_wa)[5]);
     } else {
 	s = (char*)malloc(strlen(win->newsfollow_ref)+
-			strlen(win->current_node->url)); /* this sucks -bjs*/
-	sprintf(s,"%s <%s>",win->newsfollow_ref,&(win->current_node->url)[5]);
+			strlen(win->current_node->aurl_wa)); /* this sucks -bjs*/
+	sprintf(s,"%s <%s>",win->newsfollow_ref,&(win->current_node->aurl_wa)[5]);
 	free(win->newsfollow_ref);
 	win->newsfollow_ref = s;
     }
@@ -676,3 +1105,4 @@ mo_status mo_post_generic_news_win(mo_window *win, int follow)
   XmxManageRemanage (win->news_win);
   return mo_succeed;
 }
+#endif

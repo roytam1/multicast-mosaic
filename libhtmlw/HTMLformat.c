@@ -11,32 +11,32 @@
 #include <stdio.h>
 #include <ctype.h>
 
+#include <Xm/Frame.h>
+#include <Xm/DrawingA.h>
+#include <Xm/Label.h>
+
 #include "HTMLmiscdefs.h"
 #include "HTMLparse.h"
-#include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
-#include "../src/mo-www.h"
 #include "../src/mosaic.h"
 
 #include "HTMLform.h"
 #include "HTMLframe.h"
 
-#include <Xm/Frame.h>
-#include <Xm/DrawingA.h>
-#include <Xm/Label.h>
-#include "../libmc/mc_dispatch.h"
-
-extern unsigned int mc_global_eo_count; /*### from mc_dispatch ###*/
 
 static struct mark_up NULL_ANCHOR = {
 	M_ANCHOR,		/* MarkType */
 	1,			/* is_end */
 	NULL,			/* start */
 	NULL,			/* text */
+	0,			/* is_white_text */
 	NULL,			/* end */
 	NULL,			/* next */
-	NULL,			/* saved_aps */
+	NULL,			/* s_aps */
+	NULL,			/* s_ats */
+	NULL,			/* s_picd */
+	NULL,			/* t_p1 */
 	NULL,			/* anchor_name */
 	NULL,			/* anchor_href */
 	NULL			/* anchor_title */
@@ -45,6 +45,8 @@ static struct mark_up NULL_ANCHOR = {
 struct mark_up * NULL_ANCHOR_PTR = &NULL_ANCHOR ;
 
 /* ############## This is may be as global ####*/
+static int InDocHead;
+static int in_title;
 static FontRec FontBase;
 static FontRec *FontStack;
 
@@ -52,9 +54,7 @@ static FontRec *FontStack;
 static DescRec BaseDesc;
 static DescRec *DescType;
 static Boolean Strikeout;
-static char *TitleText;
 static XFontStruct *nonScriptFont;
-static int InDocHead;
 static MapInfo *CurrentMap=NULL; /* csi stuff -- swp */
 /* ############ */
 
@@ -116,7 +116,6 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
 
 	eptr->line_next = NULL;
 
-        eptr->wtype = MC_MO_TYPE_UNICAST;
         eptr->internal_numeo = 0;
 	eptr->valignment = VALIGN_BOTTOM;
 	eptr->halignment = HALIGN_LEFT;
@@ -349,8 +348,11 @@ char * TextAreaAddValue( char *value, char *text)
 
 	/* If we are not in a tag that belongs in the HEAD, end the HEAD
 	   section  - amb */
+	if (in_title && (type != M_TITLE)) {
+		return;
+	}
 	if (InDocHead) {
-		if((type != M_TITLE)&&(type != M_NONE)&&(type != M_BASE)&&
+		if((type != M_NONE)&&(type != M_BASE)&&
 		   (type != M_INDEX)&&(type != M_COMMENT)) {
 			pcc->ignore = 0;
 			InDocHead = 0;
@@ -365,7 +367,7 @@ char * TextAreaAddValue( char *value, char *text)
 	 * Let OPTION through so we can hit the OPTIONs.
 	 * Let TEXTAREA through so we can hit the TEXTAREAs.
 	 */
-	if ((pcc->ignore)&&(!InDocHead)&&(type != M_TITLE)&&(type != M_NONE)&&
+	if ((pcc->ignore)&&(!InDocHead)&&(type != M_NONE)&&
 		(type != M_SELECT)&&(type != M_OPTION)&&
 		(type != M_TEXTAREA)&&(type != M_DOC_HEAD))
 		        return;
@@ -376,21 +378,6 @@ char * TextAreaAddValue( char *value, char *text)
 	 * is pre-formatted or not.
 	 */
 	case M_NONE:
-		if ((pcc->ignore)&&(pcc->current_select == NULL)&& (pcc->text_area_buf == NULL)) {
-			if (TitleText == NULL) {
-				TitleText = (char *)
-					malloc(strlen((*mptr)->text) + 1);
-				strcpy(TitleText, (*mptr)->text);
-			} else {
-				tptr = (char *) malloc(strlen(TitleText) +
-					       strlen((*mptr)->text) + 1);
-				strcpy(tptr, TitleText);
-				strcat(tptr, (*mptr)->text);
-				free(TitleText);
-				TitleText = tptr;
-			}
-			break;
-		}
 		if ((pcc->ignore)&&(pcc->current_select != NULL)) {
 			if (pcc->current_select->option_buf != NULL) {
 				tptr = (char *)malloc(strlen(
@@ -430,18 +417,26 @@ char * TextAreaAddValue( char *value, char *text)
 	case M_PARAGRAPH:
 		if (mark->is_end) {
 			LineBreak(hw,*mptr,pcc);
-			pcc->div = DIV_ALIGN_LEFT;
-		} else {
-			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
 			pcc->div = DIV_ALIGN_LEFT;
+			pcc->is_in_paragraph = False;
+		} else {
+			if (pcc->is_in_paragraph){ /* end the paragraph */
+				LineBreak(hw,*mptr,pcc);
+				LinefeedPlace(hw,*mptr,pcc);
+				pcc->div = DIV_ALIGN_LEFT;
+				pcc->is_in_paragraph = False;
+			}
+			LineBreak(hw,*mptr,pcc);
+			pcc->div = DIV_ALIGN_LEFT;
 			tptr = ParseMarkTag(mark->start, MT_PARAGRAPH, "ALIGN");
-			if (caseless_equal(tptr, "CENTER"))
+			if ( tptr && !strcasecmp(tptr, "CENTER"))
 				pcc->div = DIV_ALIGN_CENTER;
-			if (caseless_equal(tptr, "RIGHT"))
+			if ( tptr && !strcasecmp(tptr, "RIGHT"))
 				pcc->div = DIV_ALIGN_RIGHT;
 			if(tptr)
 				free(tptr);
+			pcc->is_in_paragraph = True;
 		}
 		break;
 
@@ -457,13 +452,9 @@ char * TextAreaAddValue( char *value, char *text)
 	 */
 	case M_TITLE:
 		if (mark->is_end) {
-		       if (!InDocHead)
-			    pcc->ignore = 0;
-		       hw->html.title = TitleText;
-		       TitleText = NULL;
+			in_title = 0;
 		} else {
-			pcc->ignore = 1;
-			TitleText = NULL;
+			in_title =1;
 		}
 		break;
 	/*
@@ -565,20 +556,12 @@ char * TextAreaAddValue( char *value, char *text)
 		}
 		break;
 	case M_DOC_BODY:
-
-/* WE SUCK.  We're a bunch of pathetic followers. */
-/* ABSOLUTE CHEEZE OF THE FINEST KIND - bjs - 9/21/95 */
-
 		if (!mark->is_end) {
 /*##### */
 			static char *atts[]={"text","bgcolor","alink","vlink","link",NULL};
-			char *tmp=NULL, *tmp_bgname=NULL;
+			char *tmp=NULL;
 			int i;
 
-			if (hw->html.body_images) {
-				tmp_bgname=ParseMarkTag(mark->start,
-				MT_DOC_BODY,"background");
-			}
 			if (hw->html.body_colors) {
 				for(i=0;atts[i];i++) {
 					tmp=ParseMarkTag(mark->start,
@@ -590,10 +573,8 @@ char * TextAreaAddValue( char *value, char *text)
 					}
 				}
 			}
-			if (tmp_bgname) {
-				hw_do_bg(hw,tmp_bgname,pcc);
-				free(tmp_bgname);
-				tmp_bgname=NULL;
+			if (mark->s_picd) {
+				hw_do_bg(hw,pcc,mark);
 			}
 /*##### */
 		        InDocHead = 0;   /* end <head> section */
@@ -608,17 +589,24 @@ char * TextAreaAddValue( char *value, char *text)
 		    pcc->in_underlined = 0;
 		}
 		break;
-	/*
-	 * Headers are preceeded and followed by a linefeed,
-	 * and the change the font.
+	/* Headers are preceeded by a line feed if text before.
+	 * and followed by a linefeed.
 	 */
 	case M_HEADER_1:
 		if (mark->is_end) {
 			pcc->cur_font = PopFont();
 			LineBreak(hw,*mptr,pcc);
-		} else {
-			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
+		} else {
+			if (pcc->is_in_paragraph){ /* end the paragraph */
+				LineBreak(hw,*mptr,pcc);
+				LinefeedPlace(hw,*mptr,pcc);
+				pcc->div = DIV_ALIGN_LEFT;
+				pcc->is_in_paragraph = False;
+			}
+
+			LineBreak(hw,*mptr,pcc);
+/*			LinefeedPlace(hw,*mptr,pcc); */
 			PushFont(pcc->cur_font);
 			pcc->cur_font = hw->html.header1_font;
 		}
@@ -627,9 +615,15 @@ char * TextAreaAddValue( char *value, char *text)
 		if (mark->is_end) {
 			pcc->cur_font = PopFont();
 			LineBreak(hw,*mptr,pcc);
-		} else {
-			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
+		} else {
+			if (pcc->is_in_paragraph){ /* end the paragraph */
+				LineBreak(hw,*mptr,pcc);
+				LinefeedPlace(hw,*mptr,pcc);
+				pcc->div = DIV_ALIGN_LEFT;
+				pcc->is_in_paragraph = False;
+			}
+			LineBreak(hw,*mptr,pcc);
 			PushFont(pcc->cur_font);
 			pcc->cur_font = hw->html.header2_font;
 		}
@@ -638,9 +632,15 @@ char * TextAreaAddValue( char *value, char *text)
 		if (mark->is_end) {
 			pcc->cur_font = PopFont();
 			LineBreak(hw,*mptr,pcc);
-		} else {
-			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
+		} else {
+			if (pcc->is_in_paragraph){ /* end the paragraph */
+				LineBreak(hw,*mptr,pcc);
+				LinefeedPlace(hw,*mptr,pcc);
+				pcc->div = DIV_ALIGN_LEFT;
+				pcc->is_in_paragraph = False;
+			}
+			LineBreak(hw,*mptr,pcc);
 			PushFont(pcc->cur_font);
 			pcc->cur_font = hw->html.header3_font;
 		}
@@ -649,9 +649,15 @@ char * TextAreaAddValue( char *value, char *text)
 		if (mark->is_end) {
 			pcc->cur_font = PopFont();
 			LineBreak(hw,*mptr,pcc);
-		} else {
-			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
+		} else {
+			if (pcc->is_in_paragraph){ /* end the paragraph */
+				LineBreak(hw,*mptr,pcc);
+				LinefeedPlace(hw,*mptr,pcc);
+				pcc->div = DIV_ALIGN_LEFT;
+				pcc->is_in_paragraph = False;
+			}
+			LineBreak(hw,*mptr,pcc);
 			PushFont(pcc->cur_font);
 			pcc->cur_font = hw->html.header4_font;
 		}
@@ -660,9 +666,15 @@ char * TextAreaAddValue( char *value, char *text)
 		if (mark->is_end) {
 			pcc->cur_font = PopFont();
 			LineBreak(hw,*mptr,pcc);
-		} else {
-			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
+		} else {
+			if (pcc->is_in_paragraph){ /* end the paragraph */
+				LineBreak(hw,*mptr,pcc);
+				LinefeedPlace(hw,*mptr,pcc);
+				pcc->div = DIV_ALIGN_LEFT;
+				pcc->is_in_paragraph = False;
+			}
+			LineBreak(hw,*mptr,pcc);
 			PushFont(pcc->cur_font);
 			pcc->cur_font = hw->html.header5_font;
 		}
@@ -671,9 +683,15 @@ char * TextAreaAddValue( char *value, char *text)
 		if (mark->is_end) {
 			pcc->cur_font = PopFont();
 			LineBreak(hw,*mptr,pcc);
-		} else {
-			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
+		} else {
+			if (pcc->is_in_paragraph){ /* end the paragraph */
+				LineBreak(hw,*mptr,pcc);
+				LinefeedPlace(hw,*mptr,pcc);
+				pcc->div = DIV_ALIGN_LEFT;
+				pcc->is_in_paragraph = False;
+			}
+			LineBreak(hw,*mptr,pcc);
 			PushFont(pcc->cur_font);
 			pcc->cur_font = hw->html.header6_font;
 		}
@@ -714,7 +732,7 @@ char * TextAreaAddValue( char *value, char *text)
  * find out if we've visited it before */
 		        if (hw->html.previously_visited_test != NULL) {
 			    if((*(visitTestProc)
-			      (hw->html.previously_visited_test)) ((Widget)hw, tptr)) {
+			      (hw->html.previously_visited_test)) ((Widget)hw, tptr,hw->html.base_url)) {
 			        pcc->fg = hw->html.visitedAnchor_fg;
 			        pcc->underline_number = hw->html.num_visitedAnchor_underlines;
 			        pcc->dashed_underlines= hw->html.dashed_visitedAnchor_lines;
@@ -808,14 +826,8 @@ char * TextAreaAddValue( char *value, char *text)
  * in its own font.
  */
 	case M_PREFORMAT:
-	case M_PLAIN_TEXT:
-	case M_PLAIN_FILE:
 		tmp_font = hw->html.listing_font;
-		if (type == M_PLAIN_TEXT)
-			tmp_font = hw->html.plain_font;
 		if (type == M_PREFORMAT)
-			tmp_font = hw->html.plain_font;
-		if (type == M_PLAIN_FILE)
 			tmp_font = hw->html.plain_font;
 		if (mark->is_end) {
 			LineBreak(hw,*mptr,pcc);
@@ -852,12 +864,18 @@ char * TextAreaAddValue( char *value, char *text)
 				pcc->cur_line_width = dptr->save_cur_line_width;
 				pcc->indent_level--;
 				LineBreak(hw,*mptr,pcc);
+				LinefeedPlace(hw,*mptr,pcc);
 				free((char *)dptr);
 			}
 		} else {
 			DescRec *dptr;
 
 			LineBreak(hw,*mptr,pcc);
+			if (pcc->is_in_paragraph){ /* end the paragraph */
+				LinefeedPlace(hw,*mptr,pcc);
+				pcc->div = DIV_ALIGN_LEFT;
+				pcc->is_in_paragraph = False;
+			}
 			dptr = (DescRec *)malloc(sizeof(DescRec));
 /* Save the old state, and start a new */
 			dptr->compact = 0;
@@ -1053,22 +1071,25 @@ char * TextAreaAddValue( char *value, char *text)
 	case M_TABLE:
 		TablePlace(hw, mptr, pcc, save_obj);
 		break;
-	case M_FIGURE:
 	case M_IMAGE:		/* Just insert the image for now */
 		if (mark->is_end)
 			return;
 		ImagePlace(hw, *mptr, pcc);
 		break;
+#ifdef APPLET
 	case M_APPLET:
 		if ((*mptr)->is_end) 		/* end of applet */
 			return;
 		AppletPlace(hw,mptr,pcc,save_obj);
 		break;
+#endif
+#ifdef APROG
 	case M_APROG:
 		if ((*mptr)->is_end) 		/* end of aprog */
 			return;
 		AprogPlace(hw,mptr,pcc,save_obj);
 		break;
+#endif
 	case M_SMALL:
 		if (mark->is_end) {
 			pcc->cur_font = PopFont();
@@ -1221,6 +1242,7 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 	pcc.ignore = 0;
 	pcc.current_select = NULL;
 	pcc.in_select = False;
+	pcc.is_in_paragraph = False;
 
 /* Initialize local variables, some from the widget */
 	Strikeout = False;
@@ -1234,18 +1256,9 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 	DescType->save_cur_line_width = pcc.cur_line_width;
 	DescType->cur_line_width = pcc.cur_line_width;
 	InDocHead = 0;
-	if (hw->html.title != NULL) { /* Free the old title, if there is one. */
-		free(hw->html.title);
-		hw->html.title = NULL;
-	}
-/* #### memory leak ### */
-	TitleText = NULL;
-#ifdef MULTICAST
-        if((hw->html.mc_wtype == MC_MO_TYPE_MAIN) && mc_send_enable)
-                mc_global_eo_count = 0;
-#endif
+	in_title = 0;
 /* Free up previously formatted elements */
-	FreeLineList(hw->html.formatted_elements,(Widget)hw, save_obj);
+	FreeLineList(hw->html.formatted_elements,(Widget)hw);
 /* Start a null element list, to be filled in as we go. */
 	hw->html.cur_elem_to_format = NULL;
         hw->html.last_formatted_elem = NULL;
@@ -1327,12 +1340,16 @@ void RefreshElement(HTMLWidget hw,struct ele_rec *eptr)
 	case E_CELL_TABLE:
 		printf("Refresh E_CELL_TABLE\n");
 		break;
+#ifdef APROG
 	case E_APROG:
 		AprogRefresh(hw,eptr);
 		break;
+#endif
+#ifdef APPLET
 	case E_APPLET:
 		AppletRefresh(hw,eptr);
 		break;
+#endif
 	default:
 		fprintf(stderr,"[PlaceLine] Unknow Element %d\n",eptr->type);
 		break;
@@ -1373,10 +1390,8 @@ struct ele_rec * LocateElement( HTMLWidget hw, int x, int y, int *pos)
 			}
 			break;
 		case E_IMAGE:
-			if (eptr->pic_data->fetched ) {
-				if((x >= tx1)&&(x <= tx2)&&(y >= ty1)&&(y <=ty2)){
-					rptr = eptr;
-				}
+			if((x >= tx1)&&(x <= tx2)&&(y >= ty1)&&(y <=ty2)){
+				rptr = eptr;
 			}
 			break;
 		case E_CR:
@@ -1445,8 +1460,7 @@ struct ele_rec * LocateElement( HTMLWidget hw, int x, int y, int *pos)
 	return(rptr);
 }
 
-/*
- * Used by ParseTextToPrettyString to let it be sloppy about its
+/* Used by ParseTextToPrettyString to let it be sloppy about its
  * string creation, and never overflow the buffer.
  * It concatonates the passed string to the current string, managing
  * both the current string length, and the total buffer length.
@@ -1491,8 +1505,7 @@ void strcpy_or_grow( char **str, int *slen, int *blen, char *add)
  * space_width and lmargin tell us how many spaces
  * to indent lines.
  */
-char * ParseTextToString( struct ele_rec * elist,
-	struct ele_rec *startp, struct ele_rec *endp,
+char * ParseTextToString( struct ele_rec *startp, struct ele_rec *endp,
 	int start_pos, int end_pos,
 	int space_width, int lmargin)
 {
@@ -1586,14 +1599,13 @@ char * ParseTextToString( struct ele_rec * elist,
 	return(text);
 }
 
-/*
- * Parse all the formatted text elements from start to end
+/* Parse all the formatted text elements from start to end
  * into an ascii text string, and return it.
  * Very like ParseTextToString() except the text is prettied up
  * to show headers and the like.
  * space_width and lmargin tell us how many spaces to indent lines.
  */
-char * ParseTextToPrettyString( HTMLWidget hw, struct ele_rec * elist,
+char * ParseTextToPrettyString( HTMLWidget hw,
 	struct ele_rec *startp, struct ele_rec *endp,
 	int start_pos, int end_pos,
 	int space_width, int lmargin)
@@ -1910,8 +1922,7 @@ int DocumentWidth(HTMLWidget hw, struct mark_up *list)
 		 * plain and pre text markers are plain text blocks.
 		 * Manipulate flags so we recognize these blocks.
 		 */
-		if((mptr->type == M_PLAIN_TEXT)|| (mptr->type == M_PLAIN_FILE)||
-		   (mptr->type == M_PREFORMAT)) {
+		if( mptr->type == M_PREFORMAT) {
 			if (mptr->is_end) {
 				plain_text--;
 				if (plain_text < 0)

@@ -14,11 +14,14 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
+#if 0
+/* mjr: already done in mosaic.h */
 #ifdef __hpux
 #define MO_SIGHANDLER_RETURNTYPE int
 #else /* not __hpux */
 #define MO_SIGHANDLER_RETURNTYPE void
 #endif
+#endif /* 0 */
 
 void mo_exit (void);
 

@@ -6,6 +6,8 @@
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES. 
  */
 
+#ifdef APPLET
+
 #include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
@@ -112,14 +114,16 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 				/* Check if this image will be top aligned */
 	if (bwPtr) free(bwPtr);
 	alignPtr = ParseMarkTag(amptr->start, MT_APPLET, "ALIGN");
-	if (caseless_equal(alignPtr, "TOP")) {
-		valignment = VALIGN_TOP;
-	} else if (caseless_equal(alignPtr, "MIDDLE")) {
-		valignment = VALIGN_MIDDLE;
-	} else {
-		valignment = VALIGN_BOTTOM;
+	if (alignPtr){
+		if (!strcasecmp(alignPtr, "TOP")) {
+			valignment = VALIGN_TOP;
+		} else if (!strcasecmp(alignPtr, "MIDDLE")) {
+			valignment = VALIGN_MIDDLE;
+		} else {
+			valignment = VALIGN_BOTTOM;
+		}
+		free(alignPtr);
 	}
-	free(alignPtr);
 
 	ats = (AppletInfo *) malloc(sizeof(AppletInfo));
 	ats->height = atoi(hPtr) ;	/* in pixel */
@@ -141,9 +145,6 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 	ats->url_arg = (char **) malloc( sizeof(char *)); /* alloc one */
 	ats->url_arg[ats->url_arg_count] = NULL;
 
-#ifdef MULTICAST
-	ats->wtype = hw->html.mc_wtype;
-#endif
 	ats->internal_numeos = (int*)malloc( sizeof(int)); /*alloc one */
 	ats->ret_filenames = (char **) malloc( sizeof(char *)); /* alloc one */
 	ats->internal_numeos[ats->url_arg_count] = pcc->internal_mc_eo;
@@ -316,30 +317,31 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 		eo.src = zfile;
 		eo.ret_filename = NULL;
 		eo.num_eo = pcc->internal_mc_eo;
-#ifdef MULTICAST
-		eo.wtype = hw->html.mc_wtype;
-#endif
 		eo.cw_only = pcc->cw_only;
 		strcpy(cmdline," ");
-		if (hw->html.get_url_data_cb){
-			strcat(cmdline," ");
-			XtCallCallbackList((Widget) hw, hw->html.get_url_data_cb,
+		strcat(cmdline," ");
+/* bug ###### */
+/*
+		XtCallCallbackList((Widget) hw, hw->html.get_url_data_cb,
 				(XtPointer) &eo);
-			pcc->internal_mc_eo++;
-			if(eo.ret_filename!=NULL){
-				sprintf(allcmdline,"mv %s $HOME/.mMosaic/classes/%s",eo.ret_filename,
-					eo.src);
-				system(allcmdline);
-				eo.src = tmp;
-/*				strcat(cmdline, eo.ret_filename); */
-				indot=strrchr(eo.src,'.');
-				if (indot && !strcmp(indot,".class") ){
-					*indot = '\0';
-				}
-				strcat(cmdline, eo.src);
-/* l'applet est dans le fichier eo.ret_filename */
-				get_cnt++;
+*/
+                GetUrlData((Widget) hw, 
+                                     /* mo_window*/ NULL,
+                                     (XtPointer) &eo);
+		pcc->internal_mc_eo++;
+		if(eo.ret_filename!=NULL){
+			sprintf(allcmdline,"mv %s $HOME/.mMosaic/classes/%s",eo.ret_filename,
+				eo.src);
+			system(allcmdline);
+			eo.src = tmp;
+/*			strcat(cmdline, eo.ret_filename); */
+			indot=strrchr(eo.src,'.');
+			if (indot && !strcmp(indot,".class") ){
+				*indot = '\0';
 			}
+			strcat(cmdline, eo.src);
+/* l'applet est dans le fichier eo.ret_filename */
+			get_cnt++;
 		}
 
 /* les parametres */
@@ -449,3 +451,4 @@ void AppletRefresh(HTMLWidget hw, struct ele_rec *eptr)
 	XtSetValues(eptr->ats->frame, args,2);
 	XtSetMappedWhenManaged(eptr->ats->frame, True);
 }
+#endif

@@ -38,7 +38,6 @@ typedef enum _MarkType {
 	M_DOC_HEAD,
 	M_DOCTYPE,
 	M_EMPHASIZED,
-	M_FIGURE,
 	M_FIXED,
 	M_FONT,
 	M_FORM,
@@ -66,8 +65,6 @@ typedef enum _MarkType {
 	M_OPTION,
 	M_PARAGRAPH,
 	M_PARAM,
-	M_PLAIN_FILE,
-	M_PLAIN_TEXT,
 	M_PREFORMAT,
 	M_BUGGY_TABLE,
 	M_TABLE,
@@ -115,7 +112,6 @@ typedef enum _MarkType {
 #define	MT_DESC_TITLE	"dt"
 #define MT_DOCTYPE	"!DOCTYPE"
 #define MT_EMPHASIZED	"em"
-#define MT_FIGURE	"fig"
 #define MT_FONT		"font"
 #define MT_FORM		"form"
 #define MT_FRAME	"frame"
@@ -142,7 +138,6 @@ typedef enum _MarkType {
 #define MT_OPTION	"option"
 #define	MT_PARAGRAPH	"p"
 #define	MT_PARAM	"param"
-#define	MT_PLAIN_FILE	"plaintext"
 #define	MT_PREFORMAT	"pre"
 #define MT_SAMPLE	"samp"
 #define MT_SELECT	"select"
@@ -161,7 +156,6 @@ typedef enum _MarkType {
 #define MT_UNDERLINED   "u"
 #define	MT_UNUM_LIST	"ul"
 #define MT_VARIABLE	"var"
-#define	MT_PLAIN_TEXT	"xmp"
 
 
 			/* non blank space character */
@@ -190,7 +184,6 @@ struct mark_up {
 };
 
 
-extern int		caseless_equal(char *str1, char *str2);
 extern void 		clean_white_space(char *txt);
 extern struct mark_up * HTMLParse(char *str);
 extern char * 		ParseMarkTag(char *text, char *mtext, char *mtag);

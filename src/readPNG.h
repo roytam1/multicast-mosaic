@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+#define PNG_INTERNAL 1
+
 #include "png.h"
 
 #ifdef  __cplusplus

@@ -5,51 +5,48 @@
 #include <sys/stat.h>
 
 #include "libhtmlw/HTML.h"
-#include "libhtmlw/HTMLP.h"
 #include "mosaic.h"
 #include "gui-popup.h" 			/* for callback struct definition */
-#include "../libmc/mc_dispatch.h"
 #include "main.h"
 #include "gui.h"
-#include "gui-ftp.h"
+#include "gui-menubar.h"
 #include "gui-dialogs.h"
 #include "gui-documents.h"
+#ifdef NEWS
+#include "newsrc.h"
 #include "gui-news.h"
-#include "cciBindings2.h"
-#include "history.h"
-#include "mo-www.h"
+#endif
+#include "mime.h"
+#include "navigate.h"
 #include "globalhist.h"
 #include "hotlist.h"
 #include "cache.h"
 #include "proxy.h"
 #include "mailto.h"
+#include "paf.h"
 
-#define __SRC__
-#include "../libwww2/HText.h"
-#include "../libwww2/HTAAUtil.h"
-#include "../libwww2/HTNews.h"
+#include "../libnut/list.h"
+#include "../libmc/mc_main.h"
 
-extern int imageViewInternal;
+extern void McPopdownMemberList(void);
+extern void McPopupMemberList(void);
+
 extern int selectedAgent;		/* SWP -- Spoof Agents Stuff */
 extern int numAgents;
 extern char **agent;
+static void loadAgents(void) ;
 
-
+#ifdef MULTICAST
 extern Widget mc_list_top_w;
-
-/* from cciBindings.c */
-extern int cci_event;	/* send window event to application?? */
+int mc_show_participant_flag = 0;
+#endif
 
 static Widget exitbox = NULL;
-
-int mc_show_participant_flag = 0;
 
 static XmxCallback (exit_confirm_cb);
 static void mo_post_exitbox (void);
 static XmxCallback (clear_history_confirm_cb);
 static XmxCallback (agent_menubar_cb);
-static void mo_grok_menubar (char *filename);
-static void mo_try_to_grok_menubar (void);
 
 /* --------------------------- Colleen menubar ---------------------------- */
 static XmxMenubarStruct *file_menuspec;
@@ -59,11 +56,15 @@ static XmxMenubarStruct *agent_menuspec;
 static XmxMenubarStruct *opts_menuspec;
 static XmxMenubarStruct *navi_menuspec;
 static XmxMenubarStruct *help_menuspec;
+#ifdef NEWS
 static XmxMenubarStruct *newsfmt_menuspec;
 static XmxMenubarStruct *newsgrpfmt_menuspec;
 static XmxMenubarStruct *newsartfmt_menuspec;
+#endif
 static XmxMenubarStruct *news_menuspec;
+#ifdef MULTICAST
 static XmxMenubarStruct *multicast_menuspec;
+#endif
 static XmxMenubarStruct *menuspec;
 
 
@@ -517,13 +518,7 @@ static void mo_agent_spoofs(Widget w, XtPointer clid, XtPointer calld)
   
 /* ------------------------------ menubar_cb ------------------------------ */
 
-void mo_clear_passwd_cache(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-        if (cci_event) MoCCISendEventOutput(OPTIONS_FLUSH_PASSWD_CACHE);
-        mo_flush_passwd_cache (win);
-}
+#ifdef NEWS
 void mo_news_sub_anchor(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
@@ -587,594 +582,80 @@ void mo_news_mread_anchor(Widget w, XtPointer clid, XtPointer calld)
 /* Return to newsgroup list */
 /*
 	sprintf (buf, "news:*");
-	mo_load_window_text (win, buf, NULL);
+	MMPafLoadHTMLDocInWin (win, buf);
 */
 }
-
-void mo_back(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(MOSAIC_BACK);
-	mo_back_node (win);
-}
-void mo_forward(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(MOSAIC_FORWARD);
-	mo_forward_node (win);
-}
-void mo_reload_document(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(MOSAIC_RELOAD_CURRENT);
-	mo_reload_window_text (win);
-}
-void mo_home_document(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(MOSAIC_HOME_DOCUMENT);
-	mo_load_window_text (win, mMosaicAppData.home_document, NULL);
-}
-void mo_history_list(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(NAVIGATE_WINDOW_HISTORY);
-	mo_post_history_win (win);
-}
-void mo_links_window(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	mo_post_links_window(win);
-}
-void mo_hotlist_postit(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(NAVIGATE_HOTLIST);
-	mo_post_hotlist_win (win);
-}
-void mo_open_document(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(MOSAIC_OPEN_URL);
-	mo_post_open_window (win);
-}
-void mo_open_local_document(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(FILE_OPEN_LOCAL);
-	mo_post_open_local_window (win);
-}
-void mo_reload_document_and_images(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(FILE_RELOAD_IMAGES);
-	mo_reload_window_text (win);
-}
-void mo_refresh_document(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(FILE_REFRESH_CURRENT);
-	mo_refresh_window_text (win);
-}
-void mo_save_document(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(MOSAIC_SAVE_AS);
-	mo_post_save_window (win);
-}
-void mo_new_window(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(MOSAIC_NEW);
-	mo_open_another_window (win, mMosaicAppData.home_document, NULL, NULL);
-}
-void mo_clone_window(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(MOSAIC_CLONE);
-	mo_duplicate_window (win);
-}
-void mo_close_window(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(MOSAIC_CLOSE);
-	mo_delete_window (win);
-}
-void mo_register_node_in_default_hotlist(Widget w,XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event)
-		MoCCISendEventOutput(NAVIGATE_ADD_CURRENT_TO_HOTLIST);
-	if (win->current_node) {
-		mo_add_node_to_current_hotlist (win);
-		mo_write_default_hotlist ();
-	}
-}
-void mo_network_starting_points(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event)
-		MoCCISendEventOutput(NAVIGATE_INTERNET_STARTING_POINTS);
-	mo_load_window_text (win, NETWORK_STARTING_POINTS_DEFAULT, NULL);
-}
-void mo_internet_metaindex(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) 
-		MoCCISendEventOutput(
-			NAVIGATE_INTERNET_RESOURCES_META_INDEX);
-	mo_load_window_text (win, INTERNET_METAINDEX_DEFAULT, NULL);
-}
-void mo_help_about(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(HELP_ABOUT);
-	mo_open_another_window(win, 
-		strdup("http://sig.enst.fr/~dauphin/mMosaic/index.html"),
-		NULL, NULL);
-}
-void mo_mosaic_manual(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(HELP_MANUAL);
-	mo_open_another_window(win, 
-		mo_assemble_help_url("mosaic-docs.html"), NULL, NULL);
-}
-void mo_whats_new(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(HELP_WHATS_NEW);
-	mo_open_another_window (win, WHATSNEW_PAGE_DEFAULT, NULL, NULL);
-}
-void mo_mosaic_demopage(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(HELP_DEMO);
-	mo_open_another_window (win, DEMO_PAGE_DEFAULT, NULL, NULL);
-}
-void mo_help_onversion(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(HELP_ON_VERSION);
-	mo_open_another_window (win, MO_HELP_ON_VERSION_DOCUMENT, 
-		NULL, NULL);
-}
-void mo_help_onwindow(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(HELP_ON_WINDOW);
-	mo_open_another_window(win, 
-		mo_assemble_help_url("help-on-docview-window.html"),
-		NULL, NULL);
-}
-void mo_help_faq(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(HELP_ON_FAQ);
-	mo_open_another_window(win, 
-		mo_assemble_help_url ("mosaic-faq.html"), 
-		NULL, NULL);
-}
-void mo_help_html(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(HELP_ON_HTML);
-	mo_open_another_window (win, HTMLPRIMER_PAGE_DEFAULT, NULL, NULL);
-}
-void mo_help_url(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(HELP_ON_URLS);
-	mo_open_another_window (win, URLPRIMER_PAGE_DEFAULT, NULL, NULL);
-}
-void mo_techsupport(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-        
-	if (cci_event) MoCCISendEventOutput(HELP_MAIL_TECH_SUPPORT);
-	{
-	char subj[128];
-		sprintf (subj, "User Feedback -- NCSA Mosaic %s on %s.",
-			MO_VERSION_STRING, MO_MACHINE_TYPE);
-		mo_post_mailto_win(win,MO_DEVELOPER_ADDRESS,subj);
-	}
-}
-
 void mo_news_fmt0(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(NEWS_FORMAT_TV);
 	HTSetNewsConfig (1,-1,-1,-1,-1,-1,-1,-1);
 	XmxRSetToggleState (win->menubar, (XtPointer)mo_news_fmt1, XmxNotSet);
 	XmxRSetToggleState (win->menubar, (XtPointer)mo_news_fmt0, XmxSet);
-	mo_reload_window_text (win);
+	mo_reload_document(w, (XtPointer) win, NULL);
 }
 void mo_news_fmt1(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(NEWS_FORMAT_GV);
 	HTSetNewsConfig (0,-1,-1,-1,-1,-1,-1,-1);
 	XmxRSetToggleState (win->menubar, (XtPointer)mo_news_fmt0, XmxNotSet);
 	XmxRSetToggleState (win->menubar, (XtPointer)mo_news_fmt1, XmxSet);
-	mo_reload_window_text (win);
+	mo_reload_document(w, (XtPointer) win, NULL);
 }
-void mo_search(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(FILE_FIND_IN_CURRENT);
-	mo_post_search_window (win);
-}
-void mo_document_source(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(FILE_VIEW_SOURCE);
-	mo_post_source_window (win);
-}
-void mo_document_edit(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(FILE_EDIT_SOURCE);
-	mo_edit_source(win);
-}
-/*
-void mo_document_date(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(FILE_SOURCE_DATE);
-	mo_source_date(win);
-}
-*/
-void mo_print_document(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(FILE_PRINT);
-	mo_post_print_window (win);
-}
-void mo_mail_document(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(FILE_MAIL_TO);
-	mo_post_mail_window (win);
-}
-void mo_cci(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(FILE_CCI);
-	MoDisplayCCIWindow(win);
-}
-#ifdef KRB5
-void mo_kerberosv5_login(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(FILE_KERBEROS_V5_LOGIN);
-	scheme_login(HTAA_KERBEROS_V5, win);
-}
-#endif
-void mo_proxy(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	ShowProxyDialog(win);
-}
-void mo_no_proxy(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	ShowNoProxyDialog(win);
-}
-void mo_exit_program(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(FILE_EXIT_PROGRAM);
-	mo_post_exitbox ();
-}
-void mo_regular_fonts_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_TR);
-	mo_set_fonts (win, mo_regular_fonts_tkn);
-}
-void mo_small_fonts_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_TS);
-	mo_set_fonts (win, mo_small_fonts_tkn);
-}
-void mo_large_fonts_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_TL);
-	mo_set_fonts (win, mo_large_fonts_tkn);
-}
-void mo_regular_helvetica_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_HR);
-	mo_set_fonts (win, mo_regular_helvetica_tkn);
-}
-void mo_small_helvetica_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_HS);
-	mo_set_fonts (win, mo_small_helvetica_tkn);
-}
-void mo_large_helvetica_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_HL);
-	mo_set_fonts (win, mo_large_helvetica_tkn);
-}
-void mo_regular_newcentury_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_NCR);
-	mo_set_fonts (win, mo_regular_newcentury_tkn);
-}
-void mo_small_newcentury_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_NCS);
-	mo_set_fonts (win, mo_small_newcentury_tkn);
-}
-void mo_large_newcentury_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_NCL);
-	mo_set_fonts (win, mo_large_newcentury_tkn);
-}
-void mo_regular_lucidabright_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_LBR);
-	mo_set_fonts (win, mo_regular_lucidabright_tkn);
-}
-void mo_small_lucidabright_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_LBS);
-	mo_set_fonts (win, mo_small_lucidabright_tkn);
-}
-void mo_large_lucidabright_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FONTS_LBL);
-	mo_set_fonts (win, mo_large_lucidabright_tkn);
-}
-void mo_default_underlines_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_ANCHOR_UNDERLINES_DU);
-	mo_set_underlines (win, mo_default_underlines_tkn);
-}
-void mo_l1_underlines_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_ANCHOR_UNDERLINES_LU);
-	mo_set_underlines (win, mo_l1_underlines_tkn);
-}
-void mo_l2_underlines_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_ANCHOR_UNDERLINES_MU);
-	mo_set_underlines (win, mo_l2_underlines_tkn);
-}
-void mo_l3_underlines_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_ANCHOR_UNDERLINES_HU);
-	mo_set_underlines (win, mo_l3_underlines_tkn);
-}
-void mo_no_underlines_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_ANCHOR_UNDERLINES_NU);
-	mo_set_underlines (win, mo_no_underlines_tkn);
-}
-void mo_binary_transfer(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	win->binary_transfer = (win->binary_transfer ? 0 : 1);
-	if (cci_event) {
-		if (win->binary_transfer) 
-			MoCCISendEventOutput(
-				OPTIONS_LOAD_TO_LOCAL_DISK_ON);  
-		else
-			MoCCISendEventOutput(
-				OPTIONS_LOAD_TO_LOCAL_DISK_OFF);
-	}
-}
-void mo_body_color(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	win->body_color = (win->body_color ? 0 : 1);
-	XtVaSetValues(win->scrolled_win,
-		WbNbodyColors, win->body_color,
-		NULL);
-}
-void mo_body_images(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	win->body_images = (win->body_images ? 0 : 1);
-	XtVaSetValues(win->scrolled_win,
-		WbNbodyImages, win->body_images,
-		NULL);
-}
-void mo_image_view_internal(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	imageViewInternal = win->image_view_internal = 
-				(win->image_view_internal ? 0 : 1);
-}
-void mo_delay_image_loads(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	win->delay_image_loads = (win->delay_image_loads ? 0 : 1);
-	XmxRSetSensitive (win->menubar, (XtPointer)mo_expand_images_current,
-		win->delay_image_loads ? XmxSensitive : XmxNotSensitive);
-	if (cci_event) {
-		if (win->delay_image_loads)
-			MoCCISendEventOutput( OPTIONS_DELAY_IMAGE_LOADING_ON);
-		else
-			MoCCISendEventOutput( OPTIONS_DELAY_IMAGE_LOADING_OFF);
-	}
-}
-void mo_expand_images_current(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if(cci_event)MoCCISendEventOutput(OPTIONS_LOAD_IMAGES_IN_CURRENT);
-	mo_refresh_window_text (win);
-}
-void mo_re_init(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_RELOAD_CONFIG_FILES);
-	mo_re_init_formats ();
-}
-void mo_clear_cache(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FLUSH_CACHE);
-      XmUpdateDisplay (win->base);
-	MMCacheClearCache ();
-      /* Force a complete reload...nothing else we can do -- SWP */
-      mo_reload_window_text (win);
-}
-void mo_clear_global_history(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(OPTIONS_CLEAR_GLOBAL_HISTORY);
-	XmxMakeQuestionDialog (win->base, 
-		"Are you sure you want to clear the global history?",
-		"NCSA Mosaic: Clear Global History",
-		clear_history_yes_cb, clear_history_no_cb, 
-		(XtPointer)win);
-	XtManageChild (Xmx_w);
-}
 void mo_news_groups(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(NEWS_LIST_GROUPS);
 	gui_news_list(win);
 }
 void mo_news_list(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(NEWS_LIST_GROUPS);
 	gui_news_list(win);
 }
 void mo_news_index(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(NEWS_INDEX);
 	gui_news_index(win);
 }
 void mo_news_prevt(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(NEWS_PREV_THREAD);
 	gui_news_prevt(win);
 }
 void mo_news_prev(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(NEWS_PREV);
 	gui_news_prev(win);
 }
 void mo_news_next(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(NEWS_NEXT);
 	gui_news_next(win);
 }
 void mo_news_nextt(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(NEWS_NEXT_THREAD);
 	gui_news_nextt(win);
 }
 void mo_news_post(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(NEWS_POST);
 	mo_post_news_win(win);
 }
 void mo_news_follow(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(NEWS_FOLLOW_UP);
 	mo_post_follow_win(win);
 }
 void mo_news_sub(Widget w, XtPointer clid, XtPointer calld)
@@ -1249,39 +730,449 @@ void mo_news_flushgroup(Widget w, XtPointer clid, XtPointer calld)
 
 	gui_news_flushgroup(win);
 }
-void mo_ftp_put(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-	 /* Handle FTP stuff here */
-	if (cci_event) MoCCISendEventOutput (FTP_PUT);
-	mo_handle_ftpput (win);
-}
-	void mo_ftp_mkdir(Widget w, XtPointer clid, XtPointer calld)
+#endif
+
+void mo_clear_passwd_cache(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput (FTP_MKDIR);
-	mo_handle_ftpmkdir (win);
+        mo_flush_passwd_cache (win);
 }
+
+void mo_home_document(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+	RequestDataStruct rds;
+
+	rds.req_url = mMosaicAppData.home_document;
+	rds.post_data = NULL;
+	rds.ct = NULL;
+	rds.is_reloading = False;
+	MMPafLoadHTMLDocInWin (win, &rds);
+}
+void mo_history_list(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_post_history_win (win);
+}
+void mo_links_window(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_post_links_window(win);
+}
+void mo_hotlist_postit(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_post_hotlist_win (win);
+}
+void mo_open_document(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_post_open_window (win);
+}
+void mo_open_local_document(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_post_open_local_window (win);
+}
+void mo_reload_document_and_object(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_reload_document(w, (XtPointer) win, NULL);
+}
+void mo_refresh_document(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_refresh_window_text (win);
+}
+
+void mo_new_window(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * pwin = (mo_window*) clid;
+	mo_window * neww;
+	RequestDataStruct rds;
+
+	rds.ct = rds.post_data = NULL;
+	rds.is_reloading = False;
+	rds.req_url = mMosaicAppData.home_document;
+	neww = mo_make_window( pwin,MC_MO_TYPE_UNICAST);
+	MMPafLoadHTMLDocInWin (neww, &rds);
+}
+
+void mo_clone_window(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+	mo_window * neww;
+	RequestDataStruct rds;
+
+	rds.ct = rds.post_data = NULL;
+	rds.is_reloading = False;
+	rds.req_url = win->current_node->aurl;
+	neww = mo_make_window(win,MC_MO_TYPE_UNICAST);
+	MMPafLoadHTMLDocInWin (neww, &rds);
+}
+
+void mo_close_window(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_delete_window (win);
+}
+void mo_register_node_in_default_hotlist(Widget w,XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	if (win->current_node) {
+		mo_add_node_to_current_hotlist (win);
+		mo_write_default_hotlist ();
+	}
+}
+void mo_network_starting_points(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+	RequestDataStruct rds;
+
+	rds.req_url = NETWORK_STARTING_POINTS_DEFAULT;
+	rds.post_data = NULL;
+	rds.ct = NULL;
+	rds.is_reloading = False;
+	MMPafLoadHTMLDocInWin (win, &rds);
+}
+void mo_internet_metaindex(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+	RequestDataStruct rds;
+
+	rds.req_url = INTERNET_METAINDEX_DEFAULT;
+	rds.post_data = NULL;
+	rds.ct = NULL;
+	rds.is_reloading = False;
+	MMPafLoadHTMLDocInWin (win, &rds);
+}
+void mo_help_about(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+	mo_window * neww;
+	RequestDataStruct rds;
+
+	rds.ct = rds.post_data = NULL;
+	rds.is_reloading = False;
+	rds.req_url = "http://sig.enst.fr/~dauphin/mMosaic/index.html";
+	neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
+	MMPafLoadHTMLDocInWin (neww, &rds);
+}
+void mo_mosaic_manual(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+	mo_window * neww;
+	RequestDataStruct rds;
+
+	rds.ct = rds.post_data = NULL;
+	rds.is_reloading = False;
+	rds.req_url = mo_assemble_help_url("mosaic-docs.html");
+	neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
+	MMPafLoadHTMLDocInWin (neww, &rds);
+}
+
+void mo_whats_new(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+	mo_window * neww;
+	RequestDataStruct rds;
+
+	rds.ct = rds.post_data = NULL;
+	rds.is_reloading = True;
+	rds.req_url = WHATSNEW_PAGE_DEFAULT;
+	neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
+	MMPafLoadHTMLDocInWin (neww, &rds);
+}
+
+void mo_mosaic_demopage(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_open_another_window (win, DEMO_PAGE_DEFAULT);
+}
+void mo_help_onversion(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_open_another_window (win, MO_HELP_ON_VERSION_DOCUMENT);
+}
+void mo_help_onwindow(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_open_another_window(win, 
+		mo_assemble_help_url("help-on-docview-window.html"));
+}
+void mo_help_faq(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_open_another_window(win, 
+		mo_assemble_help_url ("mosaic-faq.html"));
+}
+void mo_help_html(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_open_another_window (win, HTMLPRIMER_PAGE_DEFAULT);
+}
+void mo_help_url(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_open_another_window (win, URLPRIMER_PAGE_DEFAULT);
+}
+void mo_techsupport(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+	char subj[128];
+
+	sprintf (subj, "User Feedback -- NCSA Mosaic %s on %s.",
+		MO_VERSION_STRING, MO_MACHINE_TYPE);
+	mo_post_mailto_win(win,MO_DEVELOPER_ADDRESS,subj);
+}
+
+void mo_search(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_post_search_window (win);
+}
+
+void mo_document_edit(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_edit_source(win);
+}
+/*
+void mo_document_date(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_source_date(win);
+}
+*/
+void mo_print_document(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_post_print_window (win);
+}
+void mo_mail_document(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_post_mail_window (win);
+}
+#ifdef KRB5
+void mo_kerberosv5_login(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	scheme_login(HTAA_KERBEROS_V5, win);
+}
+#endif
+void mo_proxy(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	ShowProxyDialog(win);
+}
+void mo_no_proxy(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	ShowNoProxyDialog(win);
+}
+void mo_exit_program(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_post_exitbox ();
+}
+void mo_regular_fonts_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_regular_fonts_tkn);
+}
+void mo_small_fonts_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_small_fonts_tkn);
+}
+void mo_large_fonts_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_large_fonts_tkn);
+}
+void mo_regular_helvetica_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_regular_helvetica_tkn);
+}
+void mo_small_helvetica_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_small_helvetica_tkn);
+}
+void mo_large_helvetica_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_large_helvetica_tkn);
+}
+void mo_regular_newcentury_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_regular_newcentury_tkn);
+}
+void mo_small_newcentury_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_small_newcentury_tkn);
+}
+void mo_large_newcentury_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_large_newcentury_tkn);
+}
+void mo_regular_lucidabright_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_regular_lucidabright_tkn);
+}
+void mo_small_lucidabright_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_small_lucidabright_tkn);
+}
+void mo_large_lucidabright_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_fonts (win, mo_large_lucidabright_tkn);
+}
+void mo_default_underlines_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_underlines (win, mo_default_underlines_tkn);
+}
+void mo_l1_underlines_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_underlines (win, mo_l1_underlines_tkn);
+}
+void mo_l2_underlines_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_underlines (win, mo_l2_underlines_tkn);
+}
+void mo_l3_underlines_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_underlines (win, mo_l3_underlines_tkn);
+}
+void mo_no_underlines_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_set_underlines (win, mo_no_underlines_tkn);
+}
+
+void mo_body_color(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	win->body_color = (win->body_color ? 0 : 1);
+	XtVaSetValues(win->scrolled_win,
+		WbNbodyColors, win->body_color,
+		NULL);
+}
+
+void mo_expand_object_current(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	mo_refresh_window_text (win);
+}
+
+void mo_delay_object_loads(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	win->delay_object_loads = (win->delay_object_loads ? 0 : 1);
+	XmxRSetSensitive (win->menubar, (XtPointer)mo_expand_object_current,
+		win->delay_object_loads ? XmxSensitive : XmxNotSensitive);
+}
+void mo_clear_cache(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	MMCacheClearCache ();
+      /* Force a complete reload...nothing else we can do -- SWP */
+	mo_reload_document(w, (XtPointer) win, NULL);
+}
+void mo_clear_global_history(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window * win = (mo_window*) clid;
+
+	XmxMakeQuestionDialog (win->base, 
+		"Are you sure you want to clear the global history?",
+		"mMosaic: Clear Global History",
+		clear_history_yes_cb, clear_history_no_cb, 
+		(XtPointer)win);
+	XtManageChild (Xmx_w);
+}
+
 #ifdef MULTICAST
+int mc_multicast_enable;
+extern mo_window * mc_send_win;
 void mo_multicast_send_tog(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if(win->mc_type != MC_MO_TYPE_MAIN)
-		return;
-	if(mc_send_enable){ /* j'emets. Faut que j'arrete */
-		XmxRSetToggleState(win->menubar, (XtPointer)mo_multicast_send_tog,
+	if(win->mc_type != MC_MO_TYPE_MAIN) {
+		fprintf(stderr, "mo_multicast_send_tog: Bug, Please report...\n");
+		abort();	/* something goes wrong */
+	}
+	if(mc_send_win){ /* j'emets. Faut que j'arrete */
+		XmxRSetToggleState(mc_send_win->menubar, (XtPointer)mo_multicast_send_tog,
 			XmxNotSet);
-		mc_send_enable = False;
-		McStopSendHyperText(win);
+/*		McStopSendHyperText(win); */
+		mc_send_win = NULL;
 	} else { 	/* je n'emets pas. Il faut */
 		XmxRSetToggleState(win->menubar, (XtPointer)mo_multicast_send_tog,
 			XmxSet);
-		mc_send_enable = True;
-		McStartSendHyperText(win);
+		mc_send_win = win;
+		McStartSender(win);
 	}
 }
+
 void mo_multicast_show_participant(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
@@ -1289,11 +1180,11 @@ void mo_multicast_show_participant(Widget w, XtPointer clid, XtPointer calld)
 	if(mc_show_participant_flag){
 		XmxRSetToggleState(win->menubar,
 			(XtPointer)mo_multicast_show_participant, XmxNotSet);
-		XtPopdown(mc_list_top_w);
+		McPopdownMemberList();
 	} else {
 		XmxRSetToggleState(win->menubar,
                          (XtPointer)mo_multicast_show_participant, XmxSet);
-		XtPopup(mc_list_top_w, XtGrabNone);
+		McPopupMemberList();
 	}
 	mc_show_participant_flag = !mc_show_participant_flag;
 }
@@ -1449,7 +1340,7 @@ void mo_init_menubar()
 	DEFINE_MENUBAR("Open Local..." ,"L",mo_open_local_document,NULL)
 	SPACER()
 	DEFINE_MENUBAR("Reload Current" ,"R",mo_reload_document,NULL)
-	DEFINE_MENUBAR("Reload Images" ,"a",mo_reload_document_and_images,NULL)
+	DEFINE_MENUBAR("Reload Images" ,"a",mo_reload_document_and_object,NULL)
 	DEFINE_MENUBAR("Refresh Current" ,"f",mo_refresh_document,NULL)
 	SPACER()
 	DEFINE_MENUBAR("Find In Current" ,"I",mo_search,NULL)
@@ -1460,7 +1351,6 @@ void mo_init_menubar()
 	DEFINE_MENUBAR("Print..." ,"P",mo_print_document,NULL)
 	DEFINE_MENUBAR("Mail To..." ,"M",mo_mail_document,NULL)
 	SPACER()
-	DEFINE_MENUBAR("CCI..." ,"D",mo_cci,NULL)
 /*SWP -- 7/17/95*/
 #ifdef KRB5
 	SPACER()
@@ -1512,17 +1402,11 @@ void mo_init_menubar()
 	NULL_MENUBAR()
 
 	/* Options Menu */
-	ALLOC_MENUBAR(opts_menuspec,23)
-	DEFINE_MENUBAR("#Load to Local Disk" ,"T",mo_binary_transfer,NULL)
-	SPACER()
+	ALLOC_MENUBAR(opts_menuspec,16)
 	DEFINE_MENUBAR("#Body Color" ,"y",mo_body_color,NULL)
-	DEFINE_MENUBAR("#Body (Background) Images" ,"k",mo_body_images,NULL)
 	SPACER()
-	DEFINE_MENUBAR("#View Images Internally" ,"V",mo_image_view_internal,NULL)
-	DEFINE_MENUBAR("#Delay Image Loading" ,"D",mo_delay_image_loads,NULL)
-	DEFINE_MENUBAR("Load Images In Current" ,"L",mo_expand_images_current,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Reload Config Files" ,"R",mo_re_init,NULL)
+	DEFINE_MENUBAR("#Delay Image Loading" ,"D",mo_delay_object_loads,NULL)
+	DEFINE_MENUBAR("Load Images In Current" ,"L",mo_expand_object_current,NULL)
 	SPACER()
 	DEFINE_MENUBAR("Flush Cache" ,"I",mo_clear_cache,NULL)
         DEFINE_MENUBAR("Flush Password Cache" ,"P",mo_clear_passwd_cache,NULL)
@@ -1567,6 +1451,7 @@ void mo_init_menubar()
 	DEFINE_MENUBAR("Mail Tech Support mMosaic..." ,"M",mo_techsupport,NULL)
 	NULL_MENUBAR()
 
+#ifdef NEWS
 	/* News Format Sub-Menu */
 	ALLOC_MENUBAR(newsfmt_menuspec,3)
 	DEFINE_MENUBAR("<Thread View" ,"T",mo_news_fmt0,NULL)
@@ -1606,6 +1491,7 @@ void mo_init_menubar()
 	DEFINE_MENUBAR("Flush Group Data" ,"D",mo_news_flushgroup,NULL)
 	DEFINE_MENUBAR("Thread Style" ,"T",NULL,newsfmt_menuspec)
 	NULL_MENUBAR()
+#endif
 
 #ifdef MULTICAST
 	/* Muticast Menu */
@@ -1620,8 +1506,12 @@ void mo_init_menubar()
 	DEFINE_MENUBAR("File" ,"F",NULL,file_menuspec)
 	DEFINE_MENUBAR("Options" ,"O",NULL,opts_menuspec)
 	DEFINE_MENUBAR("Navigate" ,"N",NULL,navi_menuspec)
+#ifdef NEWS
 	DEFINE_MENUBAR("News" ,"w",NULL,news_menuspec)
+#endif
+#ifdef MULTICAST
 	DEFINE_MENUBAR("Multicast","M",NULL,multicast_menuspec)
+#endif
 	DEFINE_MENUBAR("Help" ,"H",NULL,help_menuspec)
 	/* Dummy submenu. */
 	NULL_MENUBAR()
@@ -1642,19 +1532,15 @@ XmxMenuRecord *mo_make_document_view_menubar (Widget form, mo_window * win)
         XtManageChild (_menubar);
         toBeReturned = _XmxMenuCreateRecord (_menubar); /*Create XmxMenuRecord.*/
         Xmx_n = 0;
-        _XmxRCreateMenubar(_menubar, menuspec,  toBeReturned, win);
+        _XmxRCreateMenubar(_menubar, menuspec,  toBeReturned, (struct _mo_window *)win);
         Xmx_n = 0;
         Xmx_w = _menubar;
 
 #ifdef MULTICAST
-	if((win->mc_type != MC_MO_TYPE_MAIN) || (mc_multicast_enable == False)){
-		XmxRSetSensitive (toBeReturned, 
-			(XtPointer) mo_multicast_send_tog,
+	XmxRSetSensitive (toBeReturned, (XtPointer) mo_multicast_send_tog,
                 	XmxNotSensitive);
-		XmxRSetSensitive (toBeReturned, 
-			(XtPointer) mo_multicast_show_participant,
+	XmxRSetSensitive (toBeReturned, (XtPointer) mo_multicast_show_participant,
                 	XmxNotSensitive);
-	}
 #endif
 	win->agent_state_pulldown = NULL;
 	win->agspd_cbd = (AgentSpoofCBStruct*)malloc(numAgents * sizeof(AgentSpoofCBStruct));
@@ -1664,4 +1550,63 @@ XmxMenuRecord *mo_make_document_view_menubar (Widget form, mo_window * win)
 		win->agspd_cbd[i].win= win;
 	}
 	return toBeReturned;
+}
+
+/* ---------------------------- Agent Spoofing ---------------------------- */
+#define MAX_AGENTS		51
+
+int 		numAgents;	 /* SWP -- Agent Spoofing */
+char 		**agent;
+int 		selectedAgent=0;
+
+char * MMGetUserAgent()
+{
+	return agent[selectedAgent];
+}
+
+/* Agent Spoofing is simple. NCSA's real agent is always a member of the
+ * menu. Any more than that, you can add to the file in your home directory
+ * called ".mosaic-spoof-agents".
+ */
+
+static void loadAgents(void) 
+{
+	FILE *fp;
+	char fname[BUFSIZ],buf[512];
+	char *ptr;
+	char buf1[512];
+
+	agent=(char **)calloc(MAX_AGENTS+1,sizeof(char *));
+	sprintf(buf1,"mMosaic/%s",
+		mMosaicAppVersion ? mMosaicAppVersion : "0.0");
+	agent[0]=strdup(buf1);
+	numAgents=1;
+
+	sprintf(fname,"%s/agents",mMosaicRootDirName);
+
+	if (!(fp=fopen(fname,"r")))
+		return;
+
+	while (!feof(fp)) {
+		fgets(buf,511,fp);
+		if (feof(fp))
+			break;
+		if (*buf && *buf!='#') {
+			buf[strlen(buf)-1]='\0';
+			for (ptr=buf; *ptr && isspace(*ptr); ptr++);
+			if (*ptr=='+') { /* This is to be the default*/
+				if (*(ptr+1)) {
+					agent[numAgents]=strdup(ptr+1);
+					selectedAgent=numAgents;
+				} else
+					continue;
+			} else 	
+				if (*ptr) {
+					agent[numAgents]=strdup(ptr);
+				} else
+					continue;
+			numAgents++;
+		}
+	}
+	fclose(fp);
 }

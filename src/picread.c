@@ -25,7 +25,7 @@
 unsigned char nibMask[8] = { 1, 2, 4, 8, 16, 32, 64, 128 };
 
 
-unsigned char *ReadXpmPixmap( FILE *fp, char *datafile,
+unsigned char *_MMReadXpmPixmap( FILE *fp, char *datafile,
 	int *w, int *h, XColor *colrs,
 	int Colors, int CharsPP)
 {
@@ -46,11 +46,11 @@ unsigned char *ReadXpmPixmap( FILE *fp, char *datafile,
 		return((unsigned char *)NULL);
 	}
 	if (*w == 0) {
-		fprintf(stderr, "Can't read image.\n");
+		/*fprintf(stderr, "Can't read image.\n");*/
 		return((unsigned char *)NULL);
 	}
 	if (*h == 0) {
-		fprintf(stderr, "Can't read image.\n");
+		/*fprintf(stderr, "Can't read image.\n");*/
 		return((unsigned char *)NULL);
 	}
 
@@ -317,15 +317,15 @@ unsigned char *ReadXbmBitmap(Widget view, FILE *fp, char *datafile,
 			continue;
 	}
 	if (xpmformat) {
-		dataP =ReadXpmPixmap(fp, datafile, w, h, colrs, Ncolors, charspp);
+		dataP =_MMReadXpmPixmap(fp, datafile, w, h, colrs, Ncolors, charspp);
 		return(dataP);
 	}
 	if (*w == 0) {
-		fprintf(stderr, "Can't read image.\n");
+		/*fprintf(stderr, "Can't read image.\n");*/
 		return((unsigned char *)NULL);
 	}
 	if (*h == 0) {
-		fprintf(stderr, "Can't read image.\n");
+		/*fprintf(stderr, "Can't read image.\n");*/
 		return((unsigned char *)NULL);
 	}
 	padding = 0;
@@ -431,7 +431,7 @@ unsigned char *ReadBitmap(Widget view, char *datafile, int *w, int *h,
 	}
 	rewind(fp);
 
-	bit_data = ReadXpm3Pixmap(view, fp, datafile, w, h, colrs, bg);
+	bit_data = _MMReadXpm3Pixmap(view, fp, datafile, w, h, colrs, bg);
 	if (bit_data != NULL) {
 		fclose(fp);
 		return(bit_data);

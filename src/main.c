@@ -10,12 +10,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-#include "../libwww2/HTParams.h"
-
-extern void HT_SetExtraHeaders(char **headers); /*####### bad */
 
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
@@ -25,19 +19,17 @@ extern void HT_SetExtraHeaders(char **headers); /*####### bad */
 #include "child.h"
 #include "hotlist.h"
 #include "globalhist.h"
-#include "cciBindings2.h"
+#include "mime.h"
 #include "cache.h"
 #include "proxy.h"
 #include "xresources.h"
+#include "pixmaps.h"
+#include "URLParse.h"
+#include "paf.h"
+#include "../libmc/mc_main.h"
 
-#ifdef MULTICAST                      
-#include "../libmc/mc_rtp.h"          
-#include "../libmc/mc_defs.h"         
-#include "../libmc/mc_misc.h"         
-#include "../libmc/mc_sockio.h"       
-#include "../libmc/mc_dispatch.h"     
-#include "../libmc/mc_action.h"       
-#endif 
+#include "bitmaps/iconify.xbm"
+#include "bitmaps/iconify_mask.xbm"
 
 #ifdef SOLARIS
 #ifdef  __cplusplus             
@@ -53,7 +45,6 @@ char 		*mMosaicRootDirName = NULL;
 char		*mMosaicMachineWithDomain;
 char		*mMosaicTmpDir = NULL;
 
-int		mMosaicCCITrace;
 int		mMosaicSrcTrace;
 
 AppData 	mMosaicAppData;
@@ -62,26 +53,55 @@ XtAppContext	mMosaicAppContext;
 Widget		mMosaicToplevelWidget;
 Colormap 	mMosaicColormap;
 int		mMosaicVisualClass; /* visual class for 24bit support hack */
+Window		mMosaicRootWindow;
+
+Pixmap		mMosaicWinIconPixmap;   
+Pixmap		mMosaicWinIconMaskPixmap;
+Cursor		mMosaicBusyCursor;
 
 /* If mMosaicStartupDocument is set to anything but NULL, it will be the
    initial document viewed */ 
 
 char *mMosaicStartupDocument = NULL;
 
+char		*mMosaicPersonalTypeMap = NULL;
+char		*mMosaicPersonalExtensionMap = NULL;
+char		*mMosaicAppVersion;
 
-#ifdef MULTICAST
-int             mc_fdread;
-int             mc_rtcp_fdread;
-unsigned char   mc_len_alias = 0;
-char *          mc_alias_name = "Unknow";
-char *          mc_sess_name;
-char *          mc_media_name;
-#endif
 
+/* --------------BalloonHelpStuff---------------------------------------- */
+
+static void BalloonHelpMe(Widget w, XEvent * event)
+{
+	BalloonInfoData *info;
+
+	XtVaGetValues(w, XmNuserData, (XtPointer) &info, NULL);
+	mo_gui_notify_progress(info->msg,info->win);
+}
+
+static void UnBalloonHelpMe(Widget w, XEvent * event)
+{
+	BalloonInfoData *info;
+
+	XtVaGetValues(w, XmNuserData, (XtPointer) &info, NULL);
+	mo_gui_notify_progress(" ",info->win);
+}
+
+char * mMosaicBalloonTranslationTable = "<Enter>: BalloonHelpMe()\n\
+	<Leave>: UnBalloonHelpMe()";
+
+static XtActionsRec balloon_action[] = {
+	{"BalloonHelpMe", (XtActionProc)BalloonHelpMe},
+	{"UnBalloonHelpMe", (XtActionProc)UnBalloonHelpMe}
+};
+/* to use balloon help, add these bits to your widget ...  BJS 2/7/96
+ *    XmNtranslations, XtParseTranslationTable(xlattab),
+ *    XmNuserData, (xtpointer) "Balloon Help String!",
+ */
+/* ------------------------------------------------------ */
 
 /*######################*/
 #ifdef MULTICAST
-extern void 	McSendRtcpBye(void);
 extern int	mc_multicast_enable;
 #endif
 
@@ -91,8 +111,10 @@ char *userPath=NULL;
 void mo_exit (void)
 {
 #ifdef MULTICAST
+/*
 	if(mc_multicast_enable)
 		McSendRtcpBye();
+*/
 #endif
 	MMCacheWriteCache();
 	mo_write_default_hotlist ();
@@ -221,6 +243,10 @@ void main (int argc, char **argv, char **envp)
 	char *author_name;
 	char *author_email;
 	char * home_opt;
+	mo_window *win;		/* The first mo_window */
+	McMoWType mc_t; /*  A la creation : Soit type MAIN ou type UNICAST */
+	RequestDataStruct rds;
+	struct hostent * mmmmm;	/* mjr++ 12 Jan 1998 */
 
 /*	_Xdebug =1;	*/
 	signal (SIGBUS, FatalProblem);
@@ -256,7 +282,6 @@ void main (int argc, char **argv, char **envp)
 	free (fnam); 
 
 	InitChildProcessor();
-	MoCCIPreInitialize();
 
 #if defined(SVR4) || defined(__QNX__)
 	signal(SIGCHLD, (void (*)(int))ChildTerminated);
@@ -280,8 +305,9 @@ void main (int argc, char **argv, char **envp)
 			Xmx_wargs, Xmx_n);
 	Xmx_n=0;                      
 	mMosaicDisplay = XtDisplay (mMosaicToplevelWidget);    
+	mMosaicRootWindow = DefaultRootWindow(mMosaicDisplay);
 
-/*      XSynchronize(mMosaicDisplay,True);*/ 
+/*      XSynchronize(mMosaicDisplay,True);  */
 
 	XtVaGetApplicationResources(mMosaicToplevelWidget,
 		(XtPointer) &mMosaicAppData,
@@ -305,52 +331,28 @@ void main (int argc, char **argv, char **envp)
 /* initialize some libwww variable */
 
         uname(&mm_uname);
-	HTAppVersion = (char *)malloc (sizeof(char) * (
+	mMosaicAppVersion = (char *)malloc (sizeof(char) * (
 			strlen(MO_VERSION_STRING) + strlen(mm_uname.sysname) +
 			strlen(mm_uname.release) + strlen(mm_uname.machine) +20));
-	sprintf(HTAppVersion, "%s (X11;%s %s %s)",
+	sprintf(mMosaicAppVersion, "%s (X11;%s %s %s)",
 				MO_VERSION_STRING, mm_uname.sysname,
 				mm_uname.release, mm_uname.machine);
 
-        wWWParams.trace = mMosaicAppData.wwwTrace;
-        wWWParams.global_xterm_str = mMosaicAppData.xterm_command;
-        wWWParams.uncompress_program = mMosaicAppData.uncompress_command;
-        wWWParams.gunzip_program = mMosaicAppData.gunzip_command;
-        wWWParams.tweak_gopher_types = mMosaicAppData.tweak_gopher_types;
-        wWWParams.max_wais_responses = mMosaicAppData.max_wais_responses;
-        wWWParams.ftp_timeout_val = mMosaicAppData.ftp_timeout_val;
-        wWWParams.ftpRedial=mMosaicAppData.ftpRedial;
-        wWWParams.ftpFilenameLength=mMosaicAppData.ftpFilenameLength;
-        wWWParams.ftpEllipsisLength=mMosaicAppData.ftpEllipsisLength;
-        wWWParams.ftpEllipsisMode=mMosaicAppData.ftpEllipsisMode;
-        wWWParams.use_default_extension_map =
-			mMosaicAppData.use_default_extension_map;
-	wWWParams.personal_extension_map = (char *)malloc(
-		strlen(mMosaicRootDirName) + strlen("mime.types") + 8);
-	sprintf(wWWParams.personal_extension_map, "%s/mime.types",
-			mMosaicRootDirName);
-        wWWParams.use_default_type_map = mMosaicAppData.use_default_type_map;
-	wWWParams.personal_type_map = (char *)malloc(
+	mMosaicPersonalTypeMap = (char *)malloc(
 		strlen(mMosaicRootDirName) + strlen("mailcap") + 8);   
-	sprintf(wWWParams.personal_type_map, "%s/mailcap", mMosaicRootDirName);
-	/* how many byte for activating icon */
-        wWWParams.twirl_increment = mMosaicAppData.twirl_increment;
+	sprintf(mMosaicPersonalTypeMap, "%s/mailcap", mMosaicRootDirName);
 
-        if(mMosaicAppData.acceptlanguage_str) { 
-                char **extras;
- 
-                extras =  (char**)malloc(sizeof(char *) * 2);
-                extras[0]= (char*)malloc(
-			strlen(mMosaicAppData.acceptlanguage_str) + 19);       
-                sprintf(extras[0], "Accept-Language: %s", 
-                        mMosaicAppData.acceptlanguage_str);
-                extras[1] = NULL;
-                HT_SetExtraHeaders(extras); 
-        }
+	HTPresentationInit();
+
+	mMosaicPersonalExtensionMap = (char *)malloc(
+		strlen(mMosaicRootDirName) + strlen("mime.types") + 8);
+	sprintf(mMosaicPersonalExtensionMap, "%s/mime.types",
+			mMosaicRootDirName);
+
+	HTExtensionMapInit();
 
 /* debug options */
         htmlwTrace = mMosaicAppData.htmlwTrace;
-        mMosaicCCITrace = mMosaicAppData.cciTrace;
         mMosaicSrcTrace = mMosaicAppData.srcTrace;
 
 /* First get the hostname. Then find out the full name, if possible. */
@@ -361,10 +363,25 @@ void main (int argc, char **argv, char **envp)
 		gethostname (machine, MAXHOSTNAMELEN);
 	}
 
-	mMosaicMachineWithDomain = machine ;
-	if ( !strchr(machine,'.') ) { /* nodomain */
-		mMosaicMachineWithDomain = (char*) malloc(strlen(machine) + 12);
-		sprintf(mMosaicMachineWithDomain,"%s.nodomain",machine);
+/* mjr 12 Jan 1998: really get fully qualified host name.
+works on my linux box, hopefully on solaris, too */
+
+	mmmmm = gethostbyname(machine);
+	if( mmmmm != NULL ) {
+		if ( !strchr(mmmmm->h_name,'.') ) { /* nodomain */
+			fprintf(stderr, "domain information for %s not found\n", machine );
+			mMosaicMachineWithDomain = (char*) malloc(strlen(machine) + 12);
+			sprintf(mMosaicMachineWithDomain,"%s.nodomain",machine);
+		} else {
+			mMosaicMachineWithDomain = strdup(mmmmm->h_name);
+		}
+	} else {
+		fprintf(stderr, "host information for %s not found\n", machine );
+		mMosaicMachineWithDomain = machine ;
+		if ( !strchr(machine,'.') ) { /* nodomain */
+			mMosaicMachineWithDomain = (char*) malloc(strlen(machine) + 12);
+			sprintf(mMosaicMachineWithDomain,"%s.nodomain",machine);
+		}
 	}
 
 	author_full_name=mMosaicAppData.author_full_name;
@@ -397,67 +414,7 @@ void main (int argc, char **argv, char **envp)
         ReadProxies(mMosaicRootDirName);
         ReadNoProxies(mMosaicRootDirName);
  
-#ifdef MULTICAST
-	mc_alias_name = mMosaicAppData.author_email;
-	mc_multicast_enable = 0;
-	if (mMosaicAppData.mc_dest != NULL) {
-		char * s;
- 
-		s = strchr(mMosaicAppData.mc_dest, '/');
-		if (*s) {
-			unsigned short port;
- 
-			*s = '\0';
-			port = atoi(s+1);
-			if (port%2!=0)
-				port--;
-			mc_port = htons(port);
-			mc_rtcp_port = htons(port + 1);
-		} else {
-			fprintf(stderr,"invalid Multicast addr/port\n");
-			exit(1);
-		}
-		if (mMosaicAppData.mc_debug)
-			printf("dest/port: %s/%d, ttl=%d\n",
-				mMosaicAppData.mc_dest, mc_port,
-				mMosaicAppData.mc_ttl);
-#ifdef IPV6
-/* inet_pton () */
-		if( ascii2addr(AF_INET6,mMosaicAppData.mc_dest,&mc_addr_ip_group) == -1){
-			fprintf(stderr,"invalid IPV6Multicast addr\n");
-			exit(1);       
-		}                     
-#else                                  
-		mc_addr_ip_group = inet_addr(mMosaicAppData.mc_dest);
-#endif
-		mc_multicast_enable = 1;
-/* initialise global variable for Multicast */
-		mc_debug = mMosaicAppData.mc_debug;
-		mc_sess_name = mMosaicAppData.mc_sess_name;
-		mc_media_name = mMosaicAppData.mc_media_name;
-		mc_ttl = mMosaicAppData.mc_ttl;
-/*mc_dest become mc_addr_ip_group and mc_port */
-		if( mMosaicAppData.mc_alias_name == NULL ){
-			mc_alias_name = (char*) malloc(MC_MAX_ALIAS_SIZE + 1);
-			strncpy(mc_alias_name,mMosaicAppData.author_email,
-				MC_MAX_ALIAS_SIZE);
-		} else {
-			mc_alias_name = mMosaicAppData.mc_alias_name;
-		}
-		if (strlen(mc_alias_name) >= MC_MAX_ALIAS_SIZE )
-			mc_alias_name[MC_MAX_ALIAS_SIZE] = '\0';
-		mc_len_alias = strlen(mc_alias_name);
-/* fd read of multicast socket */
-		mc_fdread = McOpenRead(mc_addr_ip_group,mc_port,mc_ttl);
-		mc_rtcp_fdread = McOpenRtcpRead(mc_addr_ip_group,mc_rtcp_port,mc_ttl);
-		mc_init_gmt = McDate(); /* based on GM Time */
-		mc_init_local_time = time(NULL); /* based on local time */
-		mc_my_pid = getpid();
-	}
-#endif 
-
 /* graphic and X variable . graphic options */
-
 	mMosaicColormap =DefaultColormapOfScreen(XtScreen(mMosaicToplevelWidget));
 	if (mMosaicAppData.install_colormap) {
 		XColor bcolr;
@@ -503,18 +460,65 @@ void main (int argc, char **argv, char **envp)
 
 	/* Value of argv[1], if it exists, sets startup_document. */
         if (argc > 1 && argv[1] && *argv[1])
-                mMosaicStartupDocument = mo_url_prepend_protocol(argv[1]);
+                mMosaicStartupDocument = UrlGuess(argv[1]);
 	/* Check for proper home document URL construction. */
         if (!strstr (mMosaicAppData.home_document, ":"))   
                 mMosaicAppData.home_document = 
 			mo_url_canonicalize_local(mMosaicAppData.home_document);
     
-	mo_do_gui();
 
-	if((mMosaicAppData.cciPort > 1023) && (mMosaicAppData.cciPort < 65536)) {
-		MoCCIStartListening(mMosaicToplevelWidget,
-			mMosaicAppData.cciPort);
-	}
+/* initialize some global graphic objects Pixmap, cursor, and canvas data*/
+
+	mMosaicWinIconPixmap = XCreatePixmapFromBitmapData(mMosaicDisplay,
+		mMosaicRootWindow,
+		(char*)iconify_bits, iconify_width, iconify_height, 1, 0,
+		1);
+/*DefaultDepthOfScreen(DefaultScreenOfDisplay(mMosaicDisplay))*/
+
+	mMosaicWinIconMaskPixmap = XCreatePixmapFromBitmapData(mMosaicDisplay,
+		mMosaicRootWindow,
+		(char*)iconify_mask_bits, iconify_mask_width, iconify_mask_height, 0, 1,
+		1);
+
+	mMosaicBusyCursor = XCreateFontCursor (mMosaicDisplay, XC_watch);
+
+/* canvas data to create a mMosaic window */
+	mo_init_menubar();      /* definie les boutons avec cb etc... */
+
+/* register balloon_action */
+	XtAppAddActions(mMosaicAppContext, balloon_action, 2);
+
+/* realize the toplevel because we need a window (X) to create other object */
+/* you may notice: mMosaicToplevelWidget is never mapped !!! */
+
+	XtRealizeWidget (mMosaicToplevelWidget);
+
+	MakePixmaps(mMosaicToplevelWidget); /* global icons and pixmap */
+
+/* Arm SIGUSR1 to process external directive */
+	signal (SIGUSR1, (void(*)(int))ProcessExternalDirective);
+
+/*##################################*/
+/* ### Create the FIRST MAIN WINDOW */
+/*##################################*/
+	mc_t = MC_MO_TYPE_UNICAST;
+	win = mo_make_window(NULL, mc_t);
+#ifdef MULTICAST
+	McInit(win);	/* Initialize the multicast database listen mode*/
+			/* mc_send_enable become 0 */
+#endif                               
+
+/* we have build an empty mo_window. Now we need to fill it with an HTML doc. */
+/* PAF this request */
+
+	rds.req_url = mMosaicStartupDocument ?
+		mMosaicStartupDocument : mMosaicAppData.home_document;
+	rds.ct = NULL;
+	rds.is_reloading = False;
+	rds.post_data = NULL;
+	MMPafLoadHTMLDocInWin(win, &rds);
+
+/* GO ! */
 
 	XtAppMainLoop(mMosaicAppContext);
 }
