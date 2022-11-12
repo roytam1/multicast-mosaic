@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #define FONTNAME "-adobe-courier-medium-r-normal-*-17-*-*-*-*-*-iso8859-1"
 

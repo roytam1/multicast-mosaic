@@ -314,6 +314,12 @@ typedef struct _mo_window {
 	Widget base;
 	int mode;
     
+/* frame */
+	char * frame_name;
+	struct _mo_window * frame_parent;
+	struct _mo_window ** frame_sons;
+	int frame_sons_nbre;
+
 /* Subwindows. */
 	Widget source_win;
 	Widget save_win;
@@ -525,6 +531,7 @@ typedef struct mo_node {
 	char *aurl_wa;	/* the full absolute url with anchor */
 	char *aurl;	/* THE absolute url of this document */
 	char *base_url;	/* a tag <BASE> is dectect, else aurl */
+	char *base_target;	/* <BASE target="..." */
 	char *goto_anchor;	/* #target in url */
 	char *last_modified;
 	char *expires;

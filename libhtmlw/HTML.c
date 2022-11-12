@@ -1,5 +1,5 @@
 /* Please read copyright.tmpl. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include <stdio.h>
 #include <malloc.h>
@@ -18,6 +18,7 @@
 
 #include "HTMLP.h"
 #include "HTMLPutil.h"
+#include "HTMLframe.h"
 
 #define	MARGIN_DEFAULT		10
 #define	CLICK_TIME		500
@@ -129,6 +130,10 @@ static XtResource resources[] = {
 	{ WbNsubmitFormCallback, XtCCallback, XtRCallback, sizeof(XtCallbackList),
 	  XtOffset (HTMLWidget, html.form_callback), XtRImmediate, (caddr_t) NULL
 	},
+	{ WbNframeCallback, XtCCallback, XtRCallback, sizeof (XtCallbackList),
+	  XtOffset (HTMLWidget, html.frame_callback),
+	  XtRImmediate, (caddr_t) NULL
+	},
 	{ WbNbodyColors, WbCBodyColors, XtRBoolean, sizeof (Boolean),
 	  XtOffset (HTMLWidget, html.body_colors), XtRString, "True"
 	},
@@ -168,90 +173,26 @@ static XtResource resources[] = {
 	{ WbNview, WbCView, XtRWidget, sizeof (Widget),
 	  XtOffset (HTMLWidget, html.view), XtRImmediate, NULL
 	},
+/*
 	{ XtNfont, XtCFont, XtRFontStruct, sizeof (XFontStruct *),
 	  XtOffset (HTMLWidget, html.font),
 	  XtRString, "-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{ WbNitalicFont, WbCItalicFont, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.italic_font),
-	  XtRString, "-adobe-times-medium-i-normal-*-14-*-*-*-*-*-*-*"
+*/
+	{ XtNfont, XtCFont, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.cur_font),
+	  XtRString, "-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{ WbNboldFont, WbCBoldFont, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.bold_font),
-	  XtRString, "-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"
+	{ WbNdefaultFont, WbCDefaultFont, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.default_font),
+	  XtRString, "-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{ WbNmeterFont, WbCMeterFont, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.meter_font),
-	  XtRString, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{ WbNtoolbarFont, WbCToolbarFont, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.toolbar_font),
-	  XtRString, "-adobe-times-bold-r-normal-*-12-*-*-*-*-*-iso8859-1"
-	},
-	{ WbNfixedFont, WbCFixedFont, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.fixed_font),
-	  XtRString, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{ WbNfixedboldFont, WbCFixedboldFont, XtRFontStruct,sizeof(XFontStruct *),
-	  XtOffset (HTMLWidget, html.fixedbold_font),
-	  XtRString, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{ WbNfixeditalicFont, WbCFixeditalicFont, 
-	  XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.fixeditalic_font),
-	  XtRString, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{ WbNheader1Font, WbCHeader1Font, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.header1_font),
-	  XtRString, "-adobe-times-bold-r-normal-*-24-*-*-*-*-*-*-*"
-	},
-	{ WbNheader2Font, WbCHeader2Font, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.header2_font),
-	  XtRString, "-adobe-times-bold-r-normal-*-18-*-*-*-*-*-*-*"
-	},
-	{ WbNheader3Font, WbCHeader3Font, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.header3_font),
-	  XtRString, "-adobe-times-bold-r-normal-*-17-*-*-*-*-*-*-*"
-	},
-	{ WbNheader4Font, WbCHeader4Font, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.header4_font),
-	  XtRString, "-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{ WbNheader5Font, WbCHeader5Font, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.header5_font),
-	  XtRString, "-adobe-times-bold-r-normal-*-12-*-*-*-*-*-*-*"
-	},
-	{ WbNheader6Font, WbCHeader6Font, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.header6_font),
-	  XtRString, "-adobe-times-bold-r-normal-*-10-*-*-*-*-*-*-*"
-	},
-	{ WbNaddressFont, WbCAddressFont, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.address_font),
-	  XtRString, "-adobe-times-medium-i-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{ WbNplainFont, WbCPlainFont, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.plain_font),
-	  XtRString, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{ WbNplainboldFont, WbCPlainboldFont, XtRFontStruct,sizeof(XFontStruct *),
-	  XtOffset (HTMLWidget, html.plainbold_font),
-	  XtRString, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{ WbNplainitalicFont, WbCPlainitalicFont, 
-	  XtRFontStruct, sizeof(XFontStruct *),
-	  XtOffset (HTMLWidget, html.plainitalic_font),
-	  XtRString, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{ WbNlistingFont, WbCListingFont, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.listing_font),
-	  XtRString, "-adobe-courier-medium-r-normal-*-12-*-*-*-*-*-*-*"
-	},
-/* amb */
+/*
         { WbNsupSubFont, WbCSupSubFont, XtRFontStruct, sizeof (XFontStruct *),
           XtOffset (HTMLWidget, html.supsub_font),
           XtRString, "-adobe-courier-medium-r-normal-*-10-*-*-*-*-*-*-*"
         },
-/* end amb */
+*/
         { WbNpreviouslyVisitedTestFunction, WbCPreviouslyVisitedTestFunction, 
 	  XtRPointer, sizeof (XtPointer),
           XtOffset (HTMLWidget, html.previously_visited_test),
@@ -607,9 +548,8 @@ void ScrollWidgets(HTMLWidget hw)
 #endif
 }
 
-/*
- * Either the vertical or hortizontal scrollbar has been moved
- */
+/* Either the vertical or hortizontal scrollbar has been moved */
+
 void ScrollToPos(Widget w, HTMLWidget hw, int value)
 {
 	/* Special code incase the scrollbar is "moved" before we have a window
@@ -618,9 +558,8 @@ void ScrollToPos(Widget w, HTMLWidget hw, int value)
 	if (hw->html.drawGC == NULL) {
 		if (w == hw->html.vbar) {
 			hw->html.scroll_y = value;
-		} else 
-			if (w == hw->html.hbar)
-				hw->html.scroll_x = value;
+		} else if (w == hw->html.hbar)
+			hw->html.scroll_x = value;
 		return;
 	}
 	/*
@@ -716,67 +655,6 @@ static void Realize(Widget ww, XtValueMask *valueMask, XSetWindowAttributes *att
         XtRealizeWidget(w->html.hbar);
 } /* End Realize */ 
 
-/* Create the horizontal and vertical scroll bars.
- * Size them later.
- */
-static void CreateScrollbars( HTMLWidget hw)
-{
-	Arg arg[20];
-	Cardinal argcnt;
-	XtTranslations trans;
-
-	argcnt = 0;
-	XtSetArg(arg[argcnt], XxNwidth, 10); argcnt++;
-	XtSetArg(arg[argcnt], XxNheight, 10); argcnt++;
-	XtSetArg(arg[argcnt], XmNmarginWidth, 0); argcnt++;
-	XtSetArg(arg[argcnt], XmNmarginHeight, 0); argcnt++;
-	hw->html.view = XtCreateWidget("View", xmDrawingAreaWidgetClass,
-		(Widget)hw, arg, argcnt);
-	XtManageChild(hw->html.view);
-	/*
-	 * For the view widget catch all Expose and GraphicsExpose
-	 * events.  Replace its translations with ours, and make
-	 * sure all the actions are in order.
-	 */
-	XtAddEventHandler((Widget)hw->html.view,
-		ExposureMask|VisibilityChangeMask, True,
-		(XtEventHandler)DrawExpose, (caddr_t)hw);
-	/*
-	 * As described previoisly, for some reason with Motif1.2/X11R5
-	 * the list actionsList is corrupted when we get here,
-	 * so we have to use the special copy SpareActionsList
-	 */
-	XtAppAddActions(XtWidgetToApplicationContext(hw->html.view),
-		SpareActionsList, XtNumber(SpareActionsList));
-	trans = XtParseTranslationTable(defaultTranslations);
-	argcnt = 0;
-	XtSetArg(arg[argcnt], XtNtranslations, trans); argcnt++;
-	XtSetValues(hw->html.view, arg, argcnt);
-
-/* vert scrollbar */
-	argcnt = 0;
-	XtSetArg(arg[argcnt], XmNorientation, XmVERTICAL); argcnt++;
-	XtSetArg(arg[argcnt], XtNwidth, VERT_SCROLL_WIDTH); argcnt++;
-	hw->html.vbar = XtCreateWidget("Vbar", xmScrollBarWidgetClass,
-		(Widget)hw, arg, argcnt);
-	XtManageChild(hw->html.vbar);
-	XtAddCallback(hw->html.vbar, XmNvalueChangedCallback,
-		(XtCallbackProc)ScrollMove, (caddr_t)hw);
-	XtAddCallback(hw->html.vbar, XmNdragCallback,
-		(XtCallbackProc)ScrollMove, (caddr_t)hw);
-/* horiz scrollbar*/
-	argcnt = 0;
-	XtSetArg(arg[argcnt], XmNorientation, XmHORIZONTAL); argcnt++;
-	XtSetArg(arg[argcnt], XtNheight, HORIZ_SCROLL_HEIGHT); argcnt++;
-	hw->html.hbar = XtCreateWidget("Hbar", xmScrollBarWidgetClass,
-		(Widget)hw, arg, argcnt);
-	XtManageChild(hw->html.hbar);
-	XtAddCallback(hw->html.hbar, XmNvalueChangedCallback,
-		(XtCallbackProc)ScrollMove, (caddr_t)hw);
-	XtAddCallback(hw->html.hbar, XmNdragCallback,
-		(XtCallbackProc)ScrollMove, (caddr_t)hw);
-}
-
 /* Return the width of the vertical scrollbar */
 static Dimension VbarWidth( HTMLWidget hw)
 {
@@ -790,38 +668,34 @@ Dimension HbarHeight( HTMLWidget hw)
 	return(HORIZ_SCROLL_HEIGHT);
 }
 
-/*
- * Resize and set the min and max values of the scrollbars.  Position viewing
+/* Resize and set the min and max values of the scrollbars.  Position viewing
  * area based on scrollbar locations.
  */
-void ConfigScrollBars( HTMLWidget hw)
+static void ConfigScrollBars( HTMLWidget hw)
 {
 	Arg arg[20];
 	Cardinal argcnt;
 	int vx, vy;
 
-				/* Move and size the viewing area */
+/* Move and size the viewing area */
 	vx = hw->manager.shadow_thickness;
 	vy = hw->manager.shadow_thickness;
 	XtMoveWidget(hw->html.view, vx, vy);
 	XtResizeWidget(hw->html.view, hw->html.view_width, hw->html.view_height,
 		hw->html.view->core.border_width);
-				/* Set up vertical scrollbar */
+/* Set up vertical scrollbar */
 	if (hw->html.use_vbar == True) {
 		int maxv;
 		int ss;
 
-		/* Size the vertical scrollbar to the height of
-		 * the viewing area
-		 */
+/* Size the vertical scrollbar to the height of the viewing area */
 		XtResizeWidget(hw->html.vbar, hw->html.vbar->core.width,
 		    hw->html.view_height + (2 * hw->manager.shadow_thickness),
 		    hw->html.vbar->core.border_width);
 
-		/* Set the slider size to be the percentage of the
-		 * viewing area that the viewing area is of the
-		 * document area.  Or set it to 1 if that isn't possible.
-		 */
+/* Set the slider size to be the percentage of the viewing area that
+ * the viewing area is of the document area. Or set it to 1 if that isn't
+ * possible. */
 		if (hw->html.doc_height == 0) {
 			ss = 1;
 		} else {
@@ -829,32 +703,28 @@ void ConfigScrollBars( HTMLWidget hw)
 			      fprintf(stderr,"view_height %d, doc_height %d\n",
 				    hw->html.view_height, hw->html.doc_height);
 			}
-                        /* Added by marca: this produces results *very* close (~1 pixel)
-                           to the original scrolled window behavior. */
+/* Added by marca: this produces results *very* close (~1 pixel)
+ * to the original scrolled window behavior. */
                         ss = hw->html.view_height;
 		}
 		if (ss < 1)
 			ss = 1;
 		if (htmlwTrace)
 			fprintf (stderr, "computed ss to be %d\n", ss);
-		/* If resizing of the document has made scroll_y
-		 * greater than the max, we want to hold it at the max.
-		 */
+/* If resizing of the document has made scroll_y
+ * greater than the max, we want to hold it at the max.
+ */
 		maxv = hw->html.doc_height - (int)hw->html.view_height;
 		if (maxv < 0)
 			maxv = 0;
 		if (hw->html.scroll_y > maxv)
 			hw->html.scroll_y = maxv;
-		/* Prevent the Motif max value and slider size
-		 * from going to zero, which is illegal
-		 */
+/* Prevent the Motif max value and slider size from going to zero, which is illegal */
 		maxv = maxv + ss;
 		if (maxv < 1)
 			maxv = 1;
-		/* Motif will not allow the actual value to be equal to
-		 * its max value.  Adjust accordingly.
-		 * Since we might decrease scroll_y, cap it at zero.
-		 */
+/* Motif will not allow the actual value to be equal to its max value. Adjust
+ * accordingly. Since we might decrease scroll_y, cap it at zero. */
 		if (hw->html.scroll_y >= maxv)
 			hw->html.scroll_y = maxv - 1;
 		if (hw->html.scroll_y < 0)
@@ -874,7 +744,7 @@ void ConfigScrollBars( HTMLWidget hw)
 			fprintf (stderr, "real slider size %d\n", ss);
 		}
 	}
-				/* Set up horizontal scrollbar */
+/* Set up horizontal scrollbar */
 	if (hw->html.use_hbar == True) {
 		int maxv;
 		int ss;
@@ -951,11 +821,9 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
 	Dimension swidth, sheight;
 	Dimension st;
 
-	/*
-	 * Find the current scrollbar sizes, and shadow thickness and format
-	 * the document to the current window width
-	 * (assume a vertical scrollbar)
-	 */
+/* Find the current scrollbar sizes, and shadow thickness and format
+ * the document to the current window width (assume a vertical scrollbar)
+ */
 	swidth = VbarWidth(hw);
 	sheight = HbarHeight(hw);
 	st = hw->manager.shadow_thickness;
@@ -964,18 +832,27 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
 	new_width = hw->core.width - swidth ;
 	temp = FormatAll(hw, &new_width,save_obj);
 
-	/* If we need the vertical scrollbar, place and manage it,
-	 * and store the current viewing area width.
-	 */
-	hw->html.view_width = hw->core.width - swidth - (2 * st);
+/* if height is too height tell the wiget to use the vbar */
+	if ( temp > hw->core.height - HbarHeight(hw) ){
+		hw->html.use_vbar = True;
+	} else { 
+		hw->html.use_vbar = False;
+	}
+
+/* If we need the vertical scrollbar, place and manage it, and store the
+ * current viewing area width.
+ */
+	hw->html.view_width = hw->core.width;
 	if (hw->html.use_vbar ) {
+		hw->html.view_width = hw->core.width - swidth - (2 * st);
 		XtMoveWidget(hw->html.vbar, hw->core.width - swidth, 0);
 		XtManageChild(hw->html.vbar);
+		if (XtIsRealized(hw->html.vbar) )
+			XtMapWidget(hw->html.vbar);
 	} else {
-		/* Else we were wrong to assume a vertical scrollbar.
-		 * Remove it .
-		 */
-		XtUnmanageChild(hw->html.vbar);
+/* Else we were wrong to assume a vertical scrollbar. Remove it. */
+		if (XtIsRealized(hw->html.vbar) )
+			XtUnmapWidget(hw->html.vbar);
 		hw->html.scroll_y = 0;
 	}
 /* Calculate the actual max width and height of the complete formatted document.
@@ -1011,16 +888,16 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
 		XtManageChild(hw->html.hbar);
 		hw->html.view_height = hw->core.height - sheight - (2 * st);
 	} else {
-		/* Else we don't need a horizontal scrollbar.
-		 * Remove it and save the current viewing area height.
-		 */
+/* Else we don't need a horizontal scrollbar.
+ * Remove it and save the current viewing area height.
+ */
 		hw->html.use_hbar = False;
 		XtUnmanageChild(hw->html.hbar);
 		hw->html.scroll_x = 0;
 		hw->html.view_height = hw->core.height - (2 * st);
 	}
 
-	/* Configure the scrollbar min, max, and slider sizes */
+/* Configure the scrollbar min, max, and slider sizes */
 	ConfigScrollBars(hw);
 }
 
@@ -1053,6 +930,9 @@ static XtGeometryResult GeometryManager ( Widget w,
  */
 static void Initialize( HTMLWidget request, HTMLWidget nw)
 {
+	Arg arg[20];
+	Cardinal argcnt;
+	XtTranslations trans;
 	unsigned long valuemask;
 	XGCValues values;
 
@@ -1082,22 +962,21 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 	nw->html.widget_list = NULL;
 	nw->html.form_list = NULL;
 
+	nw->html.nframe = 0;
+	nw->html.frame_type = NOTFRAME_TYPE;
+	nw->html.frames = NULL;
+	nw->html.frame_src = NULL;
+	nw->html.frame_name = NULL;
+	nw->html.frame_wid = NULL;
+	nw->html.frame_parent_frameset = NULL;
+	nw->html.frame_next = NULL;
+	nw->html.frame_prev = NULL;
+	nw->html.frame_children = NULL;
+	nw->html.frame_callback = NULL;
 
 /* Find the max width of a preformatted line in this document. */
-	nw->html.max_pre_width = DocumentWidth(nw, nw->html.html_objects);
-
-/* Create the scrollbars. Find their dimensions and then decide which
- * scrollbars you will need, and what the dimensions of the viewing area are.
- * Start assuming a vertical scrollbar and a horizontal one.
- * The remove vertical if short enough, and remove horizontal if narrow enough.
- */
-	nw->html.vbar = NULL;
-	nw->html.hbar = NULL;
-	nw->html.view = NULL;
-	CreateScrollbars(nw);
-	nw->html.scroll_x = 0;
-	nw->html.scroll_y = 0;
-	ReformatWindow(nw,False);
+/* #### we only know the max_pre_width when we set html_object #### */
+	nw->html.max_pre_width = 0;
 
 	nw->html.drawGC = NULL; 	/* Initialize private widget resources */
 	nw->html.select_start = NULL;
@@ -1139,7 +1018,79 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 	nw->html.drawGC = XCreateGC(XtDisplay(nw),
 				    DefaultRootWindow(XtDisplay(nw)),
 				    valuemask, &values);
-        return;
+
+/* Create the scrollbars. Find their dimensions and then decide which
+ * scrollbars you will need, and what the dimensions of the viewing area are.
+ * Start assuming nomapping for a vertical scrollbar and a horizontal one.
+ * map vertical if long enough, and map horizontal if wide enough.
+ */
+	nw->html.vbar = NULL;
+	nw->html.hbar = NULL;
+	nw->html.view = NULL;
+	nw->html.use_vbar = False;
+	nw->html.use_hbar = False;
+	nw->html.scroll_x = 0;
+	nw->html.scroll_y = 0;
+
+/* Create the horizontal and vertical scroll bars. Size them later. */
+/* Create the view also */
+	argcnt = 0;
+	XtSetArg(arg[argcnt], XxNwidth, 10); argcnt++;
+	XtSetArg(arg[argcnt], XxNheight, 10); argcnt++;
+	XtSetArg(arg[argcnt], XmNmarginWidth, 0); argcnt++;
+	XtSetArg(arg[argcnt], XmNmarginHeight, 0); argcnt++;
+	nw->html.view = XtCreateWidget("View", xmDrawingAreaWidgetClass,
+		(Widget)nw, arg, argcnt);
+	XtManageChild(nw->html.view);
+
+/* For the view widget catch all Expose and GraphicsExpose
+ * events.  Replace its translations with ours, and make
+ * sure all the actions are in order.
+ */
+	XtAddEventHandler((Widget)nw->html.view,
+		ExposureMask|VisibilityChangeMask, True,
+		(XtEventHandler)DrawExpose, (caddr_t)nw);
+
+/* As described previoisly, for some reason with Motif1.2/X11R5
+ * the list actionsList is corrupted when we get here,
+ * so we have to use the special copy SpareActionsList
+ */
+	XtAppAddActions(XtWidgetToApplicationContext(nw->html.view),
+		SpareActionsList, XtNumber(SpareActionsList));
+	trans = XtParseTranslationTable(defaultTranslations);
+	argcnt = 0;
+	XtSetArg(arg[argcnt], XtNtranslations, trans); argcnt++;
+	XtSetValues(nw->html.view, arg, argcnt);
+
+/* vert scrollbar . We manage 'manualy' the mapping of srollbar */
+	argcnt = 0;
+	XtSetArg(arg[argcnt], XmNorientation, XmVERTICAL); argcnt++;
+	XtSetArg(arg[argcnt], XtNwidth, VERT_SCROLL_WIDTH); argcnt++;
+	XtSetArg(arg[argcnt], XmNmappedWhenManaged, False); argcnt++;
+	nw->html.vbar = XtCreateWidget("Vbar", xmScrollBarWidgetClass,
+		(Widget)nw, arg, argcnt);
+	XtManageChild(nw->html.vbar);
+	XtAddCallback(nw->html.vbar, XmNvalueChangedCallback,
+		(XtCallbackProc)ScrollMove, (caddr_t)nw);
+	XtAddCallback(nw->html.vbar, XmNdragCallback,
+		(XtCallbackProc)ScrollMove, (caddr_t)nw);
+
+/* horiz scrollbar*/
+	argcnt = 0;
+	XtSetArg(arg[argcnt], XmNorientation, XmHORIZONTAL); argcnt++;
+	XtSetArg(arg[argcnt], XtNheight, HORIZ_SCROLL_HEIGHT); argcnt++;
+	XtSetArg(arg[argcnt], XmNmappedWhenManaged, False); argcnt++;
+	nw->html.hbar = XtCreateWidget("Hbar", xmScrollBarWidgetClass,
+		(Widget)nw, arg, argcnt);
+	XtManageChild(nw->html.hbar);
+	XtAddCallback(nw->html.hbar, XmNvalueChangedCallback,
+		(XtCallbackProc)ScrollMove, (caddr_t)nw);
+	XtAddCallback(nw->html.hbar, XmNdragCallback,
+		(XtCallbackProc)ScrollMove, (caddr_t)nw);
+
+/*#### do not reformat until sethtmlmark #### */
+/* next call will be Resize or HTMLSetmark or Realize */
+/*	ReformatWindow(nw,False); */
 }
 
 /* This is called by redisplay.  It is passed a rectangle
@@ -2103,7 +2054,7 @@ static void ExtendEnd( Widget w, XEvent *event,
 					hw->html.select_end,
 					hw->html.sel_start_pos,
 					hw->html.sel_end_pos,
-					hw->html.font->max_bounds.width,
+					hw->html.cur_font->max_bounds.width,
 					hw->html.margin_width);
 				XStoreBuffer(XtDisplay((Widget)hw),
 					text, strlen(text), buffer);
@@ -2211,7 +2162,10 @@ static void _HTMLInput( Widget w, XEvent *event,
 		return;
 	/* If motif is defined, we don't want to process this button press
 	 * if it is on a gadget */
-	on_gadget = (_XmInputForGadget((Widget)hw,
+/*	on_gadget = (_XmInputForGadget((Widget)hw,
+				event->xbutton.x, event->xbutton.y) != False);
+*/
+	on_gadget = (_XmInputInGadget((Widget)hw,
 				event->xbutton.x, event->xbutton.y) != False);
 	if (on_gadget)
 		return;
@@ -2226,7 +2180,7 @@ static void _HTMLInput( Widget w, XEvent *event,
 	tptr = ParseTextToString(
 		hw->html.select_start, hw->html.select_end,
 		hw->html.sel_start_pos, hw->html.sel_end_pos,
-		hw->html.font->max_bounds.width,
+		hw->html.cur_font->max_bounds.width,
 		hw->html.margin_width);
 	ptr = tptr;
 	while ((ptr != NULL)&&(*ptr != '\0')) {
@@ -2273,6 +2227,7 @@ static void _HTMLInput( Widget w, XEvent *event,
 	cbdata.href = buf;
 	cbdata.text = tptr;
 	cbdata.title = eptr->anchor_tag_ptr->anc_title;
+	cbdata.target = eptr->anchor_tag_ptr->anc_target;
 	XtCallCallbackList ((Widget)hw, hw->html.anchor_callback,
 			(XtPointer)&cbdata);
        	if (buf) free(buf);
@@ -2295,23 +2250,7 @@ static Boolean SetValues( HTMLWidget current, HTMLWidget request, HTMLWidget nw)
 	if (request->html.num_visitedAnchor_underlines > MAX_UNDERLINES)
 		nw->html.num_visitedAnchor_underlines = MAX_UNDERLINES;
 
-	if ((request->html.font != current->html.font)||
-	         (request->html.italic_font != current->html.italic_font)||
-	         (request->html.bold_font != current->html.bold_font)||
-	         (request->html.fixed_font != current->html.fixed_font)||
-	         (request->html.fixedbold_font != current->html.fixedbold_font)||
-	         (request->html.fixeditalic_font != current->html.fixeditalic_font)||
-	         (request->html.header1_font != current->html.header1_font)||
-	         (request->html.header2_font != current->html.header2_font)||
-	         (request->html.header3_font != current->html.header3_font)||
-	         (request->html.header4_font != current->html.header4_font)||
-	         (request->html.header5_font != current->html.header5_font)||
-	         (request->html.header6_font != current->html.header6_font)||
-	         (request->html.address_font != current->html.address_font)||
-	         (request->html.plain_font != current->html.plain_font)||
-	         (request->html.plainbold_font != current->html.plainbold_font)||
-	         (request->html.plainitalic_font != current->html.plainitalic_font)||
-	         (request->html.listing_font != current->html.listing_font)||
+	if ((request->html.cur_font != current->html.cur_font)||
 	         (request->html.activeAnchor_fg != current->html.activeAnchor_fg)||
 	         (request->html.activeAnchor_bg != current->html.activeAnchor_bg)||
 	         (request->html.anchor_fg != current->html.anchor_fg)||
@@ -2321,13 +2260,9 @@ static Boolean SetValues( HTMLWidget current, HTMLWidget request, HTMLWidget nw)
 	         (request->html.num_anchor_underlines != current->html.num_anchor_underlines)||
 	         (request->html.num_visitedAnchor_underlines != current->html.num_visitedAnchor_underlines))
 	{
-		if ((request->html.plain_font != current->html.plain_font)||
-		    (request->html.listing_font != current->html.listing_font))
-		{
-			nw->html.max_pre_width = DocumentWidth(nw,
-				nw->html.html_objects);
-		}
-
+/*######## peut etre pas necessaire... ########### */
+		nw->html.max_pre_width = DocumentWidth(nw, nw->html.html_objects);
+/* ##### */
 		ReformatWindow(nw,True);
 		ScrollWidgets(nw);
 		ViewClearAndRefresh(nw);
@@ -2391,7 +2326,7 @@ static Boolean ConvertSelection( Widget w,
 		text = ParseTextToString(
 			hw->html.select_start, hw->html.select_end,
 			hw->html.sel_start_pos, hw->html.sel_end_pos,
-			hw->html.font->max_bounds.width,
+			hw->html.cur_font->max_bounds.width,
 			hw->html.margin_width);
 		*value = text;
 		*length = strlen(*value);
@@ -2417,7 +2352,7 @@ static Boolean ConvertSelection( Widget w,
 		text = ParseTextToString(
 			hw->html.select_start, hw->html.select_end,
 			hw->html.sel_start_pos, hw->html.sel_end_pos,
-			hw->html.font->max_bounds.width,
+			hw->html.cur_font->max_bounds.width,
 			hw->html.margin_width);
 		*value = XtMalloc(4);
 		if (sizeof(long) == 4) {
@@ -2486,15 +2421,15 @@ char * HTMLGetText(Widget w, int pretty, char *url, char *time_str)
 
 	if (pretty >= 2) {
 		tptr = ParseTextToPSString(hw, start, start, end, 0, 0,
-				hw->html.font->max_bounds.width,
+				hw->html.cur_font->max_bounds.width,
 				hw->html.margin_width , pretty-2, url, time_str);
 	} else if (pretty) {
 		tptr = ParseTextToPrettyString(hw, start, end, 0, 0,
-				hw->html.font->max_bounds.width,
+				hw->html.cur_font->max_bounds.width,
 				hw->html.margin_width);
 	} else {
 		tptr = ParseTextToString(start, end, 0, 0,
-				hw->html.font->max_bounds.width,
+				hw->html.cur_font->max_bounds.width,
 				hw->html.margin_width);
 	}
 	if (tptr != NULL) {
@@ -3066,7 +3001,7 @@ void HTMLSetSelection(Widget w, ElementRef *start, ElementRef *end)
 				hw->html.select_end,
 				hw->html.sel_start_pos,
 				hw->html.sel_end_pos,
-				hw->html.font->max_bounds.width,
+				hw->html.cur_font->max_bounds.width,
 				hw->html.margin_width);
 			XStoreBuffer(XtDisplay((Widget)hw),
 				text, strlen(text), buffer);
@@ -3175,96 +3110,23 @@ char * HTMLGetTextAndSelection(Widget w,char **startp,char **endp,char **insertp
 void HTMLSetText(Widget w, char *text, int element_id, 
 	char *target_anchor, char * base_url)
 {
-	HTMLWidget hw = (HTMLWidget)w;
-	struct ele_rec *start;
-	struct ele_rec *eptr;
-	int newy;
-
 	hw->html.base_url = base_url;
-	if (text == NULL)
-		return;
-
-/* restore default colors as required */
-/*
-	if(hw->manager.foreground != hw->html.foreground_SAVE) {
-		XFreeColors(XtDisplay(hw),hw->core.colormap,
-				&hw->manager.foreground,1,0);
-		hw->manager.foreground = hw->html.foreground_SAVE;
-	}
-        if(hw->html.anchor_fg != hw->html.anchor_fg_SAVE) {
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->html.anchor_fg,1,0);
-            hw->html.anchor_fg = hw->html.anchor_fg_SAVE;
-        }
-        if(hw->html.visitedAnchor_fg != hw->html.visitedAnchor_fg_SAVE){    
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->html.visitedAnchor_fg,1,0);
-            hw->html.visitedAnchor_fg = hw->html.visitedAnchor_fg_SAVE;
-        }
-        if(hw->html.activeAnchor_fg != hw->html.activeAnchor_fg_SAVE){    
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->html.activeAnchor_fg,1,0);
-            hw->html.activeAnchor_fg = hw->html.activeAnchor_fg_SAVE;
-        }
-        if(hw->html.top_color_SAVE != hw->manager.top_shadow_color){
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->manager.top_shadow_color,1,0);
-            hw->manager.top_shadow_color = hw->html.top_color_SAVE;
-        }            
-        if(hw->html.bottom_color_SAVE != hw->manager.bottom_shadow_color){
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->manager.bottom_shadow_color,1,0);
-            hw->manager.bottom_shadow_color = hw->html.bottom_color_SAVE;
-        }            
-        if(hw->core.background_pixel != hw->html.background_SAVE){    
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->core.background_pixel,1,0);
-            hw->html.activeAnchor_bg = hw->html.activeAnchor_bg_SAVE;
-            hw->core.background_pixel = hw->html.background_SAVE;
-            hw->html.view->core.background_pixel = hw->html.background_SAVE ;
-        }
-	HideWidgets(hw); 		/* Hide any old widgets */
-/*
-	HTMLFreeWidgetInfo(hw->html.widget_list);
 	hw->html.widget_list = NULL;
 	hw->html.form_list = NULL;
-
-	if (text != NULL) {
-		if (*text == '\0')
-			text = NULL;
-		hw->html.raw_text = text;
-				/* Free any old colors and pixmaps */
-/*
-		FreeColors(XtDisplay(hw), mMosaicColormap);
-				/* Parse the raw text with the HTML parser */
-/*
-		FreeMarkUpList(hw->html.html_objects); /* clear previous*/
-/*
-		hw->html.html_objects = HTMLParse( hw->html.raw_text);
-	}
-				/* Reformat the new text */
-/*
+	FreeColors(XtDisplay(hw), mMosaicColormap);
+/* Reformat the new text */ /*
 	hw->html.max_pre_width = DocumentWidth(hw, hw->html.html_objects);
-	ReformatWindow(hw,False); /* here we rescan all tag and make all */
-/*
-
-	/* If a target anchor is passed, override the element id
-	 * with the id of that anchor.
-	 */
-/*
+	ReformatWindow(hw,False); /* here we rescan all tag and make all */ /*
+/* If a target anchor is passed, override the element id
+	 * with the id of that anchor.  */ /*
 	if (target_anchor != NULL) {
 		int id;
-
 		id = HTMLAnchorToId(w, target_anchor);
 		if (id != 0)
 			element_id = id;
 	}
-
-	/* Position text at id specified, or at top if no position
-	 * specified.
-	 * Find the element corrsponding to the id passed in.
-	 */
-/*
+	/* Position text at id specified, or at top if no position specified.
+	 * Find the element corrsponding to the id passed in.  */ /*
 	eptr = NULL;
 	if (element_id != 0) {
 		start = hw->html.formatted_elements;
@@ -3288,26 +3150,11 @@ void HTMLSetText(Widget w, char *text, int element_id,
 		newy = 0;
 	hw->html.scroll_x = 0;
 	hw->html.scroll_y = newy;
-	if (htmlwTrace)
-		fprintf (stderr, "calling in HTMLSetText\n");
-
 	ConfigScrollBars(hw);
 	ScrollWidgets(hw);
-	ViewClearAndRefresh(hw); 		/* Display the new text */
-/*
-
+	ViewClearAndRefresh(hw); 		/* Display the new text */ /*
 	hw->html.select_start = NULL;	 /* Clear any previous selection */
-/*
-	hw->html.select_end = NULL;
-	hw->html.sel_start_pos = 0;
-	hw->html.sel_end_pos = 0;
-	hw->html.new_start = NULL;
-	hw->html.new_end = NULL;
-	hw->html.new_start_pos = 0;
-	hw->html.new_end_pos = 0;
-	hw->html.active_anchor = NULL;
-}
-*/
+/* } */
 
 /* Convenience function to set the makup list into the widget.
  * Forces a reformat.
@@ -3373,6 +3220,9 @@ void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 	HTMLFreeWidgetInfo(hw->html.widget_list);
 	hw->html.widget_list = NULL;
 	hw->html.form_list = NULL;
+	if( hw->html.frame_type == FRAMESET_TYPE){
+		_XmHTMLDestroyFrames(hw);
+	}
 
 	/* Free any old colors and pixmaps */
 	/*FreeColors(XtDisplay(hw), mMosaicColormap);*/

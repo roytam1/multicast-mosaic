@@ -6,7 +6,7 @@ CC=cc
 CFLAGS=-g -O
 LIB=libmc.a
 #RANLIB=ranlib
-OBJ= mc_main.o mc_session.o mc_obj.o mc_io.o mc_misc.o mc_gui.o
+OBJ= source.o mc_main.o mc_session.o mc_obj.o mc_io.o mc_misc.o mc_gui.o mc_repair.o mc_rtcp.o
 
 all: $(LIB)
 
@@ -18,7 +18,7 @@ $(LIB): $(OBJ)
 mc_io.o: mc_io.c
 	$(CC) $(CFLAGS) -c mc_io.c -o mc_io.o
 
-mc_misc.o: mc_misc.c mc_misc.h mc_defs.h
+mc_misc.o: mc_misc.c mc_misc.h
 	$(CC) $(CFLAGS) -c mc_misc.c -o mc_misc.o
 
 

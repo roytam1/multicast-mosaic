@@ -11,6 +11,7 @@
 #define HTML_PARSE_H
 
 typedef enum _MarkType {
+	M_END_STATE = -3,
 	M_INIT_STATE = -2,
 	M_UNKNOWN = -1,		/* the first two must have this value */
 	M_NONE = 0,		/* for compatibility		*/
@@ -22,7 +23,9 @@ typedef enum _MarkType {
 	M_BASE,
 	M_BIG,
 	M_BLOCKQUOTE,
+	M_BODY,
 	M_BOLD,
+	M_BR,
 	M_CAPTION,
 	M_CENTER,
 	M_CITATION,
@@ -34,14 +37,14 @@ typedef enum _MarkType {
 	M_DFN,
 	M_DIRECTORY,
 	M_DIV,
-	M_DOC_BODY,
-	M_DOC_HEAD,
 	M_DOCTYPE,
 	M_EMPHASIZED,
 	M_FIXED,
 	M_FONT,
 	M_FORM,
 	M_FRAME,
+	M_FRAMESET,
+	M_HEAD,
 	M_HEADER_1,
 	M_HEADER_2,
 	M_HEADER_3,
@@ -51,16 +54,17 @@ typedef enum _MarkType {
 	M_HRULE,
 	M_HTML,
 	M_IMAGE,
-	M_INDEX,
 	M_INPUT,
+	M_ISINDEX,
 	M_ITALIC,
 	M_KEYBOARD,
-	M_LINEBREAK,
 	M_LINK,
 	M_LIST_ITEM,
 	M_MAP,
 	M_MENU,
 	M_META,
+	M_NOFRAMES,
+	M_NOSCRIPT,
 	M_NUM_LIST,
 	M_OPTION,
 	M_PARAGRAPH,
@@ -68,18 +72,20 @@ typedef enum _MarkType {
 	M_PREFORMAT,
 	M_BUGGY_TABLE,
 	M_TABLE,
-	M_TABLE_DATA,
+	M_TD,
 	M_TD_CELL_PAD,
 	M_TD_CELL_FREE,
-	M_TABLE_HEADER,
-	M_TABLE_ROW,
+	M_TH,
+	M_TR,
 	M_TEXTAREA,
 	M_TITLE,
 	M_SAMPLE,
+	M_SCRIPT,
 	M_SELECT,
 	M_SMALL,
 	M_STRIKEOUT,
 	M_STRONG,
+	M_STYLE,
 	M_SUB,
 	M_SUP,
 	M_UNDERLINED,
@@ -98,8 +104,8 @@ typedef enum _MarkType {
 #define MT_BASE		"base"
 #define MT_BIG		"big"
 #define MT_BLOCKQUOTE	"blockquote"
-#define MT_DOC_BODY     "body"
-#define MT_LINEBREAK	"br"
+#define MT_BODY		"body"
+#define MT_BR		"br"
 #define MT_CAPTION	"caption"
 #define MT_CENTER	"center"
 #define MT_CITATION	"cite"
@@ -115,43 +121,48 @@ typedef enum _MarkType {
 #define MT_FONT		"font"
 #define MT_FORM		"form"
 #define MT_FRAME	"frame"
+#define MT_FRAMESET	"frameset"
 #define	MT_HEADER_1	"h1"
 #define	MT_HEADER_2	"h2"
 #define	MT_HEADER_3	"h3"
 #define	MT_HEADER_4	"h4"
 #define	MT_HEADER_5	"h5"
 #define	MT_HEADER_6	"h6"
-#define MT_DOC_HEAD     "head"
+#define MT_HEAD		"head"
 #define MT_HRULE	"hr"
 #define MT_HTML		"html"
 #define MT_ITALIC	"i"
 #define MT_IMAGE	"img"
 #define MT_INPUT	"input"
-#define MT_INDEX	"isindex"
+#define MT_ISINDEX	"isindex"
 #define MT_KEYBOARD	"kbd"
 #define	MT_LIST_ITEM	"li"
 #define MT_LINK		"link"
 #define MT_MAP		"map"
 #define MT_MENU		"menu"
 #define MT_META		"meta"
+#define MT_NOFRAMES	"noframes"
 #define	MT_NUM_LIST	"ol"
+#define MT_NOSCRIPT	"noscript"
 #define MT_OPTION	"option"
 #define	MT_PARAGRAPH	"p"
 #define	MT_PARAM	"param"
 #define	MT_PREFORMAT	"pre"
 #define MT_SAMPLE	"samp"
+#define MT_SCRIPT	"script"
 #define MT_SELECT	"select"
 #define MT_SMALL	"small"
 #define MT_STRIKEOUT	"strike"
 #define MT_STRONG	"strong"
+#define MT_STYLE	"style"
 #define MT_SUB          "sub"
 #define MT_SUP          "sup"
 #define MT_TABLE	"table"
-#define MT_TABLE_DATA	"td"
+#define MT_TD		"td"
 #define MT_TEXTAREA	"textarea"
-#define MT_TABLE_HEADER	"th"
+#define MT_TH		"th"
 #define	MT_TITLE	"title"
-#define MT_TABLE_ROW	"tr"
+#define MT_TR		"tr"
 #define MT_FIXED	"tt"
 #define MT_UNDERLINED   "u"
 #define	MT_UNUM_LIST	"ul"
@@ -174,6 +185,7 @@ struct mark_up {
 	int   is_white_text;	/* is text only with 'white-space' chars ? */
 	char *end;
 	struct mark_up *next;
+	int line;		/* line number of original html text */
 	AprogPtr s_aps;		/* aprog saved */
 	AppletPtr s_ats;	/* applet saved */
 	ImageInfoPtr s_picd;	/* image saved */
@@ -181,11 +193,13 @@ struct mark_up {
 	char * anc_name;
 	char * anc_href;
 	char * anc_title;
+	char * anc_target;
 };
 
 
 extern void 		clean_white_space(char *txt);
-extern struct mark_up * HTMLParse(char *str);
+extern struct mark_up * HTMLParseRepair(char *str);
+extern struct mark_up * HTMLLexem(char *str);
 extern char * 		ParseMarkTag(char *text, char *mtext, char *mtag);
 
 

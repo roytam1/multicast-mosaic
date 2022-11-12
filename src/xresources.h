@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 /* This document should be included in whatever source document
    sets up the Intrinsics.  It is in a separate file so it doesn't
@@ -121,14 +121,6 @@ static XtResource resources[] = {
 
   { "saveMode", "SaveMode", XtRString, sizeof (char *),
       offset (save_mode), XtRString, "plain" },
-
-  { "printBanners", "PrintBanners",
-      XtRBoolean, sizeof (Boolean),
-      offset (print_banners), XtRString, "True" },
-
-  { "printFootnotes", "PrintFootnotes",
-      XtRBoolean, sizeof (Boolean),
-      offset (print_footnotes), XtRString, "True" },
 
   { "printPaperSizeUS", "PrintPaperSizeUS",
       XtRBoolean, sizeof (Boolean),
@@ -404,14 +396,4 @@ static String color_resources[] = {
 
 #define __MOSAIC_XRESOURCES_H__
 #endif /* __MOSAIC_XRESOURCES_H__ */
-
-
-
-
-
-
-
-
-
-
 

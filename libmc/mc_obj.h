@@ -13,6 +13,8 @@ typedef struct _ObjEntry {
         char *d_fname;
         struct timeval ts;      /* timstamp (struct timeval) */
         int o_num;              /* object number */
+	char *aurl_wa;
+	MimeHeaderStruct *mhs;
 } ObjEntry;
 
 typedef struct _DocEntry {
@@ -59,6 +61,8 @@ typedef struct _ChunkedObjEntry {
 	PacketDataChunk *end;	/* pointer to is_end packet (end)*/
 	PacketMiss *lpmiss; /* list of missing packet */
 	MissRange * lmr;	/* range missing data */
+	char *aurl_wa;
+	MimeHeaderStruct *mhs;
 } ChunkedObjEntry;
 
 typedef struct _ChunkedDocEntry {	/* need to assemble packet */
@@ -85,5 +89,9 @@ extern int IsAllObjectHere(DocEntry *doce);
 extern void ChkObjToDocObj(struct _Source *s, unsigned int url_id, unsigned int o_id);
 extern int UpdChkObj(ChunkedObjEntry * coe, char *d, unsigned int offset, unsigned int d_len);
 extern int MergeChkObjLpdc( int size, ChunkedObjEntry * coe, char * d , int offset, int d_len);
-
+extern void McCreateObjectEntry(char *fname, char* aurl, MimeHeaderStruct *mhs);
+extern void McObjectToPacket(int url_id, int o_id);
+extern int SourceAllocDocs(Sourcep s, int url_id);
+extern int SourceAllocObjs(Sourcep s, int url_id, int o_id);
+extern void ChkDocToDoc(Sourcep s, int url_id);
 #endif

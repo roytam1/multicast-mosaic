@@ -1,5 +1,5 @@
 /* Please read copyright.nsca. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 /* Copyright (C) 1997 - G.Dauphin
  * Please read "license.mMosaic" too.
@@ -129,6 +129,14 @@ static AmpEsc AmpEscapes[] = {
 
 static MarkType ParseMarkType(char *str);
 
+static void FreeMarkup( struct mark_up *mptr)
+{
+	if (mptr->text)
+		free(mptr->text);
+	if (mptr->start)
+		free(mptr->start);
+	free(mptr);
+}
 
 /* Clean up the white space in a string. Remove all leading and trailing
  * whitespace, and turn all internal whitespace into single spaces separating
@@ -464,7 +472,7 @@ static struct mark_up * AddObj( struct mark_up **listp, struct mark_up *current,
  * The old list is passed in so it can be freed, and in the future we
  * may want to add code to append to the old list.
  */
-struct mark_up * HTMLParse( char *str)
+struct mark_up * HTMLLexem( char *str)
 {
 	char *start, *end;
 	char *text;
@@ -510,6 +518,23 @@ struct mark_up * HTMLParse( char *str)
 		mark = get_mark(start, &end);
 		if (mark == NULL) {
 			fprintf(stderr, "error parsing mark, missing '>'\n");
+			mark = (struct mark_up *)malloc(sizeof(struct mark_up));
+			CHECK_OUT_OF_MEM(mark);
+			mark->type = M_END_STATE;	/* it's finish */
+			mark->is_end = 0;
+			mark->start = NULL;
+			mark->text = NULL;
+			mark->is_white_text = 0;
+			mark->end = NULL;
+			mark->next = NULL;
+			mark->s_aps = NULL;
+			mark->s_ats = NULL;
+			mark->s_picd = NULL;
+			mark->t_p1 = NULL;
+			mark->anc_name = NULL;
+			mark->anc_href = NULL;
+			mark->anc_title = NULL;
+			current = AddObj(&list, current, mark);
 			return(list);
 		}
 /* end is on '>' */
@@ -532,11 +557,793 @@ struct mark_up * HTMLParse( char *str)
 				start++;
 		}
 	}
+/*	mark = (struct mark_up *)malloc(sizeof(struct mark_up));
+/*	CHECK_OUT_OF_MEM(mark);
+/*	mark->type = M_END_STATE;	/* it's finish */
+/*	mark->is_end = 0;
+/*	mark->start = NULL;
+/*	mark->text = NULL;
+/*	mark->is_white_text = 0;
+/*	mark->end = NULL;
+/*	mark->next = NULL;
+/*	mark->s_aps = NULL;
+/*	mark->s_ats = NULL;
+/*	mark->s_picd = NULL;
+/*	mark->t_p1 = NULL;
+/*	mark->anc_name = NULL;
+/*	mark->anc_href = NULL;
+/*	mark->anc_title = NULL;
+/*	current = AddObj(&list, current, mark);
+*/
 	return(list);
 }
 
-/* Determine mark type from the identifying string passed */
+/* Parser state stack object */  
+typedef struct _ParserStack{
+        MarkType mtype;			/* current state id */
+        struct _ParserStack *next;	/* ptr to next record */
+}ParserStack;
 
+ParserStack BaseStck =  { M_INIT_STATE, NULL }; /* never write here */
+
+typedef struct _ParserContext {
+	ParserStack *base_stk;	/* stack base point */
+	ParserStack *top_stk; 			/* actual stack */
+	int has_head;				/* head seen */
+	int has_body;				/* body seen */
+	int has_frameset;			/* frameset seen */
+	int frameset_depth;			/* nested frameset */
+/*struct mark_up *head;/* head of object list       */
+/*struct mark_up *cur;/* lastly inserted element*/
+/*struct mark_up *last;/* last valid element */
+/* running list of inserted elements */
+/*int num_elements;/* no of tags inserted so far  */
+/*int num_text;/* no of text elements inserted so far  */
+/*Cardinal loop_count;/* no of loops made so far*/
+/*Boolean have_body; /* indicates presence of <body> tag*/
+/*Boolean bad_html;  /* bad HTML document flag */
+/*Boolean automatic; /* when in automatic mode */
+
+} ParserContext;
+
+static  ParserContext Pcxt = {
+	&BaseStck,	/* base_stk */
+	NULL,		/* top_stk */
+	0,		/* has_head */
+	0,		/* has_body */
+	0,		/* has_frameset */
+	0		/* frameset_depth */
+};
+
+static struct mark_up begin_mark;
+
+#define END_STATE_TAG (-2)
+#define REMOVE_TAG (-1)
+#define INSERT_TAG (1)
+#define GOOD_TAG (0)
+
+#define SOP_POP_END (-2)
+#define SOP_POP	(-1)
+#define SOP_PUSH (1)
+#define SOP_NONE (0)
+
+/* sop: stack operation */
+int ParseElement(ParserContext *pc,
+        struct mark_up *pmptr, struct mark_up *mptr,
+        struct mark_up *lvm, struct mark_up *sbm, struct mark_up *ebm,
+        MarkType state, ParserContext *pc_ret, struct mark_up **im_ret,
+	int *sop)
+{
+	struct mark_up *tmptr = NULL;
+
+	*sop = SOP_NONE;
+
+	switch (mptr->type) {		/* those tags are alway remove */
+	case M_COMMENT:
+	case M_DOCTYPE:
+	case M_NOFRAMES:		/* we are configured with FRAME */
+		return REMOVE_TAG;
+	}
+
+/* autorized state stack:
+ * M_END_STATE M_INIT_STATE M_HTML M_HEAD M_STYLE M_TITLE M_SCRIPT M_NOSCRIPT
+ * FRAMESET BODY */
+
+	switch (state) {
+	case M_END_STATE:
+		return (REMOVE_TAG) ;
+	case M_INIT_STATE:	/* ceci ne doit arrive qu'une fois a partir
+				 * de <HTML> ou <FRAMESET> ou <BODY> */
+		switch (mptr->type) {
+		case M_NONE:		/* test a white string */
+			if (mptr->is_white_text)
+				return REMOVE_TAG;
+			/* text is not empty in INIT_STATE: start HTML */
+			tmptr = HTMLLexem("<HTML><HEAD><TITLE>Untitled</TITLE></HEAD><BODY>");
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		case M_HTML:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+/*RecurHTMLParseRepair(pc,mptr,mptr->next, mptr, mptr, NULL, mptr->type, pc_ret);
+/*if (mptr->next == NULL) /* NULL parse */ /*return REMOVE_TAG;return GOOD_TAG;*/
+			*sop = SOP_PUSH;
+			return GOOD_TAG;
+		case M_HEAD:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			tmptr = HTMLLexem("<HTML>");
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		case M_FRAMESET:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			tmptr = HTMLLexem("<HTML><HEAD><TITLE>Untitled</TITLE></HEAD>");
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		case M_BODY:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+                        tmptr = HTMLLexem("<HTML><HEAD><TITLE>Untitled</TITLE></HEAD>");
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		default:
+			tmptr = HTMLLexem("<HTML><HEAD><TITLE>Untitled</TITLE></HEAD><BODY>");
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		}
+		break;
+/* we are in this state because of:
+ * <HTML>mptr
+ * <HTML><HEAD>...</HEAD>mptr
+ * <HTML>...<BODY>...</BODY> mptr
+ * <HTML>...<FRAMESET>...</FRAMESET> mptr
+ */
+	case M_HTML:
+		switch (mptr->type) {
+		case M_NONE:            /* test a white string */
+                        if (mptr->is_white_text)
+                                return REMOVE_TAG;
+					/* a non white text */
+			if (pc->has_head ) {
+				if ( !pc->has_body && !pc->has_frameset ) {
+					tmptr = HTMLLexem("<BODY>");
+				} else { /* remove all after /body or last /frameset */
+					return REMOVE_TAG;
+				}
+			} else {	/* add head and body */
+				tmptr = HTMLLexem("<HEAD><TITLE>Untitled</TITLE></HEAD><BODY>");
+			}
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		case M_HTML:
+			if (!mptr->is_end)
+				return REMOVE_TAG;	/* deja dans du html */
+/* found </HTML> in M_HTML context stack: GOOD */
+			*sop = SOP_POP_END;
+			return END_STATE_TAG; /* et c'est la fin mettre sur le stack M_END_STATE */
+		case M_END_STATE:
+			*sop = SOP_POP_END;
+			return END_STATE_TAG;	/* fin prematuree */
+		case M_HEAD:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			if (pc->has_head || pc->has_frameset || pc->has_body)
+				return REMOVE_TAG;
+			pc->has_head = 1;
+			/* le tag suivant est en principe BODY ou FRAMESET */
+			*sop = SOP_PUSH;
+			return GOOD_TAG;
+		case M_BODY:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			if (pc->has_frameset)
+				return REMOVE_TAG;
+			if (pc->has_body)
+				return REMOVE_TAG;
+			pc->has_body = 1;
+			*sop = SOP_PUSH;
+			return GOOD_TAG;
+		case M_FRAMESET:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			if (pc->has_body)
+				return REMOVE_TAG;
+			if (pc->has_frameset)
+				return REMOVE_TAG;
+			pc->has_frameset = 1;
+			*sop = SOP_PUSH;
+			return GOOD_TAG;
+		default:
+			if (pc->has_head ) {
+				if ( !pc->has_body && !pc->has_frameset ) {
+					tmptr = HTMLLexem("<BODY>");
+				} else { /* remove all after /body or last /frameset */
+					return REMOVE_TAG;
+				}
+			} else {	/* add head and body */
+				tmptr = HTMLLexem("<HEAD><TITLE>Untitled</TITLE></HEAD><BODY>");
+			}
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		}
+		break;
+	case M_HEAD:
+		switch (mptr->type){
+		case M_NONE:            /* test a white string */
+                        if (mptr->is_white_text)
+                                return REMOVE_TAG;
+			tmptr = HTMLLexem("<TITLE>Untitled</TITLE></HEAD><BODY>");
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		case M_NOSCRIPT:		/* this is stupid */
+		case M_SCRIPT:
+		case M_STYLE:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			*sop = SOP_PUSH;
+			return REMOVE_TAG;
+		case M_TITLE:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			*sop = SOP_PUSH;
+			return GOOD_TAG;
+		case M_META:
+		case M_LINK:
+		case M_ISINDEX:
+		case M_BASE:
+			return GOOD_TAG;
+		case M_HEAD:
+			if (!mptr->is_end)
+				return REMOVE_TAG;      /* deja dans M_HEAD */
+			pc->has_head = 2;
+			/* le tag suivant est en principe BODY ou FRAMESET */
+			*sop = SOP_POP;
+			return GOOD_TAG; /* reste sur statck M_HTML */
+		default:
+			return REMOVE_TAG;
+		}
+		break;
+	case M_TITLE:
+		switch (mptr->type){
+		case M_NONE:            /* test a white string */
+                        if (mptr->is_white_text)
+                                return REMOVE_TAG;
+			return GOOD_TAG;
+		case M_TITLE:
+			if (!mptr->is_end)
+				return REMOVE_TAG;      /* deja dans TITLE */
+			*sop = SOP_POP;
+			return GOOD_TAG; /* next state will be HEAD */
+		default:
+			return REMOVE_TAG;
+		}
+		break;
+	case M_SCRIPT:
+	case M_NOSCRIPT:		/* this is stupid */
+	case M_STYLE:
+		if (mptr->type == state) {
+			if (mptr->is_end) {
+				*sop = SOP_POP; /* next state will be HEAD */
+				return REMOVE_TAG;
+			}
+		}
+		return REMOVE_TAG;
+		break;
+
+	case M_FRAMESET:
+		switch (mptr->type) {	/* only FRAME or FRAMESET is alowed */
+		case M_NONE:
+			if (mptr->is_white_text)
+				return REMOVE_TAG;
+			return REMOVE_TAG;	/* maybe something to repair...*/
+		case M_FRAME:
+			return GOOD_TAG;
+		case M_FRAMESET:
+			if (mptr->is_end) { /* match the open FRAMESET */
+				pc->frameset_depth--;
+				if (pc->frameset_depth < 0) {
+					*sop = SOP_POP_END;
+					return END_STATE_TAG;
+				}
+				*sop = SOP_POP;
+				return GOOD_TAG;
+			}
+			pc->frameset_depth++;
+			*sop = SOP_PUSH;
+			return GOOD_TAG;
+		default:
+			return REMOVE_TAG;	/* all other is an error */
+		}
+		break;
+	case M_BODY:
+		switch (mptr->type) {
+		case M_HTML:		/* some TAG is not in this block */
+		case M_BASE:
+		case M_HEAD:
+		case M_FRAME:
+		case M_FRAMESET:
+		case M_COMMENT:
+		case M_LINK:
+		case M_META:
+		case M_DOCTYPE:
+		case M_NOFRAMES:
+		case M_NOSCRIPT:
+		case M_TITLE:
+		case M_SCRIPT:
+		case M_STYLE:
+		case M_ISINDEX:
+		case M_UNKNOWN:
+			return REMOVE_TAG;
+		case M_BODY:
+			if (mptr->is_end) { /* match the open BODY */
+				/* ##### close all block ####### */
+				*sop = SOP_POP;
+				return GOOD_TAG;
+			}
+			return REMOVE_TAG;
+		case M_END_STATE:
+		case M_INIT_STATE:
+			*sop = SOP_POP_END;
+			return END_STATE_TAG;
+		case M_FONT:
+		case M_BIG:
+		case M_NONE:
+		case M_BOLD:
+		case M_ANCHOR:
+		case M_HRULE:
+		case M_IMAGE:
+		case M_BR:
+		case M_HEADER_1:/*not really struct block only play with font*/
+		case M_HEADER_2:
+		case M_HEADER_3:
+		case M_HEADER_4:
+		case M_HEADER_5:
+		case M_HEADER_6:
+		case M_ADDRESS:
+		case M_AREA:
+		case M_CITATION:
+		case M_FORM:
+		case M_ITALIC:
+		case M_FIXED:
+		case M_EMPHASIZED:
+		case M_STRONG:
+		case M_SUB:
+		case M_SUP:
+		case M_SMALL:
+		case M_STRIKEOUT:
+		case M_UNDERLINED:
+		case M_SAMPLE:
+		case M_KEYBOARD:
+		case M_VARIABLE:
+		case M_PARAGRAPH:
+			return GOOD_TAG;
+					/* BLOCK */
+		case M_TABLE:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			*sop = SOP_PUSH;
+			return GOOD_TAG;	/* next state is TABLE */
+		case M_CODE:
+		case M_DIV:
+		case M_PREFORMAT:
+		case M_BUGGY_TABLE:
+		case M_TD:
+		case M_TD_CELL_PAD:
+		case M_TD_CELL_FREE:
+		case M_TH:
+		case M_TR:
+		case M_APPLET:
+		case M_APROG:
+		case M_BLOCKQUOTE:
+		case M_CAPTION:
+		case M_CENTER:
+		case M_DESC_LIST:
+		case M_DESC_TITLE:
+		case M_DESC_TEXT:
+		case M_DFN:
+		case M_DIRECTORY:
+		case M_INPUT:
+		case M_LIST_ITEM:
+		case M_MAP:
+		case M_MENU:
+		case M_NUM_LIST:
+		case M_OPTION:
+		case M_PARAM:
+		case M_TEXTAREA:
+		case M_SELECT:
+		case M_UNUM_LIST:
+			return GOOD_TAG;
+		}
+		return REMOVE_TAG;	/* Unknow tag for BODY state */
+		break;
+	case M_TABLE:		/* try to repair <TABLE> */
+		switch (mptr->type) {
+		case M_NONE:            /* test a white string */
+			if (mptr->is_white_text)
+				return REMOVE_TAG;
+			/* add TR TD b4 a text */
+			tmptr = HTMLLexem("<TR><TD>");
+			*sop = SOP_NONE;
+			*im_ret = tmptr;
+			return INSERT_TAG;      /* next state is TABLE */
+						/* next Token is TR */
+		case M_TABLE:
+			if (mptr->is_end) { /* match the open TABLE */
+				*sop = SOP_POP;
+				return GOOD_TAG; /* next state is upper block*/
+			}
+			/* after a TABLE we have an other TABLE*/
+			/* insert a TR TD to correctly open nested table */
+			tmptr = HTMLLexem("<TR><TD>");
+			*sop = SOP_NONE;	/* TABLE maybe nested */
+			*im_ret = tmptr;
+			return INSERT_TAG;      /* next state is TABLE */
+						/* next Token is TR */
+			break;
+		case M_TR:
+			if (mptr->is_end) {
+				return REMOVE_TAG;
+			}
+			*sop = SOP_PUSH;
+			return GOOD_TAG;	/* next state is M_TR */
+		case M_TH:
+		case M_TD:
+			if (mptr->is_end) {
+				return REMOVE_TAG;
+			}
+			/* after a TABLE we have TD or TH. miss of TR */
+			/* add it */
+			tmptr = HTMLLexem("<TR>");
+			*sop = SOP_NONE;
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		case M_CAPTION:
+			if (mptr->is_end) {
+				return REMOVE_TAG;
+			}
+			*sop = SOP_PUSH;
+			return GOOD_TAG;        /* next state is M_CAPTION */
+			break;
+                case M_BASE:           /* some TAG is not in this block */
+                case M_HEAD:          
+                case M_FRAME:         
+                case M_FRAMESET:      
+                case M_COMMENT:       
+                case M_LINK:          
+                case M_META:          
+                case M_DOCTYPE:       
+                case M_NOFRAMES:      
+                case M_NOSCRIPT:      
+                case M_TITLE:         
+                case M_SCRIPT:        
+                case M_STYLE:         
+                case M_ISINDEX:       
+                case M_UNKNOWN:       
+                        return REMOVE_TAG;
+		case M_HTML:
+		case M_BODY:		/* close the TABLE. insert</TABLE> */
+			if (mptr->is_end) {
+				tmptr = HTMLLexem("</TABLE>");
+				*sop = SOP_NONE;
+				*im_ret = tmptr;
+				return INSERT_TAG;
+			}
+			return REMOVE_TAG;
+		}
+		return GOOD_TAG;
+	case M_TR:			/* table row state */
+		switch (mptr->type) {
+		case M_NONE:
+			if (mptr->is_white_text)
+				return REMOVE_TAG;
+			/* add TD b4 a text */
+			tmptr = HTMLLexem("<TD>");
+			*sop = SOP_NONE;
+			*im_ret = tmptr;
+			return INSERT_TAG;      /* next state is TR */
+						/* next Token is TD */
+		case M_TR:
+			if (mptr->is_end) { /* match the open TR */
+				*sop = SOP_POP;
+				return GOOD_TAG; /* next state is TABLE*/
+			}
+			/* must end the previous TR. Add </TR> */
+			tmptr = HTMLLexem("</TR>");
+			*sop = SOP_NONE;
+			*im_ret = tmptr;
+			return INSERT_TAG;	/* next state is TR */
+						/* next Token is /TR */
+		case M_TH:
+		case M_TD:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			*sop = SOP_PUSH;
+			return GOOD_TAG;        /* next state is M_TH or M_TD*/
+		case M_TABLE:
+			/* must end the previous TR. Add </TR> */
+			tmptr = HTMLLexem("</TR>");
+			*sop = SOP_NONE;
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		case M_HTML:
+		case M_BODY:
+			if (mptr->is_end) {
+				tmptr = HTMLLexem("</TR>");
+				*sop = SOP_NONE;
+				*im_ret = tmptr;
+				return INSERT_TAG;
+			}
+			return REMOVE_TAG;
+		}
+		return REMOVE_TAG;
+		break;
+	case M_TH:			/* table header like TD */
+		switch (mptr->type) {
+		case M_NONE:
+			return GOOD_TAG;
+		case M_TH:
+			if (mptr->is_end) { /* match the open TH */
+				*sop = SOP_POP;
+				return GOOD_TAG; /* next state is TR */
+			}
+			/* must end the previous TH */
+			tmptr = HTMLLexem("</TH>");
+			*sop = SOP_NONE;
+			*im_ret = tmptr;
+			return INSERT_TAG;      /* next state is TH */
+						/* next Token is /TH */
+		case M_TD:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			/* must end the previous TH */
+			tmptr = HTMLLexem("</TH>");
+			*sop = SOP_NONE;
+			*im_ret = tmptr;
+			return INSERT_TAG;      /* next state is TH */
+						/* next Token is /TH */
+		case M_TR:
+			tmptr = HTMLLexem("</TH>");
+			*sop = SOP_NONE;
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		case M_TABLE:
+			if (mptr->is_end) {
+				tmptr = HTMLLexem("</TH></TR>");
+				*sop = SOP_NONE;
+				*im_ret = tmptr;
+				return INSERT_TAG;
+			}
+			*sop = SOP_PUSH;
+			return GOOD_TAG;        /* next state is TABLE */
+		case M_HTML:
+		case M_BODY:		/* close the TH. insert</TH> */
+			if (mptr->is_end) {
+				tmptr = HTMLLexem("</TH>");
+				*sop = SOP_NONE;
+				*im_ret = tmptr;
+				return INSERT_TAG;
+			}
+			return REMOVE_TAG;
+		}
+		return GOOD_TAG;
+	case M_TD:			/* table data */
+		switch (mptr->type) {
+		case M_NONE:
+			return GOOD_TAG;
+		case M_TD:
+			if (mptr->is_end) { /* match the open TD */
+				*sop = SOP_POP;
+				return GOOD_TAG; /* next state is TR */
+			}
+			/* must end the previous TD */
+			tmptr = HTMLLexem("</TD>");
+			*sop = SOP_NONE;
+			*im_ret = tmptr;
+			return INSERT_TAG;      /* next state is TD */
+						/* next Token is /TD */
+		case M_TH:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			/* must end the previous TD */
+			tmptr = HTMLLexem("</TD>");
+			*sop = SOP_NONE;
+			*im_ret = tmptr;
+			return INSERT_TAG;      /* next state is TD */
+						/* next Token is /TD */
+		case M_TR:
+			tmptr = HTMLLexem("</TD>");
+			*sop = SOP_NONE;
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		case M_TABLE:
+			if (mptr->is_end) {
+				tmptr = HTMLLexem("</TD></TR>");
+				*sop = SOP_NONE;
+				*im_ret = tmptr;
+				return INSERT_TAG;
+			}
+			*sop = SOP_PUSH;
+			return GOOD_TAG;        /* next state is TABLE */
+		case M_HTML:
+		case M_BODY:		/* close the TD. insert</TD> */
+			if (mptr->is_end) {
+				tmptr = HTMLLexem("</TD>");
+				*sop = SOP_NONE;
+				*im_ret = tmptr;
+				return INSERT_TAG;
+			}
+			return REMOVE_TAG;
+		}
+		return GOOD_TAG;
+	case M_CAPTION:			/* CAPTION of table */
+		switch (mptr->type) {
+		case M_NONE:
+			return GOOD_TAG;
+		case M_CAPTION:
+			if (mptr->is_end) { /* match the open CAPTION */
+				*sop = SOP_POP;
+				return GOOD_TAG; /* next state is TABLE */
+			}
+			return REMOVE_TAG;
+		default:
+			return REMOVE_TAG;
+		}
+	}
+	
+	abort(); /* that is a unknow state!!!! */
+	return REMOVE_TAG ;
+}
+
+void PushParserStack(ParserContext *pc, MarkType id) 
+{ 
+        ParserStack *stmp;
+ 
+        stmp = (ParserStack*)malloc(sizeof(ParserStack));
+        stmp->mtype = id;
+        stmp->next = pc->top_stk;
+        pc->top_stk = stmp;    
+}      
+
+MarkType PopParserStack(ParserContext *pc)
+{
+	MarkType id;
+	ParserStack *stmp;
+
+	if(pc->top_stk->next != NULL) {
+		stmp = pc->top_stk;
+		pc->top_stk = pc->top_stk->next;
+		id = pc->top_stk->mtype;
+		free((char*)stmp);
+	} else
+		id = pc->top_stk->mtype;
+	return(id);
+}
+
+/* clears and resets the state stack of a parser to initiale stack */
+static void ParserEndStack(ParserContext *pc)
+{
+	while(pc->top_stk->next != NULL)
+		PopParserStack(pc);
+
+	/* check the stateStack */
+	if (pc->top_stk->mtype != M_INIT_STATE)
+		abort();		/* something goes wrong */
+}
+
+/* pc : Parser context.
+ * pmptr: Previous marker
+ * mptr:  current marker to analyze
+ * lvm:   last valid marker
+ * sbm:   Start 'block' marker ( TABLE FRAMSET ...) (maybe nested)
+ * ebm:	  End 'block' marker (maybe null if not found or in current block)
+ * state: top stack state of parser context b4 analazing mptr
+ * pc_ret: Place return value here
+ */
+static void RecurHTMLParseRepair(ParserContext *pc,
+	struct mark_up *pmptr, struct mark_up *mptr,
+	struct mark_up *lvm, struct mark_up *sbm, struct mark_up *ebm,
+	MarkType state, ParserContext *pc_ret)
+{
+	struct mark_up *im;		/* insert this markup in list */
+					/* for repair wish */
+	int retval;
+	int sop;			/* stack operation */
+	MarkType m_id;
+	struct mark_up *save_mptr;
+
+	while (mptr) { 		/* check , analyze and repair */
+		retval = ParseElement(pc, pmptr, mptr, lvm, sbm, ebm,
+			state, pc_ret, &im, &sop);
+		switch (sop) {		/* must be first test because a SOP_PUSH
+					 * and REMOVE_TAG at same time */
+		case SOP_POP_END:
+			ParserEndStack(pc);
+			state = M_END_STATE;
+			break;
+		case SOP_POP:
+			state = PopParserStack(pc);
+			break;
+		case SOP_PUSH:
+			PushParserStack(pc, mptr->type);
+			state = mptr->type;
+			break;
+		case SOP_NONE:
+			break;
+		}
+		switch (retval) {
+		case END_STATE_TAG:		/* finish */
+			ParserEndStack(pc);
+			state = M_END_STATE;
+						/* remove */
+			pmptr->next = mptr->next;
+			FreeMarkup(mptr);
+			mptr = pmptr->next;
+			break;
+		case REMOVE_TAG:		/* remove */
+			pmptr->next = mptr->next;
+			FreeMarkup(mptr);
+			mptr = pmptr->next;
+			break;
+		case  GOOD_TAG:		/* good */
+			pmptr = mptr;
+			mptr = mptr->next;
+			break;
+		case  INSERT_TAG:		/* insert the im mark b4 mptr */
+			pmptr->next = im;
+			save_mptr = mptr;
+			mptr = im;
+			while(im->next) {
+				im = im->next;
+			}
+			im->next = save_mptr;
+			mptr = pmptr->next; /* we re-parse the new added tag*/
+			break;
+		}
+	}
+}
+
+/* Parser of HTML text.  Takes raw text, and produces a linked
+ * list of mark objects SUITABLE FOR GRAPHIC PROCESSING.
+ * It call HTMLLexem and analyze the stream of markup return by HTMLLexem.
+ * We check for correct HTML syntax and possibly repair error.
+ * We return a GOOD HTML markup stream.
+ * the stack is used for checking 'block' element such as FRAMESET TABLE
+ * H1 H2 BODY HTML... Thoses elements is designing the structure of a page.
+ * We don't check for <FONT> because is designing the apparance of page.
+ */
+struct mark_up * HTMLParseRepair( char *str)
+{
+	struct mark_up * mptr;		/* current to analyze */
+	struct mark_up *pmptr;		/* previous analyze */
+	struct mark_up begm;		/* begin of list */
+	struct mark_up *sbm, *ebm;	/* start & and block marker */
+	ParserContext pc_ret;	/* return values found here */
+
+	if (str == NULL)
+		return(NULL);
+
+	mptr = HTMLLexem(str);
+/* create a pseudo marker for initialisation */
+	begm = begin_mark;
+	begm.type = M_INIT_STATE;
+	begm.next = mptr;
+	pmptr = &begm;
+/*initialize the parser context */
+	Pcxt.base_stk = &BaseStck;
+	Pcxt.top_stk = Pcxt.base_stk; /*mtype=M_INIT_STATE next = NULL */
+	Pcxt.has_head =0;
+	Pcxt.has_body =0;
+	Pcxt.has_frameset = 0;
+	Pcxt.frameset_depth = 0;
+	pc_ret = Pcxt;
+	sbm = ebm = NULL;
+	RecurHTMLParseRepair(&Pcxt, pmptr, mptr, &begm, sbm, ebm,
+		M_INIT_STATE, &pc_ret);
+	return(begm.next);
+}
+
+/* Determine mark type from the identifying string passed */
 static MarkType ParseMarkType(char *str)
 {
 	MarkType type;
@@ -558,6 +1365,8 @@ static MarkType ParseMarkType(char *str)
 		type = M_ANCHOR;
 	} else if (!strcasecmp(str, MT_FRAME)) {
 		type = M_FRAME;
+	} else if (!strcasecmp(str, MT_FRAMESET)) {
+		type = M_FRAMESET;
 	} else if (!strcasecmp(str, MT_TITLE)) {
 		type = M_TITLE;
 	} else if (!strcasecmp(str, MT_FIXED)) {
@@ -618,14 +1427,14 @@ static MarkType ParseMarkType(char *str)
 		type = M_PREFORMAT;
 	} else if (!strcasecmp(str, MT_BLOCKQUOTE)) {
 		type = M_BLOCKQUOTE;
-	} else if (!strcasecmp(str, MT_INDEX)) {
-		type = M_INDEX;
+	} else if (!strcasecmp(str, MT_ISINDEX)) {
+		type = M_ISINDEX;
 	} else if (!strcasecmp(str, MT_HRULE)) {
 		type = M_HRULE;
 	} else if (!strcasecmp(str, MT_BASE)) {
 		type = M_BASE;
-	} else if (!strcasecmp(str, MT_LINEBREAK)) {
-		type = M_LINEBREAK;
+	} else if (!strcasecmp(str, MT_BR)) {
+		type = M_BR;
 	} else if (!strcasecmp(str, MT_IMAGE)) {
 		type = M_IMAGE;
 	} else if (!strcasecmp(str, MT_SELECT)) {
@@ -642,22 +1451,22 @@ static MarkType ParseMarkType(char *str)
 		type = M_SUP;
 	} else if (!strcasecmp(str, MT_SUB)) {
 		type = M_SUB;
-	} else if (!strcasecmp(str, MT_DOC_HEAD)) {
-	        type = M_DOC_HEAD;
+	} else if (!strcasecmp(str, MT_HEAD)) {
+	        type = M_HEAD;
 	} else if (!strcasecmp(str, MT_UNDERLINED)) {
 	        type = M_UNDERLINED;
-	} else if (!strcasecmp(str, MT_DOC_BODY)) {
-	        type = M_DOC_BODY;
+	} else if (!strcasecmp(str, MT_BODY)) {
+	        type = M_BODY;
 	} else if (!strcasecmp(str, MT_TABLE)) {
 		type = M_TABLE;
 	} else if (!strcasecmp(str, MT_CAPTION)) {
 		type = M_CAPTION;
-	} else if (!strcasecmp(str, MT_TABLE_ROW)) {
-		type = M_TABLE_ROW;
-	} else if (!strcasecmp(str, MT_TABLE_HEADER)) {
-		type = M_TABLE_HEADER;
-	} else if (!strcasecmp(str, MT_TABLE_DATA)) {
-		type = M_TABLE_DATA;
+	} else if (!strcasecmp(str, MT_TR)) {
+		type = M_TR;
+	} else if (!strcasecmp(str, MT_TH)) {
+		type = M_TH;
+	} else if (!strcasecmp(str, MT_TD)) {
+		type = M_TD;
 	} else if (!strcasecmp(str, MT_APROG)){
 		type = M_APROG;
 	} else if (!strcasecmp(str, MT_APPLET)){
@@ -682,6 +1491,16 @@ static MarkType ParseMarkType(char *str)
 		type = M_AREA;
 	} else if (!strcasecmp(str, MT_META)){
 		type = M_META;
+	} else if (!strcasecmp(str, MT_LINK)){
+		type = M_LINK;
+	} else if (!strcasecmp(str, MT_SCRIPT)){
+		type = M_SCRIPT;
+	} else if (!strcasecmp(str, MT_NOSCRIPT)){
+		type = M_NOSCRIPT;
+	} else if (!strcasecmp(str, MT_STYLE)){
+		type = M_STYLE;
+	} else if (!strcasecmp(str, MT_NOFRAMES)){
+		type = M_NOFRAMES;
 	} else {
 		fprintf(stderr, "warning: unknown mark (%s)\n", str);
 		type = M_UNKNOWN;
@@ -704,9 +1523,11 @@ static char * AnchorTag( char **ptrp, char **startp, char **endp)
 	char *start;
 	char tchar;
 	int quoted;
+	int quoted_single;
 	int has_value;
 
 	quoted = 0;
+	quoted_single = 0;
 	ptr = *ptrp; 		/* remove leading spaces, and set start */
 	while (isspace((int)*ptr))
 		ptr++;
@@ -735,13 +1556,22 @@ static char * AnchorTag( char **ptrp, char **startp, char **endp)
 		strcpy(tag_val, "1");
 		return(tag_val);
 	}
-	if (*ptr == '\"') {
+	switch (*ptr) {
+	case '\"' :
 		quoted = 1;
 		ptr++;
+		break;
+	case '\'' :
+		quoted_single = 1;
+		ptr++;
+		break;
 	}
 	start = ptr;
 	if(quoted) { /* Get tag value.  Either a quoted string or a single word */
 		while ((*ptr != '\"')&&(*ptr != '\0'))
+			ptr++;
+	} else if (quoted_single) {
+		while ((*ptr != '\'')&&(*ptr != '\0'))
 			ptr++;
 	} else {
 		while ((!isspace((int)*ptr))&&(*ptr != '\0'))
@@ -758,7 +1588,7 @@ static char * AnchorTag( char **ptrp, char **startp, char **endp)
 
 	/* If you forgot the end quote, you need to make sure you aren't
 		indexing ptr past the end of its own array -- SWP */
-	if (quoted && *ptr!='\0')
+	if ( (quoted_single || quoted) && *ptr!='\0')
 		ptr++;
 	*ptrp = ptr;
 	return(tag_val);
@@ -801,38 +1631,30 @@ char* ParseMarkTag(char *text, char *mtext, char *mtag)
 }
 
 /* #### remember */
- 
 /* HTMLescapeString ()
    Expects: str -- String to escape
             buf -- Buffer to store escaped string
    Returns: nothing
-
    Escapes all <'s and >'s and ...
 */
 /*
 void HTMLescapeString (char *str, char *buf)
 {
-
   while (str && *str) {
-
     switch (*str) {
-
     case '<':
       *buf = '&'; buf++; *buf = 'l'; buf++;
       *buf = 't'; buf++; *buf = ';'; buf++;
       break;
-
     case '>':
       *buf = '&'; buf++; *buf = 'g'; buf++;
       *buf = 't'; buf++; *buf = ';'; buf++;
       break;
-
     case '&':
       *buf = '&'; buf++; *buf = 'a'; buf++;
       *buf = 'm'; buf++; *buf = 'p'; buf++;
       *buf = ';'; buf++;
       break;
-
     default:
       *buf = *str;
       buf++;

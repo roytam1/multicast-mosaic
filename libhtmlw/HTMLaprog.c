@@ -8,7 +8,6 @@
 
 #ifdef APROG
 
-#include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
 #include <ctype.h>

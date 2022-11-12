@@ -18,7 +18,6 @@
 #if defined(sgi) || defined(__bsdi__) || defined(__FreeBSD__) || defined(ultrix) || defined(linux) || defined(netBSD)
 #include <sys/types.h>
 #else
-typedef signed char int8_t;
 typedef unsigned char u_int8_t;        
 typedef short int16_t;                 
 typedef unsigned short u_int16_t;      

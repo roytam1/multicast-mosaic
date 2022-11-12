@@ -4,7 +4,7 @@ dnl mjr: 9.2.1998
 
 AC_INIT()
 
-MCVER=3.3.0
+MCVER=3.3.1
 AC_SUBST(MCVER)
 
 dnl ################# some macro definitions ###################

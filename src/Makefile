@@ -27,7 +27,7 @@ $(MOSAIC): $(OBJS) $(PROGRAM_LIBS)
 	$(CC) $(LDFLAGS) -o $(MOSAIC) $(OBJS) $(LIBS) 
 
 
-HFILES = mosaic.h xresources.h ../libmc/mc_defs.h
+HFILES = mosaic.h xresources.h
 $(OBJS): $(HFILES)
 hotlist.o : hotlist.h
 gui.o: toolbar.h xresources.h ../libhtmlw/HTML.h bitmaps/*.xbm

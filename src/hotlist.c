@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include <stdio.h>
 #include <time.h>
@@ -24,6 +24,10 @@
 #include "mailto.h"
 #include "mime.h"
 #include "paf.h"
+
+#ifdef DEBUG
+#define DEBUG_GUI
+#endif
 
 /* ####Prendre le format netscape: Voir ~/.netscape/bookmark.html##### */
 /* <!DOCTYPE NETSCAPE-Bookmark-file-1>
@@ -538,7 +542,7 @@ static void mo_read_hotlist(mo_hotlist *list, FILE *fp)
 	text[size] = '\0';
 
 /* parse the HTML document */
-	hot_mark_up = HTMLParse(text);
+	hot_mark_up = HTMLLexem(text);
 	free(text);
 
 /* some pre-processing to see if this is in hotlist format or if this is a
@@ -810,11 +814,13 @@ static XmxCallback (edit_or_insert_hot_cb0)		/* Commit Edit */
 			if(hotnode->type==mo_t_list && highlight)
 				free(highlight);
 			XmListDeletePos (ww->hotlist_list, hotnode->any.position);
+#ifdef DEBUG_GUI
 	if (mMosaicSrcTrace) {
 		fprintf (stderr, 
 		   "ww->hotlist_list 0x%08x, xmstr 0x%08x, hotnode->position %d\n",
 			ww->hotlist_list, xmstr, hotnode->any.position);
 	}
+#endif
 /* There is what appears to be a Motif UMR here... */
 			XmListAddItemUnselected (ww->hotlist_list, xmstr, 
 					hotnode->any.position);

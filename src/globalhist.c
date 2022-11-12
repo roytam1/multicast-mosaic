@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include <time.h>
 #include <memory.h>
@@ -8,7 +8,6 @@
 #include <fcntl.h>
 
 #include "../libhtmlw/HTMLparse.h"
-#include "../libmc/mc_defs.h"
 #include "libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
 #include "../libhtmlw/HTMLPutil.h"
@@ -177,7 +176,7 @@ void MMInitHistory (char* mmosaic_root_dir)
 	close(lfd_history);
 
 /* read the data base */
-	mptr = mlist = HTMLParse(data);
+	mptr = mlist = HTMLLexem(data);
 	t = time(NULL);
 	lhistoryttl = mMosaicAppData.urlExpired*86400;
 

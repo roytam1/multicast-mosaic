@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include "../libhtmlw/HTMLP.h"
 #include "mosaic.h"  
@@ -16,6 +16,10 @@
 #include "mime.h"
 #include "paf.h"
 #include "navigate.h"
+
+#ifdef DEBUG
+#define DEBUG_GUI
+#endif
 
 int do_meta;	/*############*/
 Boolean 	have_popup;
@@ -749,10 +753,11 @@ static Boolean convert_selection(Widget w, Atom *sel, Atom *tar, Atom *typ_ret,
 	int i;
  
 	if(*tar == XA_STRING) {
+#ifdef DEBUG_GUI
 		if (mMosaicSrcTrace) { 
 			fprintf (stderr, "Pasting text selection.\n");
 		}
- 
+#endif
 		for(i=0;popup_items[i].classw!=LastItem;i++) {
 			if(!strcmp(popup_items[i].label, COPY_URL_LABEL)) {
 				if(popup_items[i].acst.str)

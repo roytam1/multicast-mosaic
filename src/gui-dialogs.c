@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include "libhtmlw/HTML.h"
 #include "mosaic.h"
@@ -20,9 +20,11 @@
 
 #include "child.h"
 
+#ifdef DEBUG
+#define DEBUG_GUI
+#endif
+
 /*swp -- header*/
-extern int HTML_Print_Headers;
-extern int HTML_Print_Footers;
 extern int HTML_Print_Paper_Size_A4;
 
 /*swp -- for ~ expansion*/
@@ -35,30 +37,6 @@ void print_sensitive(mo_window *win, int format) ;
 void application_user_info_wait (char *str);
 
 XmxOptionMenuStruct *format_opts;
-
-static void (save_print_header_cb)(Widget w, XtPointer clid, XtPointer calld)
-{
-}
-
-static void (mail_print_header_cb)(Widget w, XtPointer clid, XtPointer calld)
-{
-}
-
-static void print_print_header_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-}
-
-static void save_print_footer_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-}
-
-static void mail_print_footer_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-}
-
-static void print_print_footer_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-}
 
 static XmxCallback (save_print_a4_cb)
 {
@@ -152,8 +130,6 @@ static XmxCallback (save_win_cb)
 		free(info);
 		return;
 	}
-	HTML_Print_Headers= XmToggleButtonGetState(win->print_header_toggle_save);
-	HTML_Print_Footers= XmToggleButtonGetState(win->print_footer_toggle_save);
 	HTML_Print_Paper_Size_A4= XmToggleButtonGetState(win->print_a4_toggle_save);
 	if (win->save_format == mo_plaintext) {
 		char *text = HTMLGetText(win->scrolled_win, 0, win->current_node->aurl, 0);
@@ -190,59 +166,39 @@ void format_sensitive(mo_window *win, int format)
 	int n;
   
 	if (format==mo_plaintext) { /*PLAIN*/
-		XmxSetToggleButton(win->print_header_toggle_save,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_save,XmxNotSet);
 		XmxSetToggleButton(win->print_a4_toggle_save,XmxNotSet);
 		XmxSetToggleButton(win->print_us_toggle_save,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_header_toggle_save,args,n);
-		XtSetValues(win->print_footer_toggle_save,args,n);
 		XtSetValues(win->print_a4_toggle_save,args,n);
 		XtSetValues(win->print_us_toggle_save,args,n);
 	} else if (format==mo_formatted_text) { /*FORMATTED*/
-		XmxSetToggleButton(win->print_header_toggle_save,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_save,XmxNotSet);
 		XmxSetToggleButton(win->print_a4_toggle_save,XmxNotSet);
 		XmxSetToggleButton(win->print_us_toggle_save,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_header_toggle_save,args,n);
-		XtSetValues(win->print_footer_toggle_save,args,n);
 		XtSetValues(win->print_a4_toggle_save,args,n);
 		XtSetValues(win->print_us_toggle_save,args,n);
 	} else if (format==mo_postscript) { /*POSTSCRIPT*/
-                XmxSetToggleButton(win->print_header_toggle_save,mMosaicAppData.print_banners);
-                XmxSetToggleButton(win->print_footer_toggle_save,mMosaicAppData.print_footnotes);
                 XmxSetToggleButton(win->print_a4_toggle_save,!mMosaicAppData.print_us);
                 XmxSetToggleButton(win->print_us_toggle_save,mMosaicAppData.print_us);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,TRUE); n++;
-		XtSetValues(win->print_header_toggle_save,args,n);
-		XtSetValues(win->print_footer_toggle_save,args,n);
 		XtSetValues(win->print_a4_toggle_save,args,n);
 		XtSetValues(win->print_us_toggle_save,args,n);
 	} else if (format==mo_html) { /*HTML*/
-		XmxSetToggleButton(win->print_header_toggle_save,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_save,XmxNotSet);
 		XmxSetToggleButton(win->print_a4_toggle_save,XmxNotSet);
 		XmxSetToggleButton(win->print_us_toggle_save,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_footer_toggle_save,args,n);
-		XtSetValues(win->print_header_toggle_save,args,n);
 		XtSetValues(win->print_a4_toggle_save,args,n);
 		XtSetValues(win->print_us_toggle_save,args,n);
 	} else { /*Boom...Bam...Error...*/
 		printf("ERROR! Format callback has no format!\n");
-		XmxSetToggleButton(win->print_header_toggle_save,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_save,XmxNotSet);
 		XmxSetToggleButton(win->print_a4_toggle_save,XmxNotSet);
 		XmxSetToggleButton(win->print_us_toggle_save,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_header_toggle_save,args,n);
-		XtSetValues(win->print_footer_toggle_save,args,n);
 		XtSetValues(win->print_a4_toggle_save,args,n);
 		XtSetValues(win->print_us_toggle_save,args,n);
 	}
@@ -302,16 +258,6 @@ void mo_save_document (Widget w, XtPointer clid, XtPointer calld)
 		XmxSetArg (XmNmarginHeight, 5);
 		frame = XmxMakeFrame (win->save_win, XmxShadowEtchedIn);
 		workarea = XmxMakeForm (frame);
-		win->print_header_toggle_save=XmxMakeToggleButton(workarea, 
-				"Include Banners",
-				save_print_header_cb,(XtPointer)win);
-		XmxSetToggleButton(win->print_header_toggle_save,
-				mMosaicAppData.print_banners);
-		win->print_footer_toggle_save=XmxMakeToggleButton(workarea,
-				"Include Footnotes",
-				save_print_footer_cb,(XtPointer)win);
-		XmxSetToggleButton(win->print_footer_toggle_save,
-				mMosaicAppData.print_footnotes);
 		paper_size_toggle_box=XmxMakeRadioBox(workarea);
 		win->print_a4_toggle_save = XmxMakeToggleButton(
 				paper_size_toggle_box,
@@ -381,19 +327,11 @@ void mo_save_document (Widget w, XtPointer clid, XtPointer calld)
 			XmATTACH_FORM, NULL, NULL, format_label, NULL);
 /*swp*/
 		XmxSetArg(XmNtopOffset, 15);
-		XmxSetConstraints(win->print_header_toggle_save, 
+		XmxSetConstraints(paper_size_toggle_box, 
 			XmATTACH_WIDGET, XmATTACH_NONE,
 			XmATTACH_FORM, XmATTACH_NONE,
 			format_label,NULL,NULL,NULL);
-		XmxSetConstraints(win->print_footer_toggle_save, 
-			XmATTACH_WIDGET, XmATTACH_NONE,
-			XmATTACH_FORM, XmATTACH_NONE,
-			win->print_header_toggle_save,NULL,NULL,NULL);
-		XmxSetConstraints(paper_size_toggle_box, 
-			XmATTACH_WIDGET, XmATTACH_FORM,
-			XmATTACH_FORM, XmATTACH_NONE,
-			win->print_footer_toggle_save,NULL,NULL,NULL);
-			format_sensitive(win,win->save_format);
+		format_sensitive(win,win->save_format);
 	} else {
 		XmFileSelectionDoSearch (win->save_win, NULL);
 	}
@@ -581,8 +519,6 @@ static XmxCallback (mail_win_cb0)
 
 	XtUnmanageChild (win->mail_win);
 
-	HTML_Print_Headers=XmToggleButtonGetState(win->print_header_toggle_mail);
-	HTML_Print_Footers=XmToggleButtonGetState(win->print_footer_toggle_mail);
 	HTML_Print_Paper_Size_A4=XmToggleButtonGetState(win->print_a4_toggle_mail);
 	to = XmTextGetString (win->mail_to_text);
 	if (!to)
@@ -631,63 +567,41 @@ void mail_sensitive(mo_window *win, int format)
 	int n;
   
 	if (format==mo_plaintext) { /*PLAIN*/
-		XmxSetToggleButton(win->print_header_toggle_mail,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_mail,XmxNotSet);
                 XmxSetToggleButton(win->print_a4_toggle_mail,XmxNotSet);
                 XmxSetToggleButton(win->print_us_toggle_mail,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_header_toggle_mail,args,n);
-		XtSetValues(win->print_footer_toggle_mail,args,n);
                 XtSetValues(win->print_a4_toggle_mail,args,n);
                 XtSetValues(win->print_us_toggle_mail,args,n);
 	} else if (format==mo_formatted_text) { /*FORMATTED*/
-		XmxSetToggleButton(win->print_header_toggle_mail,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_mail,XmxNotSet);
                 XmxSetToggleButton(win->print_a4_toggle_mail,XmxNotSet);
                 XmxSetToggleButton(win->print_us_toggle_mail,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_header_toggle_mail,args,n);
-		XtSetValues(win->print_footer_toggle_mail,args,n);
                 XtSetValues(win->print_a4_toggle_mail,args,n);
                 XtSetValues(win->print_us_toggle_mail,args,n);
 	} else if (format==mo_postscript) { /*POSTSCRIPT*/
-                XmxSetToggleButton(win->print_header_toggle_mail,
-					mMosaicAppData.print_banners);
-                XmxSetToggleButton(win->print_footer_toggle_mail,
-					mMosaicAppData.print_footnotes);
                 XmxSetToggleButton(win->print_a4_toggle_mail,
 					!mMosaicAppData.print_us);
                 XmxSetToggleButton(win->print_us_toggle_mail,
 					mMosaicAppData.print_us);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,TRUE); n++;
-		XtSetValues(win->print_header_toggle_mail,args,n);
-		XtSetValues(win->print_footer_toggle_mail,args,n);
                 XtSetValues(win->print_a4_toggle_mail,args,n);
                 XtSetValues(win->print_us_toggle_mail,args,n);
 	} else if (format==mo_html) { /*HTML*/
-		XmxSetToggleButton(win->print_header_toggle_mail,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_mail,XmxNotSet);
                 XmxSetToggleButton(win->print_a4_toggle_mail,XmxNotSet);
                 XmxSetToggleButton(win->print_us_toggle_mail,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_header_toggle_mail,args,n);
-		XtSetValues(win->print_footer_toggle_mail,args,n);
                 XtSetValues(win->print_a4_toggle_mail,args,n);
                 XtSetValues(win->print_us_toggle_mail,args,n);
 	} else { /*Boom...Bam...Error...*/
 		fprintf(stderr,"ERROR! Format callback has no format!\n");
-		XmxSetToggleButton(win->print_header_toggle_mail,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_mail,XmxNotSet);
                 XmxSetToggleButton(win->print_a4_toggle_mail,XmxNotSet);
                 XmxSetToggleButton(win->print_us_toggle_mail,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_header_toggle_mail,args,n);
-		XtSetValues(win->print_footer_toggle_mail,args,n);
                 XtSetValues(win->print_a4_toggle_mail,args,n);
                 XtSetValues(win->print_us_toggle_mail,args,n);
 	}
@@ -762,14 +676,6 @@ mo_status mo_post_mail_window (mo_window *win)
 		workarea = XmxMakeForm (frame);
         
 /*swp*/
-		win->print_header_toggle_mail=XmxMakeToggleButton(workarea,
-			"Include Banners",mail_print_header_cb,(XtPointer)win);
-		XmxSetToggleButton(win->print_header_toggle_mail,mMosaicAppData.print_banners);
-
-		win->print_footer_toggle_mail=XmxMakeToggleButton(workarea,
-			"Include Footnotes",mail_print_footer_cb,(XtPointer)win);
-		XmxSetToggleButton(win->print_footer_toggle_mail,mMosaicAppData.print_footnotes);
-
 		paper_size_toggle_box=XmxMakeRadioBox(workarea);
 		win->print_a4_toggle_mail = XmxMakeToggleButton(paper_size_toggle_box,
 			"A4 Paper Size" ,mail_print_a4_cb,(XtPointer)win);
@@ -830,15 +736,9 @@ mo_status mo_post_mail_window (mo_window *win)
 			NULL, NULL, format_label, NULL);
 /*swp*/
 		XmxSetArg(XmNtopOffset, 15);
-		XmxSetConstraints (win->print_header_toggle_mail, 
-			XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, 
-			XmATTACH_NONE, format_label,NULL,NULL,NULL);
-		XmxSetConstraints (win->print_footer_toggle_mail, 
-			XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, 
-			XmATTACH_NONE, win->print_header_toggle_mail,NULL,NULL,NULL);
 		XmxSetConstraints (paper_size_toggle_box, XmATTACH_WIDGET, 
-			XmATTACH_FORM, XmATTACH_FORM, XmATTACH_NONE, 
-			win->print_footer_toggle_mail,NULL,NULL,NULL);
+			XmATTACH_NONE, XmATTACH_FORM, XmATTACH_NONE, 
+			format_label,NULL,NULL,NULL);
 
 		mail_sensitive(win,win->mail_format);
 		frame2 = XmxMakeFrame (mail_form, XmxShadowEtchedIn); 
@@ -903,8 +803,6 @@ mo_status mo_print_window(mo_window *win,
 
 	fnam = tempnam (mMosaicTmpDir,"mMo");
 
-	HTML_Print_Headers=XmToggleButtonGetState(win->print_header_toggle_print);
-	HTML_Print_Footers=XmToggleButtonGetState(win->print_footer_toggle_print);
 	HTML_Print_Paper_Size_A4=XmToggleButtonGetState(win->print_a4_toggle_print);
 
 	fp = fopen (fnam, "w");
@@ -1014,59 +912,39 @@ void print_sensitive(mo_window *win, int format)
 	int n;
   
 	if (format==mo_plaintext) { /*PLAIN*/
-		XmxSetToggleButton(win->print_header_toggle_print,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_print,XmxNotSet);
                 XmxSetToggleButton(win->print_a4_toggle_print,XmxNotSet);
                 XmxSetToggleButton(win->print_us_toggle_print,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_header_toggle_print,args,n);
-		XtSetValues(win->print_footer_toggle_print,args,n);
                 XtSetValues(win->print_a4_toggle_print,args,n);
                 XtSetValues(win->print_us_toggle_print,args,n);
 	} else if (format==mo_formatted_text) { /*FORMATTED*/
-		XmxSetToggleButton(win->print_header_toggle_print,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_print,XmxNotSet);
                 XmxSetToggleButton(win->print_a4_toggle_print,XmxNotSet);
                 XmxSetToggleButton(win->print_us_toggle_print,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_header_toggle_print,args,n);
-		XtSetValues(win->print_footer_toggle_print,args,n);
                 XtSetValues(win->print_a4_toggle_print,args,n);
                 XtSetValues(win->print_us_toggle_print,args,n);
 	} else if (format==mo_postscript) { /*POSTSCRIPT*/
-		XmxSetToggleButton(win->print_header_toggle_print,mMosaicAppData.print_banners);
-		XmxSetToggleButton(win->print_footer_toggle_print,mMosaicAppData.print_footnotes);
                 XmxSetToggleButton(win->print_a4_toggle_print,!mMosaicAppData.print_us);
                 XmxSetToggleButton(win->print_us_toggle_print,mMosaicAppData.print_us);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,TRUE); n++;
-		XtSetValues(win->print_header_toggle_print,args,n);
-		XtSetValues(win->print_footer_toggle_print,args,n);
                 XtSetValues(win->print_a4_toggle_print,args,n);
                 XtSetValues(win->print_us_toggle_print,args,n);
 	} else if (format==mo_html) { /*HTML*/
-		XmxSetToggleButton(win->print_header_toggle_print,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_print,XmxNotSet);
                 XmxSetToggleButton(win->print_a4_toggle_print,XmxNotSet);
                 XmxSetToggleButton(win->print_us_toggle_print,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_header_toggle_print,args,n);
-		XtSetValues(win->print_footer_toggle_print,args,n);
                 XtSetValues(win->print_a4_toggle_print,args,n);
                 XtSetValues(win->print_us_toggle_print,args,n);
 	} else { /*Boom...Bam...Error...*/
 		fprintf(stderr,"ERROR! Format callback has no format!\n");
-		XmxSetToggleButton(win->print_header_toggle_print,XmxNotSet);
-		XmxSetToggleButton(win->print_footer_toggle_print,XmxNotSet);
                 XmxSetToggleButton(win->print_a4_toggle_print,XmxNotSet);
                 XmxSetToggleButton(win->print_us_toggle_print,XmxNotSet);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,FALSE); n++;
-		XtSetValues(win->print_header_toggle_print,args,n);
-		XtSetValues(win->print_footer_toggle_print,args,n);
                 XtSetValues(win->print_a4_toggle_print,args,n);
                 XtSetValues(win->print_us_toggle_print,args,n);
 	}
@@ -1106,13 +984,6 @@ mo_status mo_post_print_window (mo_window *win)
 		workarea = XmxMakeForm (frame);
         
 /*swp*/
-		win->print_header_toggle_print=XmxMakeToggleButton(workarea,
-			"Include Banners",print_print_header_cb,(XtPointer)win);
-		XmxSetToggleButton(win->print_header_toggle_print,mMosaicAppData.print_banners);
-
-		win->print_footer_toggle_print=XmxMakeToggleButton(workarea,
-			"Include Footnotes",print_print_footer_cb,(XtPointer)win);
-		XmxSetToggleButton(win->print_footer_toggle_print,mMosaicAppData.print_footnotes);
 
 		paper_size_toggle_box=XmxMakeRadioBox(workarea);
 		win->print_a4_toggle_print = XmxMakeToggleButton(paper_size_toggle_box,
@@ -1174,15 +1045,9 @@ mo_status mo_post_print_window (mo_window *win)
 			NULL, NULL, NULL);
 /*swp*/
 		XmxSetArg(XmNtopOffset, 15);
-		XmxSetConstraints (win->print_header_toggle_print, XmATTACH_WIDGET,
+		XmxSetConstraints (paper_size_toggle_box, XmATTACH_WIDGET,
 			XmATTACH_NONE, XmATTACH_FORM, XmATTACH_NONE,
 			format_label,NULL,NULL,NULL);
-		XmxSetConstraints (win->print_footer_toggle_print, XmATTACH_WIDGET,
-			XmATTACH_NONE, XmATTACH_FORM, XmATTACH_NONE,
-		win->print_header_toggle_print,NULL,NULL,NULL);
-		XmxSetConstraints (paper_size_toggle_box, XmATTACH_WIDGET,
-			XmATTACH_FORM, XmATTACH_FORM, XmATTACH_NONE,
-			win->print_footer_toggle_print,NULL,NULL,NULL);
 
 		print_sensitive(win,win->print_format);
 
@@ -1765,10 +1630,12 @@ void mo_done_editing(EditFile *e, int pid)
 
 	/****** Check to see if e->win still exists */
 
+#ifdef DEBUG_GUI
 	if (mMosaicSrcTrace) {
 		fprintf(stderr,"Done Editing: pid = %d, file %s, url=%s\n",
 			pid,e->fileName,e->url);
 	}
+#endif
 
   	url = mo_url_canonicalize_local(e->fileName);
 /*	url = mo_url_canonicalize_keep_anchor(e->fileName,e->url);*/

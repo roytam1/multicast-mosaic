@@ -9,7 +9,7 @@
 /* +-------------------------------------------------------------------+ */
 
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -18,6 +18,10 @@
 
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
+
+#ifdef DEBUG
+#define DEBUG_GIF
+#endif
 
 static struct timeval Tv;
 static struct timezone Tz;
@@ -516,8 +520,10 @@ ReadImage(FILE *fd, int len, int height, XColor *colrs, int cmapSize,
 
 	/*  If this is an "uninteresting picture" ignore it. */
 	if (ignore) {
+#ifdef DEBUG_GIF
 		if (mMosaicSrcTrace)
 			fprintf(stderr, "skipping image...\n" );
+#endif
 		while (readLWZ(fd) >= 0)
 			;
 		return(NULL);
@@ -538,9 +544,11 @@ ReadImage(FILE *fd, int len, int height, XColor *colrs, int cmapSize,
 		colrs[v].green = cmap[CM_GREEN][v] * 0x101;
 		colrs[v].blue  = cmap[CM_BLUE][v]  * 0x101;
 	}
+#ifdef DEBUG_GIF
 	if (mMosaicSrcTrace)
 		fprintf(stderr, "reading %d by %d%s GIF image\n",
 			len, height, interlace ? " interlaced" : "" );
+#endif
 	if (interlace) {
 		int     i;
 		int     pass = 0, step = 8;
@@ -574,9 +582,9 @@ ReadImage(FILE *fd, int len, int height, XColor *colrs, int cmapSize,
 	}
 fini:
 	if (readLWZ(fd)>=0) {
-		if (mMosaicSrcTrace) {
-			fprintf(stderr,"too much input data, ignoring extra...");
-		}
+#ifdef DEBUG_GIF
+		fprintf(stderr,"too much input data, ignoring extra...");
+#endif
 	}
 	return(image);
 }

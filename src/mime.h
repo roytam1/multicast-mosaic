@@ -15,6 +15,7 @@
 typedef struct _MimeHeaderStruct {
 	int content_encoding;
 	int content_length;
+	int status_code;
 	int cache_control;
 	char * content_type;
 	char * expires;

@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 #include "../libnut/list.h"
 #include "../libnut/mipcf.h"
 #include "libhtmlw/HTML.h"
@@ -17,9 +17,6 @@
 #include "paf.h"
 
 #include "URLParse.h"
-
-/*SWP*/
-char pre_title[80];
 
 /* add more sense and sensibility to rbm */
 
@@ -49,6 +46,12 @@ static mo_status mo_snarf_scrollbar_values (mo_window *win)
 void mo_set_win_headers (mo_window *win, char* aurl_wa)
 {
 	char *buf=NULL;
+
+
+        if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) */
+                                     /* try to enable multicast in frame..*/
+                return;
+        }
 
 	XmxTextSetString (win->url_widget, aurl_wa);
 #ifdef MULTICAST

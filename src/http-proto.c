@@ -9,48 +9,13 @@
 #include "http-proto.h"
 #include "URLParse.h"
 
+#ifdef DEBUG
+#define DEBUG_HTTP
+#endif
+
 extern char * MMGetUserAgent();
 extern char * HTSACat  (char **dest, const char *src);
 #define StrAllocCat(dest, src)  HTSACat  (&(dest), src)
-
-/* some code to send a command ####################### */
-/* if (do_head)
- * strcpy(command, "HEAD ");
- * else if (do_meta)
- * strcpy(command, "META ");
- */
-/* ###################################### */
-
-/* ################### some code to keepalive a socket */
-/* addr looks like http://host.edu/blah/etc.html  lets crop it at the 3rd '/' */
-/* for(p = arg,i=0;*p && i!=3;p++)
- * if(*p=='/') i++;
- * if(i==3)
-/* i = p-arg; /* i = length not counting last '/' */
-/* else
- * i = 0;                 
- * if((lsocket != -1) && i && addr && !strncmp(addr,arg,i)){
-/* /* keepalive is active and addresses match -- try the old socket */
-/* s = lsocket;           
-/* keepingalive = 1;   /* flag network error due to server timeout*/
-/* lsocket = -1;           /* prevent looping on failure */
-/* } else {                       
- * if(addr)               
- * free(addr);    
-/* /* save the address for next time around */  
-/* addr = (char*) malloc(i+1);  
- * strncpy(addr,arg,i);   
- * *(addr+i)=0;           
-/* keepingalive = 0; /* just normal opening of the socket */
-/* if(lsocket != -1)      
-/* close(lsocket); /* no socket leaks here */
-/* lsocket = -1; /*dont assign until we know the server says okay */
-/* }                              
- * if (!keepingalive) {           
- * status = HTDoConnect (arg, TCP_PORT, &s,appd);
- * }       
- */
-/* ###################################### */
 
 
 /* all we need for HyperText Tranfer Protocol */
@@ -262,9 +227,11 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 /* lire les donnes */
 	len_read = read(pafd->www_con_type->prim_fd, ibuf, sizeof(ibuf));
 	syserror = errno;
+#ifdef DEBUG_HTTP
 	if (mMosaicAppData.wwwTrace)
 		fprintf (stderr, "Read = %d syserror = %d\n",
 			len_read, syserror);
+#endif
 
 /* on peut gerer un buffer d'entree/sortie reserver au I/O */
 	if (len_read > 0) {	/* append to io buffer */
@@ -277,8 +244,10 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
  * beginning. Read the status line. Get numeric status etc */
 		ParseMimeHeader("", &mhs);  /* get a default mime header*/
 		*(pafd->mhs) = mhs;
+#ifdef DEBUG_HTTP
 		if (mMosaicAppData.wwwTrace)
 			fprintf (stderr, "Readind Status Line\n");
+#endif
 		if (len_read < 0) {
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
 				"Net Read Error;\naborting connection");
@@ -310,9 +279,11 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		}
 /* on a trouve CRLF */
 		nfields = sscanf(pafd->iobs.iobuf, "%20s %d", server_version, &server_status);
+#ifdef DEBUG_HTTP
 		if (mMosaicAppData.wwwTrace)
 	 		fprintf (stderr, "server version %s status %d\n",
 				server_version,server_status);
+#endif
 		if (nfields != 2 || strncmp(server_version, "HTTP/1.", 7)) {
 			char * msg = (char*) malloc(strlen(server_version)+100);
 
@@ -395,7 +366,7 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
  * free(line_buffer);
  * if (line_kept_clean)
  * free(line_kept_clean);
- * if (wWWParams.trace) fprintf(stderr, "%s %d %s\n", "HTTP: close socket", s,
+ * fprintf(stderr, "%s %d %s\n", "HTTP: close socket", s,
  * "to retry with Access Authorization");
  * HTProgress ("Retrying with access authorization information.",appd);
  * goto try_again;
@@ -617,3 +588,41 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 	}
 /* next read */
 }
+
+/* some code to send a command ####################### */
+/* if (do_head)
+ * strcpy(command, "HEAD ");
+ * else if (do_meta)
+ * strcpy(command, "META ");
+ */
+
+/* ################### some code to keepalive a socket */
+/* addr looks like http://host.edu/blah/etc.html  lets crop it at the 3rd '/' */
+/* for(p = arg,i=0;*p && i!=3;p++)
+ * if(*p=='/') i++;
+ * if(i==3)
+/* i = p-arg; /* i = length not counting last '/' */
+/* else
+ * i = 0;                 
+ * if((lsocket != -1) && i && addr && !strncmp(addr,arg,i)){
+/* /* keepalive is active and addresses match -- try the old socket */
+/* s = lsocket;           
+/* keepingalive = 1;   /* flag network error due to server timeout*/
+/* lsocket = -1;           /* prevent looping on failure */
+/* } else {                       
+ * if(addr)               
+ * free(addr);    
+/* /* save the address for next time around */  
+/* addr = (char*) malloc(i+1);  
+ * strncpy(addr,arg,i);   
+ * *(addr+i)=0;           
+/* keepingalive = 0; /* just normal opening of the socket */
+/* if(lsocket != -1)      
+/* close(lsocket); /* no socket leaks here */
+/* lsocket = -1; /*dont assign until we know the server says okay */
+/* }                              
+ * if (!keepingalive) {           
+ * status = HTDoConnect (arg, TCP_PORT, &s,appd);
+ * }       
+ */
+/* ###################################### */

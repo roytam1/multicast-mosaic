@@ -1,19 +1,10 @@
 #ifdef MULTICAST
 
-                        /* sockets descriptor */
-extern int             mc_fd_rtp_w;
-extern int             mc_fd_rtp_r;
-extern int             mc_fd_rtcp_w;
-extern int             mc_fd_rtcp_r;
-extern int             uc_fd_rtp_w;          
-extern int             uc_fd_rtp_r;          
-extern int             uc_fd_rtcp_w;         
-extern int             uc_fd_rtcp_r;
-
 extern int mc_local_url_id;
-
-extern XtIntervalId	mc_rtcp_w_sdes_timer_id;
-extern unsigned long	mc_rtcp_w_sdes_time;
+extern int mc_local_object_id;
+extern int mc_state_report_url_id;
+extern int mc_state_report_o_id;
+extern int mc_state_report_len;
 
 extern char		*local_ip_addr_string;
 extern unsigned short	uc_rtp_addr_port;

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/param.h>		/* MAXPATHLEN is defined here on Solaris */
 
 #include "URLParse.h"
 
@@ -271,7 +272,7 @@ which will only cause identical adreesses to look different */
 char *mo_url_canonicalize_local (char *url)
 {
 	char blah[129];
-	char *cwd = getcwd (blah, 128);
+	char *cwd = getcwd (blah, MAXPATHLEN);
 	char *tmp;
 
 	if (!url)

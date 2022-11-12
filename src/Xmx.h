@@ -1,5 +1,5 @@
 /* Please read copyright.tmpl. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #ifndef __XMX_H__
 #define __XMX_H__

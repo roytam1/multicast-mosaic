@@ -3,7 +3,6 @@
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
  */ 
 
-#include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
 #include "../src/mosaic.h"

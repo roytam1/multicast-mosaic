@@ -52,6 +52,7 @@ void MMFinishPafSaveData(PafDocDataStruct * pafd)
 
 /* free the things we have build in MMPafSaveData */
 	close(pafd->fd);
+	pafd->fd = -1;
 	free(pafd->fname);
 	free(pafd->aurl);
 
@@ -74,6 +75,7 @@ void MMErrorPafSaveData(PafDocDataStruct * pafd, char * reason)
 
 /* free the things we have build in MMPafSaveData */
 	close(pafd->fd);
+	pafd->fd = -1;
 	unlink(pafd->fname);
 	free(pafd->fname);
 	free(pafd->aurl);
@@ -102,6 +104,7 @@ void MMStopPafSaveData(PafDocDataStruct * pafd)
 	free(pafd->aurl);
 	free(pafd->aurl_wa);
 	close(pafd->fd);
+	pafd->fd = -1;
 	unlink(pafd->fname);
 	free(pafd->fname);
 	free(pafd->mhs);
@@ -254,6 +257,7 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 	if (pafd->goto_anchor)
 		free(pafd->goto_anchor);
 	close(pafd->fd);
+	pafd->fd = -1;
 	unlink(pafd->fname);
 	free(pafd->fname);
 	FreeMimeStruct(pafd->mhs);
@@ -299,6 +303,7 @@ void MMStopPafDocData(PafDocDataStruct * pafd)
 		free(pafd->goto_anchor);
 
 	close(pafd->fd);
+	pafd->fd = -1;
 	unlink(pafd->fname);
 	free(pafd->fname);
 
@@ -325,6 +330,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	int docid;
 	char * title;
 	char * base_url;
+	char * base_target = NULL;
 	int in_doc_head = 0;
 	int in_title = 0;
 	char * title_text;
@@ -333,6 +339,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 
 /* free the things we have build in MMPafDocData */
 	close(pafd->fd);
+	pafd->fd = -1;
 
 /* test some HTTP return code */
 
@@ -443,6 +450,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		free(pafd->twirl_struct);
 		free(pafd->sps.accept);
 		close(pafd->fd);       
+		pafd->fd = -1;
 		free(pafd->fname);     
 		free(pafd);            
 		win->pafd = NULL;      
@@ -483,7 +491,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 /* dans le fichier decompresse (eventuellement) on a de l'HTML */
 /* Faire un Parse pour le decomposer en objet */
 
-	pafd->mlist = mlist = HTMLParse(data);
+	pafd->mlist = mlist = HTMLParseRepair(data);
 /* detecter les frames et dans ce cas ajouter un niveau d'indirection */
 
 /* Faire une liste des embedded object */
@@ -540,8 +548,9 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 			if (mptr->is_end)
 				break;
 			base_url = ParseMarkTag(mptr->start, MT_BASE, "HREF");
+			base_target = ParseMarkTag(mptr->start, MT_BASE, AT_TARGET); 
 			break;
-		case M_DOC_BODY:		/* BODY can have image... */
+		case M_BODY:		/* BODY can have image... */
 			if (mptr->is_end)
 				break;
 			in_doc_head = 0;
@@ -636,23 +645,23 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		mptr = mptr->next;
 	}
 
+/* on met a jour immediatement la partie navigation. Car on doit avoir un
+/* current_node qui memorise tout la requete */
+/* title is alway allocated. */
+	MMUpdNavigationOnNewURL(win, pafd->aurl_wa, pafd->aurl, pafd->goto_anchor, base_url,
+		base_target, title,
+		pafd->html_text, pafd->mhs, docid, mlist); 
+/* Remarque: la requete (partie HTML) est termine et on a change de current_node*/
+/* mlist mhs html_text title aurl_wa aurl  must be free in navigation stuff */
+
 /* afficher le texte. le mettre dans la Widget. id come from back and forward */
 	docid = 0;			/* we are not in back or forward */
 	HTMLSetHTMLmark (pafd->win->scrolled_win, mlist, docid, pafd->goto_anchor,
 		pafd->aurl);
 	XFlush(XtDisplay(pafd->win->scrolled_win));
-/* #####
-	docid = HTMLGetDocId(pafd->win->scrolled_win);
-*/
 
+/* ##### docid = HTMLGetDocId(pafd->win->scrolled_win); */
 
-/* on met a jour immediatement la partie navigation. Car on doit avoir un
- * current_node qui memorise tout la requete */
-/* title is alway allocated. */
-	MMUpdNavigationOnNewURL(win, pafd->aurl_wa, pafd->aurl, pafd->goto_anchor, base_url, title,
-		pafd->html_text, pafd->mhs, docid, mlist); 
-/* Remarque: la requete (partie HTML) est termine et on a change de current_node*/
-/* mlist mhs html_text title aurl_wa aurl  must be free in navigation stuff */
 
 	mo_set_win_headers(win, pafd->aurl_wa);
 
@@ -671,6 +680,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		free(pafd->twirl_struct);
 		free(pafd->sps.accept);
 		close(pafd->fd);
+		pafd->fd = -1;
 		unlink(pafd->fname); 
 		free(pafd->fname);
 		free(pafd);
@@ -701,15 +711,6 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 /* On ne passe plus par ici */
 }
 
-
-/* ########### add the multicast sender code here ######## */
-/*#ifdef MULTICAST
- *        if((win->mc_type == MC_MO_TYPE_MAIN) && mc_send_enable){
- *                if (mc_send_win !=NULL ){
- *                        McSetHtmlTexte(txt);
- *                }
- *        }
- *#endif
 
 /* #########################################*/
 /* mettre a jour le tracker_label */
@@ -892,8 +893,16 @@ void MMErrorPafEmbeddedObject (PafDocDataStruct * pafc, char *reason)
 	unlink(pafc->fname);
 	ppaf = pafc->parent_paf;
 	mptr = ppaf->embedded_object_tab[ppaf->cur_processing_eo].mark;
+#ifdef MULTICAST
+	if (mc_send_win == ppaf->win) {/* A multicast send window */
+		int status_code;
+/* prevenir qu'on a une erreur */
+		(*mc_send_win->mc_callme_on_error_object)(pafc->aurl_wa,
+			status_code = 404 ); /* set to Not Found */
+	}
+#endif
 	switch(mptr->type){
-	case M_DOC_BODY:
+	case M_BODY:
 		free(mptr->s_picd);
 		mptr->s_picd = NULL;
 		break;
@@ -968,6 +977,14 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 			pafc->mhs);
 	}
 
+#ifdef MULTICAST
+	if (mc_send_win == ppaf->win) {/* A multicast send window */
+/* prevenir qu'on a de nouvelles donnees */
+		(*mc_send_win->mc_callme_on_new_object)(pafc->fname,
+			pafc->aurl_wa, pafc->mhs);
+	}
+#endif
+
 	if (pafc->mhs->content_encoding == COMPRESS_ENCODING ||
 	    pafc->mhs->content_encoding == GZIP_ENCODING ){
 			/* decompresser le fichier */
@@ -978,7 +995,7 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 	}
 
 	switch(mptr->type){
-	case M_DOC_BODY:
+	case M_BODY:
 		mptr->s_picd->src = pafc->aurl_wa;
 		MMPreloadImage(pafc->win, mptr, pafc->mhs, pafc->fname);
 		if ( !mptr->s_picd->fetched ){

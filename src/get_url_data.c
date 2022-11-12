@@ -9,7 +9,6 @@
  * Bug report :  dauphin@sig.enst.fr dax@inf.enst.fr
  */
 
-#include "../libmc/mc_defs.h"
 #include "libhtmlw/HTML.h"
 #include "libhtmlw/HTMLP.h"
 #include "libhtmlw/HTMLPutil.h"

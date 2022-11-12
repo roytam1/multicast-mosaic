@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 /* Some part of this file is Copyright (C) 1996 - G.Dauphin
  * See the file "license.mMosaic" for information on usage and redistribution
@@ -47,14 +47,10 @@ struct mark_up * NULL_ANCHOR_PTR = &NULL_ANCHOR ;
 /* ############## This is may be as global ####*/
 static int InDocHead;
 static int in_title;
-static FontRec FontBase;
-static FontRec *FontStack;
 
 /* ##############  This is maybe in a context stack ####*/
 static DescRec BaseDesc;
 static DescRec *DescType;
-static Boolean Strikeout;
-static XFontStruct *nonScriptFont;
 static MapInfo *CurrentMap=NULL; /* csi stuff -- swp */
 /* ############ */
 
@@ -126,7 +122,7 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
 	eptr->bwidth = IMAGE_DEFAULT_BORDER;
 	eptr->underline_number = pcc->underline_number;
 	eptr->dashed_underline = pcc->dashed_underlines;
-	eptr->strikeout = Strikeout;
+	eptr->strikeout = pcc->strikeout;
 	eptr->fg = pcc->fg;
 	eptr->bg = pcc->bg;
         eptr->anchor_tag_ptr = NULL_ANCHOR_PTR;	/* putit in struct markup##### */
@@ -157,7 +153,7 @@ void AdjustBaseLine(HTMLWidget hw,struct ele_rec *eptr,
 	ele_height = eptr->height;
 
         if ((pcc->superscript>0) || (pcc->subscript>0)) {
-		supsubBaseline = nonScriptFont->max_bounds.ascent;
+		supsubBaseline = hw->html.cur_font->max_bounds.ascent;
 		cur_baseline -= ((supsubBaseline * .4) * pcc->superscript);
 		cur_baseline += ((supsubBaseline * .4) * pcc->subscript);
 		cur_baseline += 2;
@@ -253,36 +249,6 @@ void ListNumberPlace( HTMLWidget hw, PhotoComposeContext * pcc, int val)
 	pcc->x = pcc->x ;
 }
 
-
-static void PushFont( XFontStruct *font)
-{
-	FontRec *fptr;
-
-	fptr = (FontRec *)malloc(sizeof(FontRec));
-	CHECK_OUT_OF_MEM(fptr);
-	fptr->font = font;
-	fptr->next = FontStack;
-	FontStack = fptr;
-}
-
-static XFontStruct * PopFont()
-{
-	XFontStruct *font;
-	FontRec *fptr;
-
-	if (FontStack->next != NULL) {
-		fptr = FontStack;
-		FontStack = FontStack->next;
-		font = fptr->font;
-		free((char *)fptr);
-	} else {
-		if (htmlwTrace) 
-			fprintf(stderr, "Warning, popping empty font stack!\n");
-		font = FontStack->font;
-	}
-	return(font);
-}
-
 /* Horrible code for the TEXTAREA element.  Escape '\' and ''' by
  * putting a '\' in front of them, then replace all '"' with '''.
  * This lets us safely put the resultant value between double quotes.
@@ -334,11 +300,10 @@ char * TextAreaAddValue( char *value, char *text)
  * parsed HTML text we are formatting.
  * Some calls create elements that are added to the formatted element list.
  */
-/*static###*/ void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
+static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		PhotoComposeContext * pcc, Boolean save_obj)
 {
 	struct mark_up *mark;
-	XFontStruct * tmp_font;
 	int type;
 	struct mark_up mark_tmp;
 	char *tptr;
@@ -351,9 +316,10 @@ char * TextAreaAddValue( char *value, char *text)
 	if (in_title && (type != M_TITLE)) {
 		return;
 	}
+/* some marker other than M_NONE M_BASE M_ISINDEX M_COMMENT finish the HEAD */
 	if (InDocHead) {
 		if((type != M_NONE)&&(type != M_BASE)&&
-		   (type != M_INDEX)&&(type != M_COMMENT)) {
+		   (type != M_ISINDEX)&&(type != M_COMMENT)) {
 			pcc->ignore = 0;
 			InDocHead = 0;
 	  	}
@@ -369,7 +335,7 @@ char * TextAreaAddValue( char *value, char *text)
 	 */
 	if ((pcc->ignore)&&(!InDocHead)&&(type != M_NONE)&&
 		(type != M_SELECT)&&(type != M_OPTION)&&
-		(type != M_TEXTAREA)&&(type != M_DOC_HEAD))
+		(type != M_TEXTAREA)&&(type != M_HEAD))
 		        return;
 
 	switch(type) {
@@ -457,76 +423,105 @@ char * TextAreaAddValue( char *value, char *text)
 			in_title =1;
 		}
 		break;
-	/*
-	 * Formatting commands just change the current font.
-	 */
+/* Strikeout means draw a line through the text.
+ * Right now we just set a boolean flag which gets shoved
+ * in the element record for all elements in the
+ * strikeout zone.
+ */
+	case M_STRIKEOUT:
+		pcc->strikeout = True;
+		if (mark->is_end)
+			pcc->strikeout = False;
+		break;
+/* Formatting commands just change the current font. */
+/*from XmHTML :
+* <font> is a big performance hit. We always need to push & pop 
+* the font *even* if only the font color has been changed as we
+* can't keep track of what has actually been changed.
+*****/
+	case M_FONT:
 	case M_CODE:
 	case M_SAMPLE:
 	case M_KEYBOARD:
 	case M_FIXED:
-		if (mark->is_end) {
-			pcc->cur_font = PopFont();
-		} else {
-			PushFont(pcc->cur_font);
-			pcc->cur_font = hw->html.fixed_font;
-		}
-		break;
 	case M_STRONG:
 	case M_BOLD:
-		if (mark->is_end) {
-			pcc->cur_font = PopFont();
-		} else {
-			PushFont(pcc->cur_font);
-			if (pcc->cur_font == hw->html.fixed_font ||
-			    pcc->cur_font == hw->html.fixeditalic_font)
-				pcc->cur_font = hw->html.fixedbold_font;
-			else if (pcc->cur_font == hw->html.plain_font ||
-			    pcc->cur_font == hw->html.plainitalic_font)
-				pcc->cur_font = hw->html.plainbold_font;
-			else
-				pcc->cur_font = hw->html.bold_font;
-		}
-		break;
 	case M_EMPHASIZED:
 	case M_VARIABLE:
 	case M_CITATION:
 	case M_ITALIC:
+	case M_SMALL:
+	case M_BIG:
 		if (mark->is_end) {
-			pcc->cur_font = PopFont();
+			MMPopFont(hw, *mptr, pcc);
 		} else {
-			PushFont(pcc->cur_font);
-			if (pcc->cur_font == hw->html.fixed_font ||
-			    pcc->cur_font == hw->html.fixedbold_font)
-				pcc->cur_font = hw->html.fixeditalic_font;
-			else if (pcc->cur_font == hw->html.plain_font ||
-			    pcc->cur_font == hw->html.plainbold_font)
-				pcc->cur_font = hw->html.plainitalic_font;
-			else
-				pcc->cur_font = hw->html.italic_font;
+			MMPushFont(hw, *mptr, pcc);
 		}
 		break;
-	/*
-	 * Strikeout means draw a line through the text.
-	 * Right now we just set a boolean flag which gets shoved
-	 * in the element record for all elements in the
-	 * strikeout zone.
-	 */
-	case M_STRIKEOUT:
-		Strikeout = True;
-		if (mark->is_end)
-			Strikeout = False;
+
+/* Addresses are just like headers.  A linefeed before and
+ * after, and change the font.
+ */
+	case M_ADDRESS:
+		LinefeedPlace(hw,*mptr,pcc);
+		if (mark->is_end) {
+			MMPopFont(hw, *mptr, pcc);
+		} else {
+			MMPushFont(hw, *mptr, pcc);
+		}
 		break;
+/* Plain and listing text. A single pre-formatted chunk of text in its own font.*/
+	case M_PREFORMAT:
+		if (mark->is_end) {
+			LineBreak(hw,*mptr,pcc);
+			pcc->preformat = 0;
+			MMPopFont(hw, *mptr, pcc);
+			LinefeedPlace(hw,*mptr,pcc);
+		} else {
+			LineBreak(hw,*mptr,pcc);
+			LinefeedPlace(hw,*mptr,pcc);
+			pcc->preformat = 1;
+			MMPushFont(hw, *mptr, pcc);
+		}
+		break;
+/* Headers are preceeded by a line feed if text before.
+ * and followed by a linefeed.
+ */
+	case M_HEADER_1:
+	case M_HEADER_2:
+	case M_HEADER_3:
+	case M_HEADER_4:
+	case M_HEADER_5:
+	case M_HEADER_6:
+		if (mark->is_end) {
+			MMPopFont(hw, *mptr, pcc);
+			LineBreak(hw,*mptr,pcc);
+			LinefeedPlace(hw,*mptr,pcc);
+		} else {
+			if (pcc->is_in_paragraph){ /* end the paragraph */
+				LineBreak(hw,*mptr,pcc);
+				LinefeedPlace(hw,*mptr,pcc);
+				pcc->div = DIV_ALIGN_LEFT;
+				pcc->is_in_paragraph = False;
+			}
+
+			LineBreak(hw,*mptr,pcc);
+			MMPushFont(hw, *mptr, pcc);
+		}
+		break;
+
+/*#############
         case M_SUP:
 
                 if (mark->is_end) {
                        pcc->superscript--;
                        if ((pcc->superscript==0) && (pcc->subscript==0))
-                             pcc->cur_font = PopFont();
+                             pcc->cur_font = MMPopFont();
                  } else {
                        pcc->superscript++;
                        if ((pcc->superscript==1) && (pcc->subscript==0)) {
                               nonScriptFont=pcc->cur_font;
-                              PushFont(pcc->cur_font);
+                              MMPushFont(pcc->cur_font);
                               pcc->cur_font = hw->html.supsub_font;
                         }
                 }
@@ -536,18 +531,19 @@ char * TextAreaAddValue( char *value, char *text)
 		if (mark->is_end) {
                         pcc->subscript--;
                         if ((pcc->subscript==0) && (pcc->superscript==0))
-                                pcc->cur_font = PopFont();
+                                pcc->cur_font = MMPopFont();
                 } else {
                         pcc->subscript++;
                         if ((pcc->subscript==1) && (pcc->superscript==0)) {
                         	nonScriptFont=pcc->cur_font;
-                        	PushFont(pcc->cur_font);
+                        	MMPushFont(pcc->cur_font);
                         	pcc->cur_font = hw->html.supsub_font;
                         }
                 }
                 break;
+##############*/
 /* amb - ignore text inside a HEAD element */
-	case M_DOC_HEAD:
+	case M_HEAD:
 		InDocHead = 1;
 		pcc->ignore = 1;
 		if (mark->is_end) {
@@ -555,7 +551,10 @@ char * TextAreaAddValue( char *value, char *text)
 			pcc->ignore = 0;
 		}
 		break;
-	case M_DOC_BODY:
+	case M_FRAMESET:
+		_XmHTMLCreateFrameSet(hw, hw, mptr, pcc);
+		break;
+	case M_BODY:
 		if (!mark->is_end) {
 /*##### */
 			static char *atts[]={"text","bgcolor","alink","vlink","link",NULL};
@@ -565,7 +564,7 @@ char * TextAreaAddValue( char *value, char *text)
 			if (hw->html.body_colors) {
 				for(i=0;atts[i];i++) {
 					tmp=ParseMarkTag(mark->start,
-						MT_DOC_BODY,atts[i]);
+						MT_BODY,atts[i]);
 					if (tmp) {
 						hw_do_color(hw,atts[i],tmp,pcc);
 						free(tmp);
@@ -589,113 +588,7 @@ char * TextAreaAddValue( char *value, char *text)
 		    pcc->in_underlined = 0;
 		}
 		break;
-	/* Headers are preceeded by a line feed if text before.
-	 * and followed by a linefeed.
-	 */
-	case M_HEADER_1:
-		if (mark->is_end) {
-			pcc->cur_font = PopFont();
-			LineBreak(hw,*mptr,pcc);
-			LinefeedPlace(hw,*mptr,pcc);
-		} else {
-			if (pcc->is_in_paragraph){ /* end the paragraph */
-				LineBreak(hw,*mptr,pcc);
-				LinefeedPlace(hw,*mptr,pcc);
-				pcc->div = DIV_ALIGN_LEFT;
-				pcc->is_in_paragraph = False;
-			}
 
-			LineBreak(hw,*mptr,pcc);
-/*			LinefeedPlace(hw,*mptr,pcc); */
-			PushFont(pcc->cur_font);
-			pcc->cur_font = hw->html.header1_font;
-		}
-		break;
-	case M_HEADER_2:
-		if (mark->is_end) {
-			pcc->cur_font = PopFont();
-			LineBreak(hw,*mptr,pcc);
-			LinefeedPlace(hw,*mptr,pcc);
-		} else {
-			if (pcc->is_in_paragraph){ /* end the paragraph */
-				LineBreak(hw,*mptr,pcc);
-				LinefeedPlace(hw,*mptr,pcc);
-				pcc->div = DIV_ALIGN_LEFT;
-				pcc->is_in_paragraph = False;
-			}
-			LineBreak(hw,*mptr,pcc);
-			PushFont(pcc->cur_font);
-			pcc->cur_font = hw->html.header2_font;
-		}
-		break;
-	case M_HEADER_3:
-		if (mark->is_end) {
-			pcc->cur_font = PopFont();
-			LineBreak(hw,*mptr,pcc);
-			LinefeedPlace(hw,*mptr,pcc);
-		} else {
-			if (pcc->is_in_paragraph){ /* end the paragraph */
-				LineBreak(hw,*mptr,pcc);
-				LinefeedPlace(hw,*mptr,pcc);
-				pcc->div = DIV_ALIGN_LEFT;
-				pcc->is_in_paragraph = False;
-			}
-			LineBreak(hw,*mptr,pcc);
-			PushFont(pcc->cur_font);
-			pcc->cur_font = hw->html.header3_font;
-		}
-		break;
-	case M_HEADER_4:
-		if (mark->is_end) {
-			pcc->cur_font = PopFont();
-			LineBreak(hw,*mptr,pcc);
-			LinefeedPlace(hw,*mptr,pcc);
-		} else {
-			if (pcc->is_in_paragraph){ /* end the paragraph */
-				LineBreak(hw,*mptr,pcc);
-				LinefeedPlace(hw,*mptr,pcc);
-				pcc->div = DIV_ALIGN_LEFT;
-				pcc->is_in_paragraph = False;
-			}
-			LineBreak(hw,*mptr,pcc);
-			PushFont(pcc->cur_font);
-			pcc->cur_font = hw->html.header4_font;
-		}
-		break;
-	case M_HEADER_5:
-		if (mark->is_end) {
-			pcc->cur_font = PopFont();
-			LineBreak(hw,*mptr,pcc);
-			LinefeedPlace(hw,*mptr,pcc);
-		} else {
-			if (pcc->is_in_paragraph){ /* end the paragraph */
-				LineBreak(hw,*mptr,pcc);
-				LinefeedPlace(hw,*mptr,pcc);
-				pcc->div = DIV_ALIGN_LEFT;
-				pcc->is_in_paragraph = False;
-			}
-			LineBreak(hw,*mptr,pcc);
-			PushFont(pcc->cur_font);
-			pcc->cur_font = hw->html.header5_font;
-		}
-		break;
-	case M_HEADER_6:
-		if (mark->is_end) {
-			pcc->cur_font = PopFont();
-			LineBreak(hw,*mptr,pcc);
-			LinefeedPlace(hw,*mptr,pcc);
-		} else {
-			if (pcc->is_in_paragraph){ /* end the paragraph */
-				LineBreak(hw,*mptr,pcc);
-				LinefeedPlace(hw,*mptr,pcc);
-				pcc->div = DIV_ALIGN_LEFT;
-				pcc->is_in_paragraph = False;
-			}
-			LineBreak(hw,*mptr,pcc);
-			PushFont(pcc->cur_font);
-			pcc->cur_font = hw->html.header6_font;
-		}
-		break;
 	/*
 	 * Anchors change the text color, and may set
 	 * underlineing attributes.
@@ -723,6 +616,8 @@ char * TextAreaAddValue( char *value, char *text)
 					MT_ANCHOR, AT_NAME);
 		(*mptr)->anc_title = ParseMarkTag(mark->start, 
 					MT_ANCHOR, AT_TITLE);
+		(*mptr)->anc_target = ParseMarkTag(mark->start,
+					MT_ANCHOR, AT_TARGET);
 
 		if (tptr != NULL) { 
 		    	pcc->fg = hw->html.anchor_fg;
@@ -808,40 +703,6 @@ char * TextAreaAddValue( char *value, char *text)
 		}
 		break;
 
-/*
- * Addresses are just like headers.  A linefeed before and
- * after, and change the font.
- */
-	case M_ADDRESS:
-		LinefeedPlace(hw,*mptr,pcc);
-		if (mark->is_end) {
-			pcc->cur_font = PopFont();
-		} else {
-			PushFont(pcc->cur_font);
-			pcc->cur_font = hw->html.address_font;
-		}
-		break;
-/*
- * Plain and listing text.  A single pre-formatted chunk of text
- * in its own font.
- */
-	case M_PREFORMAT:
-		tmp_font = hw->html.listing_font;
-		if (type == M_PREFORMAT)
-			tmp_font = hw->html.plain_font;
-		if (mark->is_end) {
-			LineBreak(hw,*mptr,pcc);
-			pcc->preformat = 0;
-			pcc->cur_font = PopFont();
-			LinefeedPlace(hw,*mptr,pcc);
-		} else {
-			LineBreak(hw,*mptr,pcc);
-			LinefeedPlace(hw,*mptr,pcc);
-			pcc->preformat = 1;
-			PushFont(pcc->cur_font);
-			pcc->cur_font = tmp_font;
-		}
-		break;
 	/*
 	 * Numbered lists, Unnumbered lists, Menus.
 	 * Currently also lump directory listings into this.
@@ -1006,17 +867,17 @@ char * TextAreaAddValue( char *value, char *text)
 		break;
 
 /*
- * Now with forms, <INDEX> is the same as:
+ * Now with forms, <ISINDEX> is the same as:
  * <FORM>
  * <HR>
  * This is a searchable index.  Enter search keywords:
  * <INPUT NAME="isindex">
  * <HR>
  * </FORM>
- * Also, <INDEX> will take an ACTION tag to specify a
+ * Also, <ISINDEX> will take an ACTION tag to specify a
  * different URL to submit the query to.
  */
-	case M_INDEX:
+	case M_ISINDEX:
 		hw->html.is_index = True;
 		if (pcc->cur_form != NULL)
 			break; /* No index inside a form */
@@ -1027,9 +888,9 @@ char * TextAreaAddValue( char *value, char *text)
 		pcc->cur_form->next = NULL;
 		pcc->cur_form->hw = (Widget)hw;
 		pcc->cur_form->action = NULL;
-		pcc->cur_form->action = ParseMarkTag(mark->start,MT_INDEX,"ACTION");
-		pcc->cur_form->method = ParseMarkTag(mark->start,MT_INDEX,"METHOD");
-		pcc->cur_form->enctype=ParseMarkTag(mark->start,MT_INDEX,"ENCTYPE");
+		pcc->cur_form->action = ParseMarkTag(mark->start,MT_ISINDEX,"ACTION");
+		pcc->cur_form->method = ParseMarkTag(mark->start,MT_ISINDEX,"METHOD");
+		pcc->cur_form->enctype=ParseMarkTag(mark->start,MT_ISINDEX,"ENCTYPE");
 		pcc->cur_form->start = pcc->widget_id;
 		pcc->cur_form->end = -1;
 /* Horizontal rule */
@@ -1063,7 +924,7 @@ char * TextAreaAddValue( char *value, char *text)
 		pcc->cur_form = NULL;
 		break;
 
-	case M_LINEBREAK:
+	case M_BR:
 		LinefeedPlace(hw,*mptr,pcc); /* miss named break!!! */
 		break;
 	case M_BUGGY_TABLE:
@@ -1090,25 +951,6 @@ char * TextAreaAddValue( char *value, char *text)
 		AprogPlace(hw,mptr,pcc,save_obj);
 		break;
 #endif
-	case M_SMALL:
-		if (mark->is_end) {
-			pcc->cur_font = PopFont();
-		} else {
-			PushFont(pcc->cur_font);
-                        pcc->cur_font = hw->html.supsub_font;
-		}
-		break;
-	case M_BIG:
-		if (mark->is_end) {
-			pcc->cur_font = PopFont();
-		} else {
-			PushFont(pcc->cur_font);
-			pcc->cur_font = hw->html.header1_font;
-		}
-		break;
-	case M_FONT:
-		printf("Tag <FONT> not yet implemented\n");
-		break;
 	case M_MAP:
 		printf("Tag <MAP> not yet implemented\n");
 		break;
@@ -1120,8 +962,8 @@ char * TextAreaAddValue( char *value, char *text)
 	case M_COMMENT:
 	case M_PARAM:			/* maybe seen in APROG/APPLET */
 	case M_CAPTION:
-	case M_TABLE_HEADER:
-	case M_TABLE_DATA:		/* <TD> peut reaparaitre dans une */
+	case M_TH:
+	case M_TD:		/* <TD> peut reaparaitre dans une */
 					/* analyse de <TABLE> */
 	case M_DOCTYPE:			/* unused */
 	case M_META:			/* unused */
@@ -1212,7 +1054,7 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 	pcc.element_id = 0;	/* to get unique number */
 	pcc.is_bol = True;	/* we are at begin of line */
 	pcc.have_space_after = False;	/* remember if a word have a space after*/
-	pcc.cur_font = hw->html.font;
+	pcc.cur_font = hw->html.cur_font;
 	pcc.anchor_tag_ptr = NULL_ANCHOR_PTR;		/* we are in anchor ?? */
 	pcc.max_width_return = 0;
 				/* we compute the MaxWidth of hyper text to */
@@ -1243,9 +1085,9 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 	pcc.current_select = NULL;
 	pcc.in_select = False;
 	pcc.is_in_paragraph = False;
+	pcc.strikeout = False;
 
 /* Initialize local variables, some from the widget */
-	Strikeout = False;
 	DescType = &BaseDesc;
 	DescType->type = D_NONE;
 	DescType->count = 0;
@@ -1269,8 +1111,9 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 	hw->html.new_start = NULL;
 	hw->html.new_end = NULL;
 /* Set up a starting font, and starting x, y, position */
-	FontStack = &FontBase;
-	FontStack->font = hw->html.font;
+	hw->html.font_stack = NULL;
+/*	FontStack->font = hw->html.font; */
+	MMInitWidgetFont(hw);
 
  					/* Format all objects for width */
 	FormatChunk(hw,hw->html.html_objects,NULL,&pcc,save_obj);
@@ -1284,13 +1127,6 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 	if (pcc.max_width_return > saved_width)
 		*Fwidth = pcc.max_width_return;
 
-	/* if height is too height tell the wiget to use the vbar */
-	if ( pcc.y > hw->core.height - HbarHeight(hw) ){
-		hw->html.use_vbar = True;
-	} else {
-		hw->html.use_vbar = False;
-	}
-	
 	return(pcc.y);
 }
 
@@ -1714,24 +1550,7 @@ char * ParseTextToPrettyString( HTMLWidget hw,
 			strcpy_or_grow(&text, &t_slen, &t_blen, "\n");
 			newline = 1;
 			lchar = '\0';
-			if (eptr->font == hw->html.header1_font) {
-				lchar = '*';
-			}
-			else if (eptr->font == hw->html.header2_font) {
-				lchar = '=';
-			}
-			else if (eptr->font == hw->html.header3_font) {
-				lchar = '+';
-			}
-			else if (eptr->font == hw->html.header4_font) {
-				lchar = '-';
-			}
-			else if (eptr->font == hw->html.header5_font) {
-				lchar = '~';
-			}
-			else if (eptr->font == hw->html.header6_font) {
-				lchar = '.';
-			}
+			/*### lchar = '*'; in case of header #### */
 			if (lchar != '\0') {
 				char *ptr;
 				int cnt;
@@ -1812,24 +1631,7 @@ char * ParseTextToPrettyString( HTMLWidget hw,
 			strcpy_or_grow(&text, &t_slen, &t_blen, "\n");
 			newline = 1;
 			lchar = '\0';
-			if (eptr->font == hw->html.header1_font) {
-				lchar = '*';
-			}
-			else if (eptr->font == hw->html.header2_font) {
-				lchar = '=';
-			}
-			else if (eptr->font == hw->html.header3_font) {
-				lchar = '+';
-			}
-			else if (eptr->font == hw->html.header4_font) {
-				lchar = '-';
-			}
-			else if (eptr->font == hw->html.header5_font) {
-				lchar = '~';
-			}
-			else if (eptr->font == hw->html.header6_font) {
-				lchar = '.';
-			}
+			/* #### lchar = '*'; in case of header */
 			if (lchar != '\0') {
 				char *ptr;
 				int cnt;
@@ -1856,24 +1658,7 @@ char * ParseTextToPrettyString( HTMLWidget hw,
 	if (line_buf != NULL) {
 		strcpy_or_grow(&text, &t_slen, &t_blen, line_buf);
 		lchar = '\0';
-		if (last->font == hw->html.header1_font) {
-			lchar = '*';
-		}
-		else if (last->font == hw->html.header2_font) {
-			lchar = '=';
-		}
-		else if (last->font == hw->html.header3_font) {
-			lchar = '+';
-		}
-		else if (last->font == hw->html.header4_font) {
-			lchar = '-';
-		}
-		else if (last->font == hw->html.header5_font) {
-			lchar = '~';
-		}
-		else if (last->font == hw->html.header6_font) {
-			lchar = '.';
-		}
+		/* #### lchar = '*'; in case of header */
 		if (lchar != '\0') {
 			char *ptr;
 			int cnt;
@@ -1944,6 +1729,7 @@ int DocumentWidth(HTMLWidget hw, struct mark_up *list)
 		}
 		mptr = mptr->next;
 	} /* while */
-	width = pwidth * hw->html.plain_font->max_bounds.width;
+/*	width = pwidth * hw->html.plain_font->max_bounds.width; */
+	width = pwidth * hw->html.cur_font->max_bounds.width;
 	return(width);
 }

@@ -1,17 +1,15 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 /* Author: DXP */
 
-/* most of this stuff was taken from the original code from RSA Data Security, Inc. 
+/* most of this stuff was taken from the original code from RSA Data Security Inc.
    The appropriate header comments will be included where appropriate */
 
 /**************************************************/
-/**************************************************/
 
 
-/* GLOBAL.H - RSAREF types and constants
- */
+/* GLOBAL.H - RSAREF types and constants */
 
 /* PROTOTYPES should be set to one if and only if the compiler supports
   function argument prototyping.
@@ -42,11 +40,8 @@ If using PROTOTYPES, then PROTO_LIST returns the list, otherwise it
 #endif
 
 /**************************************************/
-/**************************************************/
 
-
-/* MD5.H - header file for MD5C.C
- */
+/* MD5.H - header file for MD5C.C */
 
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
 rights reserved.
@@ -83,12 +78,9 @@ void MD5Update PROTO_LIST
 void MD5Final PROTO_LIST ((unsigned char [16], MD5_CTX *));
 
 /**************************************************/
-/**************************************************/
-
 /* My functions ... DXP */
 
 void MD5File PROTO_LIST ((char *, unsigned char *));
 void MD5Mem PROTO_LIST ((unsigned char *, long, unsigned char *));
 void MD5Convert_to_Hex PROTO_LIST ((unsigned char *, unsigned char *));
-
 

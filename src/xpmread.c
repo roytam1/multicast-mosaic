@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 /*
  * The following XPM reading code was based on the libXpm code, which I
  * am free to use as long as I include the following copyright:
@@ -56,9 +56,7 @@ xpmDataType _MMxpmDataTypes[] = {
     {NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL}
 };
 
-/*
- * Free the computed color table
- */
+/* Free the computed color table */
 static void _MMxpmFreeColorTable_( char ***colorTable, int ncolors)
 {
     int a, b;
@@ -187,10 +185,7 @@ int _MMxpmReadFile( char *filename, xpmData *mdata)
     return (XpmSuccess);
 }
 
-
-/*
- * close the file related to the xpmData if any
- */
+/* close the file related to the xpmData if any */
 int _MMxpmDataClose( xpmData *mdata)
 {
     switch (mdata->type) {
@@ -538,8 +533,7 @@ static int ParsePixels( xpmData *data, unsigned int width, unsigned int height,
     iptr = iptr2;
     switch (cpp) {
 
-    case (1):				/* Optimize for single character
-					 * colors */
+    case (1):			/* Optimize for single character colors */
 	{
 	    unsigned short colidx[256];
 
@@ -563,8 +557,7 @@ static int ParsePixels( xpmData *data, unsigned int width, unsigned int height,
 	}
 	break;
 
-    case (2):				/* Optimize for double character
-					 * colors */
+    case (2):			/* Optimize for double character colors */
 	{
 	    unsigned short cidx[256][256];
 
@@ -589,8 +582,7 @@ static int ParsePixels( xpmData *data, unsigned int width, unsigned int height,
 	}
 	break;
 
-    default:				/* Non-optimized case of long color
-					 * names */
+    default:			/* Non-optimized case of long color names */
 	{
 	    char *s;
 	    char buf[BUFSIZ];
@@ -1073,11 +1065,6 @@ unsigned char *_MMProcessXpm3Data( Widget wid, char **xpmdata,
 
 	_MMxpmFreeInternAttrib(&attrib);
 	_MMxpmDataClose(&mdata);
-
-	if (mMosaicSrcTrace) {
-		gettimeofday(&Tv, &Tz);
-		fprintf(stderr, "ReadXpm3Pixmap exit (%d.%d)\n", Tv.tv_sec, Tv.tv_usec);
-	}
 
         return(pix_data);
 }

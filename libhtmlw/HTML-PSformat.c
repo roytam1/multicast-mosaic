@@ -76,7 +76,6 @@
 
 #include "HTMLmiscdefs.h"
 #include "HTMLparse.h"
-#include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
 
@@ -178,12 +177,6 @@ PAGE_DIMENS_T	us_letter_page_dimens = {
     0.9 * INCH,
     0.9 * INCH
 };
-
-
-/* Globals to get button value in print dialog -- swp/AF */
-
-int HTML_Print_Headers       = 1;	/* Flag whether page headers enabled */
-int HTML_Print_Footers     = 1;	/* Flag whether footnote printing enabled */
 
 /* Paper format (currently either A4 or letter).  This should be generalized. */
 
@@ -303,154 +296,159 @@ static int PShex(unsigned char val, int flush)
  */
 static void PSfont(HTMLWidget hw, XFontStruct *font, int fontfamily) 
 {
-    PS_fontstyle fn;
-    int style, size;
-    int fs;
-
-    static PS_fontstyle fontstyle[17] = {
-	RF, IF, BF, FF, BF, BF, BF, BF, BF,
-	BF, IF, FF, FF, FB, FI, FB, FI
-    };
-    static char fnchar[6][3] = {"RF", "BF", "IF", "FF", "FB", "FI"};
-
-    /* fontsizes as set in gui.c and in HTML.c (listing font is only
-     * defined in HTML.c)
-     */
-    static int fontsizes[4][3][17] = {
-	/* times font sizes */
-	{
-	    {14, 14, 14, 14, 18, 17, 14, 12, 10, 8, 14, 12, 12, 14, 14, 12, 12},
-	    {17, 17, 17, 17, 24, 18, 17, 14, 12, 10, 17, 14, 12, 17, 17, 14, 14},
-	    {20, 20, 20, 20, 25, 24, 20, 18, 17, 14, 20, 18, 12, 20, 20, 18, 18}
-	},
-	/* helvetica sizes */
-	{
-	    {14, 14, 14, 14, 18, 17, 14, 12, 10, 8, 14, 12, 12, 14, 14, 12, 12},
-	    {17, 17, 17, 17, 24, 18, 17, 14, 12, 10, 17, 14, 12, 17, 17, 14, 14},
-	    {20, 20, 20, 20, 25, 24, 20, 18, 17, 14, 20, 18, 12, 20, 20, 18, 18}
-	},
-	/* new century schoolbook sizes */
-	{
-	    {14, 14, 14, 14, 18, 17, 14, 12, 10, 8, 14, 12, 12, 14, 14, 12, 12},
-	    {18, 18, 18, 18, 24, 18, 17, 14, 12, 10, 18, 14, 12, 18, 18, 14, 14},
-	    {20, 20, 20, 20, 25, 24, 20, 18, 17, 14, 20, 18, 12, 20, 20, 18, 18}
-	},
-	/* lucida sizes */
-	{
-	    {14, 14, 14, 14, 18, 17, 14, 12, 11, 10, 14, 12, 12, 14, 14, 12, 12},
-	    {17, 17, 17, 17, 24, 18, 17, 14, 12, 10, 17, 14, 12, 17, 17, 14, 14},
-	    {20, 20, 20, 20, 25, 24, 20, 18, 17, 14, 20, 18, 12, 20, 20, 18, 18}
-	}
-    };
-
-    /* next is for each fontfamily the ascent value as given by the 
-     * medium sized bold x-font (the regular font has the same
-     * ascent value for both the medium and the large size Century
-     * font).
-     * it is use in the check for the fontsize (small, medium, large)
-     */
-    static int medium_fontascent[4] = {
-	14, 14, 16, 15
-    };
-
-    /* for each fontfamily, for each fontsize, and for each font style
-     * give the ascent value, so the output from Postscript is correct.
-     * If the value is given between parenthesis, then it is different
-     * from the value as stored in the x-font.
-     * Note that this is a fix, and need to be changed, if the browser
-     * is fixed (in the current version 1.2 the baseline of various fonts
-     * is not aligned very well).
-     */
-    static int fontascent[4][3][17] = {
-	/*rg, itl, bld, fix,  h1,  h2,  h3,  h4,  h5,  h6,
-	  add, pla, lis, fixbold, fixital, plabold, plaital, */
-	/* times */
-	{
-	    {12, 11, 12, 10, 15, 14, 12, 10, 8, 6, 11, 9, 10, 10, 10, 9, 9},
-	    {13, 13, 14, 12, 20, 15, 14, 12, 10, 8, 13, 10, 10, 12, 12, 10, 10},
-	    {16, 15, 15, 13, 21, 20, 15, 15, 14, 12, 15, 13, 10, 13, 13, 13, 13}
-	},
-	/* helvetica */
-	{
-	    {12, 12, 12, 10, 15, 14, 12, 10, 9, 7, 12, 9, 10, 10, 10, 9, 9},
-	    {14, 14, 14, 12, 22, 15, 14, 12, 10, 9, 14, 10, 10, 12, 12, 10, 10},
-	    {16, 16, 16, 13, 22, 22, 16, 15, 14, 12, 16, 13, 10, 13, 13, 13, 13}
-	},
-	/* new century schoolbook */
-	{
-	    {12, 12, 13, 10, 16, 14, 13, 10, 9, 7, 12, 9, 10, 10, 10, 9, 9},
-	    {16, 14, 16, 13, 22, 16, 14, 13, 10, 9, 14, 10, 10, 13, 13, 10, 10},
-	    {17, 16, 17, 13, 22, 22, 17, 16, 14, 13, 16, 13, 10, 13, 13, 13, 13}
-	},
-	/* lucida bright */
-	{
-	    {11, 11, 11, 11, 15, 14, 11, 10, 9, 7, 11, 9, 10, 11, 10, 9, 9},
-	    {14, 15, 14, 13, 20, 15, 14, 11, 10, 7, 15, 11, 10, 13, 13, 11, 10},
-	    {17, 17, 17, 16, 21, 20, 17, 15, 14, 11, 17, 14, 10, 16, 13, 14, 13}
-	}
-    };
-
-    /* NULL case - reflush old font or the builtin default: */
-    if ((hw == NULL) || (font == NULL)) {
-	if (PS_oldfs != 0)
-	    PSprintf( "%2s %d SF\n", fnchar[PS_oldfn], PS_oldfs);
-	return;
-    }
-    /* added the next line in case xmosaic version 199.4 has more fonts */
-    style = 3;
-    if (font == hw->html.font) {
-	style = 0;
-    } else if (font == hw->html.italic_font) {
-	style = 1;
-    } else if (font == hw->html.bold_font) {
-	style = 2;
-    } else if (font == hw->html.fixed_font) {
-	style = 3;
-    } else if (font == hw->html.header1_font) {
-	style = 4;
-    } else if (font == hw->html.header2_font) {
-	style = 5;
-    } else if (font == hw->html.header3_font) {
-	style = 6;
-    } else if (font == hw->html.header4_font) {
-	style = 7;
-    } else if (font == hw->html.header5_font) {
-	style = 8;
-    } else if (font == hw->html.header6_font) {
-	style = 9;
-    } else if (font == hw->html.address_font) {
-	style = 10;
-    } else if (font == hw->html.plain_font) {
-	style = 11;
-    } else if (font == hw->html.listing_font) {
-	style = 12;
-    } else if (font == hw->html.fixedbold_font) {
-	style = 13;
-    } else if (font == hw->html.fixeditalic_font) {
-	style = 14;
-    } else if (font == hw->html.plainbold_font) {
-	style = 15;
-    } else if (font == hw->html.plainitalic_font) {
-	style = 16;
-    }
-
-    /* check size, by looking at the size of the regular font */
-    size = 1;
-    if (hw->html.bold_font->ascent > medium_fontascent[fontfamily]) {
-	/* large font */
-	size = 2;
-    } else if (hw->html.bold_font->ascent < medium_fontascent[fontfamily]) {
-	/* small font */
-	size = 0;
-    }
-    fn = fontstyle[style];
-    fs = fontsizes[fontfamily][size][style];
-    PS_fontascent = fontascent[fontfamily][size][style];
-
-    if (fn != PS_oldfn || fs != PS_oldfs) {
-	PSprintf( "%2s %d SF\n", fnchar[fn], fs);
-	PS_oldfn=fn, PS_oldfs=fs;
-    }
+/*########################################
+CHANGE ALL THIS CODE BECAUSE OF REMANAGEMENT OF FONT IN MMOSAIC
+TRANSLATE A XLFD FONT TO A POSTSCRIPT FONT
+/*
+/*    PS_fontstyle fn;
+/*    int style, size;
+/*    int fs;
+/*
+/*    static PS_fontstyle fontstyle[17] = {
+/*	RF, IF, BF, FF, BF, BF, BF, BF, BF,
+/*	BF, IF, FF, FF, FB, FI, FB, FI
+/*   };
+/*  static char fnchar[6][3] = {"RF", "BF", "IF", "FF", "FB", "FI"};
+/*
+/*    /* fontsizes as set in gui.c and in HTML.c (listing font is only
+/*     * defined in HTML.c)
+/*     */
+/*    static int fontsizes[4][3][17] = {
+/*	/* times font sizes */
+/*	{
+/*	    {14, 14, 14, 14, 18, 17, 14, 12, 10, 8, 14, 12, 12, 14, 14, 12, 12},
+/*	    {17, 17, 17, 17, 24, 18, 17, 14, 12, 10, 17, 14, 12, 17, 17, 14, 14},
+/*	    {20, 20, 20, 20, 25, 24, 20, 18, 17, 14, 20, 18, 12, 20, 20, 18, 18}
+/*	},
+/*	/* helvetica sizes */
+/*	{
+/*	    {14, 14, 14, 14, 18, 17, 14, 12, 10, 8, 14, 12, 12, 14, 14, 12, 12},
+/*	    {17, 17, 17, 17, 24, 18, 17, 14, 12, 10, 17, 14, 12, 17, 17, 14, 14},
+/*	    {20, 20, 20, 20, 25, 24, 20, 18, 17, 14, 20, 18, 12, 20, 20, 18, 18}
+/*	},
+/*	/* new century schoolbook sizes */
+/*	{
+/*	    {14, 14, 14, 14, 18, 17, 14, 12, 10, 8, 14, 12, 12, 14, 14, 12, 12},
+/*	    {18, 18, 18, 18, 24, 18, 17, 14, 12, 10, 18, 14, 12, 18, 18, 14, 14},
+/*	    {20, 20, 20, 20, 25, 24, 20, 18, 17, 14, 20, 18, 12, 20, 20, 18, 18}
+/*	},
+/*	/* lucida sizes */
+/*	{
+/*	    {14, 14, 14, 14, 18, 17, 14, 12, 11, 10, 14, 12, 12, 14, 14, 12, 12},
+/*	    {17, 17, 17, 17, 24, 18, 17, 14, 12, 10, 17, 14, 12, 17, 17, 14, 14},
+/*	    {20, 20, 20, 20, 25, 24, 20, 18, 17, 14, 20, 18, 12, 20, 20, 18, 18}
+/*	}
+/*    };
+/*
+/*    /* next is for each fontfamily the ascent value as given by the 
+/*     * medium sized bold x-font (the regular font has the same
+/*     * ascent value for both the medium and the large size Century
+/*     * font).
+/*     * it is use in the check for the fontsize (small, medium, large)
+/*     */
+/*    static int medium_fontascent[4] = {
+/*	14, 14, 16, 15
+/*    };
+/*
+/*    /* for each fontfamily, for each fontsize, and for each font style
+/*     * give the ascent value, so the output from Postscript is correct.
+/*     * If the value is given between parenthesis, then it is different
+/*     * from the value as stored in the x-font.
+/*     * Note that this is a fix, and need to be changed, if the browser
+/*     * is fixed (in the current version 1.2 the baseline of various fonts
+/*     * is not aligned very well).
+/*     */
+/*    static int fontascent[4][3][17] = {
+/*	/*rg, itl, bld, fix,  h1,  h2,  h3,  h4,  h5,  h6,
+/*	  add, pla, lis, fixbold, fixital, plabold, plaital, */
+/*	/* times */
+/*	{
+/*	    {12, 11, 12, 10, 15, 14, 12, 10, 8, 6, 11, 9, 10, 10, 10, 9, 9},
+/*	    {13, 13, 14, 12, 20, 15, 14, 12, 10, 8, 13, 10, 10, 12, 12, 10, 10},
+/*	    {16, 15, 15, 13, 21, 20, 15, 15, 14, 12, 15, 13, 10, 13, 13, 13, 13}
+/*	},
+/*	/* helvetica */
+/*	{
+/*	    {12, 12, 12, 10, 15, 14, 12, 10, 9, 7, 12, 9, 10, 10, 10, 9, 9},
+/*	    {14, 14, 14, 12, 22, 15, 14, 12, 10, 9, 14, 10, 10, 12, 12, 10, 10},
+/*	    {16, 16, 16, 13, 22, 22, 16, 15, 14, 12, 16, 13, 10, 13, 13, 13, 13}
+/*	},
+/*	/* new century schoolbook */
+/*	{
+/*	    {12, 12, 13, 10, 16, 14, 13, 10, 9, 7, 12, 9, 10, 10, 10, 9, 9},
+/*	    {16, 14, 16, 13, 22, 16, 14, 13, 10, 9, 14, 10, 10, 13, 13, 10, 10},
+/*	    {17, 16, 17, 13, 22, 22, 17, 16, 14, 13, 16, 13, 10, 13, 13, 13, 13}
+/*	},
+/*	/* lucida bright */
+/*	{
+/*	    {11, 11, 11, 11, 15, 14, 11, 10, 9, 7, 11, 9, 10, 11, 10, 9, 9},
+/*	    {14, 15, 14, 13, 20, 15, 14, 11, 10, 7, 15, 11, 10, 13, 13, 11, 10},
+/*	    {17, 17, 17, 16, 21, 20, 17, 15, 14, 11, 17, 14, 10, 16, 13, 14, 13}
+/*	}
+/*    };
+/*
+/*    /* NULL case - reflush old font or the builtin default: */
+/*    if ((hw == NULL) || (font == NULL)) {
+/*	if (PS_oldfs != 0)
+/*	    PSprintf( "%2s %d SF\n", fnchar[PS_oldfn], PS_oldfs);
+/*	return;
+/*    }
+/*    /* added the next line in case xmosaic version 199.4 has more fonts */
+/*    style = 3;
+/*    if (font == hw->html.font) {
+/*	style = 0;
+/*    } else if (font == hw->html.italic_font) {
+/*	style = 1;
+/*    } else if (font == hw->html.bold_font) {
+/*	style = 2;
+/*    } else if (font == hw->html.fixed_font) {
+/*	style = 3;
+/*    } else if (font == hw->html.header1_font) {
+/*	style = 4;
+/*    } else if (font == hw->html.header2_font) {
+/*	style = 5;
+/*    } else if (font == hw->html.header3_font) {
+/*	style = 6;
+/*    } else if (font == hw->html.header4_font) {
+/*	style = 7;
+/*    } else if (font == hw->html.header5_font) {
+/*	style = 8;
+/*    } else if (font == hw->html.header6_font) {
+/*	style = 9;
+/*    } else if (font == hw->html.address_font) {
+/*	style = 10;
+/*    } else if (font == hw->html.plain_font) {
+/*	style = 11;
+/*    } else if (font == hw->html.listing_font) {
+/*	style = 12;
+/*    } else if (font == hw->html.fixedbold_font) {
+/*	style = 13;
+/*    } else if (font == hw->html.fixeditalic_font) {
+/*	style = 14;
+/*    } else if (font == hw->html.plainbold_font) {
+/*	style = 15;
+/*    } else if (font == hw->html.plainitalic_font) {
+/*	style = 16;
+/*    }
+/*
+/*    /* check size, by looking at the size of the regular font */
+//**    size = 1;
+/*    if (hw->html.bold_font->ascent > medium_fontascent[fontfamily]) {
+/*	/* large font */
+/*	size = 2;
+/*    } else if (hw->html.bold_font->ascent < medium_fontascent[fontfamily]) {
+/*	/* small font */
+/*	size = 0;
+/*    }
+/*    fn = fontstyle[style];
+/*    fs = fontsizes[fontfamily][size][style];
+/*    PS_fontascent = fontascent[fontfamily][size][style];
+/*
+//**    if (fn != PS_oldfn || fs != PS_oldfs) {
+/*	PSprintf( "%2s %d SF\n", fnchar[fn], fs);
+/*	PS_oldfn=fn, PS_oldfs=fs;
+/*    }
+*/
 }
 
 /* PSshowpage - end of page function
@@ -498,8 +496,7 @@ static void PSnewpage(void)
 
     PSprintf("%%%%Page: %d %d\n", PS_curr_page, PS_curr_page);
     PSprintf("save\n");
-    if (HTML_Print_Headers)
-	PSprintf("%d ", PS_curr_page);
+    PSprintf("%d ", PS_curr_page);
     PSprintf("NP\n");
     PSfont( NULL, NULL, 0);	/* force re-flush of last font used */
 }
@@ -687,7 +684,6 @@ static void PSheader(char *title, int font, char *url, char *time_str)
     /* Output the newpage definition. */
     
     PSprintf("/NP {");
-    if (HTML_Print_Headers) {
 	PSprintf("gsave 0.4 setlinewidth\n");
 	PSprintf("  newpath %.2f %.2f M %.2f 0 RL stroke", 
 		 page_dimens.left_margin,
@@ -708,7 +704,6 @@ static void PSheader(char *title, int font, char *url, char *time_str)
 	PSprintf("  (%s) dup stringwidth pop %.2f E sub %.2f M S grestore\n",
 		 time_str, page_dimens.left_margin + page_dimens.text_width,
 		 page_dimens.bot_margin - 12);
-    }
     PSprintf("  %.2f %.2f translate %.5f %.5f scale } D\n",
 	     page_dimens.left_margin, 
 	     page_dimens.bot_margin + page_dimens.text_height,
@@ -876,7 +871,7 @@ static void PStext(HTMLWidget hw, struct ele_rec *eptr, int fontfamily, String s
     }
     *(stmp) = '\0';
     PSprintf("(%s)%c\n", s2, (underline)?'U':'S');
-    if (HTML_Print_Footers && has_footnote(eptr)) 
+    if (has_footnote(eptr)) 
 	PSfootnote(eptr->anchor_tag_ptr->anc_href, 0.7 * ascent);
     free(s2);
 }
@@ -1437,7 +1432,7 @@ static void PSimage(HTMLWidget hw, struct ele_rec *eptr, int fontfamily)
 	
     /*  move currentpoint just right of image */
     PSprintf("%d 0 R\n", w + extra); 
-    if (HTML_Print_Footers && has_footnote(eptr)) {
+    if (has_footnote(eptr)) {
 	PSmove_offset(0);
 	PSfootnote(eptr->anchor_tag_ptr->anc_href, 2.0);
     }
@@ -1581,7 +1576,7 @@ String ParseTextToPSString(HTMLWidget	 	hw,
 		if (tmpptr->height > height)
 		    height = tmpptr->height;
 		tmpptr = tmpptr->next;
-		if (HTML_Print_Footers && has_footnote(tmpptr))
+		if (has_footnote(tmpptr))
 		    footnotes_this_line++;
 	    }
 	    ypos = eptr->y - PS_page_offset ;

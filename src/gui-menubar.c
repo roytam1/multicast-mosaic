@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -7,7 +7,6 @@
 #include "libhtmlw/HTML.h"
 #include "mosaic.h"
 #include "gui-popup.h" 			/* for callback struct definition */
-#include "main.h"
 #include "gui.h"
 #include "gui-menubar.h"
 #include "gui-dialogs.h"
@@ -116,6 +115,7 @@ mo_status mo_set_fonts (mo_window *win, int size)
   switch (size) {
     case mo_large_fonts_tkn:
       XmxSetArg (XtNfont, wrapFont(win, "-adobe-times-medium-r-normal-*-20-*-*-*-*-*-*-*"));
+/*##################
       XmxSetArg (WbNitalicFont, wrapFont(win, "-adobe-times-medium-i-normal-*-20-*-*-*-*-*-*-*"));
       XmxSetArg (WbNboldFont, wrapFont(win, "-adobe-times-bold-r-normal-*-20-*-*-*-*-*-*-*"));
       XmxSetArg (WbNfixedFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-20-*-*-*-*-*-*-*"));
@@ -373,6 +373,7 @@ mo_status mo_set_fonts (mo_window *win, int size)
       XmxSetValues (win->scrolled_win);
       win->font_family = 3;
       break;
+############## */
     }
 
   XmxRSetToggleState (win->menubar, (XtPointer)win->font_size, XmxNotSet);

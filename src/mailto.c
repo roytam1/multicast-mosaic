@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 /* Interface for mailto: URLs, stolen from techsupport.c */
 
@@ -14,8 +14,11 @@
 #include "mailto.h"
 #include "URLParse.h"
 
+#ifdef DEBUG
+#define DEBUG_GUI
+#endif
+
 char *post_content_type;
-extern char pre_title[80];
 
 static mo_status mo_post_mailto_form_win (mo_window *win,char *to_address, char *subject);
 mo_status mo_send_mailto_message (char *text, char *to, char *subj, 
@@ -217,7 +220,7 @@ mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject)
 		if (!subject || !*subject) {
 			char str[BUFSIZ];
 
-			sprintf(str,"Form Result(s) Posted from %s",pre_title);
+			sprintf(str,"Form Result(s) Posted from %s","");
 			return(mo_post_mailto_form_win(win,to_address,str));
 		} else {
 			return(mo_post_mailto_form_win(win,to_address,subject));
@@ -319,7 +322,7 @@ mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject)
   if (!subject || !*subject) {
 	char str[BUFSIZ];
 
-	sprintf(str,"Mail from %s",pre_title);
+	sprintf(str,"Mail from %s","");
   	XmTextFieldSetString(win->mailto_subfield,str);
   } else {
   	XmTextFieldSetString(win->mailto_subfield,subject);
@@ -553,17 +556,21 @@ void do_mailto_post(mo_window *win, char *to, char *from, char *subject, char *b
 		char *buf=NULL;
 
 		buf=makeReadable(body,0);
+#ifdef DEBUG_GUI
 		if (mMosaicSrcTrace) {
 			fprintf(stderr,"To: [%s]\nFrom: [%s]\nSubj: [%s]\nBody: [%s]\n",to,from,subject,buf);
 		}
+#endif
 		mo_send_mailto_message(buf, to, subject, post_content_type, 
 				       win->current_node->base_url);
 		if (buf)
 			free(buf);
 	} else {
+#ifdef DEBUG_GUI
 		if (mMosaicSrcTrace) {
 			fprintf(stderr,"To: [%s]\nFrom: [%s]\nSubj: [%s]\nBody: [%s]\n",to,from,subject,body);
 		}
+#endif
 
 		mo_send_mailto_message(body, to, subject, post_content_type, 
 				       win->current_node->base_url);

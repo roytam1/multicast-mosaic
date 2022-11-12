@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include <stdio.h>
 #include <string.h>
@@ -877,8 +877,6 @@ int newsrc_init (char *newshost)
   if (newsrc_active)
     return 0;                         
                                       
-  fprintf (stderr, "Initializing newsrc for %s", newshost);
-
   for (i=0; i<ACTIVE_BINS; i++) {     
     newsrc_groups[i] = NULL;          
   }                                   

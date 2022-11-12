@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #ifndef __POPUP_H__
 #define __POPUP_H__
@@ -31,40 +31,39 @@ enum { I_Save, I_ViewExternal, I_ViewInternal, I_Reload,
         M_ImageData, M_LinkData, M_FileData };
 
 typedef struct act_struct {
-  XtCallbackProc act_code;
-  struct ele_rec *eptr;
-  void *str;
-  mo_window * win;
+	XtCallbackProc act_code;
+	struct ele_rec *eptr;
+	void *str;
+	mo_window * win;
 } act_struct;
 
 typedef struct PopupItem {
-  /* the top half must be filled in if this is to appear in the popup */
+/* the top half must be filled in if this is to appear in the popup */
 
   w_class              classw; /* this is a button, separator, label, cascade */
   unsigned long int    types; /* for which widget elements this button is to 
 				 popup for (the list of elements is below) */
   int                  types_method; /* if TIGHT use == if LOOSE use & */
-
   unsigned long int    modes; /* news, http, ftp, etc. */
   int                  modes_method; /* if TIGHT use == if LOOSE use & */
   char *label;
 
-  /* these are needed for a button class */
+/* these are needed for a button class */
   struct act_struct    acst; /* identifies the action */
   void                 (*cbfp)(Widget,XtPointer,XtPointer); /* callback function that takes act_struct
 				     as client data */
-  /* theses are optional */
+/* theses are optional */
   char                 mnemonic;
   char                 *accel_text;
   char                 *accel;
 
-  /* this is needed for a cascade class */
+/* this is needed for a cascade class */
   struct               PopupItem *sub_items; /* NULL if this isn't a 
 						    pull_right */
-  /* this is for internal uses */
-    Widget               _w;
-    int                  startup; /* are we sensitive when we start */
-    mo_window 		*win;     /* which mo_window call me ? */
+/* this is for internal uses */
+   Widget               _w;
+   int                  startup; /* are we sensitive when we start */
+   mo_window 		*win;     /* which mo_window call me ? */
 } PopupItem;
 
 XmxCallbackPrototype (image_cb);

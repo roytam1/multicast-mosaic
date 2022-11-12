@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include <signal.h>
 #include <sys/types.h>
@@ -19,7 +19,6 @@
 #include "img.h"
 #include "gui.h"
 #include "gui-documents.h"
-#include "main.h"
 #include "gui-menubar.h"
 #include "gui-dialogs.h"
 #include "hotlist.h"
@@ -42,6 +41,10 @@
 #include "../libhtmlw/HTMLP.h"
 #endif
 
+#ifdef DEBUG
+#define DEBUG_FORM
+#define DEBUG_FRAME
+#endif
 
 /* Because Sun cripples the keysym.h file. */
 #ifndef XK_KP_Up
@@ -90,7 +93,9 @@ extern Pixmap 	*IconPix,*IconPixSmall,*IconPixBig;
 
 Widget 		mo_fill_toolbar(mo_window *win, Widget top, int w, int h);
 char *		MakeFilename();
-static void mo_extra_buttons(mo_window *win, Widget top);
+static void 	mo_extra_buttons(mo_window *win, Widget top);
+mo_window * 	MMMakeSubWindow(mo_window *parent, Widget htmlw,
+			char *url, char *frame_name);
 
 /* ------------------------------ variables ------------------------------- */
 
@@ -389,6 +394,38 @@ static XmxCallback (url_field_cb)
 	return;
 }
 
+static mo_window * get_frame_target( mo_window *win, char *base_target, char* target)
+{
+	mo_window * pwin, *son;
+	int i;
+
+	if (win->frame_parent == NULL)
+		return win;
+	if (base_target == NULL && target == NULL) {
+		pwin = win->frame_parent;
+		pwin->frame_name = NULL;
+		pwin->frame_parent =NULL;
+		pwin->frame_sons = NULL;
+		pwin->frame_sons_nbre = 0;
+		return pwin;
+	}
+	if (target == NULL)
+		target = base_target;
+
+	pwin = win->frame_parent;
+	for( i = 0; i < pwin->frame_sons_nbre; i++){
+		son = pwin->frame_sons[i];
+		if (strcmp(son->frame_name, target) == 0){
+			return son;
+		}
+	}
+	pwin->frame_name = NULL;
+	pwin->frame_parent =NULL;
+	pwin->frame_sons = NULL;
+	pwin->frame_sons_nbre = 0;
+	return pwin;
+}
+
 /*
  * name:    anchor_cb
  * purpose: Callback for triggering anchor in HTML widget.
@@ -471,6 +508,7 @@ static XmxCallback (anchor_cb)
 	rds.is_reloading = False;
 	if (!force_newwin){
 		rds.req_url = href;
+		win = get_frame_target(win, win->current_node->base_target, wacd->target);
 		MMPafLoadHTMLDocInWin (win, &rds);
 	} else {
 		if (is_shifted) {
@@ -568,7 +606,6 @@ XmxCallback (submit_form_callback)
 
 	if (!cbdata)
 		return;
-
 				/* Initial query: Breathing space. */
 	len = 16;
 				/* Add up lengths of strings. */
@@ -592,10 +629,12 @@ XmxCallback (submit_form_callback)
 			/* Grab enctype if it's there. */
 	if (cbdata->enctype && *(cbdata->enctype))
 		enctype = cbdata->enctype;
+#ifdef DEBUG_FORM
 	if (mMosaicSrcTrace) {
 		fprintf (stderr, "[submit_form_callback] method is '%s' enctype is '%s'\n",
 				method, enctype);
 	}
+#endif
 	if (strcasecmp (method, "POST") == 0 )
 		do_post_urlencoded = 1;
 
@@ -659,6 +698,65 @@ XmxCallback (submit_form_callback)
 		free (query);
 }
 
+XmxCallback (frame_callback)
+{
+	mo_window *win = (mo_window*) client_data;
+	mo_window *sub_win=NULL, *parent;
+	Widget htmlw;
+	char *url = NULL , *frame_name;
+	XmHTMLFrameCallbackStruct *cbs = (XmHTMLFrameCallbackStruct *)call_data;
+	RequestDataStruct rds;
+
+	if (!cbs) {
+#ifdef DEBUG_FRAME
+		fprintf(stderr, "frame_callback: NULL call_data\n");
+#endif
+		return;
+	}
+	switch (cbs->reason) {
+	case XmCR_HTML_FRAMEDONE:
+#ifdef DEBUG_FRAME
+		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMEDONE\n");
+#endif
+		break;
+	case XmCR_HTML_FRAMEDESTROY:
+#ifdef DEBUG_FRAME
+		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMEDESTROY\n");
+#endif
+		break;
+	case XmCR_HTML_FRAMECREATE:
+#ifdef DEBUG_FRAME
+		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMECREATE\n");
+#endif
+		break;
+	default:
+#ifdef DEBUG_FRAME
+		fprintf(stderr, "frame_callback: reason: Unknowed...\n");
+#endif
+		break;
+	}
+#ifdef DEBUG_FRAME
+	fprintf(stderr,"cbs.event = %08x\n cbs.src = %s\n cbs.name = %s\n",
+		cbs->event, cbs->src, cbs->name);
+	fprintf(stderr,"bs.html = %08x\n cbs.doit = %d\n",
+		cbs->html, cbs->doit);
+#endif
+	if (cbs->reason != XmCR_HTML_FRAMEDONE ){
+		return;		/* just for test now */
+	}
+/* reason = XmCR_HTML_FRAMEDONE */
+	parent = win;
+	htmlw = cbs->html;
+	url = strdup(cbs->src);
+	frame_name = cbs->name;
+	sub_win = MMMakeSubWindow(parent, htmlw, url, frame_name);
+	
+	rds.ct = rds.post_data = NULL;
+	rds.is_reloading = False;
+	rds.req_url = url;
+	MMPafLoadHTMLDocInWin (sub_win, &rds);
+	free(url);
+}
 /* Exported to libwww2. */
 void mo_gui_notify_progress (char *msg, mo_window * win)
 {
@@ -991,7 +1089,7 @@ static void DrawMeter(Widget meter, XtPointer client, XtPointer call)
 
 	if (!win->meter_font) {
 		XtVaGetValues(win->scrolled_win,
-			      WbNmeterFont, &(win->meter_font),
+			      XtNfont, &(win->meter_font),
 			      NULL);
 		if (!win->meter_font) {
 			puts("METER Cannot Get Font -- Please set 'mMosaic*MeterFont: NEW_FONT'\n  Where NEW_FONT is a 14 point font on your system.");
@@ -1325,7 +1423,7 @@ Widget mo_fill_toolbar(mo_window *win, Widget top, int w, int h)
 
 	if (!tmpFont) {
 		XtVaGetValues(win->scrolled_win,
-			WbNtoolbarFont, &tmpFont,
+			XtNfont, &tmpFont,
 			NULL);
 		if (!tmpFont) {
 			fprintf(stderr,"Toolbar Font: Could not load! The X Resource is Mosaic*ToolbarFont\nDefault font is: -adobe-times-bold-r-normal-*-12-*-*-*-*-*-iso8859-1\nExiting Mosaic.");
@@ -1517,6 +1615,8 @@ static mo_status mo_fill_window (mo_window *win)
 	XtAddCallback (win->scrolled_win, WbNanchorCallback, anchor_cb, win);
 	XtAddCallback (win->scrolled_win, WbNsubmitFormCallback,
 					submit_form_callback, win);
+	XtAddCallback (win->scrolled_win, WbNframeCallback,
+                                        frame_callback, win);
 	XtVaGetValues(win->scrolled_win, WbNview, (long)(&win->view), NULL);
 	XtAddEventHandler(win->view, KeyPressMask, False, 
 			mo_view_keypress_handler, win);
@@ -1870,6 +1970,229 @@ static XmxCallback (delete_cb)
 	return;
 }
 
+/* Make a framewindow like a mo_window, execpt a frame window is IN a mo_window */
+/* we create a 'like' mo_window that can be used in 'Paf' routine */
+/* this mo_window have no button , no menu, and a mini popup (back & forward) */
+/* no decoration is used . Finaly this is a 'lite' mo_window */
+/* inputs:
+	- parent : the parent mo_window for this frame (framset)
+	- htmlw : a htmlWdgetClass Widget , still created, where to display
+		 the html part of this frame.
+	- url : the href to get (load)
+	- frame_name: the frame name (attribute of frame tag)
+*/
+
+mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
+	char *url, char *frame_name)
+{
+	mo_window *swin;
+	McMoWType mc_t = MC_MO_TYPE_UNICAST;	/* just now #### */
+
+	Xmx_n = 0;
+
+	swin = (mo_window *)calloc (1, sizeof (mo_window));
+	swin->base = parent->base;
+	swin->mode = moMODE_PLAIN;
+#ifdef MULTICAST
+	swin->mc_type = mc_t;	/* ????? ############# */
+	swin->mc_user = NULL;
+#endif
+	swin->frame_name = strdup(frame_name);
+	swin->frame_parent =parent;
+	parent->frame_sons = (mo_window **) realloc(parent->frame_sons,
+		(parent->frame_sons_nbre + 1) * sizeof(mo_window *));
+	parent->frame_sons[parent->frame_sons_nbre] = swin;
+	parent->frame_sons_nbre++ ;
+
+	swin->source_win = 0;
+	swin->save_win = 0;
+
+/*  ########### */
+/*	for(i=0;i<BTN_COUNT;i++)
+/*		win->tools[i].gray = XmxSensitive;
+/*	win->open_win = win->open_text = win->open_local_win = 0;
+/*	win->mail_win = win->mailhot_win = 0;
+/*	win->edithot_win = win->mailhist_win = win->inserthot_win = 0;
+/*	win->print_win = 0;
+/*	win->history_win = win->history_list = 0;
+/*	win->hotlist_win = win->hotlist_list = 0;
+/*	win->techsupport_win = win->techsupport_text = 0;
+/*	win->mailto_win = win->mailto_text = 0;
+/*	win->mailto_form_win = win->mailto_form_text = 0;
+/*	win->post_data=0;
+/*	win->news_win = 0;
+/*	win->links_win = 0;
+/*	win->news_fsb_win = 0;
+/*	win->mail_fsb_win = 0;
+/*	win->search_win = win->search_win_text = 0;
+/*	win->src_search_win=0;
+/*	win->src_search_win_text=0;
+/*	win->first_node = NULL;
+*/
+	swin->current_node = parent->current_node;
+/*	win->source_text = 0;
+/*	win->format_optmenu = 0;
+*/
+	swin->save_format = parent->save_format;
+	swin->agent_state=parent->agent_state;
+/*
+/*	win->underlines_snarfed = 0;
+/*	win->mail_format = 0;
+/*	win->print_text = 0;
+*/
+	swin->print_format = parent->print_format;
+	swin->search_start = (void *)malloc (sizeof (ElementRef));
+	swin->search_end = (void *)malloc (sizeof (ElementRef));
+	swin->src_search_pos=0;
+	swin->delay_object_loads = parent->delay_object_loads;
+	swin->font_size = parent->font_size;
+	swin->underlines_state = parent->underlines_state;
+	swin->font_family = parent->font_family;
+
+/*	mo_fill_window (win);		/* Install all the GUI bits & pieces. */
+
+/*	win->smalllogo = 0;
+/*	win->texttools = 0;
+/*	win->slabpart[0] = SLAB_MENU;
+/*	win->slabpart[1] = SLAB_GLOBE;
+/*	win->slabpart[2] = SLAB_TOOLS;
+/*	win->slabpart[3] = SLAB_URL;
+/*	win->slabpart[4] = SLAB_VIEW;
+/*	win->slabpart[5] = SLAB_STATUS;
+/*	win->biglogo=1;
+	/* no active toolset, horiz, not detached */
+
+/*********************** SLAB_GLOBE ****************************/
+/*	win->slab[SLAB_GLOBE] = XtVaCreateWidget("slab_globe",
+/*                                       xmFormWidgetClass, form, NULL);
+/*	mo_make_globe(win,win->slab[SLAB_GLOBE],0);
+*/
+	swin->logo = parent->logo;
+	swin->biglogo = parent->biglogo;
+
+/*********************** SLAB_URL ****************************/
+/*	win->slab[SLAB_URL] = XtVaCreateWidget("slab_url",
+/*					xmFormWidgetClass, form,
+/*					XmNheight, 36, NULL);
+/*	url_label = XtVaCreateManagedWidget("URL:",xmLabelWidgetClass,
+/*					win->slab[SLAB_URL],
+/*					XmNleftOffset, 3,
+/*					NULL);
+/*	win->url_widget = XtVaCreateManagedWidget("text",xmTextFieldWidgetClass,
+/*					win->slab[SLAB_URL],
+/*					XmNrightOffset, 3,
+/*					XmNleftOffset, 3,
+/*					XmNtopOffset, 3,
+/*					NULL);
+	/* DO THIS WITH THE SLAB MANAGER - BJS */
+/*	XtAddCallback (win->url_widget, XmNactivateCallback, url_field_cb, (XtPointer)win);
+*/
+
+	swin->scrolled_win= htmlw;
+/*######	WbNpreviouslyVisitedTestFunction, anchor_visited_predicate, */
+/*########### a mettre sous forme de callback ################ */
+	XtAddCallback(swin->scrolled_win,
+		WbNpointerMotionCallback, pointer_motion_callback,swin);
+	XtAddCallback (swin->scrolled_win, WbNanchorCallback, anchor_cb, swin);
+	XtAddCallback (swin->scrolled_win, WbNsubmitFormCallback,
+					submit_form_callback, swin);
+	XtAddCallback (swin->scrolled_win, WbNframeCallback,
+                                        frame_callback, swin);
+	XtVaGetValues(swin->scrolled_win, WbNview, (long)(&swin->view), NULL);
+	XtAddEventHandler(swin->view, KeyPressMask, False, 
+			mo_view_keypress_handler, swin);
+	/* now that the htmlWidget is created we can do this  */
+/*############################################################*/
+	mo_make_popup(swin); /* c'est pour le cut&paste */
+/*
+/*********************** SLAB_STATUS ****************************/
+/*	win->slab[SLAB_STATUS] = XtVaCreateWidget("slab_status",
+/*					xmFormWidgetClass, form, NULL);
+	/* meter */
+	swin->meter_text = parent->meter_text;
+	swin->meter_notext = parent->meter_notext;
+	swin->meter_font = parent->meter_font;
+	swin->meter_frame=parent->meter_frame;
+	swin->meter = parent->meter;
+	swin->meter_level = parent->meter_level;
+	swin->meter_width = parent->meter_width;
+
+	swin->tracker_widget = parent->tracker_widget;
+/*
+/*	for(i=0;i<SLABCOUNT;i++)
+/*		XtManageChild(win->slab[win->slabpart[i]]);
+/*	XtManageChild(form);
+/*
+/* Can't go back or forward if we haven't gone anywhere yet... */
+/*	mo_back_impossible (win);
+/*	mo_forward_impossible (win);
+/*	return mo_succeed;
+/* end mo_fill_window */
+
+/*	if (win->font_size != mo_regular_fonts_tkn)	/* Set the font size. */
+/*		mo_set_fonts (win, win->font_size);
+/*	mo_set_underlines (win, win->underlines_state);
+/*	mo_set_agents(win, win->agent_state);
+*/
+#ifdef ISINDEX
+/*	win->keyword_search_possible = -1;	/* We don't know yet. */
+#endif
+/*	XmxRSetToggleState (win->menubar, (XtPointer)win->font_size, XmxSet);
+/*						/* setup news default states */
+#ifdef NEWS
+/*	gui_news_updateprefs (win); */
+#endif
+/*
+/*	XmxRSetToggleState (win->menubar, (XtPointer)mo_delay_object_loads,
+/*		 win->delay_object_loads ? XmxSet : XmxNotSet);
+/*	XmxRSetSensitive (win->menubar, (XtPointer)mo_expand_object_current,
+/*		win->delay_object_loads ? XmxSensitive : XmxNotSensitive);
+
+/* take care of session history for rbm */
+/*     	win->session_menu = NULL;       
+/*     	win->num_session_items = 0;     
+/*   	win->session_items = (Widget*) malloc(sizeof(Widget) *
+/*                   mMosaicAppData.numberOfItemsInRBMHistory);
+/*	XtPopup (win->base, XtGrabNone);
+*/
+	XFlush (mMosaicDisplay);
+	XSync (mMosaicDisplay, False);
+
+/*###	mo_add_window_to_list (win); /*Register win with internal window list.*/
+/*  	if(parent) {                        
+/*		win->body_color = parent->body_color;
+/*		XtVaSetValues(win->scrolled_win,
+/*			WbNbodyColors, win->body_color,
+/*			NULL);
+/*		XmxRSetToggleState (win->menubar, (char*)mo_body_color,
+/*			win->body_color ? XmxSet : XmxNotSet);
+/*
+/*		win->delay_object_loads = parent->delay_object_loads;
+/*		XmxRSetSensitive (win->menubar, (char*)mo_expand_object_current,
+/*			win->delay_object_loads ? XmxSensitive : XmxNotSensitive);
+/*		XmxRSetToggleState (win->menubar, (char*)mo_delay_object_loads,
+/*			win->delay_object_loads ? XmxSet : XmxNotSet);
+/*	}
+/*
+/* register icon */
+/*
+/*	XtVaSetValues(win->base,
+/*		XmNiconMask, mMosaicWinIconMaskPixmap,
+/*		XmNiconPixmap, mMosaicWinIconPixmap,
+/*		NULL);
+/*
+/* set/notset boby color and body image */
+/*
+/*	XtVaGetValues(win->scrolled_win,
+/*		WbNbodyColors, &(win->body_color),
+/*		NULL);
+/*	XmxRSetToggleState (win->menubar, (XtPointer)mo_body_color,
+/*			(win->body_color ? XmxSet : XmxNotSet));
+/* init paf data */
+	swin->pafd = NULL;
+	return swin;
+}
+
 /* purpose: Make a new window from scratch.
  * inputs:  
  *   - mo_window *parentw: Parent window, if one exists (may be NULL).
@@ -1910,6 +2233,11 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 	win = (mo_window *)malloc (sizeof (mo_window));
 	win->base = base;
 	win->mode = moMODE_PLAIN;
+
+	win->frame_name = NULL;
+	win->frame_parent =NULL;
+	win->frame_sons = NULL;
+	win->frame_sons_nbre = 0;
 
 #ifdef MULTICAST
 	win->mc_type = mc_t;

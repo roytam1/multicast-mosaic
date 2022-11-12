@@ -1,15 +1,9 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
-/* 
- * Created: Wed Apr 10 17:41:00 CDT 1996
+/* Created: Wed Apr 10 17:41:00 CDT 1996
  * Author: Dan Pape
- *
  */
-
-/* this file contains stuff from the old "mosaic.h" file. I am breaking
-   that file up because it was too big, and required a re-compile of all
-   the source whenever something changed. */
 
 #ifndef __GUI_H__
 #define __GUI_H__
@@ -38,4 +32,5 @@ void mo_gui_check_security_icon_in_win(int type, mo_window *win);
 void mo_gui_apply_default_icon(mo_window *);
 void mo_flush_passwd_cache (mo_window *win);
 
+void mo_exit (void);
 #endif /* not __GUI_H__ */

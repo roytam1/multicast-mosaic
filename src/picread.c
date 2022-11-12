@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
@@ -266,9 +266,7 @@ unsigned char *ReadXbmBitmap(Widget view, FILE *fp, char *datafile,
 		if (!(fgets(line, MAX_LINE, fp)))
 			break;
 		if (strlen(line) == (MAX_LINE - 1)) {
-			if (mMosaicSrcTrace) {
-				fprintf(stderr, "Line too long.\n");
-			}
+			fprintf(stderr, "[ReadXbmBitmap]Line too long.\n");
 			return((unsigned char *)NULL);
 		}
 		if (sscanf(line, "#define %s %d", name_and_type, &value) == 2) {

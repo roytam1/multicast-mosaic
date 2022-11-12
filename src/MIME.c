@@ -88,6 +88,10 @@ static void SetMimeToken(MimeHeaderStruct *mhs, char *token, char *value)
 			mhs->content_length = atoi(value);
 			return;
 		}
+		if ( !strncasecmp(token,"Status-Code",11)) {
+			mhs->status_code = atoi(value);
+			return;
+		}
 		if ( !strncasecmp(token,"Content-Type", 12)) {
 			/* Lowercase it. And forget parameter */     
 			for (tmp = value; *tmp; tmp++) {
@@ -153,6 +157,7 @@ void ParseMimeHeader(char * b, MimeHeaderStruct * mhs)
 	mhs->last_modified = NULL;
 	mhs->location = NULL;
 	mhs->cache_control = CACHE_CONTROL_NONE;
+	mhs->status_code = 200 ;	/* extension for MULTICAST */
 
 /* parse the block and override default */
 

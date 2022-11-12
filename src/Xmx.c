@@ -1,5 +1,5 @@
 /* Please read copyright.tmpl. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include <stdlib.h>
 #include <assert.h>

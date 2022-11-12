@@ -1,29 +1,32 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 /* Author: DXP 
-
  A lot of this is copied from the PNGLIB file example.c
-
  Modified:
-
     August   1995 - Glenn Randers-Pehrson <glennrp@arl.mil>
                     Changed dithering to use a 6x6x6 color cube.
-
     March 21 1996 - DXP
                     Fixed some interlacing problems.
-                  
 */
 
 #ifdef HAVE_PNG
 
 #include <stdio.h>
 #include <X11/Intrinsic.h>
-#include <setjmp.h>
+
+/*jolk@ap-pc513b.physik.uni-karlsruhe.de :
+ * pngconf.h triggers an error when setjmp.h has already been included.
+ *This is from libpng-1.0.1: */
+/* #include <setjmp.h> */
 
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
 #include "readPNG.h"
+
+#ifdef DEBUG
+#define DEBUG_PNG
+#endif
 
 #define MAX(x,y)  (((x) > (y)) ? (x) : (y))
 
@@ -103,17 +106,17 @@ unsigned char * ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 	*width = (int)png_ptr->width;
 	*height = (int)png_ptr->height;
 
-	if (mMosaicSrcTrace) {
-		fprintf(stderr,"\n\nBEFORE\nheight = %d\n", (int)png_ptr->width);
-		fprintf(stderr,"width = %d\n", (int)png_ptr->height);
-		fprintf(stderr,"bit depth = %d\n", info_ptr->bit_depth);
-		fprintf(stderr,"color type = %d\n", info_ptr->color_type);
-		fprintf(stderr,"compression type = %d\n", info_ptr->compression_type);
-		fprintf(stderr,"filter type = %d\n", info_ptr->filter_type);
-		fprintf(stderr,"interlace type = %d\n", info_ptr->interlace_type);
-		fprintf(stderr,"num colors = %d\n",info_ptr->num_palette);
-		fprintf(stderr,"rowbytes = %d\n", info_ptr->rowbytes);
-	}
+#ifdef DEBUG_PNG
+	fprintf(stderr,"\n\nBEFORE\nheight = %d\n", (int)png_ptr->width);
+	fprintf(stderr,"width = %d\n", (int)png_ptr->height);
+	fprintf(stderr,"bit depth = %d\n", info_ptr->bit_depth);
+	fprintf(stderr,"color type = %d\n", info_ptr->color_type);
+	fprintf(stderr,"compression type = %d\n", info_ptr->compression_type);
+	fprintf(stderr,"filter type = %d\n", info_ptr->filter_type);
+	fprintf(stderr,"interlace type = %d\n", info_ptr->interlace_type);
+	fprintf(stderr,"num colors = %d\n",info_ptr->num_palette);
+	fprintf(stderr,"rowbytes = %d\n", info_ptr->rowbytes);
+#endif
 #if 0
         /* This handles alpha and transparency by replacing it with 
            a background value. */
@@ -140,9 +143,9 @@ then dither the image to 256 colors, and make up a palette */
 	    info_ptr->color_type==PNG_COLOR_TYPE_RGB_ALPHA) {
 
 		if(! (info_ptr->valid & PNG_INFO_PLTE)) {
-	            	if (mMosaicSrcTrace) {
-                		fprintf(stderr,"dithering (RGB->palette)...\n");
-            		}
+#ifdef DEBUG_PNG
+                	fprintf(stderr,"dithering (RGB->palette)...\n");
+#endif
                 /* if there is is no valid palette, then we need to make
                    one up */
 			for(i=0;i<216;i++) {	 /* 255.0/5 = 51 */
@@ -155,9 +158,9 @@ then dither the image to 256 colors, and make up a palette */
                    Rdata.colors_per_inlined_image colors */
 			png_set_dither(png_ptr, std_color_cube, 216, 216, NULL, 1);
 		} else {
-            		if (mMosaicSrcTrace) {
-                		fprintf(stderr,"dithering (RGB->file supplied palette)...\n");
-            		}
+#ifdef DEBUG_PNG
+                	fprintf(stderr,"dithering (RGB->file supplied palette)...\n");
+#endif
 			png_set_dither(png_ptr, info_ptr->palette, 
 					info_ptr->num_palette,
 					mMosaicAppData.colors_per_inlined_image,
@@ -177,18 +180,18 @@ then dither the image to 256 colors, and make up a palette */
 		if (info_ptr->bit_depth != 16) {  /* temporary .. glennrp */
 			screen_gamma=(double)(mMosaicAppData.screen_gamma);
             
-            if (mMosaicSrcTrace) {
-                fprintf(stderr,"screen gamma=%f\n",screen_gamma);
-            }
+#ifdef DEBUG_PNG
+        fprintf(stderr,"screen gamma=%f\n",screen_gamma);
+#endif
 			if (info_ptr->valid & PNG_INFO_gAMA) {
-				if (mMosaicSrcTrace) {
-					printf("setting gamma=%f\n",info_ptr->gamma);
-				}
+#ifdef DEBUG_PNG
+				printf("setting gamma=%f\n",info_ptr->gamma);
+#endif
 				png_set_gamma(png_ptr, screen_gamma, (double)info_ptr->gamma);
 			} else {
-				if (mMosaicSrcTrace) {
-					fprintf(stderr,"setting gamma=%f\n",0.45);
-				}
+#ifdef DEBUG_PNG
+				fprintf(stderr,"setting gamma=%f\n",0.45);
+#endif
 				png_set_gamma(png_ptr, screen_gamma, (double)0.45);
 			}
 		}
@@ -199,19 +202,18 @@ then dither the image to 256 colors, and make up a palette */
 
 	png_read_update_info(png_ptr, info_ptr);
     
-	if (mMosaicSrcTrace) {
-		fprintf(stderr,"\n\nAFTER\nheight = %d\n", (int)png_ptr->width);
-		fprintf(stderr,"width = %d\n", (int)png_ptr->height);
-		fprintf(stderr,"bit depth = %d\n", info_ptr->bit_depth);
-		fprintf(stderr,"color type = %d\n", info_ptr->color_type);
-		fprintf(stderr,"compression type = %d\n", info_ptr->compression_type);
-		fprintf(stderr,"filter type = %d\n", info_ptr->filter_type);
-		fprintf(stderr,"interlace type = %d\n", info_ptr->interlace_type);
-		fprintf(stderr,"num colors = %d\n",info_ptr->num_palette);
-		fprintf(stderr,"rowbytes = %d\n", info_ptr->rowbytes);
-	}
-        /* allocate the pixel grid which we will need to send to 
-           png_read_image(). */
+#ifdef DEBUG_PNG
+	fprintf(stderr,"\n\nAFTER\nheight = %d\n", (int)png_ptr->width);
+	fprintf(stderr,"width = %d\n", (int)png_ptr->height);
+	fprintf(stderr,"bit depth = %d\n", info_ptr->bit_depth);
+	fprintf(stderr,"color type = %d\n", info_ptr->color_type);
+	fprintf(stderr,"compression type = %d\n", info_ptr->compression_type);
+	fprintf(stderr,"filter type = %d\n", info_ptr->filter_type);
+	fprintf(stderr,"interlace type = %d\n", info_ptr->interlace_type);
+	fprintf(stderr,"num colors = %d\n",info_ptr->num_palette);
+	fprintf(stderr,"rowbytes = %d\n", info_ptr->rowbytes);
+#endif
+/* allocate the pixel grid which we will need to send to png_read_image(). */
 	png_pixels = (png_byte *)malloc(info_ptr->rowbytes * 
 			(*height) * sizeof(png_byte));
     
@@ -257,9 +259,9 @@ to copy the resulting palette to our colormap. */
 /* if there is an alpha channel, we have to get rid of it in the
 pixmap, since I don't do anything with it yet */
 	if (info_ptr->color_type & PNG_COLOR_MASK_ALPHA) {
-	        if (mMosaicSrcTrace) {
-            		fprintf(stderr,"Getting rid of alpha channel\n");
-        	}
+#ifdef DEBUG_PNG
+       		fprintf(stderr,"Getting rid of alpha channel\n");
+#endif
 		for(i=0; i<*height; i++) {
 			q = row_pointers[i];
 			for(j=0; j<*width; j++) {
@@ -269,9 +271,9 @@ pixmap, since I don't do anything with it yet */
 		}
 		free((char *)png_pixels);
 	} else {
-		if (mMosaicSrcTrace) {
-			fprintf(stderr,"No alpha channel\n");
-		}
+#ifdef DEBUG_PNG
+		fprintf(stderr,"No alpha channel\n");
+#endif
 		for(i=0; i<*height; i++) {
 			q = row_pointers[i];
 			for(j=0; j<*width; j++) {

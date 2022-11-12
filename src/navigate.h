@@ -1,13 +1,9 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 /* Created: Wed Apr 10 17:41:00 CDT 1996
  * Author: Dan Pape
  */
-
-/* this file contains stuff from the old "mosaic.h" file. I am breaking
-   that file up because it was too big, and required a re-compile of all
-   the source whenever something changed. */
 
 #ifndef __HISTORY_H__
 #define __HISTORY_H__
@@ -25,7 +21,7 @@ extern void mo_back_possible(mo_window *);
 extern void mo_forward_impossible (mo_window *);
 extern void mo_forward_possible (mo_window *win);
 extern void MMUpdNavigationOnNewURL(mo_window *win, char *aurl_wa, char *aurl,
-	char *goto_anchor, char *base_url, char *title, char *text,
+	char *goto_anchor, char *base_url, char* base_target, char *title, char *text,
 	MimeHeaderStruct * mhs, int docid, struct mark_up * mlist);
 
 #endif

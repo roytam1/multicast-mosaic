@@ -1,6 +1,6 @@
 /* Most of code is rewrite from scratch. Lot of code come from NCSA Mosaic */
 
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
  /* Copyright (C) 1996 - G.Dauphin
  * See the file "license.mMosaic" for information on usage and redistribution
@@ -25,7 +25,6 @@
 
 #include "HTMLmiscdefs.h"
 #include "HTMLparse.h"
-#include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
 

@@ -56,6 +56,10 @@ int gethostname(char *name, int namelen); /* because solaris 2.5 include bug */
 #include "proxy.h"
 #include "cache.h"
 
+#ifdef DEBUG
+#define DEBUG_HTTP
+#endif
+
 static void doc_connect_succes(PafDocDataStruct * pafd);
 
 /*	Module-Wide variables */
@@ -208,13 +212,14 @@ found_non_numeric_or_done:
 			memcpy(&sin->sin_addr, phost->h_addr, phost->h_length);
 		}
 	}
-	if (mMosaicAppData.wwwTrace)
+#ifdef DEBUG_HTTP
 		fprintf(stderr, "TCP: Parsed address as port %d, IP address %d.%d.%d.%d\n",
 			(int)ntohs(sin->sin_port),
 			(int)*((unsigned char *)(&sin->sin_addr)+0),
 			(int)*((unsigned char *)(&sin->sin_addr)+1),
 			(int)*((unsigned char *)(&sin->sin_addr)+2),
 			(int)*((unsigned char *)(&sin->sin_addr)+3));
+#endif
 #endif /* IPV6 */
 	return 0;	/* OK */
 }
@@ -234,9 +239,9 @@ static const char * HTHostName(void)
 	if (hostname)
 		return hostname;		/* Already done */
 	gethostname(name, namelength);	/* Without domain */
-	if (mMosaicAppData.wwwTrace) {
-		fprintf(stderr, "TCP: Local host name is %s\n", name);
-	}
+#ifdef DEBUG_HTTP
+	fprintf(stderr, "TCP: Local host name is %s\n", name);
+#endif
 
 	hostname = strdup(name);
 
@@ -379,8 +384,9 @@ static void doc_connect_succes(PafDocDataStruct * pafd)
 /* write a command depending of protocol. Send the command to server */
 		status = write(pafd->www_con_type->prim_fd, command, lenc);
 
-	        if (mMosaicAppData.wwwTrace) 
-                	fprintf (stderr, "Writing:\n%s--------\n", command);
+#ifdef DEBUG_HTTP
+               	fprintf (stderr, "Writing:\n%s--------\n", command);
+#endif
 		free(command);
  
 		if (status != lenc) { /* something goes wrong */
@@ -605,4 +611,22 @@ void PostRequestAndGetTypedData( char * aurl, char* fname,
 /* let the Mainloop of X working */
 /* the next step of work will come on the timeout or the connect ready */
 /* in most case the next step is loop_doc_connect_cb */
+
+	if ( status == 0 )
+		return;
+/* status = -1 */
+	if ( (errno == EISCONN) || (errno == EALREADY) || (errno == EAGAIN) ||
+	     (errno == EINPROGRESS) )
+		return;
+
+/* others cases are error */
+/* clear the connection and abort and popdown */
+        pafd->www_con_type->call_me_on_stop_cb = NULL;
+        close(pafd->www_con_type->prim_fd);
+        free(pafd->www_con_type);
+        pafd->www_con_type = NULL;
+        XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
+	XtRemoveTimeOut(pafd->loop_connect_time_out_id);
+        (*pafd->call_me_on_error)(pafd,"Connection Error: Can't connect");
+
 }

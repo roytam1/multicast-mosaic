@@ -7,11 +7,11 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/uio.h>
+#include <sys/param.h>		/* MAXPATHLEN is defined here */
 #include <unistd.h>
 #include <dirent.h>
 
 #include "../libhtmlw/HTMLparse.h"
-#include "../libmc/mc_defs.h"
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
 #include "../libhtmlw/HTMLPutil.h"
@@ -167,7 +167,7 @@ void MMCacheInit( char * root_dirname)
 	close(lfd_cachedb);
 
 	/* read the data base cache.db */
-	mptr = mlist = HTMLParse(data);
+	mptr = mlist = HTMLLexem(data);
 	t = time(NULL);
 	hcid =0;
 
@@ -250,7 +250,7 @@ void MMCacheInit( char * root_dirname)
 	/* else remove the file (no cid found in cache.db). */
 	/* Check for consistency . */
 
-	ocwd = getcwd(NULL,0);
+	ocwd = getcwd(NULL,MAXPATHLEN);
 	chdir(lcachedir_name);
 	dirp = opendir( lcachedir_name );
 	while ( (direntp = readdir( dirp )) != NULL ) {
@@ -446,7 +446,7 @@ void MMCacheClearCache(void)
 	DIR *dirp;
 	struct dirent *direntp;
 
-        ocwd = getcwd(NULL,0);        
+        ocwd = getcwd(NULL,MAXPATHLEN);        
         chdir(lcachedir_name); 
         dirp = opendir( lcachedir_name );
         while ( (direntp = readdir( dirp )) != NULL ) {

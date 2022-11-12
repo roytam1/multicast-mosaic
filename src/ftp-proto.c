@@ -19,6 +19,9 @@
 #include "URLParse.h"
 #include "../libnut/system.h"
 
+#ifdef DEBUG
+#define DEBUG_FTP
+#endif
 
 #define FTP_READ_R_ON_CONNECT	0
 #define FTP_READ_R_ON_USER	1
@@ -220,9 +223,11 @@ static int get_listen_socket_and_port_command(char *cmd, PafDocDataStruct *pafd 
 		(int)*((unsigned char *)(&sin->sin_port)+0),
 		(int)*((unsigned char *)(&sin->sin_port)+1));               
 #endif                                 
+#ifdef DEBUG_FTP
 	if(mMosaicAppData.wwwTrace) {
 		 fprintf(stderr, "FTP--> %s\n",cmd);
 	}
+#endif
                                        
 /* Inform TCP that we will accept connections */
 	if (listen (pafd->www_con_type->second_fd, 1) < 0) { 
@@ -306,10 +311,11 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 	/* lire les donnes */   
         len_read = read(pafd->www_con_type->prim_fd, ibuf, sizeof(ibuf));
         syserror = errno;
+#ifdef DEBUG_FTP
         if (mMosaicAppData.wwwTrace) 
                 fprintf (stderr, "Read = %d syserror = %d\n",
                         len_read, syserror);
-
+#endif
 /* on peut gerer un buffer d'entree/sortie reserver au I/O */
         if (len_read > 0) {     /* append to io buffer */
                 IOBuffAppend(&(pafd->iobs), ibuf, len_read);
@@ -744,9 +750,11 @@ void ftp_read_third_fd_file_cb(XtPointer clid, int * fd, XtInputId * id)
 /* lire les donnes */
         len_read = read(pafd->www_con_type->third_fd, ibuf, sizeof(ibuf));
         syserror = errno;
+#ifdef DEBUG_FTP
         if (mMosaicAppData.wwwTrace)
                 fprintf (stderr, "Read = %d syserror = %d\n",
                         len_read, syserror);
+#endif
  
 /* on peut gerer un buffer d'entree/sortie reserver au I/O */
         if (len_read > 0) {     /* append to io buffer */
@@ -803,9 +811,11 @@ void ftp_read_third_fd_dir_nlstlla_cb(XtPointer clid, int * fd, XtInputId * id)
 /* lire les donnes */
         len_read = read(pafd->www_con_type->third_fd, ibuf, sizeof(ibuf));
         syserror = errno;
+#ifdef DEBUG_FTP
         if (mMosaicAppData.wwwTrace)
                 fprintf (stderr, "Read = %d syserror = %d\n",
                         len_read, syserror);
+#endif
  
 /* on peut gerer un buffer d'entree/sortie reserver au I/O */
         if (len_read > 0) {     /* append to io buffer */
@@ -1021,27 +1031,127 @@ void ftp_read_third_fd_dir_nlstlla_cb(XtPointer clid, int * fd, XtInputId * id)
 }
 
 void ftp_read_third_fd_dir_nlst_cb(XtPointer clid, int * fd, XtInputId * id)
-{ /*only name*/
-	fprintf (stderr, " This is a Bug, Please report \n");
-	fprintf(stderr, "ftp_read_third_fd_dir_nlst_cb: Implement !!! \n");
-	fprintf(stderr, "Aborting...\n");
-	abort();
-/*
-if (!strcmp(buffer,".") || !strcmp(buffer,"..")) {
-free(full_ftp_name);
-continue;
-}              
-ptr=strrchr(buffer,'.');
-itemtype='-';  
-if (ptr && *ptr) {
-if (!strncasecmp(ptr,".dir",4)) {
-*ptr='\0';
-itemtype='d';
-}      
-}              
-strcpy(itemname,buffer);
-nTime=(-1);    
-*/
+{
+	/*only name*/
+	PafDocDataStruct * pafd = (PafDocDataStruct *) clid;
+	int len_w, syserror, len_read; 
+	char info[256];         /* large enought... */
+	char ibuf[IBUF_SIZE];          
+	char *ct;                      
+	char *filename ;               
+	FILE *fp;                      
+	char *bl, *el;                 
+	char * ptr;                    
+	int count; 
+
+/* Set the meter....    */             
+/* lire les donnes */                  
+	len_read = read(pafd->www_con_type->third_fd, ibuf, sizeof(ibuf));
+	syserror = errno;              
+#ifdef DEBUG_FTP
+	if (mMosaicAppData.wwwTrace)   
+		fprintf (stderr, "Read = %d syserror = %d\n",
+			len_read, syserror); 
+#endif
+/* on peut gerer un buffer d'entree/sortie reserver au I/O */
+	if (len_read > 0) {     /* append to io buffer */
+		IOBuffAppend(&(pafd->iobs), ibuf, len_read);
+		pafd->total_read_data = pafd->iobs.len_iobuf;
+		sprintf(info,"Read %d",pafd->total_read_data);
+		XmxAdjustLabelText(pafd->win->tracker_widget, info);
+		XFlush(mMosaicDisplay);
+		return;                
+	}                              
+	if (len_read < 0) {            
+		fprintf (stderr, " This is a Bug, Please report \n");
+		fprintf(stderr, "ftp_read_third_fd_dir_nlstlla_cb: len_read < 0 !!! \n");
+		fprintf(stderr, "Aborting...\n");
+		abort();               
+	}                              
+/* len_read = 0 => EOF */              
+/* convert iobuf to html */            
+	filename = URLParse(pafd->aurl,"", PARSE_PATH + PARSE_PUNCTUATION);
+ 
+        XtRemoveInput(pafd->www_third_fd_read_id);
+        close(pafd->www_con_type->third_fd);
+        pafd->www_con_type->third_fd = -1;  
+/* rearm prim_fd for FTP to read final status */
+        pafd->www_prim_fd_read_id = XtAppAddInput(mMosaicAppContext,
+                        pafd->www_con_type->prim_fd, (XtPointer)XtInputReadMask,
+                        read_ftp_doc_prim_fd_cb, (XtPointer)pafd);
+        pafd->read_stat = FTP_READ_R_ON_END_OF_DIR;
+        fp = fopen(pafd->fname, "w");  
+        fprintf (fp, "<H1>FTP Directory "); 
+        fprintf (fp, filename);        
+        fprintf (fp, "</H1>\n<PRE><DL>\n");
+/* If this isnt the root level, spit out a parent directory entry */
+        if(strcmp(filename,"/") != 0) {
+                char * buffer = strdup(filename);
+                
+                fprintf(fp,"<DD><A HREF=\"");
+                strcpy(buffer,filename);
+                ptr = strrchr(buffer,'/');
+                if(ptr != NULL)
+                         *ptr='\0';
+                if(buffer[0] == '\0')
+                        fprintf(fp,"/");
+                else
+                        fprintf(fp, buffer);
+                fprintf(fp,"\"><IMG SRC=\"");
+                fprintf(fp, HTgeticonname(NULL, "directory"));
+                fprintf(fp,"\"> Parent Directory</a>");
+                free(buffer);
+        } 
+
+        bl = pafd->iobs.iobuf;
+        el = pafd->iobs.iobuf;
+/* Loop until we hit EOF */
+        for(count = 0; count < pafd->iobs.len_iobuf; count++) {
+		char c;
+		char * itemname;
+		int cmpr;
+		char ellipsis_string[1024];
+
+                c = pafd->iobs.iobuf[count];
+                if (c != '\n' && c != '\r')  
+                        continue;      
+                el = pafd->iobs.iobuf + count;
+                *el = '\0';            
+
+		itemname = bl;
+                if (!strcmp(itemname,".") || !strcmp(itemname,"..")) {
+                        bl = el+1;
+                        continue;
+                } 
+
+                fprintf (fp, "<DD>");  
+/* Spit out the anchor refrence, and continue on... */
+                fprintf (fp, "<A HREF=\"");
+                fprintf (fp, itemname);
+                fprintf (fp, "\">");
+                if (compact_string(itemname,ellipsis_string,20,2,3)) {
+                	strcpy(itemname,ellipsis_string);
+                } 
+		ct = HTFileName2ct(itemname, "text/html", &cmpr);
+		fprintf(fp, "<IMG SRC=\"");
+		if(cmpr == NO_ENCODING) {
+                        fprintf(fp, HTgeticonname(ct, "unknown") );
+                }
+		fprintf(fp, "\"> "); 
+                fprintf (fp, "%s", itemname);
+                fprintf (fp, "</A>");
+		fprintf (fp, "\n");   
+                bl = el+1; 
+        }                             
+        fprintf (fp, "</DL>\n");      
+        fprintf (fp, "</PRE>\n");     
+        fclose(fp);                   
+/* voir le format du fichier en fonction de son type */
+        ct = "text/html";             
+        pafd->mhs->content_type = strdup("text/html");
+        free(filename);               
+        pafd->iobs.len_iobuf = 0;       /* purge the buffer */
+        return;
 }
 
 /*
@@ -1276,11 +1386,8 @@ static int ParseFileSizeAndName(char *szBuffer, char *szFileName, char *szSize)
 }
 
 /*###### Remenber*/
-
-/* Info for cached connection;  right now we only keep one around for a while */  
-
+/* Info for cached connection;  right now we only keep one around for a while */
 /* ##########
-int fTimerStarted = 0;
 XtIntervalId timer;
 static struct ftpcache {
 		int control;
@@ -1299,136 +1406,5 @@ void HTFTPClearCache (void)
 	ftpcache.username[0] = 0;           
 }                                     
 
-/* Send File to the FTP site
- * Expects:    *name is a pointer to a string that consists of the FTP URL with the local filename
-             appended to the URL (delimited by an &. i.e. ftp://warez.mama.com/pub&/tmp/bubba.tgz
-             would send /tmp/bubba.tgz to warez.mama.com:/pub
-Returns     0 if successful, nonzero on error
-*/
-/*
-#define OUTBUFSIZE 4096  /* Size of the chunk of the file read */
-/*
-int HTFTPSend(char * name, caddr_t appd ) 
-{
-	int status;
-	FILE *f;
-	char *fname, *filename, *path;
-	char command[ LINE_LENGTH+1], outBuf[ OUTBUFSIZE+1];
-	long bLeft, bDone, bTotal, chunk;
-	int next_twirl = wWWParams.twirl_increment, intr = 0;
-	struct sockaddr_in soc_address;
-	int soc_addrlen = sizeof (soc_address);
-	struct stat sbuf;
- 
-	if (fTimerStarted) {
-		XtRemoveTimeOut (timer);
-		fTimerStarted = 0;
-	}
-/* The local filename is in the url, so pull it out 
- * i.e. ftp://warez.yomama.com/pub/31337&/u/warezboy/Mosaic0.1a.tar.gz
- * means to send /u/warezboy/Mosaic0.1a.tar.gz to warez.yomama.com/pub/31337
-*/
-/*	if ((fname = strchr(name, '&')) == NULL) { /* No local filename in this URL */
-/*		close_master_socket ();
-		return -1;		
-	}
-
-/*	*fname = '\0';	      /* Make the url normal */
-/*	fname++;	      /* Move to the filename */
-/*	filename = strrchr (fname, '/');
-	filename++;
-/*	if (!(*filename)) {		/* no filename */
-/*		close_master_socket ();
-		return -1;		
-	}
-/* *fname is the full path and filename, *filename is just the filename */	
-/* get size information */
-/*	if( stat (fname, &sbuf) < 0) {
-		close_master_socket ();
-		return -1;
-	}
-	bTotal = sbuf.st_size;
-	status = get_connection (name,appd);
-	if (status<0) {
-		close_master_socket ();
-		return status;
-	}
-	status = get_listen_socket ();
-	if (status<0) {
-		close_master_socket ();
-		return status;
-	}
-	status = response (port_command,appd);
-/*	if (status != 2) {	/* If the port command was not successful */
-/*		close_master_socket ();
-		return -3;
-	}
-/* Logged in, set up the port, now let's send the sucka */
-/* Set the type to image */
-/*	sprintf (command, "TYPE %s%c%c", "I", CR, LF);
-	status = response (command,appd);	
-	if (status != 2) {
-		close_master_socket ();
-		return -1;	
-	}
-/* Move to correct directory */
-/*	path = URLParse (name, "", PARSE_PATH+PARSE_PUNCTUATION);
-	if (!(*path))
-		StrAllocCopy (path, "/");
-	sprintf (command, "CWD %s%c%c", path, CR, LF);
-	status = response (command,appd);
-	if (status != 2) {
-		close_master_socket ();
-		return -1
-	}
-/* Send it */
-/*	sprintf (command, "STOR %s%c%c", filename, CR, LF);
-	status = response (command,appd);
-	if (status != 1) { /* Does not seem to understand the STOR command */
-/*		HTProgress ("FTP host does not understand STOR command.",appd);
-		close_master_socket ();
-		return -3;
-	}
-/* Ready to send the data now, server is primed and ready... here we go, go go */
-/*	status = accept (master_socket, (struct sockaddr *)&soc_address, &soc_addrlen);
-	if (status < 0) {
-		close_master_socket ();
-		return -2;
-	}
-	data_soc = status;
-/* Server has contacted us... send them data */
-/* Send the data! */
-/*	if( (f = fopen( fname, "r")) == NULL) {
-		close_master_socket ();	  
-		return -1;
-	}
-	bDone = 0;
-	bLeft = bTotal;
-	for (;;) {
-		intr = HTCheckActiveIcon(0,appd);
-		if (bLeft < OUTBUFSIZE) { /* Handle last block */
-/*			if ((chunk = fread (outBuf, 1, bLeft, f)) == 0) 
-				break;	
-			write (data_soc, outBuf, chunk);
-			bLeft -= chunk;
-			bDone += chunk;
-		} else if (bLeft <= 0) {  /* Exit */
-/*			break;		
-		} else {		    /* Handle a block of the data */
-/*			if ( (chunk = fread (outBuf, 1, OUTBUFSIZE, f)) == 0) 
-				break;
-			write (data_soc, outBuf, chunk);
-			bLeft -= chunk;
-			bDone += chunk;
-		}
-	}	
-/* Done, now clean up */
-/*	fclose (f);
-	close_master_socket();
-	close (data_soc);
-	timer = XtAppAddTimeOut(mMosaicAppContext, wWWParams.ftp_timeout_val*1000, close_it_up, NULL);
-	fTimerStarted = 1;
-	return 0;      
-}
 */
 

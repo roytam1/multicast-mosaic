@@ -4,7 +4,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "../libmc/mc_defs.h"
 #include "HTML.h"
 #include "../src/mosaic.h"
 #include "HTMLP.h"

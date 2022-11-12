@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #ifndef HTML_H
 #define HTML_H
@@ -76,6 +76,7 @@ typedef struct acall_rec {
 	char *text;
 	char *href;
 	char *title;
+	char * target;
 } WbAnchorCallbackData;
 
 typedef struct fcall_rec {
@@ -87,6 +88,53 @@ typedef struct fcall_rec {
 	char **attribute_names;
 	char **attribute_values;
 } WbFormCallbackData;
+
+/*****   
+* XmHTML defines the following callback reasons. This might produce strange
+* results once Motif decides to uses enum values above 16383.
+* Send us a mail at ripley@xs4all.nl if you get problems that are due to
+* these enumeration values.
+*****/
+enum{
+        XmCR_HTML_ANCHORTRACK = 16384,          /* XmNanchorTrackCallback       */
+        XmCR_HTML_DOCUMENT,                                     /* XmNdocumentCallback          */
+        XmCR_HTML_FORM,                                         /* XmNformCallback                      */
+        XmCR_HTML_FRAMEDONE,                                        /* XmNframeCallback                     */
+        XmCR_HTML_FRAMECREATE,                          /* XmNframeCallback                     */
+        XmCR_HTML_FRAMEDESTROY,                         /* XmNframeCallback                     */
+        XmCR_HTML_IMAGEMAPACTIVATE,                     /* XmNimagemapCallback          */
+        XmCR_HTML_IMAGEMAP,                                     /* XmNimagemapCallback          */
+        XmCR_HTML_LINK,                                         /* XmNlinkCallback                      */
+        XmCR_HTML_MODIFYING_TEXT_VALUE,         /* XmNmodifyVerifyCallback      */                      
+        XmCR_HTML_MOTIONTRACK,                          /* XmNmotionTrackCallback       */              
+        XmCR_HTML_PARSER,                                       /* XmNparserCallback            */
+        XmCR_HTML_EVENT,                                        /* XmNeventCallback                     */
+        XmCR_HTML_EVENTDESTROY,                         /* XmNeventCallback                     */
+        XmCR_HTML_OBJECT,                                       /* XmNobjectCallback            */
+        XmCR_HTML_OBJECTCREATE,                         /* XmNobjectCallback            */
+        XmCR_HTML_OBJECTDESTROY                         /* XmNobjectCallback            */
+};
+/*****
+* XmNframeCallback callback structure.
+* This callback is activated when one of the following events occurs:
+* 1. XmHTML wants to create a frame, reason = XmCR_HTML_FRAMECREATE
+*    can be veto'd by setting doit to False and supplying a HTML widget
+*    id yourself;
+* 2. XmHTML wants to destroy a frame, reason = XmCR_HTML_FRAMEDESTROY
+*    can be veto'd by setting doit to False (widget reuse).
+* 3. XmHTML has finished creating a frame, reason = XmCR_HTML_FRAME.
+*    This is the time to attach callbacks and set additional resources on the
+*    newly created XmHTMLWidget.
+*****/ 
+typedef struct _XmHTMLFrameCallbackStruct
+{ 
+        int reason;                     /* the reason the callback was called           */
+        XEvent *event;          /* event structure that triggered callback      */
+        String src;                     /* requested document                                           */
+        String name;            /* frame name                                                           */
+        Widget html;            /* XmHTML widget id                                                     */
+        Boolean doit;           /* destroy/create vetoing flag                          */
+} XmHTMLFrameCallbackStruct;
 
 typedef struct form_rec {
 	Widget hw;
@@ -397,6 +445,7 @@ struct ele_rec {
 #define	AT_NAME		"name"
 #define	AT_HREF		"href"
 #define	AT_TITLE	"title"
+#define AT_TARGET	"target"
 
 
 /*
@@ -415,33 +464,27 @@ struct ele_rec {
 #define	WbNactiveAnchorBG	"activeAnchorBG"
 #define	WbNimageBorders		"imageBorders"
 #define	WbNisIndex		"isIndex"
-#define	WbNitalicFont		"italicFont"
-#define	WbNboldFont		"boldFont"
-#define	WbNfixedFont		"fixedFont"
+#define WbNdefaultFont		"defaultFont"
+/*
 #define	WbNmeterFont		"meterFont"
 #define	WbNtoolbarFont		"toolbarFont"
-#define	WbNfixedboldFont	"fixedboldFont"
-#define	WbNfixeditalicFont	"fixeditalicFont"
 #define	WbNheader1Font		"header1Font"
 #define	WbNheader2Font		"header2Font"
 #define	WbNheader3Font		"header3Font"
 #define	WbNheader4Font		"header4Font"
 #define	WbNheader5Font		"header5Font"
 #define	WbNheader6Font		"header6Font"
-#define	WbNaddressFont		"addressFont"
-#define	WbNplainFont		"plainFont"
-#define	WbNplainboldFont	"plainboldFont"
-#define	WbNplainitalicFont	"plainitalicFont"
-#define	WbNlistingFont		"listingFont"
+#define WbNsupSubFont           "supSubFont"
+*/
 #define	WbNanchorCallback	"anchorCallback"
 #define	WbNsubmitFormCallback	"submitFormCallback"
+#define	WbNframeCallback	"frameCallback"
 #define	WbNpreviouslyVisitedTestFunction "previouslyVisitedTestFunction"
 #define WbNmaxColorsInImage	"maxColorsInImage"
 
 #define	WbNpercentVerticalSpace "percentVerticalSpace"
 #define WbNpointerMotionCallback "pointerMotionCallback"
 #define WbNview			 "view"
-#define WbNsupSubFont            "supSubFont"    /* amb */
 #define WbNbodyColors            "bodyColors"
 /*
  * New resource classes
@@ -458,24 +501,7 @@ struct ele_rec {
 #define	WbCActiveAnchorBG	"ActiveAnchorBG"
 #define	WbCImageBorders		"ImageBorders"
 #define	WbCIsIndex		"IsIndex"
-#define	WbCItalicFont		"ItalicFont"
-#define	WbCBoldFont		"BoldFont"
-#define	WbCFixedFont		"FixedFont"
-#define	WbCMeterFont		"MeterFont"
-#define	WbCToolbarFont		"ToolbarFont"
-#define	WbCFixedboldFont	"FixedboldFont"
-#define	WbCFixeditalicFont	"FixeditalicFont"
-#define	WbCHeader1Font		"Header1Font"
-#define	WbCHeader2Font		"Header2Font"
-#define	WbCHeader3Font		"Header3Font"
-#define	WbCHeader4Font		"Header4Font"
-#define	WbCHeader5Font		"Header5Font"
-#define	WbCHeader6Font		"Header6Font"
-#define	WbCAddressFont		"AddressFont"
-#define	WbCPlainFont		"PlainFont"
-#define	WbCPlainboldFont	"PlainboldFont"
-#define	WbCPlainitalicFont	"PlainitalicFont"
-#define	WbCListingFont		"ListingFont"
+#define WbCDefaultFont		"DefaultFont"
 #define	WbCPreviouslyVisitedTestFunction "PreviouslyVisitedTestFunction"
 #define WbCMaxColorsInImage	"MaxColorsInImage"
 
@@ -484,7 +510,6 @@ struct ele_rec {
 #define WbCVerticalScrollOnRight "VerticalScrollOnRight"
 #define WbCHorizontalScrollOnTop "HorizontalScrollOnTop"
 #define WbCView			 "View"
-#define WbCSupSubFont            "SupSubFont"  /* amb */
 #define WbCBodyColors            "BodyColors"
 #define WbCBodyImages            "BodyImages"
 

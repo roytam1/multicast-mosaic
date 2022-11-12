@@ -21,12 +21,8 @@
  *   transmission where time is converted to the required format.
  */
 
-/* RR SR as RFC
- * extension = URL_ID for this SSRC
- */
-
+/* RR SR as RFC */
 /* BYE as RFC */
-
 /* No APP packet */
 /* SDES as RFC user@host (CNAME) */
 
@@ -53,88 +49,6 @@
  *   CC - CSRC count (4 bits).
  *   M - marker (1 bit, data block boundary). 1 -> end, 0 -> more.
  *   PT - payload type (7 bits).
- *
- * RTP packet format for mMosaic:
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |V=2|P|X|  CC   |M|     PT      | sequence number=lurlid[15-0]  |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                           timestamp                           |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * | SSRC          |hurlid[23-16]  |    pid                        |
- * +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
- * |    code       |     size of eo = seo                          |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |    nombre_eo                  |      num_eo                   |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |    nombre_packet              |      num_packet               |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                  data       ....                              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *
- * Meanings:
- *   V - version (2 bits).  	= 2
- *   P - padding (1 bit).	= 0
- *   X - extension (1 bit).	= 0
- *   CC - CSRC count (4 bits).	= 0
- *   M - marker (1 bit, data block boundary). 1 -> end, 0 -> more.	= 0
- *   PT - payload type (7 bits). = RTP_PT_WEB    (48)
- *   sequence number		= url_id[15-0]
- *   timestamp			= timestamp[31-10] second [9-0] 1/1024 sec
- *				  timestamp is near millisecond
- *   SSRC			= 0x01
- *   hurlid			= url_id[23-16]
- *   pid			= 16bits process pid 
- * NO CSRC but in place:
- *   code			= 8bits code
- *   seo			= size of this eo in byte (max 16Mb)
- *   nombre_eo			= nombre de eo pour cet urlid
- *   num_eo			= numero du eo
- *   nombre_packet		= nombre_packet pour cette eo
- *   num_packet			= numero du packet
- *
- * OLD RTP packet format for mMosaic (obsolete):
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |V=2|P|X|  CC   |M|     PT      | sequence number=hurlid[23-8]  |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                           timestamp                           |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * | synchronization source (SSRC)     identifier IPv4 Addr        |
- * +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
- * |    pid                        | code          | lurlid        |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |    nombre_eo                  |      num_eo                   |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |    nombre_packet              |      num_packet               |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                 size of eo = seo                              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                  data       ....                              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *
- * Meanings:
- *   V - version (2 bits).  	= 2
- *   P - padding (1 bit).	= 0
- *   X - extension (1 bit).	= 0
- *   CC - CSRC count (4 bits).	= 0
- *   M - marker (1 bit, data block boundary). 1 -> end, 0 -> more.	= 0
- *   PT - payload type (7 bits). = RTP_PT_WEB    (48)
- *   hurlid[23-8]		= 23-8 bits of urlid
- *   timestamp			= timestamp[31-10] second [9-0] 1/1024 sec
- *				  timestamp is near millisecond
- *   SSRC			= IPv4 Addr
- * NO CSRC but in place:
- *   pid			= 16bits pid
- *   code			= 8bits code
- *   lurlid			= 8 last bit of urlid
- *   nombre_eo			= nombre de eo pour cet urlid
- *   num_eo			= numero du eo
- *   nombre_packet		= nombre_packet pour cette eo
- *   num_packet			= numero du packet
- *   seo			= size of this eo in byte
  */
 
 
@@ -243,7 +157,8 @@ struct rtcp_rr {
 #define RTCP_PT_BYE	203	/* end of participation */
 #define RTCP_PT_APP	204	/* application specific functions */
 
-#define RTCP_PT_RMP	208	/* Reliable Multicast Protocol */
+#define RTCP_PT_STATR	207	/* State report */
+#define RTCP_PT_REPAIR	208	/* Repair a data */
 
 
 #define		RTCP_SDES_MIN	0
@@ -341,161 +256,6 @@ struct bvchdr {
 };
 
 
-/*                                    
- * LRMP as an extension to RTCP.      
- * New packet types:                  
- *     o ECHO to measure the round-trip time.
- *     o ECHO ACK.                    
- *     o NACK.                        
- *     o NACK_ALL.                        
- *     o SYNC to inform the current seqno. 
- *     o SYNC ERROR to report any reception failure.
- *                                    
- * NACK packet format:                
- *                                    
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |V=2|P| ST=NACK | PT=RTCP_LRMP  |           length              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                              SSRC                             |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |        pid                    |     unused                    |
- * |===============================================================|
- * |                        first sender SSRC                      |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |              pid              |              url_id           |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |              url_id           |              num_eo           |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |              FSL              |              BLP              |
- * |===============================================================|
- * |                         (next SSRC ...)                       |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * FSL: first seqno lost for this num_eo. (First packet number for this num_eo) 
- * BLP: bitmask of the following lost packets.
- *
- * NACK_ALL packet format:                
- *                                    
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |V=2|P|ST=NACK_A| PT=RTCP_LRMP  |           length              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                              SSRC                             |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |        pid                    |     unused                    |
- * |===============================================================|
- * |                        first sender SSRC                      |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |              pid              |              url_id           |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |              url_id           |           num_eo              |
- * |===============================================================|
- * |                         (next SSRC ...)                       |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *
- * Il manque tout l'objet num_eo
- *                                    
- * ECHO packet format:                
- * 
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |V=2|P| ST=ECHO | PT=RTCP_LRMP  |           length              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                             SSRC                              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |        pid                    |     unused                    |
- * +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
- * |                     first destination SSRC                    |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |        pid                    |     unused                    |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                            timestamp                          |
- * +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
- * |                         (next SSRC ...)                       |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * timestamp - middle  32 bits of NTP time. 
- *                                    
- * ECHO_ACK packet format:            
- *                                    
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |V=2|P|ST=ECHO_A| PT=RTCP_LRMP  |           length              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                             SSRC                              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |        pid                    |     unused                    |
- * +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
- * |                   first SSRC of ECHO sender                   |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |        pid                    |     unused                    |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                    timestamp of ECHO packet                   |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                    delay since received ECHO packet           |
- * +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
- * |                         (next SSRC ...)                       |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * delay is in units of fraction of 1/65536 seconds.
- *                                    
- * SYNC packet format:                
- *                                    
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |V=2|P| ST=SYNC | PT=RTCP_LRMP  |           length              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                             SSRC                              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                    Next Seqno to be sent                      |
- * +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
- *                                    
- * Only low 16 bits of seqno are meaningful.
- *  o sources may have already or never sent data.
- *  o for a source sent data, this seqno tells the next seqno to be used
- *    in sending. If a receiver has not received till this seqno, loss
- *    needs to be repaired.           
- *  o for a source never send data, it tells the starting seqno.
- *                                    
- * SYNC_ERROR packet format:          
- *                                    
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |V=2|P|ST=SYNC_E| PT=RTCP_LRMP  |           length              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                             SSRC                              |
- * |===============================================================|
- * |                        first sender SSRC                      |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * | CA  |        NL               |              FSL              |
- * |===============================================================|
- * |                         (next SSRC ...)                       |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * Unrecoverable sequence error.      
- *   CA: cause, 3 bits.               
- *   NL: number of lost packets, 13 bits.
- *   FSL: first seqno lost, 16 bits.  
- */                                   
-/**                                   
- * implements the Light-weight Reliable Multicast Protocol.
- */ 
-#define LRMP_ECHO  		0
-#define LRMP_ECHO_ACK  		1
-#define LRMP_SYNC  		2
-#define LRMP_NACK  		3
-#define LRMP_SYNC_ERROR		4
-#define LRMP_NACK_ALL		5
-#define RTP_HEADER_LEN 	 	12
-#define RTP_DATA_SIZE  		(RTP_MTU - RTP_HEADER_LEN)
-
-
-#define RTP_CONST_HPT_WEB (0x8030)	/* PT=48 */
-
-
 #endif
 /*-
  * Copyright (c) 1993-1994 The Regents of the University of California.
@@ -534,51 +294,3 @@ struct bvchdr {
 /* retified by Gilles Dauphin for mMosaic 21 Jan 1997 */
 /* inspired de weboard from inria ((Tie.Liao@inria.fr) */
 /* RTP Control Protocol version 2 (RFC 1889). */
-
-/*********************************************************************
- * This Software is copyright INRIA. 1997.
- *  
- * INRIA holds all the ownership rights on the Software. The scientific
- * community is asked to use the SOFTWARE in order to test and evaluate
- * it.
- *      
- * INRIA freely grants the right to use the Software. Any use or
- * reproduction of this Software to obtain profit or for commercial ends
- * being subject to obtaining the prior express authorization of INRIA.
- *   
- * INRIA authorizes any reproduction of this Software
- *  
- *  - in limits defined in clauses 9 and 10 of the Berne agreement for
- * the protection of literary and artistic works respectively specify in
- * their paragraphs 2 and 3 authorizing only the reproduction and quoting
- * of works on the condition that :
- *      
- *  - "this reproduction does not adversely affect the normal
- * exploitation of the work or cause any unjustified prejudice to the
- * legitimate interests of the author".
- *      
- *  - that the quotations given by way of illustration and/or tuition
- * conform to the proper uses and that it mentions the source and name of
- * the author if this name features in the source",
- *      
- *  - under the condition that this file is included with any
- * reproduction.
- *  
- * Any commercial use made without obtaining the prior express agreement
- * of INRIA would therefore constitute a fraudulent imitation.
- *   
- * The Software beeing currently developed, INRIA is assuming no
- * liability, and should not be responsible, in any manner or any case,
- * for any direct or indirect dammages sustained by the user.
- *                                    
- * Furthermore, INRIA grants for free the right to adapt, modify or integrate
- * the SOFTWARE in an other programme, provided that any derived work
- * should be distributed in the same conditions as the SOFTWARE.
- *********************************************************************
- */                                   
-/*                                    
- * LRMP.java - Light-weight Reliable Multicast Protocol.
- * Author:  Tie Liao (Tie.Liao@inria.fr). 
- * Created: 17 September 1996.        
- * Updated: no.                       
- */      

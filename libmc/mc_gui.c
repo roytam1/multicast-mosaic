@@ -8,13 +8,14 @@
 
 #include "../libnut/mipcf.h"
 #include "../src/mosaic.h"
-#include "../src/mime.h"
+#include "../src/gui-documents.h"
+#include "../src/gui.h"
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLparse.h"
 
 
-#include "mc_obj.h"
-#include "mc_session.h"
+#include "mc_mosaic.h"
+#include "../src/navigate.h"
 #include "mc_gui.h"
  
 static Widget mc_member_list_top_win; /* toplevel widget */
@@ -99,13 +100,18 @@ void PopUpOrDownMMosaicUser(Widget w, XtPointer clid, XtPointer calld)
 	if (!s->mute) {
 /*		sinon destruction de la fenetre pour cette source */
 		s->mute = True;
+		s->win->first_node = NULL; /* don't free mlist */
+		mo_delete_window(s->win);
+		s->win = NULL;
+		return;
 	}
 	/* Creation d'une fenetre pour cette source */
 	win = mo_make_window(NULL, MC_MO_TYPE_RCV_ALL);
 	s->mute = False;
 	s->win = win;
 	/* affichage de se qu'on connait de cette source */
-/*	McDisplaySource(s); /* si s->is_sender = True */
+	if(s->last_valid_url_id != -1)
+		McDoWindowText(s, s->last_valid_url_id);
 	return;
 }
 
@@ -156,22 +162,28 @@ GuiEntry * CreateMemberGuiEntry(Source *s)
 
 void McDoWindowText(Source *s, unsigned int url_id)
 {
+	DocEntry * doce;
 	struct mark_up *mlist;
 	int docid = 0;
 	char * goto_anchor = NULL;
 	char * aurl_wa = NULL;
 	char * aurl = NULL;
 	char * base_url = NULL;
+	char * base_target = NULL;
 	char * title = NULL;
 
-/*	mlist = HTMLParse(s->doc[url_id]->o_tab[0]->d_part); */
-	HTMLSetHTMLmark (s->win->scrolled_win, s->doc[url_id]->mlist, docid=0, 
-		/*pafd->goto_anchor*/ NULL,
-                /* pafd->aurl*/ NULL);
+	doce = s->doc[url_id];
+	aurl_wa = doce->o_tab[0]->aurl_wa;
+	aurl = aurl_wa;
+	title = strdup(aurl_wa);
+	
+	HTMLSetHTMLmark (s->win->scrolled_win, doce->mlist, docid=0, 
+		/*pafd->goto_anchor*/ NULL, aurl);
 	XFlush(XtDisplay(s->win->scrolled_win));
 	MMUpdNavigationOnNewURL(s->win, aurl_wa, aurl, goto_anchor, base_url,
-		title, s->doc[url_id]->o_tab[0]->d_part,
-		s->doc[url_id]->o_tab[0]->h_part, docid,
-		s->doc[url_id]->mlist);
+		base_target, title, doce->o_tab[0]->d_part,
+		doce->o_tab[0]->mhs, docid,
+		doce->mlist);
 	mo_set_win_headers(s->win, aurl_wa);
+	s->last_valid_url_id = url_id;
 }

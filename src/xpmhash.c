@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 #include <stdlib.h>
 #include <string.h>
 /*
@@ -27,24 +27,20 @@
  * whether in an action of contract, negligence or other tortious
  * action, arising out of or in connection with the use 
  * or performance of this software.
- *
  */
 /*****************************************************************************\
-*                                                                             *
 *  XPM library                                                                *
 *                                                                             *
 *  Developed by Arnaud Le Hors                                                *
 *  this originaly comes from Colas Nahaboo as a part of Wool                  *
-*                                                                             *
-\*****************************************************************************/
+*****************************************************************************/
 
 #include "xpm.h"
 
 LFUNC(AtomMake, xpmHashAtom, (char *name, void *data));
 LFUNC(HashTableGrows, int, (xpmHashTable * table));
 
-static xpmHashAtom
-AtomMake(				/* makes an atom */
+static xpmHashAtom AtomMake(		/* makes an atom */
     char *name,				/* WARNING: is just pointed to */
     void *data)
 {
@@ -56,10 +52,6 @@ AtomMake(				/* makes an atom */
     }
     return object;
 }
-
-/************************\
-*  hash table routines 	 *
-\************************/
 
 /*
  * Hash function definition:
@@ -97,13 +89,11 @@ AtomMake(				/* makes an atom */
  *
  * NAME --hash--> ATOM |--name--> "foo"
  *		       |--data--> any value which has to be stored
- *
  */
 
 /*
  * xpmHashSlot gives the slot (pointer to xpmHashAtom) of a name
  * (slot points to NULL if it is not defined)
- *
  */
 
 xpmHashAtom * _MMxpmHashSlot( xpmHashTable *table, char *s)
@@ -151,7 +141,6 @@ static int HashTableGrows( xpmHashTable *table)
     for (i = 0, p = t; i < oldSize; i++, p++)
 	if (*p) {
 	    xpmHashAtom *ps = _MMxpmHashSlot(table, (*p)->name);
-
 	    *ps = *p;
 	}
     _MMXpmFree(t);
@@ -184,9 +173,7 @@ int _MMxpmHashIntern( xpmHashTable *table, char *tag, void *data)
     return (XpmSuccess);
 }
 
-/*
- *  must be called before allocating any atom
- */
+/*  must be called before allocating any atom */
 
 int _MMxpmHashTableInit( xpmHashTable *table)
 {
@@ -205,9 +192,7 @@ int _MMxpmHashTableInit( xpmHashTable *table)
     return (XpmSuccess);
 }
 
-/*
- *   frees a hashtable and all the stored atoms
- */
+/* frees a hashtable and all the stored atoms */
 
 void _MMxpmHashTableFree( xpmHashTable *table)
 {

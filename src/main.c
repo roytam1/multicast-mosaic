@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include <signal.h>
 #include <pwd.h>
@@ -14,7 +14,6 @@
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
 #include "newsrc.h"
-#include "main.h"
 #include "gui.h"
 #include "child.h"
 #include "hotlist.h"

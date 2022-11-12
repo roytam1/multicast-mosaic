@@ -17,7 +17,6 @@
 
 #include "HTMLmiscdefs.h"
 #include "HTMLparse.h"
-#include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
 #include "HTML.h"
@@ -494,8 +493,8 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			caption_start_mark = sm;
 			break;
 		}
-		if((sm->type == M_TABLE_ROW || sm->type == M_TABLE_DATA ||
-		    sm->type == M_TABLE_HEADER) && (!sm->is_end)){
+		if((sm->type == M_TR || sm->type == M_TD ||
+		    sm->type == M_TH) && (!sm->is_end)){
 			tr_found = 1;
 			tr_start_mark = sm;
 			break;
@@ -536,7 +535,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	if ( ! tr_found ){
 		tr_start_mark = caption_end_mark;
 		while(tr_start_mark){
-			if((tr_start_mark->type == M_TABLE_ROW) &&
+			if((tr_start_mark->type == M_TR) &&
 			    !(tr_start_mark->is_end) ){
 				tr_found = 1;
 				break;
@@ -564,7 +563,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 
 	while (sm){
 /* Traitement de <TD> ou <TH> */
-		if( ((sm->type == M_TABLE_DATA) || (sm->type == M_TABLE_HEADER))&&
+		if( ((sm->type == M_TD) || (sm->type == M_TH))&&
 		    (!sm->is_end) ) { 		/* <TH> or <TD> */
 			if (!tr_start_found){
 				printf("A <TD> <TH> is outside a <TR>\n");
@@ -579,12 +578,12 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 					td_start_mark,td_end_mark,
 					colspan,rowspan);
 			}
-			if(sm->type == M_TABLE_DATA){
-				m_cell_type = M_TABLE_DATA;
-				mt_cell_type = MT_TABLE_DATA;
+			if(sm->type == M_TD){
+				m_cell_type = M_TD;
+				mt_cell_type = MT_TD;
 			} else {
-				m_cell_type = M_TABLE_HEADER;
-				mt_cell_type = MT_TABLE_HEADER;
+				m_cell_type = M_TH;
+				mt_cell_type = MT_TH;
 			}
 			td_start_found = 1;
 			td_start_mark = sm;
@@ -608,7 +607,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			sm = sm->next;
 			continue;
 		}				/* <TH> or <TD> */
-		if( ((sm->type == M_TABLE_DATA) || (sm->type == M_TABLE_HEADER))&&
+		if( ((sm->type == M_TD) || (sm->type == M_TH))&&
 		    (sm->is_end) ) { 		/* </TH> or </TD> */
 			if (!tr_start_found){
                                 printf("A <TD> <TH> is outside a <TR>\n");
@@ -635,7 +634,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 /* jusqu'a fin </TD> ou </TH> */
 
 /* Traitement <TR> */
-		if ((sm->type == M_TABLE_ROW) && (!sm->is_end)){
+		if ((sm->type == M_TR) && (!sm->is_end)){
 			if (td_start_found){
 				td_count++;
 				td_end_mark = psm;
@@ -662,7 +661,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			sm = sm->next;
 			continue;
 		}
-		if ((sm->type == M_TABLE_ROW) && (sm->is_end)){
+		if ((sm->type == M_TR) && (sm->is_end)){
 			if (!tr_start_found){
 				printf("A </TR> without <TR>\n");
 				psm = sm;
@@ -810,8 +809,10 @@ void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_
 		for(j=0; j<t->num_col; ){ /* prendre chaque element */
 			fin_pcc = deb_pcc;
 			cell = line[j];		/* un element */
-			if(cell.cell_type == M_TABLE_HEADER){
+			if(cell.cell_type == M_TH){
+/* ########### faire un pushfont ...
 				fin_pcc.cur_font = hw->html.bold_font;
+########## faire un popfont ... mais ou? ### */
 			}
 			FormatChunk(hw,cell.td_start,cell.td_end,&fin_pcc,0);
 			for(k = 0; k < cell.colspan; k++){
@@ -1062,8 +1063,8 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 			case M_TD_CELL_FREE:
 				cell.x = cell_offset + line_pcc.eoffsetx;
 				break;
-			case M_TABLE_DATA:
-			case M_TABLE_HEADER:
+			case M_TD:
+			case M_TH:
 				for(k=1; k< cell.colspan;k++){
 					w_in_cell = w_in_cell + t->col_w[j+k];
 				}
@@ -1077,8 +1078,10 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 					     work_pcc.left_margin;
 				work_pcc.y = line_pcc.y + t->cellPadding + 1;
 				work_pcc.have_space_after = 0;
-				if(cell.cell_type == M_TABLE_HEADER){
+				if(cell.cell_type == M_TH){
+/* ########### faire un push font 
 					work_pcc.cur_font = hw->html.bold_font;
+########## faire un popfont ... mais ou? ### */
 /* comment faire pour centrer les titres ? */
 				}
 				work_pcc.cur_line_height = work_pcc.cur_font->ascent + line_pcc.cur_font->descent;

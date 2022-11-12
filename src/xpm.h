@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 /*
  * The following XPM header file is based on the libXpm code, which I
  * am free to use as long as I include the following copyright:

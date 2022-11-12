@@ -16,14 +16,10 @@
 
 #include "../libnut/mipcf.h"
 #include "../src/mosaic.h"
-#include "../src/mime.h"
 #include "../src/gui-documents.h"
 
+#include "mc_mosaic.h"
 #include "mc_main.h"
-#include "mc_obj.h"
-#include "mc_defs.h"
-#include "mc_io.h"
-#include "mc_session.h"
 #include "mc_gui.h"
 
 mo_window * 	mc_send_win;		/* if != NULL we are sending... */
@@ -40,21 +36,22 @@ int		uc_fd_rtcp_w;
 int		uc_fd_rtcp_r;
 
 			/* address and port . Net byte order*/
-IPAddr		local_ip_addr;
-char		*local_ip_addr_string;
+IPAddr		mc_local_ip_addr;
+char		*mc_local_ip_addr_string;
+char		mc_local_cname[257];
 
 IPAddr		mc_rtp_addr_ip_group;
 unsigned short	mc_rtp_addr_port;
 IPAddr		mc_rtcp_addr_ip_group;
 unsigned short	mc_rtcp_addr_port;
 IPAddr		uc_rtp_addr_ip;
-unsigned short	uc_rtp_addr_port;
+unsigned short	uc_rtp_addr_port = 0;
 IPAddr		uc_rtcp_addr_ip;
-unsigned short	uc_rtcp_addr_port;
+unsigned short	uc_rtcp_addr_port = 0;
 
 			/* delay timer */
-unsigned long uc_rtcp_w_sdes_time = 10000; /* in millisec */
-unsigned long mc_rtcp_w_sdes_time = 2000; /* in millisec */
+unsigned long uc_rtcp_w_sdes_time = 20000; /* in millisec */
+unsigned long mc_rtcp_w_time = 4000; /* in millisec */
 
 			/* Events */
 XtInputId		mc_rtp_r_input_id;
@@ -63,7 +60,11 @@ XtInputId		uc_rtp_r_input_id;
 XtIntervalId		uc_rtcp_w_sdes_timer_id;
 
 XtInputId		uc_rtcp_r_input_id;
-XtIntervalId		mc_rtcp_w_sdes_timer_id;
+XtIntervalId		mc_rtcp_w_timer_id;
+
+XtIntervalId		mc_write_rtp_data_timer_id;
+
+u_int32_t		rtp_init_time;
 
 		/* callbacks */
 static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id);
@@ -71,14 +72,10 @@ static void UcRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id);
 static void McRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id);
 static void UcRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id);
 
-static void UcRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
-{ abort();}
-static void UcRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
-{ abort();}
-
 		/* Actions */
 static void McSendNewDoc(char *fname, char *aurl_wa, MimeHeaderStruct *mhs);
 static void McSendNewObject(char *fname, char *aurl_wa, MimeHeaderStruct *mhs);
+static void McSendNewErrorObject(char *aurl, int status_code);
 
 
 DocEntry *mc_local_docs = NULL;
@@ -87,6 +84,9 @@ int mc_len_alias = 0;
 
 int mc_local_url_id = -1;
 int mc_local_object_id = -1;
+int mc_state_report_url_id = -1; 
+int mc_state_report_o_id = -1; 
+int mc_state_report_len = 0;
 
 /*
 #include <stdlib.h>
@@ -132,6 +132,7 @@ void McInit(mo_window * win)
 	unsigned short port;
 	struct in_addr ina;
 
+	rtp_init_time = ntptime();
         mc_multicast_enable = 0;             
 	if (mMosaicAppData.mc_dest == NULL)
 		return;
@@ -189,6 +190,7 @@ void McInit(mo_window * win)
 	mc_len_alias = strlen(mMosaicAppData.mc_alias_name);
 	win->mc_callme_on_new_doc = NULL;
 	win->mc_callme_on_new_object = NULL;
+	win->mc_callme_on_error_object = NULL;
 
 /* open useable socket. There are 8 sockets we use:
  * - mc_fd_rtp_w:	(Multicast)
@@ -244,19 +246,20 @@ void McInit(mo_window * win)
 	uc_fd_rtp_w = -1;
 	uc_fd_rtcp_r = -1;
 
-	local_ip_addr = GetLocalIpAddr();
-	ina.S_un.S_addr = local_ip_addr;
-	local_ip_addr_string = strdup(inet_ntoa(ina));
+	mc_local_ip_addr = GetLocalIpAddr();
+	ina.S_un.S_addr = mc_local_ip_addr;
+	mc_local_ip_addr_string = strdup(inet_ntoa(ina));
 	mc_fd_rtp_r = McOpenRead(mc_rtp_addr_ip_group,mc_rtp_addr_port,
 		mMosaicAppData.mc_ttl);
 	mc_rtcp_addr_ip_group = mc_rtp_addr_ip_group;
 	mc_fd_rtcp_r = McOpenRead(mc_rtcp_addr_ip_group,mc_rtcp_addr_port,
 		mMosaicAppData.mc_ttl);
 
-	uc_rtp_addr_ip = local_ip_addr;		/* net byte order */
+	uc_rtp_addr_ip = mc_local_ip_addr;		/* net byte order */
 	uc_fd_rtp_r = UcOpenRead(uc_rtp_addr_ip, &uc_rtp_addr_port);
 /* open and bind */
-	uc_rtcp_addr_ip = local_ip_addr;
+	uc_rtcp_addr_ip = mc_local_ip_addr;
+	uc_rtcp_addr_port = htons(ntohs(uc_rtp_addr_port+1));
 	uc_fd_rtcp_r = UcOpenRead(uc_rtcp_addr_ip, &uc_rtcp_addr_port);
 	uc_fd_rtcp_w = uc_fd_rtcp_r; /* we dont know yet where to send */
 				/* we will know when a sender send cname */
@@ -264,7 +267,9 @@ void McInit(mo_window * win)
 	uc_fd_rtcp_r = -1;
 
 /* choose an SSRC */
-	McNewSrcid(local_ip_addr);
+	mc_local_srcid = McNewSrcid(mc_local_ip_addr);
+	sprintf(mc_local_cname,"%s@%s/%d/%d",mMosaicAppData.author_name,
+		mc_local_ip_addr_string,ntohs(uc_rtp_addr_port),rtp_init_time);
 
 /* create the gui */
 	McCreateMemberlist();
@@ -292,6 +297,7 @@ void McStartSender(mo_window * main_win)
 /* for collecting data */
 	main_win->mc_callme_on_new_doc = McSendNewDoc;
 	main_win->mc_callme_on_new_object = McSendNewObject;
+	main_win->mc_callme_on_error_object = McSendNewErrorObject;
 	mc_local_url_id = -1;
 	mc_local_docs = NULL;	/* table of doc to send */
 /* initialise sender part */
@@ -299,9 +305,9 @@ void McStartSender(mo_window * main_win)
 		mMosaicAppData.mc_ttl);
 	mc_fd_rtcp_w =McOpenWrite(mc_rtcp_addr_ip_group, mc_rtcp_addr_port,
 		mMosaicAppData.mc_ttl);
-/* timer for SDES and SR */
-	mc_rtcp_w_sdes_timer_id = XtAppAddTimeOut(mMosaicAppContext,
-		mc_rtcp_w_sdes_time, McRtcpWriteSdesCb, NULL);
+/* timer for writing in mc_rtcp socket: SDES and SR... */
+	mc_rtcp_w_timer_id = XtAppAddTimeOut(mMosaicAppContext,
+		mc_rtcp_w_time, McRtcpWriteCb, NULL);
 	uc_fd_rtp_w = uc_fd_rtp_r;
 	uc_fd_rtcp_r = uc_fd_rtcp_w;
 
@@ -324,90 +330,90 @@ void McStartSender(mo_window * main_win)
 /* copy and cache data for multicast. re-arrange data */
 static void McSendNewDoc(char *fname, char *aurl_wa, MimeHeaderStruct *mhs)
 {
+	int rearm_timer = mc_rtp_packets_list ? False : True;
+
 /* a new doc or reloading */
 	mc_local_url_id++;
 	mc_local_object_id = 0;
 	McCreateDocEntry(fname, aurl_wa, mhs);
 	McDocToPacket(mc_local_url_id);	/* start to send this doc */
 				/* remember to re-schedule other timer */
-	mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
-                                mc_write_rtp_data_next_time, McSendRtpDataTimeOutCb,
-                                NULL);
+	if (rearm_timer == True){
+		mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
+                                mc_write_rtp_data_next_time,
+				McSendRtpDataTimeOutCb, NULL);
+	}
 }
 
 
-static void McSendNewObject(char *fname, char *aurl_wa, MimeHeaderStruct *mhs)
+static void McSendNewObject(char *fname, char *aurl, MimeHeaderStruct *mhs)
 {
-	abort();
-/*	if( IsObjStillInCurrentDoc(aurl) ) { /* we still send it in same doc */
-/*		return;			/* don't resend */
-/*	}
+	int rearm_timer = mc_rtp_packets_list ? False : True;
+
 /* a new object */
-/*
 	mc_local_object_id++;
 	McCreateObjectEntry(fname, aurl, mhs);
-/*	if ( obj_entry = IsObjStillSent(aurl,mhs) ) { /* we still sent this obj*/
-/*			/* just reschedule SR. Un client est capable de
-			 * determine si cette objet est dans son cache ou pas */
-			/* send the header to help the client because */
-			/* maybe we reload and modify this object */
-/*		McScheduleSendHeaderOject(mc_local_object_id);
-		return;
-	}
-	McScheduleSendOject(mc_local_object_id);
-*/
-}
-/*
-	mc_send_hear_beat_time_out_id = XtAppAddTimeOut(
-                                mMosaicAppContext,
-                                MC_SEND_HEAR_BEAT_TIME_OUT,
-                                McSendHearBeatTimeOutCb,
-                                NULL);
-	mc_send_goto_id_time_out_id = XtAppAddTimeOut(
-                                mMosaicAppContext,
-                                MC_SEND_GOTO_ID_TIME_OUT,
-                                McSendGotoIdTimeOutCb,
-                                NULL);
-
-/*####### case of navigation ########### */
-/* navigation in history never modify a doc or object... */
-/* juste update the 'RTPtimestamp' in SR. Back to the futur... */
-/*McSendOldDoc(...)
-{
-	DocEntry *doc_entry = NULL;
-
-	doc_entry = IsDocStillSend(aurl, mhs);
-	if ( doc_entry && ! reloading ) { /* dont resend */
-/*		McRescheduleSR(doc_entry);
-		return;
+	McObjectToPacket(mc_local_url_id, mc_local_object_id);
+	if (rearm_timer == True){
+		mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
+                                mc_write_rtp_data_next_time,
+				McSendRtpDataTimeOutCb, NULL);
 	}
 }
 
-void McStopSendHyperText(mo_window * win)
+static void McSendNewErrorObject(char *aurl, int status_code)
 {
-	mc_send_win = NULL;
-/* initialise sender part */
-/*	mc_fd_rtp_w = ???;
-	mc_fd_rtcp_w = ???;
-	uc_fd_rtp_w = ???;
-	uc_fd_rtcp_r = ???;
-####
-	mc_data_send_data_struct.id = 0;
-	mc_local_url_id++;
-	mc_data_send_data_struct.text = NULL;
-	mc_data_send_data_struct.neo = 0;
-	mc_data_send_data_struct.is_send = 0;
-	mc_data_send_data_struct.win = NULL;
-	XtRemoveTimeOut(mc_send_hear_beat_time_out_id);
-	XtRemoveTimeOut(mc_send_goto_id_time_out_id);
+	int rearm_timer = mc_rtp_packets_list ? False : True;
+
+/* a new oject as an error (empty oject) */
+	mc_local_object_id++;
+	McCreateErrorEntry(aurl, status_code);
+	McObjectToPacket(mc_local_url_id, mc_local_object_id);
+	if (rearm_timer == True){
+		mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
+                                mc_write_rtp_data_next_time,
+				McSendRtpDataTimeOutCb, NULL);
+	}
 }
-*/
 
 void RegisterSender(Source * s, RtpPacket *rs)
 {                       
         fprintf(stderr, "RegisterSender\n");
                         
         s->is_sender = True;
+}
+
+static void UcRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
+{
+        int len;
+	int status;
+        unsigned char * buf;
+	IPAddr addr_from;
+	unsigned short port_from;
+	RtpPacket rs;
+	Source * s;
+
+	fprintf(stderr,"UcRtpReadCb\n");
+        len = UcRead(uc_fd_rtp_r, &buf, &addr_from, &port_from);
+	status = DewrapRtpData(buf, len, &rs);
+        if (status <= 0 ) {
+		fprintf(stderr, "error in RtpData Packet\n");
+                return;
+	}
+
+	s = uc_rtp_demux( rs.ssrc, addr_from, port_from);
+
+/* do nothing until the source is well know */
+/* and not in collision */
+	if ( s == NULL)
+		return;
+	if (s->is_sender == False) {
+		RegisterSender(s, &rs);
+	}
+
+/* Show the source data in the window */
+	McUpdateDataSource(s, rs.is_end, rs.seqn=0, rs.rtp_ts, rs.ssrc,
+		rs.url_id, rs.o_id, rs.offset, rs.d, rs.d_len);
 }
 
 static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
@@ -426,7 +432,7 @@ static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
                 return;
 	}
 
-	s = demux( rs.ssrc, addr_from, rs.seqn);
+	s = mc_rtp_demux( rs.ssrc, addr_from);
 
 /* do nothing until the source is well know */
 /* and not in collision */
@@ -441,6 +447,22 @@ static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 		rs.url_id, rs.o_id, rs.offset, rs.d, rs.d_len);
 }
  
+static void UcRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
+{
+        int len;
+	int status;
+        unsigned char * buf;
+	IPAddr addr_from;
+	unsigned short port_from;
+	Source * s;
+
+	fprintf(stderr,"UcRtcpReadCb\n");
+        len = UcRead(uc_fd_rtcp_r, &buf, &addr_from, &port_from);
+	if (len <= 0 )
+		return;
+	UcProcessRtcpData(buf, len, addr_from, port_from);
+}
+
 static void McRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 {
         int len;
@@ -452,77 +474,10 @@ static void McRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
         len = McRead(mc_fd_rtcp_r, &buf, &addr_from);
 	if (len <= 0 )
 		return;
-	ProcessRtcpData(buf, len, addr_from);
+	McProcessRtcpData(buf, len, addr_from);
 }
 
 /* ###########
-void McSendHearBeatTimeOutCb(XtPointer clid, XtIntervalId * id)
-{
-	unsigned int code;
-	unsigned long gmt_send_time;
-	unsigned int np;
-
-#ifdef MDEBUG
-	printf("in McSendHearBeatTimeOutCb \n");
-#endif
-	mc_send_hear_beat_time_out_id = XtAppAddTimeOut(
-                                mMosaicAppContext,
-                                MC_SEND_HEAR_BEAT_TIME_OUT,
-                                McSendHearBeatTimeOutCb,
-                                NULL);
-	if (mc_data_send_data_struct.is_send == 0)
-		return;	/* is it send Once ? No*/
-/*
-	code = MCR_HEARBEAT;
-	gmt_send_time = McDate();
-
-	np = 0;
-}
-
-void McSendAPacketCB(XtPointer clid, XtIntervalId * id)
-{
-#ifdef MDEBUG
-	printf(" in McSendAPacketCB\n");
-#endif
-	if(nu < NPacketToSend){
-		McSendPacket(
-			Packets[nu].packet_size);
-		nu++;
-		mc_send_all_data_in_bd_time_out_id = XtAppAddTimeOut(
-                        mMosaicAppContext,
-                        _mc_timer_interval,
-                        McSendAPacketCB,
-                        (XtPointer) nu);
-		return;
-	}
-	mc_data_send_data_struct.is_send = 1;	/* is it send Once ? Yes*/
-/*
-}
-
-void McSendAllDataInBandWidth(McSendDataStruct * d)
-{
-	unsigned int nfpt,npt,lpst, seo, nombre_full_packet, nombre_packet,
-			last_packet_size;
-	unsigned char code;
-	IPAddr 	 ipaddr;
-	unsigned int url_id, nombre_eo, num_eo, num_packet, packet_size;
-	unsigned long gmt_send_time;
-	unsigned short pid;
-	unsigned int np;
-	char * data;
-	int i,j;
-
-	_mc_timer_interval = ((MC_PACKET_SIZE + 80)*8*1000) / BAND_WIDTH;
-				/* time interval */
-				/* en milli second */
-				/* si MC_PACKET_SIZE + 80 =~ 500 octets */
-/*				
-	mc_send_all_data_in_bd_time_out_id = XtAppAddTimeOut(
-                                mMosaicAppContext,
-                                _mc_timer_interval,
-                                McSendAPacketCB,
-                                0);
-}
 
 void McSendAllDataOnlyOnce(McSendDataStruct * d)
 {
@@ -540,20 +495,7 @@ void McSendAllDataOnlyOnce(McSendDataStruct * d)
 	omask = sigblock(mask);
 #endif
 
-	if (d->id < mc_local_url_id){  /* ### *MUST* be based on time * fill only if it's new */
-/*		McFillData( d,  mc_send_win);
-		if(Packets){
-			for(i = 0; i< NPacketToSend; i++)
-				free(Packets[i].data);
-			free(Packets);
-		}
-		Packets = NULL;
-		NPacketToSend = 0;
-	}
-	d->id = mc_local_url_id;
-	d->alias = mc_alias_name;
-	d->url = mc_local_url;
-	d->is_send = 0;
+/*	McFillData( d,  mc_send_win);
 #ifdef MDEBUG
 	printf(" in McSendAllDataTimeOutCb ... setting is_send... 0\n");
 #endif
@@ -567,56 +509,6 @@ void McSendAllDataOnlyOnce(McSendDataStruct * d)
 #endif
 }
 
-/* send a SDES packet just CNAME */
-/*
-static void McSendRtcpSdesCnameTimeOutCb(XtPointer clid, XtIntervalId * id)
-{                       
-        int mask, omask;
-                                
-#ifdef SVR4     
-        if( sighold(SIGUSR1) != 0){
-                perror("error in sig hold: ");
-        }                    
-#else           
-        mask = sigmask(SIGUSR1);
-        omask = sigblock(mask); 
-#endif                          
-                                
-        McSendRtcpSdesCname();         /* send my cname user@host */
- /*       mc_send_rtcp_sdes_cname_time_out_id = XtAppAddTimeOut(
-			mMosaicAppContext, 
-			MC_SEND_RTCP_SDES_CNAME_TIME_OUT,
-			McSendRtcpSdesCnameTimeOutCb,
-			NULL);
-#ifdef SVR4             
-        if( sigrelse(SIGUSR1) != 0) {
-                perror("error in sig relse: ");
-        }               
-#else                   
-        sigsetmask(omask);             
-#endif          
-}       
-
-
-/*############################################################# */
-/*fd write multicast socket ###### */
-
-/* now active timeout callback for receiver mode */
-/* send my cname member */
-/*	mc_send_rtcp_sdes_cname_time_out_id = XtAppAddTimeOut( mMosaicAppContext,
-			MC_SEND_RTCP_SDES_CNAME_TIME_OUT,
-			McSendRtcpSdesCnameTimeOutCb,
-			NULL);
-	McCreateWUserlist( win);
-
-	mc_check_rcvstime_time_out_id = XtAppAddTimeOut( mMosaicAppContext,
-			MC_CHECK_RCVSTIME_TIME_OUT,
-			McCheckRcvstimeTimeOutCb,
-			NULL);
-	mc_check_senderstime_time_out_id = XtAppAddTimeOut( mMosaicAppContext,
-			MC_CHECK_SENDERSTIME_TIME_OUT,
-			McCheckSenderstimeTimeOutCb,
-			NULL);
 /* create the virtual cursor */
 /*
 	hw = (HTMLWidget) win->scrolled_win;
@@ -650,4 +542,28 @@ void McSetCursorPos(Widget w, int x, int y)
 		x,y);
 }
 
+*/
+
+/*#####################
+/*	if ( obj_entry = IsObjStillSent(aurl,mhs) ) { /* we still sent this obj*/
+/*			/* just reschedule SR. Un client est capable de
+			 * determine si cette objet est dans son cache ou pas */
+			/* send the header to help the client because */
+			/* maybe we reload and modify this object */
+/*		McScheduleSendHeaderOject(mc_local_object_id);
+		return;
+	}
+/*####### case of navigation ########### */
+/* navigation in history never modify a doc or object... */
+/* juste update the 'RTPtimestamp' in SR. Back to the futur... */
+/*McSendOldDoc(...)
+{
+	DocEntry *doc_entry = NULL;
+
+	doc_entry = IsDocStillSend(aurl, mhs);
+	if ( doc_entry && ! reloading ) { /* dont resend */
+/*		McRescheduleSR(doc_entry);
+		return;
+	}
+}
 */

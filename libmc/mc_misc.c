@@ -6,10 +6,11 @@
 #include <Xm/XmAll.h>
 
 #include "../libnut/mipcf.h"
+#include "../src/mosaic.h"
+
+#include "mc_mosaic.h"
 #include "mc_rtp.h"
-#include "mc_defs.h"
 #include "mc_misc.h"
-#include "mc_io.h"
 
  
 /*            
@@ -78,10 +79,24 @@ ntp64 ntp64time(struct timeval tv)
         return (n);
 }
  
-u_int32_t ntptime(struct timeval t)
+u_int32_t tv2ntptime(struct timeval t)
 {
         u_int32_t s = (u_int32_t)t.tv_sec + GETTIMEOFDAY_TO_NTP_OFFSET;
         return (s << 16 | usec2ntp((u_int32_t)t.tv_usec) >> 16);
+}
+
+u_int32_t ntptime(void)
+{
+	struct timeval tv;
+	gettimeofday(&tv, 0);
+	return (tv2ntptime(tv));
+}
+
+struct timeval unixtime()
+{
+	struct timeval tv;
+	gettimeofday(&tv, 0);
+	return tv;
 }
  
 /*

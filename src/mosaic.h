@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #ifndef __MOSAIC_H__
 #define __MOSAIC_H__
@@ -81,8 +81,6 @@ typedef struct {
 					/* news */
 					/* printing */
 	char *print_mode;
-	Boolean print_banners;
-	Boolean print_footnotes;
 	Boolean print_us;
 					/* services */
 	int max_wais_responses;
@@ -176,7 +174,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.3.0"
+#define MO_VERSION_STRING "3.3.3"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@sig.enst.fr"
@@ -333,6 +331,12 @@ typedef struct _mo_window {
 	Widget base;
 	int mode;
     
+/* frame */
+	char * frame_name;
+	struct _mo_window * frame_parent;
+	struct _mo_window ** frame_sons;
+	int frame_sons_nbre;
+
 /* Subwindows. */
 	Widget source_win;
 	Widget save_win;
@@ -422,12 +426,6 @@ typedef struct _mo_window {
 	XmxMenuRecord *print_fmtmenu;
 	mo_format_token print_format;
 /*swp*/
-	Widget print_header_toggle_save;
-	Widget print_header_toggle_print;
-	Widget print_header_toggle_mail;
-	Widget print_footer_toggle_save;
-	Widget print_footer_toggle_print;
-	Widget print_footer_toggle_mail;
 	Widget print_a4_toggle_save;
 	Widget print_a4_toggle_print;
 	Widget print_a4_toggle_mail;
@@ -518,6 +516,7 @@ typedef struct _mo_window {
 		MimeHeaderStructPtr mhs);
 	void (*mc_callme_on_new_object)(char *fname, char *aurl_wa, 
 		MimeHeaderStructPtr mhs);
+	void (*mc_callme_on_error_object)(char *aurl, int status_code);
 	struct _mc_user *mc_user;
 #endif
 	int delete_position_from_current_hotlist;
@@ -545,6 +544,7 @@ typedef struct mo_node {
 	char *aurl;	/* THE absolute url of this document */
 	char *base_url;	/* a tag <BASE> is dectect, else aurl */
 	char *goto_anchor;	/* #target in url */
+	char *base_target;	/* <BASE target="..." */
 	char *last_modified;
 	char *expires;
 	char *text;	/* a copy of html text , need to be freed */

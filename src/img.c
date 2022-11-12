@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include <sys/stat.h>
 
@@ -961,7 +961,7 @@ void MMPreParseImageBody(mo_window * win, ImageInfo *picd, struct mark_up *mptr)
 {
 	ImageInfo lpicd;
 
-	lpicd.src = ParseMarkTag(mptr->start, MT_DOC_BODY,"background");
+	lpicd.src = ParseMarkTag(mptr->start, MT_BODY,"background");
 
         lpicd.alt_text = NULL;       
         lpicd.align = ALIGN_NONE;      

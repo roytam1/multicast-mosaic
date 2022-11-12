@@ -1,5 +1,5 @@
 /* Please read copyright.ncsa. Don't remove next line */
-#include "copyright.ncsa"
+#include "../Copyrights/copyright.ncsa"
 
 #include <time.h>
 #include <sys/types.h>
@@ -14,6 +14,11 @@
 #include "navigate.h"
 #include "util.h"
 #include "mailto.h"
+#include "paf.h"
+
+#ifdef DEBUG
+#define DEBUG_GUI
+#endif
 
 extern void 		FreeMarkUpList(struct mark_up *List);
 
@@ -51,7 +56,7 @@ void mo_forward_impossible (mo_window *win)
 {
 	mo_tool_state(&(win->tools[BTN_NEXT]),XmxNotSensitive,BTN_NEXT);
 	XmxRSetSensitive (win->menubar, (XtPointer)mo_forward, XmxNotSensitive);
-	mo_popup_set_something("Forward", XmxNotSensitive, NULL);
+	/*mo_popup_set_something("Forward", XmxNotSensitive, NULL);*/
 }      
 
 /* ---------------------------- kill functions ---------------------------- */
@@ -107,11 +112,14 @@ static void mo_kill_node_descendents (mo_window *win, mo_node *node)
 /* Add a new node to the navigation's histoy */
 
 void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
-	char *goto_anchor, char * base_url,
+	char *goto_anchor, char * base_url, char * base_target,
 	char *title, char *text, MimeHeaderStruct * mhs, int docid,
 	struct mark_up * mlist)
 {
-	mo_node *node = (mo_node *)malloc (sizeof (mo_node));
+	mo_node *node;
+
+
+	node = (mo_node *)malloc (sizeof (mo_node));
 
 	node->aurl_wa = strdup(aurl_wa); /* aurl with anchor */
 	node->aurl = strdup(aurl);	/* THE absolute url of doc. */
@@ -130,6 +138,7 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 	node->mhs = mhs;
 	node->last_modified = NULL;
 	node->expires = NULL;
+	node->base_target = base_target;
 
 	/* If there is no current node, this is our first time through. */
 	if (win->first_node == NULL) {
@@ -139,6 +148,10 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 		node->position = 1;
 /* if we are here then win->current_node = NULL */
 		win->current_node = node;
+		if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) */
+					/* try to enable navigation in frame..*/
+			return;
+		}
 		mo_back_impossible (win);
 	} else {
 				/* Node becomes end of history list. */
@@ -155,6 +168,10 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 		win->current_node->next = node;
 				/* Current node now becomes new node. */
 		win->current_node = node;
+		if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) */
+					/* try to enable navigation in frame..*/
+			return;
+		}
 		mo_forward_impossible (win);
 		mo_back_possible (win);
 	}
@@ -313,6 +330,8 @@ void mo_back (Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window *win = (mo_window*) clid;
 
+	if (win->pafd )		/* transfert in progress */
+		(*win->pafd->call_me_on_stop)(win->pafd); /* stop it */
   /* If there is no previous node, choke. */
   if (!win->current_node || win->current_node->previous == NULL){
 	fprintf(stderr,"Severe Bug , Please report...\n");
@@ -330,6 +349,8 @@ void mo_forward (Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window *win = (mo_window*) clid;
 
+	if (win->pafd )		/* transfert in progress */
+		(*win->pafd->call_me_on_stop)(win->pafd); /* stop it */
   /* If there is no next node, choke. */
   if (!win->current_node || win->current_node->next == NULL) {
 	fprintf(stderr,"Severe Bug , Please report...\n");
@@ -358,10 +379,12 @@ mo_status mo_visit_position (mo_window *win, int pos)
         }
     }
 
+#ifdef DEBUG_GUI
   if (mMosaicSrcTrace) {
 	fprintf (stderr, "UH OH BOSS, asked for position %d, ain't got it.\n",
 		 pos);
   }
+#endif
 
  done:
   return mo_succeed;

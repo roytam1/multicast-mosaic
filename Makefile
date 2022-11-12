@@ -1,13 +1,13 @@
 # Toplevel Makefile for mMosaic.
 
-MCVER=3.3.0
+MCVER=3.3.3
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
 #### your compiler (ANSI required).
 #CC = gcc
-#CC = CC
-CC = cc
+CC = CC
+#CC = cc
 
 # On BSDI, OSF1, IBM , SunOS4this should be ranlib.
 # RANLIB = ranlib
@@ -22,8 +22,8 @@ RANLIB = /bin/true
 #prereleaseflags = -O
 #prereleaseflags = -xsb -v -g
 #prereleaseflags = -DMDEBUG -v -g
-#prereleaseflags = +w -g
-prereleaseflags =  -v -g
+prereleaseflags = +w -g
+#prereleaseflags =  -v -g
 
 
 #### Linker Flags -- Primarily for linking static on linux-elf.
@@ -171,9 +171,9 @@ krbflags  = $(krb4flags) $(krb5flags)
 krblibs   = $(krb4libs) $(krb5libs) 
 
 #### MULTICAST support
-#mcdir = $(PWD)/libmc
-#mcflag = -I$(mcdir) -DMULTICAST
-#mclib = $(mcdir)/libmc.a
+mcdir = $(PWD)/libmc
+mcflag = -I$(mcdir) -DMULTICAST
+mclib = $(mcdir)/libmc.a
 
 #### APROG support
 #adir = $(PWD)/libaprog
@@ -237,22 +237,22 @@ clean:
 
 archive:
 	$(MAKE) clean
-	(cd ..; tar cf /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar ./mMosaic-src-$(MCVER) )
-	gzip -9 /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar
-	chmod 444 /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar.gz
-	- rm /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-src.tar.gz
-	(cd /sig/archive/ftp/pub/multicast/mMosaic; ln -s mMosaic-$(MCVER).tar.gz mMosaic-src.tar.gz)
+	(cd ..; tar cf /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar ./mMosaic-src-$(MCVER) )
+	gzip -9 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar
+	chmod 444 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar.gz
+	- rm /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-src.tar.gz
+	(cd /tsi/archive/ftp/pub/multicast/mMosaic; ln -s mMosaic-$(MCVER).tar.gz mMosaic-src.tar.gz)
 
 archive-bin :
-	- cp src/mMosaic /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
-	- gzip -9 /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
-	chmod 444 /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25.gz
-	- rm /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-solaris25-bin.gz
-	(cd /sig/archive/ftp/pub/multicast/mMosaic; ln -s mMosaic-$(MCVER)-bin-solaris-25.gz mMosaic-solaris25-bin.gz)
+	- cp src/mMosaic /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
+	- gzip -9 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
+	chmod 444 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25.gz
+	- rm /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-solaris25-bin.gz
+	(cd /tsi/archive/ftp/pub/multicast/mMosaic; ln -s mMosaic-$(MCVER)-bin-solaris-25.gz mMosaic-solaris25-bin.gz)
 
 snap :
 	$(MAKE) clean
-	(cd ..; tar cf /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-snap.tar ./mMosaic-src-$(MCVER) )
-	gzip -9 /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-snap.tar
-	chmod 444 /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-snap.tar.gz
+	(cd ..; tar cf /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-snap.tar ./mMosaic-src-$(MCVER) )
+	gzip -9 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-snap.tar
+	chmod 444 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-snap.tar.gz
 

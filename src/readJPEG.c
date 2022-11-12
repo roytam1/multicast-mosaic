@@ -18,6 +18,10 @@ extern "C" {
 #include "readJPEG.h"
 #include <setjmp.h>
 
+#ifdef DEBUG
+#define DEBUG_JPEG
+#endif
+
 struct my_error_mgr {
 	struct jpeg_error_mgr pub;	/* "public" fields */
 	jmp_buf setjmp_buffer;	/* for return to caller */
@@ -91,11 +95,11 @@ unsigned char * ReadJPEG(FILE *infile,int *width, int *height, XColor *colrs)
 		}
 		return(0);
 	}
-	if (mMosaicSrcTrace) {
-		fprintf(stderr,"buffer size is width=%d x height=%d x depth=%d\n",
+#ifdef DEBUG_JPEG
+	fprintf(stderr,"buffer size is width=%d x height=%d x depth=%d\n",
 		       cinfo.output_width , cinfo.output_height , 
 		       cinfo.output_components);
-	}
+#endif
 
 	r = retBuffer;
 	row_stride = cinfo.output_width * cinfo.output_components;
@@ -111,13 +115,12 @@ unsigned char * ReadJPEG(FILE *infile,int *width, int *height, XColor *colrs)
 	/* set up X colormap */
 	if (cinfo.out_color_components  == 3) {
 
-		if (mMosaicSrcTrace) {
-			fprintf(stderr,"cinfo.actual_number_of_colors=%d\n",cinfo.actual_number_of_colors);
-			fprintf(stderr,"colrs[0].red=%d colrs[99].red=%d\n",colrs[0].red,colrs[99].red);
-			fprintf(stderr,"cinfo.colormap[0][0]=%d\n",cinfo.colormap[0][0]);
-			{char dummy[80]; fprintf(stderr,"RETURN\n"); gets(dummy);}
-		}
-
+#ifdef DEBUG_JPEG
+		fprintf(stderr,"cinfo.actual_number_of_colors=%d\n",cinfo.actual_number_of_colors);
+		fprintf(stderr,"colrs[0].red=%d colrs[99].red=%d\n",colrs[0].red,colrs[99].red);
+		fprintf(stderr,"cinfo.colormap[0][0]=%d\n",cinfo.colormap[0][0]);
+		{char dummy[80]; fprintf(stderr,"RETURN\n"); gets(dummy);}
+#endif
 		for (i=0; i < cinfo.actual_number_of_colors; i++) {
 			colrs[i].red = cinfo.colormap[0][i] << 8;
 			colrs[i].green = cinfo.colormap[1][i] << 8;
