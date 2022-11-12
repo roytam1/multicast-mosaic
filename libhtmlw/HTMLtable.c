@@ -24,6 +24,7 @@
 #include "list.h"
 
 #define DEBUG_REFRESH 0
+#define HTMLTRACE 1
 
 #define TBL_CELL_DEFAULT_PADDING 1
 #define TBL_CELL_DEFAULT_SPACING 2
@@ -95,12 +96,13 @@ void UpdateColList( ColumnList ** col_list, int td_count,
 	cur_cell_num = cell_count ;
 	cell_count = cell_count + colspan;
 	if (!cl->cells)	/* because a SunOS bug : GD 17 Dec 96 */
-		cells = (CellStruct *)malloc(sizeof(CellStruct)* cell_count );
+		cells = (CellStruct *)calloc(cell_count, sizeof(CellStruct));
 	else
 		cells = (CellStruct *)realloc(cl->cells, sizeof(CellStruct)* cell_count);
 
 	cells[cur_cell_num].td_count = td_count;
 	cells[cur_cell_num].colspan = colspan;
+	assert(colspan >0);
 	cells[cur_cell_num].rowspan = rowspan;
 	cells[cur_cell_num].back_cs = 0;
 	cells[cur_cell_num].back_rs = 0;
@@ -120,6 +122,7 @@ void UpdateColList( ColumnList ** col_list, int td_count,
 	for (i = 0; i< nspan; i++){
 		cells[cur_cell_num].td_count = td_count;
 		cells[cur_cell_num].colspan = ns;
+		assert(ns >0);
 		cells[cur_cell_num].back_cs = i+1;
 		cells[cur_cell_num].back_rs = 0;
 		cells[cur_cell_num].is_colspan = 1;
@@ -146,66 +149,18 @@ void UpdateColList( ColumnList ** col_list, int td_count,
 void AddPadAtEndColList(ColumnList ** cl, int toadd, int first_free)
 {
 	int i;
-	int j;
-	int nrc;
-	int cols, bcs;
-	CellStruct last_cell;
-	CellStruct ref_cell;
 
-	if (!(*cl)->cells) {	/* because Solaris Bug */
-		(*cl)->cells = (CellStruct*)malloc(
-			sizeof(CellStruct) * ((*cl)->cell_count+toadd));
-	} else {
-		(*cl)->cells = (CellStruct*)realloc((*cl)->cells,
-			sizeof(CellStruct) * ((*cl)->cell_count+toadd));
-	}
+	assert((*cl)->cells); 	/* because Solaris Bug */
+	assert(toadd >0);
 
-	i = (*cl)->cell_count;
-	last_cell = (*cl)->cells[i-1];
+	(*cl)->cells = (CellStruct*)realloc((*cl)->cells,
+		sizeof(CellStruct) * ((*cl)->cell_count+toadd));
 
 /* on pad le dernier TD dans la ligne (entre deux TR) */
 /* on est ici parcequ'on a vu un /TR  ou le dedut d'un autre*/
-	switch(last_cell.cell_type){
-	case M_TH:
-	case M_TD:
-	case M_TD_CELL_PAD:	/* recalcul de back_cs et colspan */
-		nrc= i -1 - last_cell.back_cs;
-		assert(nrc>=0);
-		ref_cell = (*cl)->cells[nrc];
-		cols = ref_cell.colspan+toadd-first_free;
-		for(j=nrc; j < (*cl)->cell_count + toadd-first_free; j++) {
-			(*cl)->cells[j].colspan = cols;
-			cols--;
-		}
-		break;
-	case M_TD_CELL_FREE:	/* don't know */
-		break;;
-	default:
-		assert(0);
-	}
 
-	i = (*cl)->cell_count;
-	cols = (*cl)->cells[i-1].colspan -1-first_free;
-	bcs = (*cl)->cells[i-1].back_cs +1;
-
-	for(i=(*cl)->cell_count; i< ((*cl)->cell_count+toadd-first_free); i++){
-		(*cl)->cells[i].td_count = 0;
-		(*cl)->cells[i].colspan = cols;
-		cols--;
-		(*cl)->cells[i].rowspan = 1;
-		(*cl)->cells[i].back_cs = bcs;
-		bcs++;
-		(*cl)->cells[i].back_rs = 0;
-		(*cl)->cells[i].td_start = NULL;
-		(*cl)->cells[i].td_end = NULL;
-		(*cl)->cells[i].height = 0;
-		(*cl)->cells[i].width = 0;
-		(*cl)->cells[i].line_bottom = 0;
-		(*cl)->cells[i].is_colspan = 0;
-		(*cl)->cells[i].is_rowspan = 0;
-		(*cl)->cells[i].cell_type = M_TD_CELL_PAD;
-		(*cl)->cells[i].have_bgcolor = False;
-		(*cl)->cells[i].bgcolor = 0;
+	for(i=(*cl)->cell_count; i< (*cl)->cell_count+toadd; i++){
+		(*cl)->cells[i].cell_type = M_TD_CELL_PROPAGATE;
 	}
 	(*cl)->cell_count = (*cl)->cell_count+toadd;
 }
@@ -221,8 +176,9 @@ static void AddPadAtEndRowList(
 
 	for(i=0; i<rl->row_count;i++){ /* realloc more cell in each line */
 		if ( !rl->cells_lines[i] ){
-			rl->cells_lines[i] = (CellStruct*)malloc(
-				sizeof(CellStruct)* (rl->max_cell_count_in_line + toadd));
+			rl->cells_lines[i] = (CellStruct*)calloc(
+				rl->max_cell_count_in_line + toadd ,
+				sizeof(CellStruct) );
 		} else {
 			rl->cells_lines[i] = (CellStruct*)realloc(rl->cells_lines[i],
 				sizeof(CellStruct)* (rl->max_cell_count_in_line + toadd));
@@ -457,6 +413,15 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 	for(i=0; i<rl->max_cell_count_in_line; i++){
 		if ( rcl[i].cell_type == M_TD_CELL_FREE){
 			ref_cell = this_line[jc];
+			if(ref_cell.cell_type == M_TD_CELL_PROPAGATE ){
+				memset(&ref_cell, 0, sizeof(ref_cell));
+				ref_cell.cell_type= M_TD_CELL_PROPAGATE;
+				ref_cell.colspan=1;
+				ref_cell.rowspan =1;
+				rcl[i] = ref_cell;
+				jc++;
+				continue;
+			}
 			work_cell = ref_cell;
 /* Faire gaffe au row spanning quand on ajoute une ligne on met des FREE */
 /* sauf dans les colonnes[i..i+colspan] ou on met des PAD avec rowspan */
@@ -696,6 +661,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			if ( td_start_found) { /* this is the end of previous */
 				td_count++;
 				td_end_mark = psm;
+				assert(colspan>0);
 				UpdateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
 					colspan,rowspan,
@@ -765,6 +731,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
                         }
 			td_count++;
 			td_end_mark = sm;
+			assert(colspan>0);
 			UpdateColList(&col_list,td_count,m_cell_type,
 				td_start_mark,td_end_mark,
 				colspan,rowspan,
@@ -781,6 +748,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			if (td_start_found){
 				td_count++;
 				td_end_mark = psm;
+				assert(colspan>0);
 				UpdateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
 					colspan,rowspan,
@@ -820,6 +788,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			if (td_start_found){
 				td_count++;
 				td_end_mark = psm;
+				assert(colspan>0);
 				UpdateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
 					colspan,rowspan,
@@ -851,6 +820,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			if (td_start_found){
 				td_count++;
 				td_end_mark = psm;
+				assert(colspan>0);
 				UpdateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
 					colspan,rowspan,
@@ -951,9 +921,9 @@ void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_
 	deb_pcc.cur_baseline = orig_pcc->cur_baseline;
 	deb_pcc.cur_line_height = orig_pcc->cur_line_height;
 
-	t->col_max_w = (int*) malloc(t->num_col* sizeof(int));
-	t->col_min_w = (int*) malloc(t->num_col* sizeof(int));
-	t->col_w = (int*) malloc(t->num_col* sizeof(int));
+	t->col_max_w = (int*) calloc(t->num_col, sizeof(int));
+	t->col_min_w = (int*) calloc(t->num_col, sizeof(int));
+	t->col_w = (int*) calloc(t->num_col, sizeof(int));
 	for(i=0;i<t->num_col;i++){
 		t->col_max_w[i] = 0;
 		t->col_min_w[i] = 0;
@@ -975,6 +945,7 @@ void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_
 ########## faire un popfont ... mais ou? ### */
 			}
 			FormatChunk(hw,cell.td_start,cell.td_end,&fin_pcc,0);
+			assert(cell.colspan >0);
 			for(k = 0; k < cell.colspan; k++){
 				line[j].min_width = 
 					1+fin_pcc.computed_min_x/cell.colspan;
@@ -1230,6 +1201,7 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 				cell.line_bottom = t->row_list->cells_lines[i-cell.back_rs][j-cell.back_cs].line_bottom;
 				cell.height = t->row_list->cells_lines[i-cell.back_rs][j-cell.back_cs].height;
 				break;
+			case M_TD_CELL_PROPAGATE:
 			case M_TD_CELL_FREE:
 				cell.x = cell_offset + line_pcc.eoffsetx;
 				break;
@@ -1289,6 +1261,7 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 					+ t->cellPadding + 1;
 				break;
 			default:
+				assert(0);
 #ifdef HTMLTRACE
 				printf("BUG: Unknow cell type in TABLE\n");
 #endif

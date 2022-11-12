@@ -38,6 +38,8 @@
 #ifdef MULTICAST
 #include "../libmc/mc_main.h"
 extern mo_window * mc_send_win;
+extern void McVScrollMoveCB(Widget w, caddr_t clid, caddr_t calld);
+extern void McHScrollMoveCB(Widget w, caddr_t clid, caddr_t calld);
 #endif
 
 #include "bitmaps/security.xbm"
@@ -1580,7 +1582,6 @@ Widget mo_fill_toolbar(mo_window *win, Widget top, int w, int h)
 }
 
 /*
- * name:    mo_fill_window (PRIVATE)
  * purpose: Take a new (empty) mo_window struct and fill in all the 
  *          GUI elements.
  * inputs:  
@@ -2044,6 +2045,13 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	swin->dot = NULL;
 	swin->n_do = 0;
 	swin->moid_ref = -1;
+	swin->mc_vbar = NULL;
+	swin->mc_hbar = NULL;
+	swin->mc_sbh_value = 0;
+	swin->mc_sbv_value = 0;
+	swin->mc_send_scrollbar_flag = False;
+	swin->cur_sb_sid = -1;
+	swin->cur_sb_moid = -1;
 #endif
 	swin->frame_name = strdup(frame_name);
 	swin->frame_parent =parent;
@@ -2103,19 +2111,6 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	XtAddCallback (swin->scrolled_win, WbNanchorCallback, anchor_cb, swin);
 	XtAddCallback (swin->scrolled_win, WbNsubmitFormCallback,
 					submit_form_callback, swin);
-#if 0
-#ifdef MULTICAST
-	if ( swin->mc_type == MC_MO_TYPE_RCV_ALL) {
-		XtAddCallback (swin->scrolled_win, WbNframeCallback,
-			mc_frame_callback, swin);
-	} else {
-#endif
-		XtAddCallback (swin->scrolled_win, WbNframeCallback,
-                        frame_callback, swin);
-#ifdef MULTICAST
-	}
-#endif
-#endif
 	XtVaGetValues(swin->scrolled_win, WbNview, (long)(&swin->view), NULL);
 	XtAddEventHandler(swin->view, KeyPressMask, False, 
 			mo_view_keypress_handler, swin);
@@ -2147,11 +2142,24 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 
 /* init paf data */
 	swin->pafd = NULL;
+#ifdef MULTICAST
+	XtVaGetValues (swin->scrolled_win, XmNverticalScrollBar,
+                                (long)(&swin->mc_vbar), NULL);
+	XtVaGetValues (swin->scrolled_win, XmNhorizontalScrollBar,
+                                (long)(&swin->mc_hbar), NULL);
+	XtAddCallback(swin->mc_vbar, XmNvalueChangedCallback,
+                (XtCallbackProc)McVScrollMoveCB, (caddr_t)swin);
+	XtAddCallback(swin->mc_hbar, XmNvalueChangedCallback,
+                (XtCallbackProc)McHScrollMoveCB, (caddr_t)swin);
+#endif
 	return swin;
 }
 
 void  MMDestroySubWindow( mo_window *swin)
 {
+#ifdef MULTICAST 
+        swin->mc_send_scrollbar_flag = False;
+#endif
 	free(swin->search_start);
 	free(swin->search_end);
 	free(swin->frame_name);
@@ -2213,6 +2221,13 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 	win->dot = NULL;
 	win->n_do = 0;
 	win->moid_ref = -1;
+	win->mc_vbar = NULL;
+	win->mc_hbar = NULL;
+	win->mc_sbh_value = 0;
+	win->mc_sbv_value = 0;
+	win->mc_send_scrollbar_flag = False;
+	win->cur_sb_sid = -1;
+	win->cur_sb_moid = -1;
 #endif
 	WM_DELETE_WINDOW = XmInternAtom(mMosaicDisplay, "WM_DELETE_WINDOW", False);
 	XmAddWMProtocolCallback(base,WM_DELETE_WINDOW,delete_cb,(XtPointer)win);
@@ -2336,6 +2351,16 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
                         (win->body_image ? XmxSet : XmxNotSet));
 /* init paf data */
 	win->pafd = NULL;
+#ifdef MULTICAST
+	XtVaGetValues (win->scrolled_win, XmNverticalScrollBar,
+                                (long)(&win->mc_vbar), NULL);
+	XtVaGetValues (win->scrolled_win, XmNhorizontalScrollBar,
+                                (long)(&win->mc_hbar), NULL);
+	XtAddCallback(win->mc_vbar, XmNvalueChangedCallback,
+                (XtCallbackProc)McVScrollMoveCB, (caddr_t)win);
+	XtAddCallback(win->mc_hbar, XmNvalueChangedCallback,
+                (XtCallbackProc)McHScrollMoveCB, (caddr_t)win);
+#endif
 	return win;
 }
 

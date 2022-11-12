@@ -159,6 +159,8 @@ struct rtcp_rr {
 
 #define RTCP_PT_STATR	207	/* State report */
 #define RTCP_PT_REPAIR	208	/* Repair a data */
+#define RTCP_PT_SB_STATR 209	/* Scrollbar state report */
+#define RTCP_PT_SB_REPAIR 210	/* Scrollbar query repair */
 
 
 #define		RTCP_SDES_MIN	0

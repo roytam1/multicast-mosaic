@@ -38,6 +38,10 @@ typedef struct _RtcpStard {
 	u_int32_t	reserved;  /* extension ... */
 } RtcpStard;
 
+typedef struct _RtcpSBStard {
+	u_int32_t sb_id;	/* scrollbar state id */
+}RtcpSBStard;
+
 static void McScheduleQueryRepairState(Source *s, int sid)
 {
 	/* from = send repair from this state */
@@ -139,6 +143,71 @@ static void McScheduleQueryRepairObjectTree( Source *s, int moid)
 /* l'arbre de depandance ne doit pas boucler */
 		McScheduleQueryRepairObjectTree(s, s->objects[moid].dot[i]);
 	}	
+}
+
+void McSendSBQueryRepair(Source *s, int sb_id)
+{
+        struct sockaddr_in addr_w;
+        unsigned char buf[28];
+        int cnt;
+        int len;
+
+	printf("send: SBQueryRepair sb_id = %d\n", sb_id);
+        if (!s->uc_rtcp_port)   /* no unicast rctp port yet */
+                return;
+        
+        memset(&addr_w,0,sizeof(addr_w));
+        addr_w.sin_family = AF_INET;
+        addr_w.sin_port = s->uc_rtcp_port; /* netbyte order */
+        addr_w.sin_addr.s_addr = s->uc_rtp_ipaddr;   /* net byteorder */
+        
+
+        buf[0] = 0x80 ;  /* V[0:1] , P[2], reserved[3:7] */
+        buf[1] = RTCP_PT_SB_REPAIR; /* PT = RTCP_PT_SB_REPAIR */
+        buf[2] = 0;
+        buf[3] = 4;     /* 5 - 1 Word */
+
+        buf[4] = (mc_local_srcid >> 24) & 0xff;    /* SSRC (me) */
+        buf[5] = (mc_local_srcid >> 16) & 0xff;
+        buf[6] = (mc_local_srcid >> 8) & 0xff;
+        buf[7] =  mc_local_srcid & 0xff;
+        
+        buf[8] = (s->srcid >> 24) & 0xff;    /* SSRC target to be asked SSRC */
+        buf[9] = (s->srcid >> 16) & 0xff;
+        buf[10] = (s->srcid >> 8) & 0xff;
+        buf[11] =  s->srcid & 0xff;   
+                                      
+        buf[12] = buf[13] = buf[14] = 0;
+        buf[15] = 0;                 /* type of repair */
+                                      
+        buf[16] = ( sb_id >> 24) & 0xff;       /* id */
+        buf[17] = ( sb_id >> 16) & 0xff; 
+        buf[18] = ( sb_id >> 8) & 0xff;  
+        buf[19] = sb_id & 0xff;
+
+        len =20;                      
+        cnt = sendto(uc_fd_rtcp_w, (char*)buf, len, 0,
+                (struct sockaddr *) &addr_w, sizeof(addr_w));
+        if(cnt != len){               
+                perror("UcSendRepair:sendto:");
+        }                             
+#ifdef DEBUG_MULTICAST                
+        fprintf(stderr,"UcSendSBRepair to %08x %04x\n",
+                ntohl(s->uc_rtp_ipaddr), ntohs(s->uc_rtcp_port));
+        fprintf(stderr,"UcSendSBRepair: %d \n", sb_id);
+#endif 
+
+}
+
+void McQueryRepairFromSBStatr(Source *s, RtcpPacket* rcs)
+{
+	RtcpSBStard *psrd = (RtcpSBStard *) rcs->d;
+	int sb_id;
+
+	sb_id = ntohl (psrd->sb_id);
+	if (s->current_sb_id >= sb_id )
+		return;
+	McSendSBQueryRepair(s, sb_id);
 }
 
 void McQueryRepairFromStatr(Source *s, RtcpPacket* rcs)
@@ -275,7 +344,7 @@ void UcSendRepair(Source *s, int type, int id, int offset, int lend)
 	buf[0] = 0x80 ;	 /* V[0:1] , P[2], reserved[3:7] */
 	buf[1] = RTCP_PT_REPAIR; /* PT = RTCP_PT_REPAIR */
 	buf[2] = 0;
-	buf[3] = 4;	/* 5 - 1 Word */
+	buf[3] = 6;	/* 7 - 1 Word */
 
 	buf[4] = (mc_local_srcid >> 24) & 0xff;    /* SSRC (me) */  
 	buf[5] = (mc_local_srcid >> 16) & 0xff;

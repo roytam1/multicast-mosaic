@@ -386,6 +386,68 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
 	*top_ret = topinfo;
 }
 
+void McSetScrollbars(mo_window *win, int vbar, int hbar)
+{
+	int val, size, inc, pageinc;
+
+	XmScrollBarGetValues(win->mc_vbar, &val, &size, &inc, &pageinc); 
+	XmScrollBarSetValues(win->mc_vbar, vbar, size, inc, pageinc, True);
+	XmScrollBarGetValues(win->mc_hbar, &val, &size, &inc, &pageinc); 
+	XmScrollBarSetValues(win->mc_hbar, hbar, size, inc, pageinc, True);
+}
+
+void McMoveVirtualScrollbar(Source *s, RtpPacket *rs)
+{
+	McSbValues *nsbvs;	/*netorder */
+	McSbValues *sbvs;	/* computer order */
+	int sb_id;
+	int sid;
+	int n;
+	int *pi;
+	mo_window * win;
+	int i;
+
+	win = s->win;
+	pi = (int*) rs->d;
+
+	sb_id = ntohl(*pi); pi++;
+	sid = ntohl(*pi); pi++;
+	n = ntohl(*pi); pi++;
+
+	if ( sid != s->current_view_state) {
+		return;
+	}
+	if (sb_id <= s->current_sb_id) {
+		return;
+	}
+	s->current_sb_id = sb_id;
+	sbvs = (McSbValues *) calloc(n,sizeof(McSbValues));
+	nsbvs = (McSbValues *)pi;
+	for (i=0; i< n; i++) {
+		sbvs[i].oid = ntohl(nsbvs[i].oid);
+		sbvs[i].vbar = ntohl(nsbvs[i].vbar);
+		sbvs[i].hbar = ntohl(nsbvs[i].hbar);
+	}
+
+	assert(win->frame_type == NOTFRAME_TYPE || win->frame_type == FRAMESET_TYPE);
+	if (win->frame_type == NOTFRAME_TYPE ){
+		assert(sbvs[0].oid == win->cur_sb_moid);
+		McSetScrollbars(win, sbvs[0].vbar, sbvs[0].hbar);
+		free(sbvs);
+		return;
+	}
+	for(i=0; i<win->frame_sons_nbre; i++) {
+		mo_window* swin= win->frame_sons[i];
+
+		assert(sbvs[i].oid == swin->cur_sb_moid);
+
+		McSetScrollbars(swin, sbvs[i].vbar, sbvs[i].hbar);
+	}
+
+/* frameset */
+	free(sbvs);
+	return;
+}
 
 /* We can do that only if depend object is in multicast cache */
 /* We have check for this before */
@@ -466,6 +528,9 @@ void McDisplayWindowText(Source *s, unsigned int state_id)
 	text[text_len] = '\0'; 
 	close (fdr);
 
+	win->cur_sb_sid = state_id;
+	win->cur_sb_moid = start_moid;
+
 /* parse the text */                   
         htinfo = HTMLParseRepair(text);
 	win->htinfo = htinfo;
@@ -528,6 +593,8 @@ void McDisplayWindowText(Source *s, unsigned int state_id)
 			assert(s->objects[frameset_moid].dot == NULL);
         		moid = s->objects[frameset_moid].frame_dot[i]; /* object (html text) to load */
         		McPreParseAndBindTopObject(s, moid, &topinfo,sub_win);
+			sub_win->cur_sb_sid = state_id;
+			sub_win->cur_sb_moid = moid;
                                        
         		aurl = topinfo.aurl;            /* in mc context : no anchor */
         		mlist = topinfo.mlist;         

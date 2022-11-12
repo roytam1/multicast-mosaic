@@ -118,6 +118,7 @@ Source * newSource(u_int32_t srcid, IPAddr addr)
         s->gui_ent = CreateMemberGuiEntry(s);
                                        
 	s->current_view_state = -1;
+	s->current_sb_id = -1;
         s->states = NULL;
         s->objects = NULL;              
 	s->states_tab_size = 0;

@@ -178,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.6.2"
+#define MO_VERSION_STRING "3.6.3"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@tsi.enst.fr"
@@ -539,6 +539,14 @@ typedef struct _mo_window {
 	int	moid_ref;	/* current moid at sender side */
 	int	n_do;		/* number of depend object */
 	DependObjectTab dot;	/* alldepend object */
+	
+	int	cur_sb_sid;	/* state id for scrollbar */
+	int	cur_sb_moid;	/* ojectid in frameset for scrollbar */
+	int	mc_send_scrollbar_flag;	/* est-ce possible d'emettre la sb */
+	Widget 	mc_vbar;
+	Widget 	mc_hbar;
+	int	mc_sbv_value;
+	int	mc_sbh_value;
 #endif
 	int delete_position_from_current_hotlist;
 } mo_window;

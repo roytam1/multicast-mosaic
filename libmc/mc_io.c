@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/param.h>
+#include <assert.h>
 #include <Xm/XmAll.h>
 
 #if defined(__QNX__) || defined(ultrix)
@@ -419,6 +420,13 @@ int DewrapRtpData( unsigned char *buf, int len_buf,
 			return 0;
 		}
 		break;
+	case 0x8064:	/* PT SCROLLBAR VALUES */
+		if (len_buf < 36) {
+			fprintf(stderr,"Error receiving Rtp data: n = %d\n",
+				len_buf);
+			return 0;
+		}
+		break;
 	default:
 		fprintf(stderr,"Error receiving Rtp data: rh = %x\n",rh_flags);
 		return 0;
@@ -442,6 +450,11 @@ int DewrapRtpData( unsigned char *buf, int len_buf,
 					       ((u_int32_t) p[13]     ) );
 		rs_ret->cur_pos_y = (int16_t)( ((u_int32_t) p[14] << 8) |
 					       ((u_int32_t) p[15]     ) );
+		return 1;
+	}
+	if ( rh_flags == (u_int32_t)0x8064 ){
+		rs_ret->pt = 0x64;
+		rs_ret->d = (char*)&p[12]; 
 		return 1;
 	}
 
@@ -579,6 +592,112 @@ void McSendRtpCursorPosition(int rtp_ts, int x, int y)
 
 #ifdef DEBUG_MULTICAST
 	fprintf(stderr, "McSendRtpCursorPosition: x=%d, y=%d, ts=%u, srcid=%u\n",
+		x, y, rtp_ts, mc_local_srcid);
+#endif
+        cnt = McWrite(mc_fd_rtp_w, emit_buf, len_buf);
+}
+
+/*
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |V=2|P|X|  CC   |M|     PT      |       sequence number         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           timestamp                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           synchronization source (SSRC) identifier            |
+   +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+   |            contributing source (CSRC) identifiers             |
+   |                         unused ....                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         PT data...                            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   P = 0 (padding)
+   X = 0 (extension)
+   CC = 0 (contributor count)
+   M = 0 (Marker: unused )
+   PT = 100 (sbvalues)
+*/
+/*      envoie qqes choses comme ca:            */
+/*type=scrollbarState  = sepnumber;  incremente par 1 a chaque changement */
+/* sb_id,sid, n, oid1,vpos,hpos, ..., oidn,vpos,hpos */
+
+void McSendScrollBarValues(int sb_id, int rtp_ts, int sid, int n, McSbValues *sbvs)
+{
+        int len_buf;
+	int cnt;
+	static int mc_seq_number_sb_values = 0;
+	int j,i;
+ 
+        emit_buf[0] = 0x80;     /* V,P,CC */
+        emit_buf[1] = 0x64;        /* PT=100 Scrollbar position */ 
+
+        emit_buf[2] = (mc_seq_number_sb_values >> 8) & 0xff; /* sequence number */
+        emit_buf[3] = mc_seq_number_sb_values & 0xff;
+        mc_seq_number_sb_values++;
+
+        emit_buf[4] = (rtp_ts >> 24) & 0xff;    /* timestamp */
+        emit_buf[5] = (rtp_ts >> 16) & 0xff;
+        emit_buf[6] = (rtp_ts >> 8) & 0xff;
+        emit_buf[7] =  rtp_ts & 0xff;
+
+        emit_buf[8] = (mc_local_srcid >> 24) & 0xff;    /* SSRC */
+        emit_buf[9] = (mc_local_srcid >> 16) & 0xff;
+        emit_buf[10] = (mc_local_srcid >> 8) & 0xff;
+        emit_buf[11] =  mc_local_srcid & 0xff;
+
+        emit_buf[12] = (sb_id >> 24) & 0xff;    /* sb_sid */
+        emit_buf[13] = (sb_id >> 16) & 0xff;
+        emit_buf[14] = (sb_id >> 8) & 0xff;
+        emit_buf[15] =  sb_id & 0xff;
+
+        emit_buf[16] = (sid >> 24) & 0xff;    /* sid */
+        emit_buf[17] = (sid >> 16) & 0xff;
+        emit_buf[18] = (sid >> 8) & 0xff;
+        emit_buf[19] =  sid & 0xff;
+
+        emit_buf[20] = (n >> 24) & 0xff;    /* n */
+        emit_buf[21] = (n >> 16) & 0xff;
+        emit_buf[22] = (n >> 8) & 0xff;
+        emit_buf[23] =  n & 0xff;
+
+        len_buf = 24 ;
+	j = len_buf;
+	for (i = 0; i<n; i++ ) {
+
+fprintf(stderr,"sbvs[%d].oid = %d\n", i,sbvs[i].oid);
+		emit_buf[j] = (sbvs[i].oid >>24) & 0xff;
+		j++;
+		emit_buf[j] = (sbvs[i].oid >>16) & 0xff;
+		j++;
+		emit_buf[j] = (sbvs[i].oid >>8) & 0xff;
+		j++;
+		emit_buf[j] = sbvs[i].oid & 0xff;
+		j++;
+
+		
+		emit_buf[j] = (sbvs[i].vbar >>24) & 0xff;
+		j++;
+		emit_buf[j] = (sbvs[i].vbar >>16) & 0xff;
+		j++;
+		emit_buf[j] = (sbvs[i].vbar >>8) & 0xff;
+		j++;
+		emit_buf[j] = sbvs[i].vbar & 0xff;
+		j++;
+
+		emit_buf[j] = (sbvs[i].hbar >>24) & 0xff;
+		j++;
+		emit_buf[j] = (sbvs[i].hbar >>16) & 0xff;
+		j++;
+		emit_buf[j] = (sbvs[i].hbar >>8) & 0xff;
+		j++;
+		emit_buf[j] = sbvs[i].hbar & 0xff;
+		j++;
+	}
+	len_buf = j;
+
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr, "McSendScrollBarValues: x=%d, y=%d, ts=%u, srcid=%u\n",
 		x, y, rtp_ts, mc_local_srcid);
 #endif
         cnt = McWrite(mc_fd_rtp_w, emit_buf, len_buf);

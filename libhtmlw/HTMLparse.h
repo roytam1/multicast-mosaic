@@ -81,6 +81,7 @@ typedef enum _MarkType {
 	M_TD,
 	M_TD_CELL_PAD,
 	M_TD_CELL_FREE,
+	M_TD_CELL_PROPAGATE,
 	M_TFOOT,
 	M_TH,
 	M_THEAD,

@@ -89,6 +89,7 @@ int mc_status_report_state_id = -1; /* dernier etat complet que l'emetteur */
 				    /* a envoyer */
 int mc_status_report_object_id = -1; /* dernier objet complet que l'emmeteur */
 				    /* a envoyer */
+int	mc_sb_state_number = -1;
 
 Pixmap			VirCursorPix;
 GC			gc_vc;
@@ -357,11 +358,53 @@ void McStopSendHyperText(mo_window * main_win)
 	XmxAdjustLabelText(mc_gui_member_list[0].label, "Xmit Off");
 }
 
+/*	envoie qqes choses comme ca:		*/
+/*type=scrollbarState = n;  incremente par 1 a chaque changement */
+/*sid, n, oid1,vpos,hpos, ..., oidn,vpos,hpos */
+
+void McEmitScrollBarValues(mo_window *win)
+{
+	int i;
+	McSbValues *buf;
+	McSbValues lbuf;
+        struct timeval tv;
+	int rtp_ts;
+	int sb_id = mc_sb_state_number;
+
+	gettimeofday(&tv, 0);
+        rtp_ts = McRtpTimeStamp(tv); /* sample time when file come */
+
+	assert(win->frame_type==NOTFRAME_TYPE || win->frame_type==FRAMESET_TYPE);
+
+	if (win->frame_type==NOTFRAME_TYPE) {
+		lbuf.oid = win->cur_sb_moid;
+		lbuf.vbar = win->mc_sbv_value;
+		lbuf.hbar = win->mc_sbh_value;
+		McSendScrollBarValues(sb_id, rtp_ts, win->cur_sb_sid, 1, &lbuf);
+		return;
+	}
+/* frameset */
+	buf = (McSbValues*)calloc(win->frame_sons_nbre,sizeof(McSbValues));
+	for (i = 0; i< win->frame_sons_nbre; i++) {
+		mo_window * swin = win->frame_sons[i];
+
+		buf[i].oid = swin->cur_sb_moid;
+		buf[i].vbar = swin->mc_sbv_value;
+		buf[i].hbar = swin->mc_sbh_value;
+	}
+	McSendScrollBarValues(sb_id,rtp_ts,win->cur_sb_sid, win->frame_sons_nbre,buf);
+	free(buf);
+}
+
 static void McSendNewState(mo_window * win, int moid_ref, DependObjectTab dot, int ndo)
 {
 	MimeHeaderStruct mhs;
 	int stateid =0;
+	int size, inc, pageinc;
+	int i;
 
+	/* win est un frameset ou un HTML */
+	assert(win->frame_type == NOTFRAME_TYPE || win->frame_type == FRAMESET_TYPE);
 	memset(&mhs,0,sizeof(MimeHeaderStruct));
 	mc_local_state_id++;
 	stateid = mc_local_state_id;
@@ -376,6 +419,35 @@ static void McSendNewState(mo_window * win, int moid_ref, DependObjectTab dot, i
 
 	MakeSenderState(&mhs, stateid);
 	McSendState(stateid);
+
+/* send scrollbar values */
+	mc_sb_state_number++;
+	if (win->frame_type == NOTFRAME_TYPE) {
+		assert(ndo == 0);
+		win->cur_sb_sid = mc_local_state_id;
+		win->cur_sb_moid = moid_ref;
+		win->mc_send_scrollbar_flag = True;
+        	XmScrollBarGetValues(win->mc_vbar, &win->mc_sbh_value, &size, &inc, &pageinc);
+        	XmScrollBarGetValues(win->mc_hbar, &win->mc_sbv_value, &size, &inc, &pageinc);
+
+		McEmitScrollBarValues(win);
+		return;
+	}
+
+	assert(win->frame_type == FRAMESET_TYPE);
+	win->cur_sb_sid = mc_local_state_id;
+	win->cur_sb_moid = moid_ref;
+	win->mc_send_scrollbar_flag = True;
+	for ( i=0; i< win->frame_sons_nbre; i++) {
+		mo_window *swin = win->frame_sons[i];
+
+        	XmScrollBarGetValues(swin->mc_vbar, &swin->mc_sbh_value, &size, &inc, &pageinc);
+        	XmScrollBarGetValues(swin->mc_hbar, &swin->mc_sbv_value, &size, &inc, &pageinc);
+		swin->cur_sb_sid = mc_local_state_id;
+		swin->cur_sb_moid = swin->moid_ref;
+		swin->mc_send_scrollbar_flag = True;
+	}
+	McEmitScrollBarValues(win);
 }
 
 /* Un nouvel objet est charge dans la fenetre d'emission */
@@ -531,6 +603,10 @@ static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 		McMoveVirtualCursor(s, rs.cur_pos_x, rs.cur_pos_y);
 		return;
 	}
+	if (rs.pt == 0x64 ){	/* scrollbar */
+		McMoveVirtualScrollbar(s, &rs);
+		return;
+	}
 /* Show the source data in the window */
 	switch (rs.data_type){
 	case HTML_STATE_DATA_TYPE:
@@ -661,6 +737,51 @@ void McEmitCursor(mo_window * win, XEvent * ev)
 #endif
 	McSendRtpCursorPosition(rtp_ts, xmev->x, xmev->y);
 }
+
+void McHScrollMoveCB(Widget w, caddr_t clid, caddr_t calld)
+{
+	mo_window * win = (mo_window*) clid;
+	mo_window * sendwin = win;
+	XmScrollBarCallbackStruct *sc = (XmScrollBarCallbackStruct *)calld;
+
+	win->mc_sbh_value = sc->value;
+	if (! win->mc_send_scrollbar_flag)
+		return;
+
+	if (win->frame_parent)
+		sendwin = win->frame_parent;
+		
+	mc_sb_state_number++;
+	McEmitScrollBarValues(sendwin);
+}
+void McVScrollMoveCB(Widget w, caddr_t clid, caddr_t calld)
+{
+	mo_window * win = (mo_window*) clid;
+	mo_window * sendwin = win;
+	XmScrollBarCallbackStruct *sc = (XmScrollBarCallbackStruct *)calld;
+
+	win->mc_sbv_value = sc->value;
+	if (! win->mc_send_scrollbar_flag)
+                return; 
+                                   
+        if (win->frame_parent) 
+                sendwin = win->frame_parent; 
+                
+	mc_sb_state_number++;
+        McEmitScrollBarValues(sendwin);
+}
+
+#if 0
+*void McSendStateScrollbar(mo_window * win, XEvent * ev)
+*{
+        XmScrollBarSetValues(hw->html.vbar, newy, size, inc, pageinc, True);
+	envoie qqes choses comme ca:
+type=scrollbarState = n; /* incremente par 1 a chaque changement */
+sid, n, oid1,vpos,hpos, ..., oidn,vpos,hpos 
+*}
+
+
+
 /* ###########
 /*void McSendAllDataOnlyOnce(McSendDataStruct * d)
 /*{
@@ -687,3 +808,4 @@ void McEmitCursor(mo_window * win, XEvent * ev)
 /*####### case of navigation ########### */
 /* navigation in history never modify a doc or object... */
 /* juste update the 'RTPtimestamp' in SR. Back to the futur... */
+#endif

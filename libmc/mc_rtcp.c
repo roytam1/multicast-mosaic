@@ -96,7 +96,7 @@ void McRtcpWriteSdes()
 	
 /* TOOL */
 	itm[3].type = RTCP_SDES_TOOL;
-	strcpy(itm[3].d, "mMosaic-3.6.2");
+	strcpy(itm[3].d, "mMosaic-3.6.3");
 	itm[3].len= strlen(itm[3].d);
 
         ebuf[0] = 0x80;     /* V,P,SC */
@@ -192,6 +192,33 @@ SdesStruct * parse_sdes(RtcpPacket* rcs)
 	return &sdes;
 }
 
+static void McRtcpWriteSBStateReport()
+{
+	int len = 3 -1;
+
+	if(mc_sb_state_number == -1 ) {
+		return;
+	}
+
+	ebuf[0] = 0x80;     /* V,P,RC */
+        ebuf[1] = RTCP_PT_SB_STATR;      /* PT=(RTCP_PT_SB_STATR) */
+                    
+        ebuf[2] = (len >> 8) & 0xff;    /* length */
+        ebuf[3] = len & 0xff;
+	
+        ebuf[4] = (mc_local_srcid >> 24) & 0xff;    /* SSRC */
+        ebuf[5] = (mc_local_srcid >> 16) & 0xff;
+        ebuf[6] = (mc_local_srcid >> 8) & 0xff;
+        ebuf[7] =  mc_local_srcid & 0xff;
+
+	ebuf[8] = (mc_sb_state_number >> 24) & 0xff; /* sb_id */
+	ebuf[9] = (mc_sb_state_number >> 16) & 0xff;
+	ebuf[10] = (mc_sb_state_number >> 8) & 0xff;
+	ebuf[11] = mc_sb_state_number & 0xff;
+
+	McWrite(mc_fd_rtcp_w, ebuf, 12);
+}
+
 static void McRtcpWriteStateReport()
 {
 	int len = 7 - 1;
@@ -260,6 +287,7 @@ void McRtcpWriteCb(XtPointer clid, XtIntervalId * time_id)
 {
 	McRtcpWriteSdes();
 	McRtcpWriteStateReport();
+	McRtcpWriteSBStateReport();
 
 	mc_rtcp_w_timer_id = XtAppAddTimeOut(mMosaicAppContext,
 		mc_rtcp_w_time, McRtcpWriteCb, NULL);

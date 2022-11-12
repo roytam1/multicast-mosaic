@@ -556,10 +556,16 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 			}
 			unlink(pafd->fname);
 			pafd->fd = open(pafd->fname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-			if(pafd->aurl_wa) free(pafd->aurl_wa);
-			pafd->aurl_wa = strdup(pafd->mhs->location);
-			if(pafd->aurl) free(pafd->aurl);
-			pafd->aurl = strdup(pafd->mhs->location);
+			{
+				char * new_url;
+				new_url = mo_url_canonicalize_keep_anchor(pafd->mhs->location,pafd->aurl_wa);
+
+				if(pafd->aurl_wa) free(pafd->aurl_wa);
+				pafd->aurl_wa = new_url;
+				new_url = mo_url_canonicalize(pafd->mhs->location, pafd->aurl);
+				if(pafd->aurl) free(pafd->aurl);
+				pafd->aurl = new_url;
+			}
 			FreeMimeStruct(pafd->mhs);
 			pafd->mhs=(MimeHeaderStruct*) calloc(1,sizeof(MimeHeaderStruct));
 
@@ -730,6 +736,11 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	if (win->frame_type ==  FRAMESET_TYPE) { /* dewrap old */
 		int i;
 
+#ifdef MULTICAST
+        	win->mc_sbh_value = 0; 
+        	win->mc_sbv_value = 0;
+		win->mc_send_scrollbar_flag = False;
+#endif
 		for(i = 0; i < win->frame_sons_nbre; i++) {
 /* stop old plugins if exist */
 #ifdef OBJECT
@@ -757,6 +768,11 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		old_mlist = win->htinfo->mlist;
 		MMStopPlugins(win, old_mlist);
 	}
+#endif
+#ifdef MULTICAST
+        win->mc_sbh_value = 0; 
+        win->mc_sbv_value = 0;
+	win->mc_send_scrollbar_flag = False;
 #endif
 /* dans le fichier decompresse (eventuellement) on a de l'HTML */
 /* Faire un Parse pour le decomposer en objet */

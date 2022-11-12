@@ -153,7 +153,11 @@ typedef struct _McObjectStruct {
         MimeHeaderStruct * mhs; /* associated MIME info (sender)*/
 } McObjectStruct;
 
-
+typedef struct _McSbValues {
+	int oid;
+	int vbar;
+	int hbar;
+} McSbValues;
 
 
 
@@ -208,7 +212,7 @@ typedef struct _Source {
 /*	int		dec_sid; /* dernier etat complet */
 
 	int current_view_state; /* what state is in current window */
-
+	int current_sb_id;	/* current scrollbar id */
 	long		lts;	/* local time stamp (unixtime) */
 
 /* cache for source */
@@ -258,6 +262,7 @@ extern char		mc_local_cname[];
 
 extern int		mc_local_state_id;
 extern int		mc_local_object_id;
+extern int		mc_sb_state_number;
 
 extern int		mc_status_report_state_id;
 extern int		mc_status_report_object_id;
@@ -371,4 +376,8 @@ extern McBufferStatus McRcvrSrcCheckBufferObject(Source *s, int moid);
 extern void McSendRtpCursorPosition(int rtp_ts, int x, int y);
 
 extern void McDisplayWindowText(Source *s, unsigned int url_id);
+extern void McSendScrollBarValues(int sb_id, int rtp_ts, int sid, int n, McSbValues *sbvs);
+extern void McMoveVirtualScrollbar(Source *s, RtpPacket *rs);
+extern void McQueryRepairFromSBStatr(Source *s, RtcpPacket* rcs);
+extern void McEmitScrollBarValues(mo_window *win);
 #endif

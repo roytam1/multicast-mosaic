@@ -841,6 +841,28 @@ void McProcessRtcpData(unsigned char *buf, int len, IPAddr addr_from)
 			/* of the number of query and net parameter */
 			McStoreQueryRepair(s, &rcs);
 			break;
+		case RTCP_PT_SB_STATR:
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "McProcessRtcpData: RTCP_PT_SB_STATR\n");
+#endif
+			McQueryRepairFromSBStatr(s, &rcs);
+			break;
+
+/* a receiver wish to repair a packet */
+		case RTCP_PT_SB_REPAIR:
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "McProcessRtcpData: RTCP_PT_SB_REPAIR\n");
+#endif
+			target_ssrc = ntohl( *((u_long*)rcs.d));
+			if ( target_ssrc != mc_local_srcid) /* not for me */
+				break;
+			if ( !mc_send_win)	/* i am not a sender */
+				break;
+			/* query is for me. reply to 's' or multicast depending */
+			/* of the number of query and net parameter */
+/*			McStoreQuerySBRepair(s, &rcs);	*/
+			McEmitScrollBarValues(mc_send_win);
+			break;
 		default:
 			fprintf(stderr,"McProcessRtcpData: unknow pkt.type\n");
 			break;
@@ -931,6 +953,31 @@ void UcProcessRtcpData(unsigned char *buf, int len, IPAddr addr_from,
 				fprintf(stderr, "UcProcessRtcpData: calling McStoreQueryRepair\n");
 #endif
 			McStoreQueryRepair(s, &rcs);
+			break;
+		case RTCP_PT_SB_REPAIR:
+#ifdef DEBUG_MULTICAST
+			fprintf(stderr, "UcProcessRtcpData: RTCP_PT_SB_REPAIR\n");
+#endif
+			target_ssrc = ntohl( *((u_long*)rcs.d));
+			if ( target_ssrc != mc_local_srcid) { /* not for me */
+#ifdef DEBUG_MULTICAST
+				fprintf(stderr, "UcProcessRtcpData: not target\n");
+#endif
+				break;
+			}
+			if ( !mc_send_win) {	/* i am not a sender */
+#ifdef DEBUG_MULTICAST
+				fprintf(stderr, "UcProcessRtcpData: not a sender\n");
+#endif
+				break;
+			}
+			/* query is for me. reply to 's' or multicast depending */
+			/* of the number of query and net parameter */
+#ifdef DEBUG_MULTICAST
+				fprintf(stderr, "UcProcessRtcpData: calling McStoreQuerySBRepair\n");
+#endif
+/*			McStoreQuerySBRepair(s, &rcs); */
+			McEmitScrollBarValues(mc_send_win);
 			break;
 		default:
 			fprintf(stderr, "BUG UcProcessRtcpData\007\n");
