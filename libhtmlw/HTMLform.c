@@ -213,17 +213,7 @@ void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
 
 	if (tptr && !strcasecmp(tptr, "image")) {
 		free(tptr);
-		tptr = (char *)malloc( strlen((*mptr)->start) +
-				strlen(" ISMAP") + strlen(MT_IMAGE) -
-				strlen(MT_INPUT) + 1);
-		strcpy(tptr, MT_IMAGE);
-		strcat(tptr, (char *) ((*mptr)->start + strlen(MT_INPUT)));
-		strcat(tptr, " ISMAP");
-		tptr2 = (*mptr)->start;
-		(*mptr)->start = tptr;
 		ImagePlace(hw, *mptr, pcc);
-		(*mptr)->start = tptr2;
-		free(tptr);
 	} else if (tptr && !strcasecmp(tptr, "hidden")) {
 /* hidden inputs have no element associated with them, just a widget record. */
 		free(tptr);

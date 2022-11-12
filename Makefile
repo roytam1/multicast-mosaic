@@ -10,7 +10,7 @@
 #	- NetWinder (StrongArm based machine)
 #	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.6.3
+MCVER=3.6.4
 
 ##
 ## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
@@ -21,8 +21,8 @@ MCVER=3.6.3
 ##
 
 #CC = gcc
-#CC = cc
-CC = CC
+CC = cc
+#CC = CC
 
 ##
 ## Linker options
@@ -49,9 +49,9 @@ CC = CC
 # SGI Mipspro
 #prereleaseflags = -g -n32 -Xcpluscomm -woff 1009,1014,1048,1110,1116,1185,1188,1204,1230,1233
 # Sun Workshop C Compiler
-#prereleaseflags = -v -g -xstrconst
+prereleaseflags = -v -g -xstrconst
 # Sun Workshop C++ Compiler
-prereleaseflags = +w -g
+#prereleaseflags = +w -g
 
 # For building a shared lib add this	(don't use: experimental)
 #prereleaseflags = $prereleaseflags -fPIC

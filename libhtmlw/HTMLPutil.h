@@ -60,6 +60,8 @@ extern void 		ImagePlace(HTMLWidget hw, struct mark_up *mptr,
 
 extern void 		ImageSubmitForm(FormInfo *fptr, XEvent *event,
 				int x, int y);
+extern void 		InputImageSubmitForm(FormInfo *fptr, XEvent *event,
+				HTMLWidget hw);
 extern void 		HideWidgets( HTMLWidget hw);
 extern char * 		ComposeCommaList( char **list, int cnt);
 extern void		FreeCommaList( char **list, int cnt);

@@ -14,6 +14,10 @@
 #include <assert.h>
 #include <signal.h>
 
+#ifdef linux
+#include <X11/Xlib.h>
+#endif
+
 #include "HTMLP.h"
 #include "HTMLPutil.h"
 #include <Xm/XmAll.h>
@@ -47,6 +51,11 @@ void ObjectPlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext *pcc)
 	int argcnt ;
 	Arg arg[20];
 	int baseline=0;
+
+	XWindowAttributes xwa;
+	XSetWindowAttributes xswa;
+	int i;
+	Widget frame;
 
 	assert(omptr->s_obs);
 
@@ -164,10 +173,6 @@ void ObjectPlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext *pcc)
 /* passer en parametre la XtWindow de la widget ainsi creee */
 
 /* Creation d'une widget */
-	XWindowAttributes xwa;
-	XSetWindowAttributes xswa;
-	int i;
-	Widget frame;
 
 /* all data id here . Create */
 

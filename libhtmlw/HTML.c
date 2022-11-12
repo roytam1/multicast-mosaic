@@ -1654,6 +1654,13 @@ static void SelectStart( Widget w, XEvent *event,
 			hw->html.press_y = BuEvent->y;
 			SetAnchor(hw);
 		}
+		/* INPUT TYPE=image ... is like an anchor */
+		else if (eptr->type == E_INPUT_IMAGE) {
+			hw->html.active_anchor = eptr;
+			hw->html.press_x = BuEvent->x;
+			hw->html.press_y = BuEvent->y;
+			/*SetAnchor(hw);*/
+		}
 		/*
 		 * Else if we are on an image we can't select text so
 		 * pretend we got eptr==NULL, and exit here.
@@ -2049,14 +2056,17 @@ static void TrackMotion( Widget w, XEvent *event,
 	}
 		/* We're hitting a new anchor if eptr exists and
 		 * eptr != cached tracked element and anchor_tag_ptr != NULL. */
-	if (eptr != NULL && eptr->anchor_tag_ptr->anc_href != NULL) {
+	if ( eptr->anchor_tag_ptr->anc_href != NULL || eptr->type == E_INPUT_IMAGE) {
 		pmcbs.href = eptr->anchor_tag_ptr->anc_href;
+		if (eptr->type == E_INPUT_IMAGE) {
+			pmcbs.href = "Send Request";
+		}
 		XtCallCallbackList((Widget)hw,
 			hw->html.pointer_motion_callback, &pmcbs );
 		XDefineCursor (XtDisplay (hw), XtWindow (hw->html.view), 
 			in_anchor_cursor);
 	} else 
-		if (eptr != NULL &&  eptr->anchor_tag_ptr->anc_href == NULL) {
+		if (eptr->anchor_tag_ptr->anc_href == NULL && eptr->type !=E_INPUT_IMAGE) {
 		/* We're leaving an anchor if eptr exists and
 		 * a cached ele exists and we're not entering a new anchor. */
 			LEAVING_ANCHOR (hw);
@@ -2092,7 +2102,7 @@ static void _HTMLInput( Widget w, XEvent *event,
 	eptr = LocateElement(hw,event->xbutton.x,event->xbutton.y, &epos);
 	if (eptr == NULL)
 		return;
-	if (eptr->anchor_tag_ptr->anc_href == NULL)
+	if (eptr->anchor_tag_ptr->anc_href == NULL && eptr->type!=E_INPUT_IMAGE)
 		return;
 		   /* Save the anchor text, replace newlines with * spaces. */
 	tptr = ParseTextToString(
@@ -2111,15 +2121,14 @@ static void _HTMLInput( Widget w, XEvent *event,
 	XFlush(XtDisplay(hw));
 #endif
 
-/* An ISMAP image but in Form */
-	if((eptr->pic_data != NULL) && (eptr->anchor_tag_ptr->anc_href != NULL)&&
-	   eptr->pic_data->ismap && eptr->is_in_form) {      
-		int form_x, form_y;
+/* An INPUT TYPE=image in Form */
+	if((eptr->type == E_INPUT_IMAGE) && eptr->fptr) {      
+		/*int form_x, form_y; */
+		/*form_x = event->xbutton.x + hw->html.scroll_x - eptr->x;*/
+		/*form_y = event->xbutton.y + hw->html.scroll_y - eptr->y;*/
+		/*ImageSubmitForm(eptr->pic_data->fptr, event, form_x, form_y); */
 
-		form_x = event->xbutton.x + hw->html.scroll_x - eptr->x;
-		form_y = event->xbutton.y + hw->html.scroll_y - eptr->y;
-		ImageSubmitForm(eptr->pic_data->fptr, event,
-			form_x, form_y);
+		InputImageSubmitForm(eptr->fptr, event, hw);
 		return;
 	} 
 /* Send the selection location along with the HRef

@@ -192,7 +192,7 @@ void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 		return;
 	}
 
-	obs = (_HtmlObjectStruct *) calloc(1,sizeof(_HtmlObjectStruct));
+	obs = (HtmlObjectStruct *) calloc(1,sizeof(HtmlObjectStruct));
 	obs->bin_path = classidPtr;
 	obs->height = atoi(hPtr);
 	obs->width = atoi(wPtr);
@@ -339,7 +339,7 @@ static void StopP(mo_window *win, struct mark_up *mptr)
 	mptr->s_obs->frame = NULL;
 }
 
-void MMStopPlugins(mo_window* win, mark_up* mlist)
+void MMStopPlugins(mo_window* win, struct mark_up* mlist)
 {
 	struct mark_up *mptr = mlist;
 

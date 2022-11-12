@@ -552,6 +552,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
                         if ((pcc->subscript==1) && (pcc->superscript==0)) {
                         	nonScriptFont=pcc->cur_font;
                         	MMPushFont(pcc->cur_font);
+				######
                         	pcc->cur_font = hw->html.supsub_font;
                         }
                 }
@@ -1089,7 +1090,6 @@ int FormatAll(HTMLWidget hw, int Fwidth, Boolean save_obj)
 	pcc.element_id = 0;	/* to get unique number */
 	pcc.is_bol = True;	/* we are at begin of line */
 	pcc.have_space_after = False;	/* remember if a word have a space after*/
-	pcc.cur_font = hw->html.cur_font;
 	pcc.anchor_tag_ptr = NULL_ANCHOR_PTR;		/* we are in anchor ?? */
 	pcc.max_width_return = 0;
 				/* we compute the MaxWidth of hyper text to */
@@ -1150,6 +1150,7 @@ int FormatAll(HTMLWidget hw, int Fwidth, Boolean save_obj)
 	hw->html.font_stack = NULL;
 /*	FontStack->font = hw->html.font; */
 	MMInitWidgetFont(hw);
+	pcc.cur_font = hw->html.cur_font;
 
  					/* Format all objects for width */
 	FormatChunk(hw,hw->html.html_objects,NULL,&pcc,save_obj);
@@ -1187,6 +1188,7 @@ void RefreshElement(HTMLWidget hw,struct ele_rec *eptr, int win_x, int win_y,
 	case E_CR:
 		break;
 	case E_IMAGE:
+	case E_INPUT_IMAGE:
 		ImageRefresh(hw, eptr);
 		break;
 	case E_WIDGET:
@@ -1246,6 +1248,7 @@ struct ele_rec * LocateElement( HTMLWidget hw, int x, int y, int *pos)
 				rptr = eptr;
 			}
 			break;
+		case E_INPUT_IMAGE:
 		case E_IMAGE:
 			if((x >= tx1)&&(x <= tx2)&&(y >= ty1)&&(y <=ty2)){
 				rptr = eptr;

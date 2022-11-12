@@ -307,6 +307,7 @@ typedef enum {
 	E_CR,
 	E_LINEFEED,
 	E_IMAGE,
+	E_INPUT_IMAGE,
 	E_ANCHOR,
 	E_WIDGET,
 	E_HRULE	,
@@ -350,6 +351,7 @@ struct ele_rec {
 	struct ele_rec *prev;
 	struct ele_rec *line_next;
 	int internal_numeo;
+	FormInfo *fptr;
 /*	AppletInfo 	*ats; */
 };
 

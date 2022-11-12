@@ -45,14 +45,8 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 	- the requested image	(internal=0, fetched=1, delayed=0)
 */
 
-	if( (pcc->anchor_tag_ptr->anc_href == NULL) && picd->ismap &&
-	    (pcc->cur_form != NULL) && picd->fetched){
-/* SUPER SPECIAL CASE!  (Thanks Marc)
- * If you have an ISMAP image inside a form, And that form doesn't already
- * have an HREF by being inside an anchor, (Being a DelayedHRef is considered
- * no href) clicking in that image will submit the form, adding
- * the x,y coordinates of the click as part of the list of name/value pairs.
- */
+	if( mptr->type == M_INPUT && (pcc->cur_form != NULL) ){
+			/* <INPUT type="image" src=url ...> */
 		picd->fptr = pcc->cur_form;
 	}
 	baseline = height = picd->height + picd->border;
@@ -92,8 +86,14 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
                 pcc->computed_max_x = pcc->x + width;
 
 	if (!pcc->cw_only){
-		eptr = CreateElement(hw, E_IMAGE, pcc->cur_font,
+		if( mptr->type == M_INPUT && (pcc->cur_form != NULL) ){
+			eptr = CreateElement(hw, E_INPUT_IMAGE, pcc->cur_font,
 				pcc->x, pcc->y, width, height, baseline, pcc);
+			eptr->fptr = picd->fptr;
+		} else {
+			eptr = CreateElement(hw, E_IMAGE, pcc->cur_font,
+				pcc->x, pcc->y, width, height, baseline, pcc);
+		}
 		eptr->underline_number = 0; /* Images can't be underlined! */
 		eptr->anchor_tag_ptr = pcc->anchor_tag_ptr;
 		/* check the max line height. */

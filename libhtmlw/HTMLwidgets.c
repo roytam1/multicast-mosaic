@@ -255,6 +255,31 @@ int CollectSubmitInfo( FormInfo *fptr, char ***name_list, char ***value_list)
 	return(cbdata.attribute_count);
 }
 
+void InputImageSubmitForm( FormInfo *fptr, XEvent *event, HTMLWidget hw)
+{
+	WbFormCallbackData cbdata;
+	int i, cnt;
+	char **name_list;
+	char **value_list;
+	char valstr[100];
+
+	cbdata.event = event;
+	cbdata.href = fptr->action;
+        cbdata.method = fptr->method;
+        cbdata.enctype = fptr->enctype;
+
+	name_list = NULL;
+	value_list = NULL;
+	fptr->button_pressed = NULL;
+
+	cbdata.attribute_count = CollectSubmitInfo(fptr, &name_list, &value_list);
+	cbdata.attribute_names = name_list;
+	cbdata.attribute_values = value_list;
+
+	XtCallCallbackList ((Widget)hw, hw->html.form_callback,
+		(XtPointer)&cbdata);
+}
+
 void ImageSubmitForm( FormInfo *fptr, XEvent *event, int x, int y)
 {
 	HTMLWidget hw = (HTMLWidget)(fptr->hw);

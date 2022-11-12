@@ -24,7 +24,6 @@
 #include "list.h"
 
 #define DEBUG_REFRESH 0
-#define HTMLTRACE 1
 
 #define TBL_CELL_DEFAULT_PADDING 1
 #define TBL_CELL_DEFAULT_SPACING 2

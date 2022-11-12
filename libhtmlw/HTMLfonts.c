@@ -529,15 +529,22 @@ void MMPopFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc)
 	ofstack = hw->html.font_stack;
 	hw->html.font_stack = hw->html.font_stack->next;
 	free(ofstack);
+/* pas de current_font dans html */
+#ifdef TODO
+	assert(0);
+#endif
 	hw->html.cur_font = hw->html.font_stack->font->xfont;
 	pcc->cur_font = hw->html.cur_font;
 	pcc->fg_text = MMPopColorFg(hw);
 	return;
 }
 
-void GetDefaultWidgetFont( HTMLWidget hw, FontRec * ofr)
+static void GetDefaultWidgetFont( HTMLWidget hw, FontRec * ofr)
 {
 /* FIXE ME  MUST MATCH WbNdefaultFont ############ */
+#ifdef TODO
+	assert(0);
+#endif
 	ofr->xfont = hw->html.default_font;
 	ofr->fndry = "adobe" ;
 	ofr->family = "times";
@@ -566,6 +573,11 @@ void MMInitWidgetFont( HTMLWidget hw)
 	hw->html.font_stack->next = NULL;
 	fr = _LoadFont(hw, NULL, NULL, NULL, NULL, "3", NULL, &ofptr);
 	hw->html.font_stack->font = fr ;
+/* pas de current_font dans html */
+#ifdef TODO
+	assert(0);
+#endif
+	hw->html.cur_font = fr->xfont;
 }
 /*###################################################################
 /* Font face changes only allowed when not in preformatted text.*/
