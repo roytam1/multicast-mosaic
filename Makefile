@@ -10,7 +10,7 @@
 #	- NetWinder (StrongArm based machine)
 #	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.6.4
+MCVER=3.6.5
 
 ##
 ## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------

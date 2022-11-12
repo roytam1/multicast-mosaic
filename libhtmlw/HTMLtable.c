@@ -562,6 +562,9 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	start_other_mark = NULL;
 	end_other_mark = NULL;
 /* 'sm' is a pointer just after <TABLE> */
+	if (sm->type== M_TABLE && sm->is_end) { /* empty table */
+		return NULL;
+	}
 	while ( sm ){
 		if((sm->type== M_CAPTION) && (!sm->is_end)){
 			lt.captionAlignment = VALIGN_BOTTOM;
@@ -958,6 +961,8 @@ void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_
 			}
 			if ( fin_pcc.cur_line_height > h_row)
 				h_row = fin_pcc.cur_line_height;
+			/* propagate in_form */
+			deb_pcc.in_form = fin_pcc.in_form;
 		}
 		for(j=0; j<t->num_col; j++)
 			line[j].height = h_row;
@@ -1277,6 +1282,8 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 			line_pcc.element_id = work_pcc.element_id;
 			line_pcc.aprog_id = work_pcc.aprog_id;
 			line_pcc.applet_id = work_pcc.applet_id;
+			line_pcc.in_form = work_pcc.in_form;
+			line_pcc.cur_form = work_pcc.cur_form;
 		}
 /*Ajuster les hauteurs des 'cells'.Faire attention au span en ligne et colonne */
 /* pour chaque cellule dans la ligne voir si c'est la fin d'un 'rowspan'*/
@@ -1309,6 +1316,8 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	pcc->element_id =line_pcc.element_id ;
 	pcc->aprog_id =	line_pcc.aprog_id ;
 	pcc->applet_id = line_pcc.applet_id ;
+	pcc->in_form = line_pcc.in_form;
+	pcc->cur_form = line_pcc.cur_form;
 
 	t->width = w_table;
 	h_table += t->cellSpacing + t->borders;

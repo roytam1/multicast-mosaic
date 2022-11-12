@@ -534,9 +534,6 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 /* free the things we have build in MMPafDocData */
 	assert(pafd->fd > 0);
 
-	close(pafd->fd);
-	pafd->fd = -1;
-
 /* test some HTTP return code */
 
 	if (pafd->con_type == HTTP_CON_TYPE){
@@ -554,6 +551,9 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 				(*pafd->call_me_on_error)(pafd,"to many redirects");
 				return;
 			}
+			close(pafd->fd);
+			pafd->fd = -1;
+
 			unlink(pafd->fname);
 			pafd->fd = open(pafd->fname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 			{
@@ -578,6 +578,9 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 			break;
 		} 
 	}
+	close(pafd->fd);
+	pafd->fd = -1;
+
 
 /* fname is the file containing the HTML document */
 

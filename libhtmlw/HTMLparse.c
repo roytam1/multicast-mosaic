@@ -684,7 +684,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 	}
 
 /* autorized state stack:
- * M_END_STATE M_INIT_STATE M_HTML M_HEAD M_STYLE M_TITLE M_SCRIPT M_NOSCRIPT
+ * M_END_STATE M_INIT_STATE M_HTML M_HEAD M_STYLE M_TITLE M_SCRIPT
  * FRAMESET BODY */
 
 	switch (state) {
@@ -824,6 +824,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 			*im_ret = tmptr;
 			return INSERT_TAG;
 		case M_NOSCRIPT:		/* this is stupid */
+			return REMOVE_TAG;
 		case M_SCRIPT:
 		case M_STYLE:
 			if (mptr->is_end)
@@ -905,11 +906,11 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		}
 		break;
 	case M_SCRIPT:
-	case M_NOSCRIPT:		/* this is stupid */
 	case M_STYLE:
 		if (mptr->type == state) {
 			if (mptr->is_end) {
 				*sop = SOP_POP; /* next state will be HEAD */
+						/* or BODY */
 				return REMOVE_TAG;
 			}
 		}
@@ -962,6 +963,14 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 				return GOOD_TAG;
 			}
 			return REMOVE_TAG;
+		case M_NOSCRIPT:		/* this is stupid */
+			return REMOVE_TAG;
+		case M_SCRIPT:
+		case M_STYLE:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			*sop = SOP_PUSH;
+			return REMOVE_TAG;
 		case M_HTML:		/* some TAG is not in this block */
 		case M_HEAD:
 		case M_FRAME:
@@ -971,10 +980,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		case M_META:
 		case M_DOCTYPE:
 		case M_NOFRAMES:
-		case M_NOSCRIPT:
 		case M_TITLE:
-		case M_SCRIPT:
-		case M_STYLE:
 		case M_ISINDEX:
 		case M_UNKNOWN:
 			return REMOVE_TAG;
@@ -1122,7 +1128,6 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 			*im_ret = tmptr;
 			return INSERT_TAG;      /* next state is TABLE */
 						/* next Token is TR */
-			break;
 		case M_TR:
 			if (mptr->is_end) {
 				return REMOVE_TAG;
@@ -1146,7 +1151,14 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 			}
 			*sop = SOP_PUSH;
 			return GOOD_TAG;        /* next state is M_CAPTION */
-			break;
+		case M_NOSCRIPT:		/* this is stupid */
+			return REMOVE_TAG;
+		case M_SCRIPT:
+		case M_STYLE:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			*sop = SOP_PUSH;
+			return REMOVE_TAG;
                 case M_BASE:           /* some TAG is not in this block */
                 case M_HEAD:          
                 case M_FRAME:         
@@ -1156,10 +1168,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
                 case M_META:          
                 case M_DOCTYPE:       
                 case M_NOFRAMES:      
-                case M_NOSCRIPT:      
                 case M_TITLE:         
-                case M_SCRIPT:        
-                case M_STYLE:         
                 case M_ISINDEX:       
                 case M_UNKNOWN:       
                         return REMOVE_TAG;
@@ -1219,11 +1228,18 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 				return INSERT_TAG;
 			}
 			return REMOVE_TAG;
+		case M_NOSCRIPT:		/* this is stupid */
+			return REMOVE_TAG;
+		case M_SCRIPT:
+		case M_STYLE:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			*sop = SOP_PUSH;
+			return REMOVE_TAG;
 		default:
 			break;
 		}
 		return REMOVE_TAG;
-		break;
 	case M_TH:			/* table header like TD */
 		switch (mptr->type) {
 		case M_NONE:
@@ -1270,6 +1286,14 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 				*im_ret = tmptr;
 				return INSERT_TAG;
 			}
+			return REMOVE_TAG;
+		case M_NOSCRIPT:		/* this is stupid */
+			return REMOVE_TAG;
+		case M_SCRIPT:
+		case M_STYLE:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			*sop = SOP_PUSH;
 			return REMOVE_TAG;
 		default:
 			break;
@@ -1322,6 +1346,14 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 				return INSERT_TAG;
 			}
 			return REMOVE_TAG;
+		case M_NOSCRIPT:		/* this is stupid */
+			return REMOVE_TAG;
+		case M_SCRIPT:
+		case M_STYLE:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			*sop = SOP_PUSH;
+			return REMOVE_TAG;
 		default:
 			break;
 		}
@@ -1335,6 +1367,14 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 				*sop = SOP_POP;
 				return GOOD_TAG; /* next state is TABLE */
 			}
+			return REMOVE_TAG;
+		case M_NOSCRIPT:		/* this is stupid */
+			return REMOVE_TAG;
+		case M_SCRIPT:
+		case M_STYLE:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			*sop = SOP_PUSH;
 			return REMOVE_TAG;
 		default:
 			return REMOVE_TAG;

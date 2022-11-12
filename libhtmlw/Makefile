@@ -16,7 +16,7 @@ $(LIBTARGET): $(OBJS)
 	$(RANLIB) $(LIBTARGET)
 
 clean:
-	-rm -f $(LIBTARGET) *.o
+	-rm -f $(LIBTARGET) *.o core
 	-rm -rf .sb
 tags:
 	etags -t *.[ch]
