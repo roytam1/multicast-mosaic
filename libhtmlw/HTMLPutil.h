@@ -10,7 +10,6 @@ extern int 		SwapElements( struct ele_rec *start, struct ele_rec *end,
 				int start_pos, int end_pos);
 
 
- 
 extern void 		PartOfTextPlace(HTMLWidget hw, struct mark_up *mptr,
 				PhotoComposeContext * pcc);
 extern void 		PartOfPreTextPlace(HTMLWidget hw, struct mark_up *mptr,
@@ -23,11 +22,6 @@ extern void 		BulletPlace(HTMLWidget hw, struct mark_up *mptr,
 				PhotoComposeContext * pcc);
 extern void 		Set_E_TEXT_Element(HTMLWidget hw, struct ele_rec *eptr,
 				char *text, PhotoComposeContext *pcc);
-
-
-
-extern Dimension	HbarHeight(HTMLWidget hw);
-
 
 
 extern struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp,

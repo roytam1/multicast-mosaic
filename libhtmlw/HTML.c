@@ -605,7 +605,7 @@ static Dimension VbarWidth( /*HTMLWidget hw*/)
 
 /* Return the height of the horizontal scrollbar */
 
-Dimension HbarHeight( /*HTMLWidget hw*/)
+static Dimension HbarHeight(void)
 {
 	return(HORIZ_SCROLL_HEIGHT);
 }

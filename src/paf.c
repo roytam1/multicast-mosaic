@@ -133,6 +133,19 @@ void MMFinishPafSaveData(PafDocDataStruct * pafd)
 
 /* stop the twirl */                  
 	MMStopTwirl(pafd);
+
+	FreeMimeStruct(pafd->mhs);
+	pafd->mhs = NULL;	/* sanity */
+
+	free(pafd->aurl);
+	pafd->aurl = NULL;
+
+	free(pafd->aurl_wa);
+	pafd->aurl_wa = NULL;
+
+	free(pafd->fname);
+	pafd->fname = NULL;
+
 	FreePafDocDataStruct(pafd);
 	win->pafd = NULL;
 	XtPopdown(win->base);
@@ -150,6 +163,18 @@ void MMErrorPafSaveData(PafDocDataStruct * pafd, char * reason)
 	assert(pafd->fd >=0 ); 		/* let me know */
 	close(pafd->fd);
 	pafd->fd = -1;
+
+	FreeMimeStruct(pafd->mhs);
+	pafd->mhs = NULL;	/* sanity */
+
+	free(pafd->aurl);
+	pafd->aurl = NULL;
+
+	free(pafd->aurl_wa);
+	pafd->aurl_wa = NULL;
+
+	free(pafd->fname);
+	pafd->fname = NULL;
 
 	FreePafDocDataStruct(pafd);
 	XtPopdown(win->base);
@@ -171,12 +196,22 @@ void MMStopPafSaveData(PafDocDataStruct * pafd)
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
-/* free(pafd->mhs);	### FIXME */
+
 	FreeMimeStruct(pafd->mhs);
 	pafd->mhs = NULL;	/* sanity */
 
+	free(pafd->aurl);
+	pafd->aurl = NULL;
+
+	free(pafd->aurl_wa);
+	pafd->aurl_wa = NULL;
+
+	free(pafd->fname);
+	pafd->fname = NULL;
+
 	FreePafDocDataStruct(pafd);
 	win->pafd = NULL;
+
 	XtPopdown(win->base);
 	XtDestroyWidget(win->base);
 	free(win);

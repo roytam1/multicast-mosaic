@@ -1,206 +1,269 @@
+#
 # Toplevel Makefile for mMosaic.
-#This Release 3.5.2 compile on:
+#
+#This Release 3.5.3 compile on:
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
 #	- FreeBSD3.1 ,FreeBSD5.0
 #	- Mandrake6.1
 #	- NetWinder (StrongArm based machine)
+#	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.5.2
+MCVER=3.5.3
 
-# -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
+##
+## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
+##
 
-#### your compiler (ANSI required). And options
-#### Gnu C, C++, local C.
+##
+## Your compiler (ANSI required)
+##
+
 #CC = gcc
 #CC = cc
 CC = CC
 
-# for building a shared lib
-#ldflags = -G
-# FreeBSD3.4
-#ldflags = -static
+##
+## Linker options
+##
 
-#### Linux Intel optimised (does not work well)
+# For building a shared lib
+#ldflags = -G
+#ldflags = -shared
+#ldflags = -Bshared
+# For building a static lib
+#ldflags = -static
+#ldflags = -Bstatic
+
+##
+## Prerelease flags
+##
+
+# GCC : Linux Intel optimised (does not work well)
 #prereleaseflags = -O3 -fomit-frame-pointer -funroll-loops -finline-functions -m486 -malign-double
-#### Standard gcc Linux FreeBSD NetBSD compiler flags (recommanded )
-#prereleaseflags = -Wall -g -fno-builtin -fwritable-strings -Wwrite-strings
-#prereleaseflags = -Wall -g -fwritable-strings  -O0
+# GCC : Linux, FreeBSD, NetBSD compiler flags (recommended)
 #prereleaseflags = -Wall -g
-# for building a shared lib
-# prereleaseflags = $prereleaseflags -fPIC
-#### Qnx
+# Qnx
 #prereleaseflags = -Oeax
-#### Sun Workshop C Compiler
+# SGI Mipspro
+#prereleaseflags = -g -n32 -Xcpluscomm -woff 1009,1014,1048,1110,1116,1185,1188,1204,1230,1233
+# Sun Workshop C Compiler
 #prereleaseflags = -v -g -xstrconst
-#### Sun Workshop C++ Compiler
+# Sun Workshop C++ Compiler
 prereleaseflags = +w -g
 
-# for building a shared lib
-# prereleaseflags = $prereleaseflags -fPIC
+# For building a shared lib add this
+#prereleaseflags = $prereleaseflags -fPIC
 
-#### On NetBSD, FreeBSD, BSDI, OSF1, IBM , SunOS4this should be ranlib.
+##
+## Ranlib
+##
+
+# Linux, NetBSD, FreeBSD, BSDI, OSF1, SunOS4this 
 #RANLIB = ranlib
-#### ranlib for SVR4, indy , linux Qnx, Solaris2.x
+# SVR4, Irix, AIX, Qnx, Solaris 2.x
 RANLIB = /bin/true
 
+##
+## System configuration flags
+##
 
-#### Random system configuration flags.
-#### --> *** For Motif 1.2 ON ANY PLATFORM, do -DMOTIF1_2 *** <--
-#### For NeXT, do -DNEXT
-#### For HP/UX, do -Aa -D_HPUX_SOURCE
-#### For SCO ODT 3.0, do -DSCO -DSVR4
-#### For Motorola SVR4 , Esix 4.0.4, do -DSVR4
-#### For Linux 
+# NeXT
+#sysconfigflags = -DNEXT -DBSD
+# HP/UX
+#sysconfigflags = -Aa -D_HPUX_SOURCE
+# SCO ODT 3.0
+#sysconfigflags = -DSCO -DSVR4
+# Motorola SVR4, Esix 4.0.4
+#sysconfigflags = -DSVR4
+# Linux
 #sysconfigflags = -DLINUX -Dlinux -DSVR4
-#### For OSF1 -std1 -DDECOSF1
-#### For Qnx  -DQNX
-#### for FreeBSD
-#sysconfigflags = -DFreeBSD -DMOTIF1_2
-#### for NetBSD
-#sysconfigflags = -DNETBSD -DMOTIF1_2
-#### For Solaris2.5 & 2.5.1, do
-sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
+# OSF1
+#sysconfigflags = -std1 -DDECOSF1
+# Qnx
+#sysconfigflags = -DQNX
+# FreeBSD
+#sysconfigflags = -DFreeBSD
+# NetBSD
+#sysconfigflags = -DNETBSD
+# Irix
+#sysconfigflags = -DSVR4 -DIRIX
+# Solaris2.5 & 2.5.1
+sysconfigflags = -DSOLARIS -DSVR4
 
-#### Add some debug option for developper
-#### -DHTMLTRACE for verbose about html tag
+# Use Motif 1.2.x
+sysconfigflags += -DMOTIF1_2
+
+# -DHTMLTRACE for verbose about html tag
 #sysconfigflags += -DHTMLTRACE
 
-#### System libraries SunOS.
-# syslibs = -lPW -lsun -lmalloc
-#### For Sun's with no DNS:
-# syslibs = -lresolv
-# syslibs = -lresolv -l44bsd
-#### For AIX 3.2
-# syslibs = -lPW -lbsd
-#### For most other Motif platforms:
-# syslibs = -lPW
-#### For Sun's Ultrix HP BSD/386 FreeBSD and Linux:
-# syslibs =
-#### For SCO ODT:
-# syslibs = -lPW -lsocket -lmalloc
-#### For Dell SVR4:
-# syslibs = -lnsl -lsocket -lc -lucb
-#### For BDSI
-# syslibs = -lipc
-#### For QNX 4.XX
+##
+## System libraries
+##
+
+# SunOS
+#syslibs = -lPW -lsun -lmalloc
+# SunOS without DNS
+#syslibs = -lresolv
+#syslibs = -lresolv -l44bsd
+# AIX 3.2
+#syslibs = -lPW -lbsd
+# Ultrix, HP-UX, BSD/386, FreeBSD, Linux
+#syslibs =
+# SCO ODT
+#syslibs = -lPW -lsocket -lmalloc
+# Dell SVR4
+#syslibs = -lnsl -lsocket -lc -lucb
+# BSDi
+#syslibs = -lipc
+# QNX 4.XX
 #syslibs = -lsocket
-#### For Solaris (2.x) and Motorola SVR4  .
+# Irix
+#syslibs = -lPW
+# Solaris 2.x, Motorola SVR4
 syslibs = -lsocket -lnsl
 
-#### X include file locations -- if your platform puts the X include
-#### files in a strange place, set this variable appropriately.  Else
-#### don't worry about it.
-# xinc = -I/usr/include/Motif1.2 -I/usr/local/X11R5/include
-# xinc = -I/usr/include/X11
-# xinc = -I/usr/X11/include
-#### Linux Debian and FreeBSD
-#xinc = -I/usr/X11R6/include
-#### Solaris 2.x (Patched X11R5 and Motif libs)
-xinc = -I/usr/openwin/include -I/usr/dt/include
+##
+## X11 includes
+##
 
-#### X library locations.
-#### For nearly everyone:
-# xlibs = -lXm -lXmu -lXt -lX11
-#### For HP-UX 9.01: The X11R5 libraries are here on our systems
-# xlibs = -L/usr/lib/Motif1.2 -lXm -L/usr/lib/X11R5 -L/usr/lib/X11R4 -lXmu -lXt -lX11
-#### For NeXT:
-# xlibs = -L/usr/lib/X11 -lXm -lXmu -lXt -lX11
-#### For Dell SVR4:
-# xlibs = -L/usr/X5/lib -lXm -lXmu -lXt -lXext -lX11
-#### For Motorola SVR4:
-# xlibs = -lXm -lXmu -lXt -lXext -lX11 -lm
-#### QNX
-#xlibs =  -L/usr/X11/lib -lXm_s -lXt_s -lX11_s -lXqnx_s  -lXt -lXmu -lXext
-#### Linux Debian, FreeBSD, NetBSD with Lesstif
-#xlibs = -L/usr/X11R6/lib -lXm -lXmu -lXt -lXext -lX11 -lm 
-#### For Solaris (2.x) (Use static to go from machine to machine)
-xlibs = -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/dt/lib -R/usr/dt/lib
-xlibs += -lXm -lXmu -lXt -lXext -lX11 -lm
+# Common
+#xinc	= -I/usr/include/Motif1.2 -I/usr/local/X11R5/include
+#xinc	= -I/usr/include/X11
+#xinc	= -I/usr/X11/include
+# Linux, FreeBSD
+#xinc	= -I/usr/X11R6/include
+# Irix
+#xinc	= -I/usr/include
+# Solaris 2.x
+xinc	= -I/usr/openwin/include -I/usr/dt/include
 
-#### PNG SUPPORT
-#### For inline PNG support, the following should be defined:
-#### The libraries currently used are PNGLIB 0.99d and ZLIB 1.0.9
 
-# linux Mandrake
-#zlibdir = /usr/lib
-#pngdir = /usr
-#jpegdir = /usr
+##
+## X11 libraries
+##
 
+# Common
+#xlibs	= -L/usr/lib/X11 -lXm -lXmu -lXt -lX11
+# HP-UX
+#xlibs	= -L/usr/lib/Motif1.2 -lXm -L/usr/lib/X11R5 -L/usr/lib/X11R4 -lXmu -lXt -lX11
+# NeXT
+#xlibs	= -L/usr/lib/X11 -lXm -lXmu -lXt -lX11
+# Dell SVR4
+#xlibs	= -L/usr/X5/lib -lXm -lXmu -lXt -lXext -lX11
+# Motorola SVR4
+#xlibs	= -lXm -lXmu -lXt -lXext -lX11 -lm
+# QNX
+#xlibs	= -L/usr/X11/lib -lXm_s -lXt_s -lX11_s -lXqnx_s -lXt -lXmu -lXext
+# Linux, FreeBSD, NetBSD with Lesstif
+#xlibs	= -L/usr/X11R6/lib -lXm -lXmu -lXt -lXext -lX11 -lm 
+# Irix
+#xlibs	= -L/usr/lib32 -lXm -lXmu -lXt -lXext -lX11 -lm 
+# Solaris 2.x
+xlibs	= -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/dt/lib -R/usr/dt/lib
+xlibs	+= -lXm -lXmu -lXt -lXext -lX11 -lm
+
+##
+## PNG support (PNGLIB 0.99d and ZLIB 1.0.9)
+##
+
+# Linux
+#pnginc  = /usr/include
+#pnglibs = /usr/lib/libpng.a /usr/lib/libz.a
+# Irix
+#pnginc   = /usr/local/include
+#pnglibs  = /usr/local/lib/libpng.a /usr/lib32/libz.a
 # Solaris
-zlibdir = /usr/local/lib
-pngdir = /usr/local
-jpegdir = /usr/local
+pnginc  = /usr/local/include
+pnglibs = /usr/local/lib/libpng.a /usr/local/lib/libz.a
 
-pnglibdir = $(pngdir)/lib
-pngincludedir = /$(pngdir)/include
-pnglibs = $(pnglibdir)/libpng.a $(zlibdir)/libz.a
-pngflags =  -I$(pngincludedir) -DHAVE_PNG
+# To disable PNG support comment this.
 
-#### JPEG SUPPORT
-#### For inline JPEG support, the following should be defined:
-#### The library used is Independent JPEG Group (IJG's) jpeg-6a.  
+pngflags =  -I$(pnginc) -DHAVE_PNG
 
-jpeglibs = $(jpegdir)/lib/libjpeg.a
-jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
+##
+## JPEG support (jpeg-6a)
+##
 
-#### KERBEROS SUPPORT
-####
-#### If you want Mosaic to support Kerberos authentication, set the 
-#### following flags appropriately.  You can support Kerberos V4 and/or V5,
-#### although it's most likely that your realm supports one or the other.
-#### To enable DES-encryption of HTTP messages via Kerberos key exchange, 
-#### define the KRB-ENCRYPT flag.
+# Linux
+#jpeginc  = /usr/include
+#jpeglibs = /usr/lib/libjpeg.a
+# Irix
+#jpeginc   = /usr/include
+#jpeglibs  = /usr/lib32/libjpeg.so
+# Solaris
+jpeginc  = /usr/local/include
+jpeglibs = /usr/local/lib/libjpeg.a
 
-##krb4dir   = /usr/athena
+# To disable JPEG support (not recommended) comment this.
+
+jpegflags = -I$(jpeginc) -DHAVE_JPEG
+
+##
+## KERBEROS support
+##
+
+# If you want Mosaic to support Kerberos authentication, set the 
+# following flags appropriately.  You can support Kerberos V4 and/or V5,
+# although it's most likely that your realm supports one or the other.
+# To enable DES-encryption of HTTP messages via Kerberos key exchange, 
+# define the KRB-ENCRYPT flag.
+
+#krb4dir   = /usr/athena
 #krb4dir   = /xdev/mosaic/libkrb4/solaris-24
 #krb4libs  = $(krb4dir)/lib/libkrb.a $(krb4dir)/lib/libdes.a
 #krb4flags = -DKRB4 -I$(krb4dir)/include
 
-##krb5dir   = /krb5
+#krb5dir   = /krb5
 #krb5dir   = /xdev/mosaic/libkrb5/solaris-24
 #krb5libs  = $(krb5dir)/lib/libkrb5.a $(krb5dir)/lib/libcrypto.a $(krb5dir)/util/et/libcom_err.a
 #krb5flags = -DKRB5 -I$(krb5dir)/include -I$(krb5dir)/include/krb5
 
-#Do not comment out.
+# Do not comment out!
 krbflags  = $(krb4flags) $(krb5flags)
 krblibs   = $(krb4libs) $(krb5libs) 
 
-#### MULTICAST support
-#mcdir = $(PWD)/libmc
-#mcflag = -I$(mcdir) -DMULTICAST
-#mclib = $(mcdir)/libmc.a
+##
+## MULTICAST support
+## 
 
-#### APROG support (obsolete)
+mcdir = $(PWD)/libmc
+mcflag = -I$(mcdir) -DMULTICAST
+mclib = $(mcdir)/libmc.a
+
+##
+## APROG support (obsolete)
+## 
+
 #adir = $(PWD)/libaprog
 #aflag = -I$(adir) -DAPROG
 #alib = $(adir)/libaprog.a
 
-#### Customization flags:
-#### . If you want Mosaic to come up with monochrome colors by default,
-####   use -DMONO_DEFAULT
-#### . If you want to define the default Mosaic home page, set
-####   -DHOME_PAGE_DEFAULT=\\\"url\\\"
-#### . If you want to define the default Mosaic documentation directory
-####   (should be a URL), set -DDOCS_DIRECTORY_DEFAULT=\\\"url\\\"
-#### . Other things you can define are spelled out in src/mosaic.h.
-####
-#### . If you run on IPV6 native kernel set -DIPV6
-####    IPV6 is incompatible with MULTICAST. (just now)
-#### . For NEWS support -DNEWS (obsolete)
-#### . For APPLET support -DAPPLET (don't use)
-#### . -DLOOSE_PACKET for testing multicast packet lost.
-#### . -DDEBUG_MULTICAST
-#### . -DDEBUG_FRAME be verbose on frame
+##
+## Customization flags
+## 
 
-#### customflags = -DLOOSE_PACKET -DDEBUG_MULTICAST -DDEBUG_FRAME
+# -DMONO_DEFAULT			Mosaic comes up in monochrome default
+# -DHOME_PAGE_DEFAULT=\\\"url\\\"	Define Mosaic home page
+# -DDOCS_DIRECTORY_DEFAULT=\\\"url\\\"  Define Mosaic documentation directory
+# -DIPV6				IPV6 native kernel (don't mix with MULTICAST)
+# -DNEWS				News support (obsolete) 
+# -DAPPLET				Applet support (don't use!)
+# -DLOOSE_PACKET			Testing multicast packet loss
+# -DDEBUG_MULTICAST			Debug MULTICAST
+# -DDEBUG_FRAME				Be verbose on frames
+#
+# Other things you can define are spelled out in src/mosaic.h
 
+# Debugging
+#customflags = -DLOOSE_PACKET -DDEBUG_MULTICAST -DDEBUG_FRAME
+# Common
 customflags = 
 
-
-# ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------
-
+##
+## ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------
+##
 
 CFLAGS = $(sysconfigflags) $(prereleaseflags) $(mcflag) $(aflag) $(customflags)
 
