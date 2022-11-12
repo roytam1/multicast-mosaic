@@ -473,7 +473,7 @@ static void McSendNewObject(char *fname, char *aurl, MimeHeaderStruct *mhs,
 /* lui attribue un MOID si il n'en a pas deja un dans le cache multicast*/
 /* sinon le mettre dans le cache multicast avec son MOID */
 /* et son entete mhs(multicast) dans un fichier separe. */
-/* il faut faire ceci avant la decompression ou transformation du fichier
+/* il faut faire ceci avant la decompression ou transformation du fichier */
 /* ### CAS d'une page HTML sans frameset => stateless = True  */
 /* peut avoir des dependance */
 /* ### CAS d'une page HTML dans un frame => stateless = False */

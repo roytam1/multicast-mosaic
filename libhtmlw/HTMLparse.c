@@ -148,15 +148,9 @@ static void FreeMarkup( struct mark_up *mptr)
 		if (mptr->anc_title)
 			free(mptr->anc_title);
 	}
-#ifdef APPLET
-	if (mptr->s_ats){       /* applet */
-		_FreeAppletStruct(mptr->s_ats);
-	}
-#endif
-/*	if (mptr->t_p1){        /* table */
-/*		_FreeTableStruct(mptr->t_p1);
-/*	}
-*/
+/*	if (mptr->t_p1){       */ /* table */
+/*		_FreeTableStruct(mptr->t_p1); */
+/*	} */
 	free(mptr);
 }
 
@@ -904,10 +898,10 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 			return REMOVE_TAG; /* next state will be HEAD */
 		default:
 /* because winfried feedback 21 Mar 2000 : title close on /title */
-/*			tmptr = HTMLLexem("</TITLE>");
-/*			*im_ret = tmptr; /* close the title */
-/*			return INSERT_TAG;
-*/
+/*			tmptr = HTMLLexem("</TITLE>");	*/
+/*			*im_ret = tmptr; *//* close the title */
+/*			return INSERT_TAG; */
+
 			return REMOVE_TAG;
 		}
 		break;

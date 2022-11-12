@@ -937,6 +937,7 @@ char *HTgeticonname(char *format, char *defaultformat)
         return "internal-gopher-unknown";
 }
 
+#if 0
 /*########### */
 /* This doesn't do Gopher typing yet. */
 /* This assumes we get a canonical URL and that URLParse works. */
@@ -1072,6 +1073,7 @@ int supportedImageType(char *mt)
 	return(0);
 }
 */
+#endif
 
 /* winfried proposal */
 #ifdef CHECK_MEMORY_LEAK

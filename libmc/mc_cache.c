@@ -39,7 +39,7 @@ McObjectStruct * moid_sender_cache;
 McStateStruct * mc_sender_state_tab = NULL;
 int mc_sender_state_tab_size = 0;
 
-/*static int cachettl   = 4 * 24 * 3600;	/* 4 days by default */
+/*static int cachettl   = 4 * 24 * 3600; */	/* 4 days by default */
 
 /* Given a URL, return the hash value */
 static int hash_url (char *url)
@@ -70,33 +70,6 @@ static void add_url_to_bucket (McBucket * hash_tab, int buck, char *url, int moi
         bkt->count++ ;                   
 }
 
-/*##############
-/* assume the url exist in the list */
-/*static void remove_url_to_bucket(McBucket * hash_tab, int buck, char * url)
- *{
- *        Bucket *bkt = &(hash_tab[buck]);
- *	HashEntry *prev, *deb, *next;
- *
- *	deb = hash_tab[buck].head;
- *	prev = NULL;
- *	while (deb != NULL){
- *		if (strcmp(url,deb->url) == 0) {  */ /* remove the entry */
-/*			next = deb->next;
- *			if (prev == NULL){
- *				hash_tab[buck].head = next;
- *			}
- *			prev->next = next;
- *			free (deb->url);
- *			free (deb);
- *			bkt->count--;
- *			return;
- *		}
- *		prev = deb;
- *		deb = deb->next;
- *	}
- *}
-*/
-	
 /* initialize the cache in ~/.mMosaic */
 /* check for the dirname/mcache/me directory */
 /* the default dirname is ~/.mMosaic */
@@ -169,30 +142,6 @@ void McSenderCacheInit( char * root_name)
 	}
 }
 
-/* all url send in multicast is cachable for now */
-/* A suggest from mjr@pc29.dfg.de*/
-/*static int IsCacheableUrl( char * aurl_wa)
- *{
- *	int len;
- *
-/* URL with '?' */
-/*	if( (char *)strchr(aurl_wa, '?' ) != NULL ) {
- *		return 0;
- *	}
-/* minimum len for url : 
- * 	proto : 3
- * 	://h/ : 5
- * total : 8
- */
-/*	len = strlen(aurl_wa);
- *	if (len < 8)
- *		return 0;
- *	if ( !strcasecmp( aurl_wa + len - 4, ".cgi") )
- *		return 0;
- *	return 1;
- *}
-*/
-
 /* 
  * aurl :    cannon url. The reference to find in cache
  * fname_ret : file name where to find data
@@ -207,9 +156,6 @@ int McSenderCacheFindData(char *aurl, char **fname_ret, MimeHeaderStruct *mhs_re
 	int moid;
 	char * fname;
 
-/*	if (! IsCacheableUrl(aurl_wa))	*/ /* dont't find uncacheable url */
-/*		return 0;	*/
-	
 	h = hash_url(aurl);
 	deb = sender_hash_tab[h].head;
 	while (deb != NULL){
@@ -346,11 +292,6 @@ void McSenderCachePutDataInCache(char *fname_r, char *aurl, MimeHeaderStruct *mh
 	char ces[50];
 	MimeHeaderStruct *cmhs;
 
-/*	if (! IsCacheableUrl(aurl_wa))	/* dont't cache uncacheable url */
-/*		return ;		*/
-/*	if ( mhs->cache_control & CACHE_CONTROL_NO_CACHE)	*/
-/*		return;		*/
-
 /* look if an entry still exist, if yes abort */
 	h = hash_url(aurl);
 	deb = sender_hash_tab[h].head;
@@ -416,9 +357,9 @@ void McSenderCachePutDataInCache(char *fname_r, char *aurl, MimeHeaderStruct *mh
         len_state_buf =0;              
 /* FIXME : y a un pb ici : ceci n'est pas cachable ######## */
 /*        if (mhs->is_stateless){        
-/*                sprintf(state_buf,"Stateless-Stateid: %d\n", mhs->state_id);
-/*                len_state_buf = strlen(state_buf);
-/*        }                              
+ *                sprintf(state_buf,"Stateless-Stateid: %d\n", mhs->state_id);
+ *                len_state_buf = strlen(state_buf);
+ *        }                              
 */
         len_do_buf = 0;                
         if (cmhs->n_do >0) {            
@@ -484,39 +425,6 @@ Last-Modified: %s\n",
 	*fname_ret = fname_w;
 	(*mhs_ret) = *(moid_sender_cache[moid].mhs);
 	return ;
-
-/* ############# */
-/* there is still data in cache: force the remplacment */
-/*	h = hash_url(aurl);     
- *	deb = hash_tab[h].head;
- *	while (deb != NULL){               
- *		if (strcmp(aurl,deb->url) == 0) {
- *			moid = deb->moid;
- *			sprintf(smoid,"%ld",moid); 
- *			fname_w = (char *) malloc(llen_cachedir_name +
- *				strlen(smoid)+ 2);
-/*			sprintf(fname_w, "%s/%s", lcachedir_name, smoid); /* the filename */
-/*				/* cid_cache[cid].url = strdup(url); */
-/*			cid_cache[cid].size = mhs->content_length;
- *			cid_cache[cid].last_modify = t;
- *			cid_cache[cid].content_type = strdup(mhs->content_type);
- *			cid_cache[cid].content_encoding = mhs->content_encoding;
- *			cid_cache[cid].exist = 1;
- *			fdr = open(fname_r,O_RDONLY);
- *			fdw = open(fname_w,O_WRONLY | O_CREAT | O_TRUNC,0744);
- *			while ( (i = read(fdr,iobuf,CACHE_BUFSIZ)) >0)
- *				write(fdw, iobuf, i);
- *			close (fdw);
- *			close (fdr);
- *			free(fname_w);
- *			return ;
- *		}
- *		deb = deb->next;
-/*	}
-/* NEVER GOES HERE !!! */
-/*	fprintf(stderr, "MMCachePutDataInCache :Problem in cache\n");
-/*	abort();
-*/
 }
 
 int McCheckObjectQuery(int moid, int offset, int len)
@@ -756,11 +664,6 @@ void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
 	char *do_buf=NULL;
 	MimeHeaderStruct *cmhs;
 
-/*	if (! IsCacheableUrl(aurl_wa))	/* dont't cache uncacheable url */
-/*		return ;		*/
-/*	if ( mhs->cache_control & CACHE_CONTROL_NO_CACHE)	*/
-/*		return;		*/
-
 /* look if an entry still exist, if yes abort */
 	h = hash_url(aurl);
 	deb = s->hash_tab[h].head;
@@ -824,28 +727,4 @@ void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
 	*fname_ret = fname_w;
 	(*mhs_ret) = *(s->objects[moid].mhs);
 	return ;
-
-/* ############# */
-/* there is still data in cache: force the remplacment */
-/*	h = hash_url(aurl);     
- *	deb = hash_tab[h].head;
- *	while (deb != NULL){               
- *		if (strcmp(aurl,deb->url) == 0) {
- *			moid = deb->moid;
- *				strlen(smoid)+ 2);
- *			fdr = open(fname_r,O_RDONLY);
- *			fdw = open(fname_w,O_WRONLY | O_CREAT | O_TRUNC,0744);
- *			while ( (i = read(fdr,iobuf,CACHE_BUFSIZ)) >0)
- *				write(fdw, iobuf, i);
- *			close (fdw);
- *			close (fdr);
- *			free(fname_w);
- *			return ;
- *		}
- *		deb = deb->next;
- *	}
-/* NEVER GOES HERE !!! */
-/*	fprintf(stderr, "MMCachePutDataInCache :Problem in cache\n");
- *	abort();
-*/
 }

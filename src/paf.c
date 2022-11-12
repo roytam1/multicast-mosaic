@@ -1019,10 +1019,16 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 				break;
 			omptr = mptr;
 			MMPreParseObjectTag(win, &mptr);
-			if (! omptr->s_obs) {
-				/* virer l'objet */
-				assert(0);
+			if (! omptr->s_obs) { /* virer l'objet */
 				break;
+			}
+			if (omptr->s_obs->load_data_method == MPP_URI_TO_FILE) {
+				eo_tab[pafd->num_of_eo].url = omptr->s_obs->data_url;
+				eo_tab[pafd->num_of_eo].mark = omptr;
+				eo_tab[pafd->num_of_eo].num = pafd->num_of_eo;
+				pafd->num_of_eo++;
+				eo_tab = (EmbeddedObjectEntry *) realloc(eo_tab,
+					(pafd->num_of_eo + 1) * sizeof(EmbeddedObjectEntry));
 			}
 			omptr->s_obs->frame= NULL;
 			break;
@@ -1075,12 +1081,12 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	MMUpdateGlobalHistory(spafd.aurl_wa);
 
 /* HTMLWidget create a window for htmlObject, now run the plugin */
-#ifdef OBJECT
-	MMRunPlugins(win, mlist);
-#endif
 
 
 	if (spafd.num_of_eo == 0 ){	/* no embedded object it is the end */
+#ifdef OBJECT
+		MMRunPlugins(win, mlist);
+#endif
 		LateEndPafDoc(pafd);	/* en finir avec la requete de pafd. */
 		return; /* it is finished!!! */
 	}
@@ -1187,6 +1193,7 @@ void MMPafLoadHTMLDocInFrame(mo_window * fwin, RequestDataStruct * rds)
 	MMPafLoadHTMLDocInWin(fwin, rds);	/* load frame */
 }
 
+#if 0
 /* #########################################*/
 /*if(win->links_win) /* vvv HREF ListBox Stuff -- BJS 10/2/95 */ 
 /*mo_update_links_window(win);
@@ -1195,6 +1202,7 @@ void MMPafLoadHTMLDocInFrame(mo_window * fwin, RequestDataStruct * rds)
 /*mo_gui_check_security_icon_in_win(win->current_node->authType,win);
 /*  mo_gui_done_with_icon (win);
 /* } */
+#endif
 
 void MMPafLoadHTMLDocInWin( mo_window * win, RequestDataStruct * rds)
 {
@@ -1407,6 +1415,9 @@ void MMErrorPafEmbeddedObject (PafDocDataStruct * pafc, char *reason)
 		HTMLSetHTMLmark (ppaf->win->scrolled_win, ppaf->mlist, elem_id, ppaf->goto_anchor, ppaf->aurl);
 		free(ppaf->paf_child); /*### et le reste de paf_child*/
         	win = ppaf->win;
+#ifdef OBJECT
+		MMRunPlugins(win, ppaf->mlist);
+#endif
 		LateEndPafDoc(ppaf); /* en finir avec la requete de pafd. */
 		return;	/* it is really the end !!! */
 	}
@@ -1487,6 +1498,12 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 		mptr->s_picd->src = pafc->aurl_wa;
 		MMPreloadImage(pafc->win, mptr, pafc->mhs, pafc->fname);
 		break;
+	case M_OBJECT:
+		if (mptr->s_obs->load_data_method == MPP_URI_TO_FILE) {
+			mptr->s_obs->fname_for_data = tempnam (mMosaicTmpDir,"mMo");
+			link(pafc->fname, mptr->s_obs->fname_for_data);
+		}
+		break;
 	default:
 		fprintf(stderr, "This a Bug. Please report\n");
 		fprintf(stderr, "MMFinishPafEmbeddedObject, Unknow EmbeddedObject type %d\n", mptr->type);
@@ -1505,6 +1522,9 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 		HTMLSetHTMLmark (ppaf->win->scrolled_win, ppaf->mlist, elem_id, ppaf->goto_anchor, ppaf->aurl);
 		free(ppaf->paf_child); /*### et le reste de paf_child*/
         	win = ppaf->win;
+#ifdef OBJECT
+		MMRunPlugins(win, ppaf->mlist);
+#endif
 		LateEndPafDoc(ppaf); /* en finir avec la requete de pafd. */
 		return;	/* it is really the end !!! */
 	}

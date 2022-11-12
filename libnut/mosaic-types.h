@@ -19,10 +19,12 @@
 #include <sys/types.h>
 #else
 typedef unsigned char u_int8_t;        
-typedef short int16_t;                 
 typedef unsigned short u_int16_t;      
 typedef unsigned int u_int32_t;
+#if !defined(__SunOS_5_7) && !defined(__SunOS_5_8)
+typedef short int16_t;                 
 typedef int int32_t;
+#endif
 #endif
 
 #endif /* mosaic_types_h */

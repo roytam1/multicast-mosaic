@@ -25,6 +25,8 @@ globalhist.o: globalhist.c ../libhtmlw/HTML.h
 $(MOSAIC): $(OBJS) $(PROGRAM_LIBS)
 	$(CC) $(LDFLAGS) -o $(MOSAIC) $(OBJS) $(LIBS)
 
+# XmIm.o
+
 
 HFILES = mosaic.h xresources.h
 $(OBJS): $(HFILES)

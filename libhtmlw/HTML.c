@@ -321,12 +321,12 @@ void hw_do_body_color(HTMLWidget hw, char *att, char *cname,
 	}
 
 	if (!strcasecmp(att,"bgcolor")){ /* calculate shadow colors */
-/*		calc = XmGetColorCalculation();
-/*		calc(&col, &fg, &sel, &ts, &bs);
-/*		ts.pixel = HTMLXColorToPixel(&ts);
-/*		hw->manager.top_shadow_color = ts.pixel;
-/*		bs.pixel = HTMLXColorToPixel(&bs);
- */
+/*		calc = XmGetColorCalculation();		*/
+/*		calc(&col, &fg, &sel, &ts, &bs);	*/
+/*		ts.pixel = HTMLXColorToPixel(&ts);	*/
+/*		hw->manager.top_shadow_color = ts.pixel;*/
+/*		bs.pixel = HTMLXColorToPixel(&bs);	*/
+
 		hw->html.view->core.background_pixel = col.pixel ;
 		hw->html.cur_res.bgcolor = col.pixel;
 		pcc->bgcolor = MMPushColorBg(hw, col.pixel);
@@ -1074,12 +1074,6 @@ void ViewRedisplay( HTMLWidget hw, int x, int y, int width, int height)
                 x, y, width, height);
 #endif
 	while(eptr){
-/*		if (eptr->type == E_OBJECT || eptr->type == E_APPLET){
-/*			RefreshElement(hw,eptr);
-/*			eptr = eptr->next;
-/*			continue;
-/*		}
-*/
 		if( ((eptr->y + eptr->height) < doc_y) || 
 		    (eptr->y > ( doc_y + height)) ){
 			eptr = eptr->next;

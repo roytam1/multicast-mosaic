@@ -1,5 +1,5 @@
 /* HTMLobject.c
- * Version 3.5.4 [Mai 2000]
+ * Version 3.6.9 [Mai 2000]
  *
  * Copyright (C) 1996-2000 - G.Dauphin
  * See the file "GPL" for information on usage and redistribution
@@ -57,7 +57,12 @@ void ObjectPlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext *pcc)
 	int i;
 	Widget frame;
 
+#ifdef TODO
 	assert(omptr->s_obs);
+#else
+	if (!omptr->s_obs)
+		return;
+#endif
 
 	obs=omptr->s_obs;
 
@@ -79,6 +84,7 @@ void ObjectPlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext *pcc)
 	width  = obs->width;
 
 	if (!height && !width) {	/* nowindow for plugin */
+		return;
 		assert(0);
 	}
 	
@@ -182,9 +188,17 @@ void ObjectPlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext *pcc)
 		XtSetArg(arg[argcnt], XmNy, obs->y); argcnt++;
 		XtSetArg(arg[argcnt], XmNwidth, obs->width); argcnt++;
 		XtSetArg(arg[argcnt], XmNheight, obs->height); argcnt++;
+		XtSetArg(arg[argcnt], XmNborderWidth, 0); argcnt++;
+/*		XtSetArg(arg[argcnt], XmNnoResize, True);argcnt++; */
+		XtSetArg(arg[argcnt], XmNresizeHeight, False); argcnt++;
+		XtSetArg(arg[argcnt], XmNresizeWidth, False); argcnt++;
+		XtSetArg(arg[argcnt], XmNmarginWidth, 0); argcnt++;
+		XtSetArg(arg[argcnt], XmNmarginHeight, 0); argcnt++;
+		XtSetArg(arg[argcnt], XmNadjustLast, False); argcnt++;
+		XtSetArg(arg[argcnt], XmNadjustMargin, False); argcnt++;
+
 /*		XtSetArg(arg[argcnt], XmNcolormap, hw->core.colormap); argcnt++;*/
-		frame = XmCreateLabel(hw->html.view, 
-			"If this text appear then OBJECT is not running", arg, argcnt);
+		frame = XmCreateRowColumn(hw->html.view, "PlugWindow", arg, argcnt);
 
 /* Set window for plugin */
 		assert(!omptr->s_obs->frame); 	/* it must be ONE creation */
@@ -192,18 +206,17 @@ void ObjectPlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext *pcc)
 
 		XtSetMappedWhenManaged(frame, False);
 		XtManageChild(frame);
+		XtRealizeWidget(frame);
 		XFlush(XtDisplay(hw));
 		XGetWindowAttributes(XtDisplay(frame), XtWindow(frame),&xwa);
-		printf("colormap = %d\n", xwa.colormap);
 
+/* printf("colormap = %d\n", xwa.colormap); */
 /*printf("xwa.do_not_propagate_mask = %x\n", xwa.do_not_propagate_mask); */
 
 		xswa.do_not_propagate_mask = xwa.do_not_propagate_mask & (~(PointerMotionMask));
 		XChangeWindowAttributes(XtDisplay(frame),
 				XtWindow(frame),CWDontPropagate, &xswa);
 		XFlush(XtDisplay(hw));
-
-		eptr->obs = omptr->s_obs;
 	} else {		/* use the old window. It's a Resize */
 		Widget frame;
 
@@ -214,10 +227,11 @@ void ObjectPlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext *pcc)
 		XtSetArg(arg[argcnt], XmNwidth, obs->width); argcnt++;
 		XtSetArg(arg[argcnt], XmNheight, obs->height); argcnt++;
 		XtSetValues(frame, arg, argcnt);
-		XtSetMappedWhenManaged(frame, False);
+		XtSetMappedWhenManaged(frame, True);
 		XtManageChild(frame);
 		XFlush(XtDisplay(hw));
 	}
+	eptr->obs = omptr->s_obs;
 }
 
 void ObjectRefresh(HTMLWidget hw, struct ele_rec *eptr)
@@ -248,4 +262,5 @@ void ObjectRefresh(HTMLWidget hw, struct ele_rec *eptr)
 	XtSetValues((Widget)eptr->obs->frame, args,2);
 	XtSetMappedWhenManaged((Widget)eptr->obs->frame, True);
 }
+
 #endif

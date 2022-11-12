@@ -491,7 +491,7 @@ static void McSendStateRepairAnswerCb(XtPointer clid, XtIntervalId * id)
                         /* le temps qu'il faut pour envoyer ce packet*/
                         /* dependant de la bande passante qu'on s'autorise */
 	                ptab[i]->rtp_ts = rtp_ts; /* sample time when file come*/
-                	ptab[i]->duration = d_duration; /* le temps qu'il faut pour envoie
+                	ptab[i]->duration = d_duration; /* le temps qu'il faut pour envoie */
 					/* a la vitesse desiree  en millisec*/
 	                offset += p_d_l;
 	                r_b = r_b - p_d_l;
@@ -756,7 +756,7 @@ static void McSendObjectRepairAnswerCb(XtPointer clid, XtIntervalId * id)
                         /* le temps qu'il faut pour envoyer ce packet*/
                         /* dependant de la bande passante qu'on s'autorise */
                         ptab[i]->rtp_ts = rtp_ts; /* sample time when file come*/
-                        ptab[i]->duration = d_duration; /* le temps qu'il faut pour envoie
+                        ptab[i]->duration = d_duration; /* le temps qu'il faut pour envoie */
                     
                                         /* a la vitesse desiree  en millisec*/
                         offset += p_d_l;

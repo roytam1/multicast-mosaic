@@ -10,7 +10,7 @@
 #	- NetWinder (StrongArm based machine)
 #	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.6.8
+MCVER=3.6.9
 
 ##
 ## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
@@ -122,7 +122,7 @@ sysconfigflags += -DMOTIF1_2
 # Irix
 #syslibs = -lPW
 # Solaris 2.x, Motorola SVR4
-syslibs = -lsocket -lnsl
+syslibs = -lsocket -lnsl -ldl
 
 ##
 ## X11 includes
@@ -243,12 +243,12 @@ mclib = $(mcdir)/libmc.a
 ## OBJECT dynamique plugin support (new and experimental)
 ## 
 
-# to compile mMosaic with plugins
-plugdir = $(PWD)/plugins/pluglib
-pluglib = $(plugdir)/libmMplug.a
-plugflags = -I$(plugdir) -DOBJECT
+plugflags = -DOBJECT
 
 # to compile plugins given as examples
+PLUGINCDIR = $(PWD)/libhtmlw
+PLUGINC = -I$(PLUGINCDIR)
+INSTALL_PLUG_DIR = /usr/local/mMosaic/plugins
 explugdir = $(PWD)/plugins/examples
 # for gcc
 #explugccflag = -fpic
@@ -273,6 +273,7 @@ explugldflag = -G
 # -DDEBUG_FRAME				Be verbose on frames
 # -DOBJECT				Experimental: implement plugin! (not yet)
 # -DNDEBUG				don't use assert.
+# -DOBJECT				support plugins <OBJECT>
 #
 # Other things you can define are spelled out in src/mosaic.h
 
@@ -281,7 +282,7 @@ explugldflag = -G
 #
 # Common
 
-customflags = 
+customflags =
 
 ##
 ## ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------
@@ -290,8 +291,9 @@ customflags =
 ARCHIVEDIR = /enst/ftp/pub/mbone/mMosaic
 CFLAGS = $(sysconfigflags) $(prereleaseflags) $(mcflag) $(plugflags) $(customflags)
 
-all: libhtmlw libnut $(mclib) $(pluglib) $(explugdir) src
+all: libhtmlw libnut $(mclib) $(explugdir) src
 	@echo \*\*\* Welcome to mMosaic.
+
 
 libhtmlw::
 	@echo --- Building libhtmlw
@@ -305,18 +307,13 @@ $(mclib) ::
 	@echo --- Building libmc
 	(cd libmc; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc)")
 
-$(pluglib) ::
-	@echo --- Building pluglib
-	(cd plugins/pluglib; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc)" X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)")
- 
-
 src::
 	@echo --- Building src
-	(cd src; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(xinc) $(jpegflags) $(pngflags) $(krbflags) -I.." X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut LIBMC=$(mclib) PLUGLIB=$(pluglib) MOSAIC="mMosaic")
+	(cd src; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(xinc) $(jpegflags) $(pngflags) $(krbflags) -I.." X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut LIBMC=$(mclib) MOSAIC="mMosaic")
 
 $(explugdir) ::
 	@echo --- Building plugins examples
-	(cd plugins/examples; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(explugldflag)" CFLAGS="$(xinc) $(prereleaseflags) $(explugccflag)" )
+	(cd plugins/examples; make CC=$(CC) LDFLAGS="$(explugldflag)" CFLAGS="$(prereleaseflags) $(explugccflag)" PLUGINC=$(PLUGINC) XINC=$(XINC) INSTALL_PLUG_DIR="$(INSTALL_PLUG_DIR)" )
 
 install: all
 	- cp src/mMosaic /usr/local/bin/mMosaic.old
@@ -325,21 +322,21 @@ install: all
 	- cp plugins/gifview /usr/local/mMosaic/plugins/gifview.old
 	- cp plugins/mtvp /usr/local/mMosaic/plugins/mtvp.old
 	- chmod 755 /usr/local/mMosaic/plugins/*
-	- strip src/mMosaic
 	- cp src/mMosaic /usr/local/bin/mMosaic	
+	- strip /usr/local/bin/mMosaic
 	- chmod 755 /usr/local/bin/mMosaic
 	- mkdir /usr/local/mMosaic
 	- mkdir /usr/local/mMosaic/plugins
-	- cp plugins/wrappers/* /usr/local/mMosaic/plugins
-	- chmod 755 /usr/local/mMosaic/plugins/*
-
+	- mkdir /usr/local/mMosaic/include
+	- cp libhtmlw/mplugin.h $(PLUGINC)/mplugin.h
+	- chmod 644 $(PLUGINC)/mplugin.h
+	(cd $(explugdir) ; make install )
 
 clean:
 	cd libhtmlw; $(MAKE) clean
 	cd libnut; $(MAKE) clean
 	cd libmc; $(MAKE) clean
 	cd src; $(MAKE) clean MOSAIC="Mosaic"
-	cd plugins/pluglib; $(MAKE) clean
 	cd plugins/examples; $(MAKE) clean
 	rm -f *.core core
 	@echo "Done cleaning..."

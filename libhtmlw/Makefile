@@ -4,7 +4,7 @@ all: $(LIBTARGET)
 
 CFILES = HTMLcolors.c HTMLparse.c HTML.c HTMLformat.c HTMLtext.c HTMLlists.c HTMLtable.c \
 	 HTMLimages.c HTMLwidgets.c HTML-PSformat.c list.c \
-	 HTMLobject.c HTMLapplet.c HTMLform.c HTMLframe.c HTMLfonts.c
+	 HTMLobject.c HTMLform.c HTMLframe.c HTMLfonts.c
 
 OBJS = $(CFILES:.c=.o)
 $(OBJS): HTML.h HTMLP.h HTMLPutil.h HTMLparse.h HTMLmiscdefs.h

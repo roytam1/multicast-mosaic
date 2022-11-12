@@ -209,7 +209,7 @@ typedef struct _Source {
 	GuiEntry 	* gui_ent; /* graphique interface for this source */
 				/* only for the user list */
 
-/*	int		dec_sid; /* dernier etat complet */
+/*	int		dec_sid; */ /* dernier etat complet */
 
 	int current_view_state; /* what state is in current window */
 	int current_sb_id;	/* current scrollbar id */
@@ -357,8 +357,6 @@ extern int McCheckObjectQuery(int moid, int offset, int len);
 
 extern void McRcvrSrcAllocObject(Source * s, int moid);
 extern void McRcvrSrcAllocState(Source * s, int state_id);
-
-extern void McRcvSrcScheduleCheckState( Source *s, int state_id);
 
 extern void McStoreQueryRepair(Source *s , RtcpPacket* rcs);
 

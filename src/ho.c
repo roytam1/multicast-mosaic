@@ -1,5 +1,5 @@
 /* ho.c
- * Version 3.5.5 [Jun 2000]
+ * Version 3.6.9 [Jun 2000]
  *
  * Copyright (C) 1996-2000 - G.Dauphin
  * See the file "GPL" for information on usage and redistribution
@@ -13,18 +13,48 @@
 #include <unistd.h>
 #include <assert.h>
 #include <signal.h>
+#include <dlfcn.h>
 
 #include <Xm/XmAll.h>
 
 #include "../src/URLParse.h"
+#include "../libhtmlw/mplugin.h"
 #include "../libhtmlw/HTMLparse.h"
 #include "mosaic.h"
+
+
+#define MMOSAIC_PLUGIN_DIR "/usr/local/mMosaic/plugins/"
+
+static MosaicPlugjectClass MpxPlugjectClassInitialize(HtmlObjectStruct *obs);
+
+#if 0
+/*void FreeContext(MPX_CONTEXT *cont)
+/*{
+/*  if (cont==NULL)
+/*    return;
+/*  if (cont->classid!=NULL) free(cont->classid);
+/*  if (cont->data!=NULL) free(cont->data);
+/*  if (cont->!=NULL) free(cont->
+/*  if (cont->standby!=NULL) free(cont->standby);
+/*  free(cont);
+/*}
+/*####################################################
+*/
+#endif
 
 void _FreeObjectStruct(HtmlObjectStruct * obs)
 {
 	int i;
 
 	assert(0);
+#if 0
+/*#########pour memoire #############
+/* if (obs!=NULL) {
+/*      if (obs->myinst!=NULL)
+/*        MP_Destroy(mypile,obs->myinst);
+/*      free(obs);
+/*   }   
+/*#############################
 /*	if(aps->src)
 /*		free(aps->src);
 /*	if(aps->name)
@@ -71,12 +101,13 @@ void _FreeObjectStruct(HtmlObjectStruct * obs)
 /*	}
 /*	free(aps);
 */
+#endif
 }
 
-#define MMOSAIC_PLUGIN_DIR "/usr/local/mMosaic/plugins/"
 void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 {
 	char * classidPtr;
+	char * class_id;
 	char * content_typePtr;
 	char * codebasePtr;
 	char * dataPtr;
@@ -93,6 +124,7 @@ void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 	AlignType valignment;
 	HtmlObjectStruct * saved_obs=omptr->s_obs;
 	HtmlObjectStruct *obs;
+	MosaicPlugjectClass mp_class;
 
 /* codetype: unused */
 /* archive: unused */
@@ -136,7 +168,9 @@ void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 
 		strcpy(buf, MMOSAIC_PLUGIN_DIR);
 		strcat(buf,classidPtr);
-		free(classidPtr);
+		strcat(buf,".so");
+		class_id = classidPtr;
+		/*free(classidPtr);*/
 		classidPtr = buf;
 	}
 /* type="video/mpeg" */
@@ -148,11 +182,10 @@ void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 /* data="fichier_video.mpg" */
 /* l'url est relative % a la page HTML (entorse a la regle codebase) */
 	dataPtr = ParseMarkTag(omptr->start, MT_OBJECT, "data");
-	if (!dataPtr) {
-		assert(0);
+	if (dataPtr) {
+		dataPtr = URLParse(dataPtr, win->htinfo->base_url, 
+			PARSE_ACCESS|PARSE_HOST|PARSE_PATH|PARSE_PUNCTUATION);
 	}
-	dataPtr = URLParse(dataPtr, win->htinfo->base_url, 
-		PARSE_ACCESS | PARSE_HOST | PARSE_PATH |PARSE_PUNCTUATION);
 
 	bwPtr = ParseMarkTag(omptr->start, MT_OBJECT, "border");
 	if (!bwPtr || !*bwPtr)
@@ -187,13 +220,14 @@ void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 	assert(classidPtr);
 
 	if (access(classidPtr, X_OK) != 0){	 /* test exec */
-		fprintf(stderr,"No permission to exec %s\n", classidPtr);
-		assert(0);
+		fprintf(stderr,"Plugin not installed or No permission to exec %s\n", classidPtr);
+		omptr->s_obs=NULL;
 		return;
 	}
 
 	obs = (HtmlObjectStruct *) calloc(1,sizeof(HtmlObjectStruct));
 	obs->bin_path = classidPtr;
+	obs->class_id = class_id;
 	obs->height = atoi(hPtr);
 	obs->width = atoi(wPtr);
 	obs->content_type = content_typePtr;
@@ -204,6 +238,8 @@ void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 	obs->x =0;
 	obs->y =0;		/* computed at render time */
 	obs->frame = NULL;
+	obs->mp_class = NULL;
+	obs->fname_for_data = NULL;
 	free(hPtr);
 	free(wPtr);
 	omptr->s_obs = obs;
@@ -213,17 +249,10 @@ void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 /* boucler tant qu'on a des <PARAM> puis boucler jusqu'a </APROG> */
 	pmptr = omptr->next;
 	obs->param_count = 0;
-	obs->param_name_t = (char **) malloc( sizeof(char *)); /* alloc one */
-	obs->param_value_t = (char**) malloc( sizeof(char *));
-	obs->param_valuetype_t = (char**) malloc( sizeof(char *));
-	obs->param_name_t[obs->param_count] = NULL;
-	obs->param_value_t[obs->param_count] = NULL;
-	obs->param_valuetype_t[obs->param_count] = NULL;
-
-	obs->url_arg_count = 0;
-	obs->url_arg = (char **) malloc( sizeof(char *)); /* alloc one */
-	obs->url_arg[obs->url_arg_count] = NULL;
-
+	obs->param_t = (ObjectParamPtr *)calloc(1,
+			 sizeof(ObjectParamPtr)); /* alloc one */
+	obs->param_t[0] = (ObjectParamStruct *) calloc(1,
+			 sizeof(ObjectParamStruct));
 
 	while (pmptr && ((pmptr->type == M_PARAM) || (pmptr->type == M_NONE))){
 		if (pmptr->type == M_NONE){ 	/* on saute le texte */
@@ -238,15 +267,14 @@ void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 		if ( !param_namePtr)
 			continue;
 
-		obs->param_name_t[obs->param_count] = param_namePtr;
-		obs->param_value_t[obs->param_count] = param_valuePtr;
+		obs->param_t[obs->param_count]->name = param_namePtr;
+		obs->param_t[obs->param_count]->value = param_valuePtr;
+		obs->param_t[obs->param_count]->valuetype = param_valuetypePtr;
 		obs->param_count++;
-		obs->param_name_t = (char**)realloc(obs->param_name_t,
-					(obs->param_count+1) * sizeof(char *));
-		obs->param_value_t = (char**)realloc(obs->param_value_t,
-					(obs->param_count+1) * sizeof(char *));
-		obs->param_name_t[obs->param_count] = NULL;
-		obs->param_value_t[obs->param_count] = NULL;
+		obs->param_t = (ObjectParamPtr*)realloc(obs->param_t,
+				(obs->param_count+1) * sizeof(ObjectParamPtr));
+		obs->param_t[obs->param_count]= (ObjectParamStruct *) calloc(1, 
+                         	sizeof(ObjectParamStruct));
 
 		pmptr = pmptr->next;
 	}
@@ -264,60 +292,144 @@ void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 		_FreeObjectStruct(obs);
 		return;
 	}
+
+
+	obs = omptr->s_obs;
+	obs->load_data_method = MPP_URI_TO_AURI;
+/*	obs->load_valueref_method = MPP_URI_TO_FILE; */
+				/* MPP_URI_TO_FD */
+				/* MPP_URI_TO_AURI */
+				/* MPP_URI_TO_AS_IS */
+	mp_class = MpxPlugjectClassInitialize(obs);
+	obs->mp_class = mp_class;
+
+/* call initialize */
+	(*(mp_class->MPP_Initialize))(obs);
+
+	assert(obs->load_data_method != MPP_URI_TO_FD );
+
 /*#### obs->cw_only = pcc->cw_only; ############# */
 /* mettre a jour mptr. Le mettre sur le tag </APROG> */
 	*mptr = pmptr;
 	omptr->s_obs = obs ;
 /*	####_FreeObjectStruct(obs); */
+
+	/*mp_rec->frame = (Widget)mptr->s_obs->frame;*/
+}
+
+static int N_MPClass_Loaded = 0;
+MosaicPlugjectClass *MP_Class_Tab=NULL;
+
+static MosaicPlugjectClass MpxFindPlugjectClass(char *class_id)
+{
+	int i;
+
+	for (i = 0; i<N_MPClass_Loaded; i++) {
+		if ( !strcmp(MP_Class_Tab[i]->class_id,class_id) ) {
+			return MP_Class_Tab[i];
+		}
+	}
+	return NULL;
+}
+
+static MosaicPlugjectClass MpxCreatePlugjectClass(HtmlObjectStruct *obs)
+{
+	int n=N_MPClass_Loaded;
+	MosaicPlugjectClass mpclass;
+	void *dl_handle;
+
+	mpclass = calloc(1, sizeof(MosaicPlugjectClassRec));
+	mpclass->release = MP_PLUGIN_RELEASE;
+	mpclass->i_cid = n;
+        mpclass->class_id= strdup(obs->class_id);
+        mpclass->bin_path= strdup(obs->bin_path);
+	if(obs->codebase)
+	        mpclass->codebase= strdup(obs->codebase);
+	else
+		mpclass->codebase= strdup("http://www.enst.fr/~dauphin/mMosaic/no_plugin_here.html");
+
+        mpclass->plugin_ext= NULL;
+	mpclass->ext = NULL;
+
+	dl_handle = dlopen(mpclass->bin_path,RTLD_LAZY);
+	if( !dl_handle) {
+		assert(0);	/* notfind */
+		return NULL;
+	}
+	mpclass->dl_handle = dl_handle;
+/* get func */
+	mpclass->MPP_Initialize = (MPPInitializeProc)dlsym(dl_handle,"MPP_Initialize");
+/* call initialize */
+/*	(*(mpclass->MPP_Initialize))(mpclass); */
+	
+/* get other func */
+	mpclass->MPP_New = (MPPNewProc)dlsym(dl_handle,"MPP_New");
+	mpclass->MPP_Destroy=(MPPDestroyProc)dlsym(dl_handle,"MPP_Destroy");
+
+/*	mpclass->MPP_Demande=(MPPDemandeProc)dlsym(dl_handle,"MPP_Demande"); */
+
+	if (MP_Class_Tab == NULL ) {
+		MP_Class_Tab = calloc(1, sizeof(MosaicPlugjectClass));
+		MP_Class_Tab[n] = mpclass;
+		N_MPClass_Loaded++;
+		return MP_Class_Tab[n];
+	}
+	N_MPClass_Loaded++;
+	MP_Class_Tab = (MosaicPlugjectClass*) realloc(MP_Class_Tab,
+				N_MPClass_Loaded * sizeof(MosaicPlugjectClass));
+	MP_Class_Tab[n] = mpclass; 
+	return mpclass;
+}
+
+static MosaicPlugjectClass MpxPlugjectClassInitialize(HtmlObjectStruct *obs)
+{
+	MosaicPlugjectClass mp_class;
+
+	if (obs->mp_class)	/* class is still initialized */
+		return obs->mp_class;
+
+	mp_class = MpxFindPlugjectClass(obs->class_id);
+	if(mp_class) {
+		obs->mp_class = mp_class;
+		return mp_class;
+	}
+	mp_class = MpxCreatePlugjectClass(obs);
+	obs->mp_class = mp_class;
+	return mp_class;
+}
+
+static HtmlObjectStruct* MpxCreatePlugject(HtmlObjectStruct *obs)
+{
+	MosaicPlugjectClass mpclass = obs->mp_class;
+
+	(*(mpclass->MPP_New))(obs);
+
+/*	obs->standby = "zut"; */
+/*       obs->tag_id="zut"; */
+
+	return obs;
 }
 
 static void RunP(mo_window *win, struct mark_up *mptr)
 {
-	char cmdline[15000];  
-	char allcmdline[16000];
 	int get_cnt = 0;      
 	int i;
-	HtmlObjectStruct *obs;
+	HtmlObjectStruct *obs, *mp_rec;
 	Widget frame;
+        int *val;
+	MosaicPlugjectClass mp_class;
 
 	obs = mptr->s_obs;
-	strcpy(cmdline," ");  
-	for(i=0; obs->param_name_t[i] != NULL; i++){
-		strcat(cmdline," ");
-		strcat(cmdline, obs->param_name_t[i]);
-		if (obs->param_value_t[i]){
-			strcat(cmdline," ");
-			strcat(cmdline,obs->param_value_t[i]);
-		}             
-	}                     
-/* at last cat the url */             
-	strcat(cmdline, " "); 
-	strcat(cmdline, mptr->s_obs->data_url);
+	if (!obs || !obs->mp_class)
+		return;
 
-	frame = (Widget)mptr->s_obs->frame;
 
-	sprintf(allcmdline,"exec %s -windowId %d %s ",
-			mptr->s_obs->bin_path, XtWindow(frame),cmdline );
-	{
-		int pid;
-		char *argv[10];
-		argv[0]="/bin/sh";
-		argv[1]="-c";
-		argv[2]=allcmdline;
-		argv[3]=0;
-		pid = fork();
-		if (pid == -1)
-			assert(0);
-		if (pid) { /* pere */
-			fprintf(stderr,"pid du fils = %d\n",pid);
-			mptr->s_obs->pid = pid;
-/*			sleep(30); */
-/*			kill(pid,9); */
-		} else {	/* fils */
-			execvp(argv[0], argv);
-			assert(0);
-		}
-	}
+	mp_rec = MpxCreatePlugject(obs); /* create a Rec and start plugin */
+	obs->mp_rec = obs;	/* point to me */
+	XFlush(XtDisplay(win->view));
+
+/*myinst=MP_New(mypile,mycontext,content_typePtr); */
+ 
 }
 
 void MMRunPlugins(mo_window *win, struct mark_up *mlist)
@@ -334,9 +446,25 @@ void MMRunPlugins(mo_window *win, struct mark_up *mlist)
 
 static void StopP(mo_window *win, struct mark_up *mptr)
 {
-	kill(mptr->s_obs->pid,9);
+	HtmlObjectStruct *obs= mptr->s_obs;
+	MosaicPlugjectClass mpclass ;
+
+	if (!obs)
+		return;
+	mpclass = obs->mp_class;
+	(*(mpclass->MPP_Destroy))(obs);
 	XtDestroyWidget((Widget)mptr->s_obs->frame);
 	mptr->s_obs->frame = NULL;
+	if(mptr->s_obs->fname_for_data){
+		unlink(mptr->s_obs->fname_for_data);
+		free(mptr->s_obs->fname_for_data);
+	}
+	free(mptr->s_obs);
+	mptr->s_obs = NULL;	/* sanity */
+/*###pour memoire####
+	FreeContext(mycontext);
+##################
+*/
 }
 
 void MMStopPlugins(mo_window* win, struct mark_up* mlist)
@@ -354,6 +482,46 @@ void MMStopPlugins(mo_window* win, struct mark_up* mlist)
 
 #endif
 
+#if 0
+/*
+/*###################
+/*	strcpy(cmdline," ");  
+/*	for(i=0; obs->param_name_t[i] != NULL; i++){
+/*		strcat(cmdline," ");
+/*		strcat(cmdline, obs->param_name_t[i]);
+/*		if (obs->param_value_t[i]){
+/*			strcat(cmdline," ");
+/*			strcat(cmdline,obs->param_value_t[i]);
+/*		}             
+/*	}                     
+/* at last cat the url */             
+/*	strcat(cmdline, " "); 
+/*	strcat(cmdline, mptr->s_obs->data_url);
+/*	frame = (Widget)mptr->s_obs->frame;
+/*	sprintf(allcmdline,"exec %s -windowId %d %s ",
+/*			mptr->s_obs->bin_path, XtWindow(frame),cmdline );
+/*	{
+/*		int pid;
+/*		char *argv[10];
+/*		argv[0]="/bin/sh";
+/*		argv[1]="-c";
+/*		argv[2]=allcmdline;
+/*		argv[3]=0;
+/*		pid = fork();
+/*		if (pid == -1)
+/*			assert(0);
+/*		if (pid) { /* pere */
+/*			fprintf(stderr,"pid du fils = %d\n",pid);
+/*			mptr->s_obs->pid = pid;
+/*			sleep(30); */
+/*			kill(pid,9); */
+/*		} else {	/* fils */
+/*			execvp(argv[0], argv);
+/*			assert(0);
+/*		}
+/*	}
+/*###################
+/*
 /*	obs->internal_numeos = (int*)calloc(1, sizeof(int)); /*alloc one */
 /*	obs->ret_filenames = (char **) malloc( sizeof(char *)); /* alloc one */
 /*	obs->ret_filenames[obs->url_arg_count] = NULL; */
@@ -393,3 +561,4 @@ void MMStopPlugins(mo_window* win, struct mark_up* mlist)
 */
 /* if (get_cnt == obs->url_arg_count){ */
 /* all data id here . Create */
+#endif

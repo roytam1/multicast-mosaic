@@ -142,7 +142,7 @@ static XmxCallback (mailto_win_cb3)		/* insert file */
       
 	if (!win->mail_fsb_win) {
 		win->mail_fsb_win = XmxMakeFileSBDialog (win->mailto_win,
-			"NCSA Mosaic: Include File In Mail Message",
+			"mMosaic: Include File In Mail Message",
 			"Name of file to include:",
 			include_fsb_cb, (XtPointer)win);
 	} else {
@@ -437,7 +437,7 @@ static mo_status mo_post_mailto_form_win (mo_window *win,char *to_address, char 
       
       /* Create it for the first time. */
       win->mailto_form_win = XmxMakeFormDialog (win->base, 
-			"NCSA Mosaic: Mail Form Results To Author");
+			"mMosaic: Mail Form Results To Author");
       dialog_frame = XmxMakeFrame (win->mailto_form_win, XmxShadowOut);
       
       /* Constraints for base. */

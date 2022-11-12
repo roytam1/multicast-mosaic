@@ -671,7 +671,6 @@ void PostRequestAndGetTypedData( char * aurl, PafDocDataStruct * pafd)
 			free(info);
 			return ;
 		}
-		break;
 	case IN_IPV_4:
 		pafd->www_con_type->ipv = IN_IPV_4;
 		soc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);

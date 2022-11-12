@@ -223,12 +223,11 @@ void McRcvrSrcAllocObject(Source * s, int moid)
 
 /* parse a buffer for state . Use the mime parser. */
 /* update the field of mhs concerning a State */
-/* 	int statid;             /* the stateid */
-/*        int start_moid;         /* begin with this object */
-/*        int n_do;               /* number of depend object */
-/*        DependObjectTab dot;    /* liste of dependant object */
-/*        struct timeval ts;
-*/
+/* 	  int statid;              the stateid */
+/*        int start_moid;          begin with this object */
+/*        int n_do;                number of depend object */
+/*        DependObjectTab dot;     liste of dependant object */
+/*        struct timeval ts;	 */
 /* j'ai un petit poil dans la main. */
 /* State-ID: sid
    Start-ObjectID: startid
@@ -411,7 +410,7 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 		/*s->states[state_id].state_status = STATE_COMPLETED; */
 /* on n'affiche pas: le packet peut provenir d'un repair. */
 /* Il faut tester et afficher que quand on recoit un STATR */
-/*		McDoWindowText(s, state_id);	/*Display full doc */
+/*		McDoWindowText(s, state_id);	 */
 		return;
 	}
 
@@ -462,7 +461,7 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 			/* et que tout est la */
 		s->states[state_id].state_status = STATE_COMPLETED;
 /* on n'affiche pas: le packet peut provenir d'un repair. */
-/*		McDoWindowText(s, state_id);    /*Display full doc */
+/*		McDoWindowText(s, state_id); */
                 return;
 	}
 
@@ -479,7 +478,7 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 /* Il y a transition */
 	s->states[state_id].state_status = STATE_COMPLETED;
 /* on n'affiche pas: le packet peut provenir d'un repair. */
-/*	McDoWindowText(s, state_id);    /*Display full doc */
+/*	McDoWindowText(s, state_id);    */
 	return;
 }
 
@@ -645,6 +644,8 @@ typedef struct _SrcCheckStateStruct {
 
 static XtIntervalId mc_src_check_state_timer_id;
 static int 	mc_src_check_state_time = 1000;	/* en millisec */
+
+#if 0
 static void McSrcCheckStateCb(XtPointer clid, XtIntervalId * id)
 {
 	SrcCheckStateStruct *sc = (SrcCheckStateStruct *)clid;
@@ -686,7 +687,7 @@ static void McSrcCheckStateCb(XtPointer clid, XtIntervalId * id)
 	/* and the hight sid display, reflecting the current sid send */
 	/* if hight sid(send) change during the wait do nothing */
 	assert(0);
-/*	McDoWindowText(s, sid);    /*Display full doc */
+/*	McDoWindowText(s, sid);  */
 }
 
 void McRcvSrcScheduleCheckState( Source *s, int state_id)
@@ -701,6 +702,7 @@ void McRcvSrcScheduleCheckState( Source *s, int state_id)
 	mc_src_check_state_timer_id = XtAppAddTimeOut(mMosaicAppContext,
 		mc_src_check_state_time, McSrcCheckStateCb, scss);
 }
+#endif
 
 /*##########################*/
 /* for each source we ave a space of object */
@@ -728,14 +730,15 @@ void McUpdateDataSourceWithObject(Source *s, int is_end, u_int16_t seqn,
 		s->last_valid_seq = seqn;
 	}
 	s->cur_seq = seqn;
+
 /* status: All depend object are here include me*/
-/*if (try_retrieve ) { /* arme a timer to retrieve missing packet */
-/*fprintf(stderr, "Obj is INCOMPLETE and try_retrieve = 1\n");
+/*if (try_retrieve ) { */ /* arme a timer to retrieve missing packet */
+/*fprintf(stderr, "Obj is INCOMPLETE and try_retrieve = 1\n"); */
 /* Arm a timer (a callback to retrieve packet */
-/*SendRepairFromSeqn(s, url_id, o_id, offset, d_len, is_end, seqn);
-/*s->last_valid_seq = seqn;
-/*return; /*} /*return;
-*/
+/*SendRepairFromSeqn(s, url_id, o_id, offset, d_len, is_end, seqn); */
+/*s->last_valid_seq = seqn; */
+/*return; } */
+
 	McRcvrSrcAllocObject(s, moid);
 
 	ostatus = s->objects[moid].buffer_status;
@@ -749,6 +752,7 @@ void McUpdateDataSourceWithObject(Source *s, int is_end, u_int16_t seqn,
                         /* pour cet oject est en instance, pending */
                         /* la description de l'oject n'est pas encore valide */
          
+#if 0
 /*        ob = s->objects[moid]; /* l'analyse est deja faite */
 /*
 /*	if (s->objects[moid].stateless == True && ostatus != PARSED_BUFFER) {
@@ -771,6 +775,7 @@ void McUpdateDataSourceWithObject(Source *s, int is_end, u_int16_t seqn,
 /*		McDoWindowText(s, ob.statid);    /*Display full doc */
 /*	}
 */
+#endif
 }
 
 /*##########################*/

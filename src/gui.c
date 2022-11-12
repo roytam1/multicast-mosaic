@@ -1651,7 +1651,7 @@ static mo_status mo_fill_window (mo_window *win)
 		htmlWidgetClass, form, 
        		XmNresizePolicy, XmRESIZE_ANY,
 		XmNshadowThickness, 2,
-		/*WbNpreviouslyVisitedTestFunction,anchor_visited_predicate,*/
+		WbNpreviouslyVisitedTestFunction,anchor_visited_predicate,
 		NULL);
 /*########### a mettre sous forme de callback ################ */
 /*	XtAddCallback(win->scrolled_win, WbNpreviouslyVisitedTestFunction, 
@@ -2203,6 +2203,7 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 	XmxSetArg (XmNallowShellResize, False);
 	XmxSetArg (XmNwidth, mMosaicAppData.default_width);
 	XmxSetArg (XmNheight, mMosaicAppData.default_height);
+
 	if (mMosaicAppData.initial_window_iconic)
 		XmxSetArg (XmNiconic, True);
 	if (mMosaicAppData.install_colormap) 
@@ -2212,6 +2213,7 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 	Xmx_n = 0;
 	XtAddEventHandler(base, (EventMask) 0, TRUE,
 			(XtEventHandler) _XEditResCheckMessages, NULL);
+
 
 	win = (mo_window *)calloc (1, sizeof (mo_window));
 	win->base = base;

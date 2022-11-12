@@ -120,10 +120,10 @@ void PopUpOrDownMMosaicUser(Widget w, XtPointer clid, XtPointer calld)
 	s->win = win;
 	win->source = s;
 /* affichage de se qu'on connait de cette source */
-/*	if(s->last_valid_state_id != -1) {
-/*		McDoWindowText(s, s->last_valid_state_id);
-/*	}
-*/
+/*	if(s->last_valid_state_id != -1) { */
+/*		McDoWindowText(s, s->last_valid_state_id); */
+/*	} */
+
 	return;
 }
 
@@ -451,7 +451,7 @@ void McMoveVirtualScrollbar(Source *s, RtpPacket *rs)
 
 /* We can do that only if depend object is in multicast cache */
 /* We have check for this before */
-/* Source have cached filename for html data  and mime part for all object
+/* Source have cached filename for html data  and mime part for all object */
 /* and depend object */
 /* Data for state is here too . All we need now is to retrieve data */
 /* from file and memory, Order and display them. */
@@ -603,7 +603,8 @@ void McDisplayWindowText(Source *s, unsigned int state_id)
         		mhs = topinfo.mhs;             
         		base_url = topinfo.base_url;   
         		base_target = topinfo.base_target;  
-/* on met a jour immediatement la partie navigation. Car on doit avoir un
+
+/* on met a jour immediatement la partie navigation. Car on doit avoir un */
 /* current_node qui memorise tout la requete */
 /* title is alway allocated. */        
                                        
@@ -638,9 +639,10 @@ void McDisplayWindowText(Source *s, unsigned int state_id)
 	base_url = topinfo.base_url;
 	base_target = topinfo.base_target;
 
-/* on met a jour immediatement la partie navigation. Car on doit avoir un
+/* on met a jour immediatement la partie navigation. Car on doit avoir un */
 /* current_node qui memorise tout la requete */
 /* title is alway allocated. */
+
 	MMUpdNavigationOnNewURL(s->win, aurl, aurl, goto_anchor, text,
 		mhs, docid, s->win->htinfo);
 /* Remarque: la requete (partie HTML) est termine et on a change de current_node*/

@@ -923,7 +923,7 @@ void mo_techsupport(Widget w, XtPointer clid, XtPointer calld)
 	mo_window * win = (mo_window*) clid;
 	char subj[128];
 
-	sprintf (subj, "User Feedback -- NCSA Mosaic %s on %s.",
+	sprintf (subj, "User Feedback -- mMosaic %s on %s.",
 		MO_VERSION_STRING, MO_MACHINE_TYPE);
 	mo_post_mailto_win(win,MO_DEVELOPER_ADDRESS,subj);
 }

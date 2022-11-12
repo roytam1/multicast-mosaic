@@ -33,31 +33,31 @@
 
 /* ####Prendre le format netscape: Voir ~/.netscape/bookmark.html##### */
 /* <!DOCTYPE NETSCAPE-Bookmark-file-1>
-/*
-/* <!-- This is an automatically generated file.
-/* It will be read and overwritten.
-/* Do Not Edit! -->
-/* <TITLE>Gilles Dauphin's Bookmarks</TITLE>
-/* <H1>Gilles Dauphin's Bookmarks</H1>
-/* 
-/* <DD>primarybook
-/* <DL><p>
-/*      <DT><A HREF="http://sig.enst.fr/" ADD_DATE="790876892" LAST_VISIT="874571973" LAST_MODIFIED="869758245">Télécom Paris WWW Server</A>
-/*      <DT><A HREF="http://www.ensta.fr/" ADD_DATE="790962869" LAST_VISIT="869757049" LAST_MODIFIED="869559368">Serveur WWW de l'ENSTA</A>
-/* <DD>Oh le beau serveur de l'ENSTA
-/*     <DT><H3 FOLDED ADD_DATE="842436201">java tool</H3>
-/* <DD>Different site java
-/*     <DL><p>
-/*         <DT><A HREF="http://www.kaffe.org/" ADD_DATE="861286867" LAST_VISIT="869757074" LAST_MODIFIED="869680045">KAFFE - A virtual machine to run Java(tm)* code</A>
-/*     </DL><p>
-/*     <DT><H3 FOLDED ADD_DATE="842434326">midi</H3>
-/* <DD>midi pointers                      
-/*     <DL><p>                            
-/*         <DT><A HREF="http://www.hut.fi/~titoivon/" ADD_DATE="863770674" LAST_VISIT="869756961" LAST_MODIFIED="861537900">Tuukka Toivonen / TiMidity</A>
-/*     </DL><p>
-/*     <DT><A HREF="http://www.netstore.de/Supply/http-analyze/" ADD_DATE="872183226" LAST_VISIT="872183437" LAST_MODIFIED="872183206">http-analyze - A fast Log Analyzer for web servers</A>
-/* </DL><p>
-/*           
+ *
+ * <!-- This is an automatically generated file.
+ * It will be read and overwritten.
+ * Do Not Edit! -->
+ * <TITLE>Gilles Dauphin's Bookmarks</TITLE>
+ * <H1>Gilles Dauphin's Bookmarks</H1>
+ * 
+ * <DD>primarybook
+ * <DL><p>
+ *      <DT><A HREF="http://sig.enst.fr/" ADD_DATE="790876892" LAST_VISIT="874571973" LAST_MODIFIED="869758245">Télécom Paris WWW Server</A>
+ *      <DT><A HREF="http://www.ensta.fr/" ADD_DATE="790962869" LAST_VISIT="869757049" LAST_MODIFIED="869559368">Serveur WWW de l'ENSTA</A>
+ * <DD>Oh le beau serveur de l'ENSTA
+ *     <DT><H3 FOLDED ADD_DATE="842436201">java tool</H3>
+ * <DD>Different site java
+ *     <DL><p>
+ *         <DT><A HREF="http://www.kaffe.org/" ADD_DATE="861286867" LAST_VISIT="869757074" LAST_MODIFIED="869680045">KAFFE - A virtual machine to run Java(tm)* code</A>
+ *     </DL><p>
+ *     <DT><H3 FOLDED ADD_DATE="842434326">midi</H3>
+ * <DD>midi pointers                      
+ *     <DL><p>                            
+ *         <DT><A HREF="http://www.hut.fi/~titoivon/" ADD_DATE="863770674" LAST_VISIT="869756961" LAST_MODIFIED="861537900">Tuukka Toivonen / TiMidity</A>
+ *     </DL><p>
+ *     <DT><A HREF="http://www.netstore.de/Supply/http-analyze/" ADD_DATE="872183226" LAST_VISIT="872183437" LAST_MODIFIED="872183206">http-analyze - A fast Log Analyzer for web servers</A>
+ * </DL><p>
+ *           
 */
 
 #define CHK_OUT_OF_MEM(x) { if ( x == NULL) {\
@@ -1432,7 +1432,7 @@ static mo_status mo_delete_position_from_current_hotlist (mo_window *win,
 				endquestion);
 		win->delete_position_from_current_hotlist = position;
 		XmxMakeQuestionDialog(win->hotlist_win, buff, 
-			"NCSA Mosaic: Remove list" ,
+			"mMosaic: Remove list" ,
 			remove_yes_cb, remove_no_cb,  (XtPointer)win);
 		free(buff);
 		free(question);
@@ -1506,7 +1506,7 @@ static mo_status mo_post_mailhot_win (mo_window *win)
       
       /* Create it for the first time. */
       win->mailhot_win = XmxMakeFormDialog 
-        (win->hotlist_win, "NCSA Mosaic: Mail Hotlist" );
+        (win->hotlist_win, "mMosaic: Mail Hotlist" );
       dialog_frame = XmxMakeFrame (win->mailhot_win, XmxShadowOut);
 
       /* Constraints for base. */
@@ -1705,7 +1705,7 @@ static XmxCallback (hotlist_win_cb10)		 /* Save in a file */
 
 	if (!win->save_hotlist_win)
 		win->save_hotlist_win = XmxMakeFileSBDialog(win->hotlist_win,
-					 "NCSA Mosaic: Save Current hotlist" ,
+					 "mMosaic: Save Current hotlist" ,
 				"Name for saved hotlist" , 
 				save_hot_cb,(XtPointer) win);
 	else
@@ -1720,7 +1720,7 @@ static XmxCallback (hotlist_win_cb11)	 /* Load a hotlist file */
 		Widget frame, workarea, tb;
 
 		win->load_hotlist_win = XmxMakeFileSBDialog(win->hotlist_win, 
-					"NCSA Mosaic: Load in Current hotlist" ,
+					"mMosaic: Load in Current hotlist" ,
 					"Name of file to open", 
 					load_hot_cb, (XtPointer)win);
 /* This makes a frame as a work area for the dialog box. */

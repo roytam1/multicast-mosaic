@@ -76,6 +76,7 @@ void mo_reload_document (Widget w, XtPointer clid, XtPointer calld)
 /*###	win->navigation_action = NAVIGATE_NEW; ### */
 }
 
+#if 0
 /*########################### */
 /* Update source text if necessary. */
 /*	if(win->source_text && XtIsManaged(win->source_text) &&
@@ -100,3 +101,4 @@ void mo_reload_document (Widget w, XtPointer clid, XtPointer calld)
 /*		XmListSetBottomPos(win->history_list,win->current_node->position);
 /*	}
 /* ########################## */
+#endif

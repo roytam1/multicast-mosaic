@@ -13,6 +13,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "mplugin.h"
+
 typedef enum _MarkType {
 	M_END_STATE = -3,
 	M_INIT_STATE = -2,
@@ -197,32 +199,6 @@ typedef enum {
         HALIGN_CENTER,
         HALIGN_RIGHT
 } AlignType;
-
-
-typedef struct _HtmlObjectStruct {
-        int width;
-        int height;
-        int x;
-        int y;
-        int border_width;
-        AlignType valignment;
-        char * bin_path;
-	char *content_type;
-	char *codebase;
-	char *data_url;
-	pid_t pid;
-
-        int param_count;
-        char **param_name_t;
-        char **param_value_t;
-        char **param_valuetype_t;
-        int url_arg_count;  
-        char **url_arg;
-/*        int *internal_numeos;	*/
-/*        char ** ret_filenames;	*/
-        int cw_only;              	/* Boolean */
-	void * frame;
-} HtmlObjectStruct;                   
 
 
 typedef struct _TableRec	*TablePtr;

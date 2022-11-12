@@ -111,7 +111,7 @@ char * BuildDocHTTPCommand(PafDocDataStruct * pafd, int * len_ret)
 /*	docname = URLParse(arg, "", PARSE_PATH);
  *	hostname = URLParse(arg, "", PARSE_HOST);
  *	if (hostname && NULL != (colon = strchr(hostname, ':'))) {
- *		*(colon++) = '\0';	/* Chop off port number */
+ *		*(colon++) = '\0';	*/ /* Chop off port number */
 /*		portnumber = atoi(colon);
  *	} else 
  *		portnumber = 80;
@@ -627,6 +627,7 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 /* next read */
 }
 
+#if 0
 /* some code to send a command ####################### */
 /* if (do_head)
  * strcpy(command, "HEAD ");
@@ -664,3 +665,4 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
  * }       
  */
 /* ###################################### */
+#endif

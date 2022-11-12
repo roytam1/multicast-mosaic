@@ -452,7 +452,7 @@ Quand 'attribut color n'est pas la il faut prendre le <body text=color> par defa
    size         CDATA           #IMPLIED 
    color        %Color;         #IMPLIED 
    face         CDATA           #IMPLIED
-/* en realite la size par default doit se copier a partir de BASEFONT */
+   en realite la size par default doit se copier a partir de BASEFONT */
 /*##########################*/
 		if(!size)
 			size = strdup("3");
@@ -600,33 +600,18 @@ void MMInitWidgetFont( HTMLWidget hw)
 #endif
 	hw->html.cur_font = fr->xfont;
 }
+
+#if 0
 /*###################################################################
 /* Font face changes only allowed when not in preformatted text.*/
-/*if(!in_pre)
 /*chPtr = temp->attributes ? _XmHTMLTagGetValue(temp->attributes, "face") : NULL;
-/*if(chPtr != NULL) {
-/*if(in_pre) { 
-/*Ignore face but must allow for size change. (Font stack will get unbalanced otherwise!)*/
-/*font = _XmHTMLLoadFont(html, HT_FONT, size, font);
-/*} else
 /*font = _XmHTMLLoadFontWithFace(html, size, chPtr, font);
-/*free(chPtr);
-/*} else 
-/*font = _XmHTMLLoadFont(html, HT_FONT, size, font);
-/*ignore = True; /* only need font data */
-/*break;
 /* from XmHTML */                     
 /*##################################
 /*case HT_BASEFONT:            
 /*basefont = temp->attributes ? _XmHTMLTagGetNumber(temp->attributes, "size", 0) : 0;                  
 /* take absolute value */      
 /*basefont = Abs(basefont);
-/*if(basefont < 1 || basefont > 7) {
-/*if(HTML_ATTR(bad_html_warnings))
-/*basefont = 4;
-/*}                    
-/*ignore = True;  /* only need font data */
-/*break;               
 /*#################################################################
 
 
@@ -988,4 +973,4 @@ void MMInitWidgetFont( HTMLWidget hw)
 /*	return(curr_cache->default_font);
 /*}
 */
-
+#endif
