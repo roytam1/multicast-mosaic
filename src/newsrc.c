@@ -1,72 +1,24 @@
-/****************************************************************************
- * NCSA Mosaic for the X Window System                                      *
- * Software Development Group                                               *
- * National Center for Supercomputing Applications                          *
- * University of Illinois at Urbana-Champaign                               *
- * 605 E. Springfield, Champaign IL 61820                                   *
- * mosaic@ncsa.uiuc.edu                                                     *
- *                                                                          *
- * Copyright (C) 1993, Board of Trustees of the University of Illinois      *
- *                                                                          *
- * NCSA Mosaic software, both binary and source (hereafter, Software) is    *
- * copyrighted by The Board of Trustees of the University of Illinois       *
- * (UI), and ownership remains with the UI.                                 *
- *                                                                          *
- * The UI grants you (hereafter, Licensee) a license to use the Software    *
- * for academic, research and internal business purposes only, without a    *
- * fee.  Licensee may distribute the binary and source code (if released)   *
- * to third parties provided that the copyright notice and this statement   *
- * appears on all copies and that no charge is associated with such         *
- * copies.                                                                  *
- *                                                                          *
- * Licensee may make derivative works.  However, if Licensee distributes    *
- * any derivative work based on or derived from the Software, then          *
- * Licensee will (1) notify NCSA regarding its distribution of the          *
- * derivative work, and (2) clearly notify users that such derivative       *
- * work is a modified version and not the original NCSA Mosaic              *
- * distributed by the UI.                                                   *
- *                                                                          *
- * Any Licensee wishing to make commercial use of the Software should       *
- * contact the UI, c/o NCSA, to negotiate an appropriate license for such   *
- * commercial use.  Commercial use includes (1) integration of all or       *
- * part of the source code into a product for sale or license by or on      *
- * behalf of Licensee to third parties, or (2) distribution of the binary   *
- * code or source code to third parties that need it to utilize a           *
- * commercial product sold or licensed by or on behalf of Licensee.         *
- *                                                                          *
- * UI MAKES NO REPRESENTATIONS ABOUT THE SUITABILITY OF THIS SOFTWARE FOR   *
- * ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED          *
- * WARRANTY.  THE UI SHALL NOT BE LIABLE FOR ANY DAMAGES SUFFERED BY THE    *
- * USERS OF THIS SOFTWARE.                                                  *
- *                                                                          *
- * By using or copying this Software, Licensee agrees to abide by the       *
- * copyright law and all other applicable laws of the U.S. including, but   *
- * not limited to, export control laws, and the terms of this license.      *
- * UI shall have the right to terminate this license immediately by         *
- * written notice upon Licensee's breach of, or non-compliance with, any    *
- * of its terms.  Licensee may be held legally responsible for any          *
- * copyright infringement that is caused or encouraged by Licensee's        *
- * failure to abide by the terms of this license.                           *
- *                                                                          *
- * Comments and questions are welcome and can be sent to                    *
- * mosaic-x@ncsa.uiuc.edu.                                                  *
- ****************************************************************************/
-#include "../config.h"
-#include "mosaic.h"
-#include "newsrc.h"
+/* Please read copyright.ncsa. Don't remove next line */
+#include "copyright.ncsa"
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
+#include "newsrc.h"
+#include "../libhtmlw/HTML.h"
+#include "mosaic.h"
+#include "../libwww2/HTAlert.h"
+
 #include <Xm/MessageB.h>
+
+void newsrc_flushcb (XtPointer cld, XtIntervalId *id);
 
 newsgroup_t *addgroup (char *nline, long min, long max, int dri);
 newsgroup_t *findgroup (char *name);
 void setseq (newsgroup_t *ng, char *str);
 void allocminmax (newsgroup_t *ng, long min, long max);
 char *newsrc_getseq (char *, char*);
-void dumpgroup (newsgroup_t *ng);
-void newsrc_flushcb (XtPointer cld, XtIntervalId *id);
 
 
 /* Number of bins in the newsgroup hash table */
@@ -77,13 +29,13 @@ void newsrc_flushcb (XtPointer cld, XtIntervalId *id);
 newsgroup_t *newsrc_groups[ACTIVE_BINS];
 FILE        *newsrc_fp;
 char         newsrc_filename[MAX_BUF];       /* filename of the current newsrc */
-char         newsrc_filenamebak[MAX_BUF];    /* filename of the last newsrc backup */
-int          newsrc_active = 0;              /* This is whether newsrc hash table is valid */
+char         newsrc_filenamebak[MAX_BUF]; /* filename of the last newsrc backup */
+int          newsrc_active = 0;   /* This is whether newsrc hash table is valid */
 int          newsrc_line;
 XtIntervalId newsrc_ti;
 int          newsrc_timer = 0;
 int          newsrc_flushit = 0;             /* Do we need to flush? */
-int newsrc_smask;
+int newsrc_smask; 
 
 extern int newsUseNewsRC;
 int newsNoNewsRC = 0;
@@ -94,54 +46,50 @@ int newsNoNewsRC = 0;
    Expects: ng -- newsgroup
             art -- article number
    Returns: 0 if not read, 1 if read
-   
-   Notes:  
 */
 int isread (newsgroup_t *ng, long art)
 {
-  int b;
-  if (!ng)
-    return 0;
-  if (art<ng->minart)
-    return 1;
-  if (art>ng->maxart)
-    return 1;
-  b = art - ng->minart;
-  return (ng->read[b>>3] & (1<<(b&7)));
+	int b;
+
+	if (!ng)
+		return 0;
+	if (art<ng->minart)
+		return 1;
+	if (art>ng->maxart)
+		return 1;
+	b = art - ng->minart;
+	return (ng->read[b>>3] & (1<<(b&7)));
 }
 
 /* markread ()
    Expects: ng -- newsgroup
             art -- article number
    Returns: nothing
-   
-   Notes:  
 */
 void markread (newsgroup_t *ng, long art)
 {
-  int b;
+	int b;
 
-  if (!ng || !ng->read)
-    return;
-  if (art<ng->minart)
-    return;
-  if (art>ng->maxart)
-    return;
+	if (!ng || !ng->read)
+		return;
+	if (art<ng->minart)
+		return;
+	if (art>ng->maxart)
+		return;
 
-  b = art - ng->minart;
-  ng->attribs |= naUPDATE;
-  newsrc_flushit++;
-  if (!(ng->read[b>>3] & (1<<(b&7)))) /* only decrement if article is truly unread */
-    ng->unread--;
-  ng->read[b>>3] |= (1<<(b&7));
+	b = art - ng->minart;
+	ng->attribs |= naUPDATE;
+	newsrc_flushit++;
+	if(!(ng->read[b>>3] & (1<<(b&7)))) 
+			/* only decrement if article is truly unread */
+		ng->unread--;
+	ng->read[b>>3] |= (1<<(b&7));
 }
 
 /* markunread ()
    Expects: ng -- newsgroup
             art -- article number
    Returns: nothing
-   
-   Notes:  
 */
 void markunread (newsgroup_t *ng, long art)
 {
@@ -195,15 +143,11 @@ void markrangeunread (newsgroup_t *ng, long start, long stop)
     markunread(ng,start);
 }
 
-
-
 /* Group functions */
 
 /* issubscribed ()
    Expects: name -- name of newsgroup
    Returns: pointer to group or NULL if not subscribed
-   
-   Notes:
 */
 newsgroup_t *issubscribed (char *name)
 {
@@ -240,7 +184,6 @@ newsgroup_t *subscribegroup (char *name)
     ng->attribs |= naUPDATE;
     ng->attribs |= naSUBSCRIBED;
     ng->attribs |= naSHOWME;
-
   }
 
   newsrc_flushit++;
@@ -250,8 +193,6 @@ newsgroup_t *subscribegroup (char *name)
 /* unsubscribegroup ()
    Expects: name -- group name
    Returns: pointer to unsubed group
-
-   Notes:  
 */
 newsgroup_t *unsubscribegroup (char *name)
 {
@@ -275,13 +216,10 @@ newsgroup_t *unsubscribegroup (char *name)
 */
 void dumpgroup (newsgroup_t *ng)
 {
-  long l;
-
   if (!ng) {
     printf  ("Name: ng is NULL\n");
     return;
   }
-
   printf ("Name: %s [%ld %ld] %ld %c%c%c\n", 
 	  ng->name?ng->name: "NULL",
 	  ng->minart,
@@ -289,31 +227,29 @@ void dumpgroup (newsgroup_t *ng)
 	  ng->unread,
 	  (ng->attribs&naUPDATE)? 'U': 'u',
 	  (ng->attribs&naSUBSCRIBED)? 'S': 's',
-	  (ng->attribs&naNEWGROUP)? 'N': 'n'
-	  );
-
+	  (ng->attribs&naNEWGROUP)? 'N': 'n' );
 }
 
-
+  
 /* dumphash ()
    Expects: nothing
    Returns: nothing
-   
+    
    Notes: Displays some useful info on the hash table
 */
 void dumphash ()
-{
+{     
   int i;
   newsgroup_t *ng;
-
-  fprintf (stderr, "Hash Table ......\n");
-  for (i=0; i<ACTIVE_BINS; i++) {
-    ng = newsrc_groups[i];
-    while (ng) {
-      dumpgroup (ng);
-      ng = ng->next;
-    }
-  }
+   
+  fprintf (stderr, "Hash Table ......\n"); 
+  for (i=0; i<ACTIVE_BINS; i++) {     
+    ng = newsrc_groups[i];            
+    while (ng) {                      
+      dumpgroup (ng);                 
+      ng = ng->next;                  
+    }                                 
+  }                                   
 }
 
 /* Groups hash table functions */
@@ -375,14 +311,14 @@ newsgroup_t *findgroup (char *name)
 newsgroup_t *firstgroup (int mask) 
 {
   int i;
-  newsgroup_t *n;
-
+  newsgroup_t *n; 
+ 
   newsrc_smask = mask;
-  for (i=0; i<ACTIVE_BINS; i++) {
-    n = newsrc_groups[i];
-    while (n) {
+  for (i=0; i<ACTIVE_BINS; i++) { 
+    n = newsrc_groups[i];                                                   
+    while (n) {                                                             
       if (mask == -1 || n->attribs & mask) {
-	return n;
+        return n;
       }
       n = n->next;
     }
@@ -393,14 +329,14 @@ newsgroup_t *firstgroup (int mask)
    Expects: ng -- pointer to last newsgroup received
    Returns: NULL if no groups
 
-   Notes:  Returns the next group in the hash table with the suggested attribute.
+   Notes:  Returns the next group in the hash table with the suggested attribute
 */
 newsgroup_t *nextgroup (newsgroup_t *ng) 
 {
   int i;
   newsgroup_t *n;
 
-  if (!ng)
+  if (!ng)                            
     return firstgroup (naSUBSCRIBED);
 
   for (i=ng->h; i<ACTIVE_BINS; i++) {
@@ -462,7 +398,7 @@ newsgroup_t *addgroup (char *nline, long min, long max, int dri)
     if (ng = findgroup (name))
       return ng;
 
-  if ((ng = malloc (sizeof (newsgroup_t))) == NULL) {
+  if ((ng = (newsgroup_t *)malloc (sizeof (newsgroup_t))) == NULL) {
     return NULL;
   }
   memset (ng, 0, sizeof (newsgroup_t));
@@ -582,12 +518,7 @@ void rereadseq (newsgroup_t *ng)
   if (newsrc_getseq (ng->name, buf)) {
 	setseq (ng, buf);
   }
-
-  return;
 }
-
-
-
 
 /* allocminmax ()
    Expects: ng -- newsgroup to update
@@ -607,7 +538,7 @@ void allocminmax (newsgroup_t *ng, long min, long max)
   if (max<min)
     return;
 
-  if ((tr = malloc ((max-min+7)/8+1)) == NULL) {
+  if ((tr = (char*)malloc ((max-min+7)/8+1)) == NULL) {
     return;
   }
   
@@ -640,7 +571,7 @@ void setminmax (newsgroup_t *ng, long min, long max)
   if (min > max)
     return;
 
-  if ((tr = malloc (s)) == NULL ) {
+  if ((tr =(char*) malloc (s)) == NULL ) {
     return;
   }
   
@@ -663,8 +594,6 @@ void setminmax (newsgroup_t *ng, long min, long max)
     free (ng->read);
   ng->read = tr;
 }
-
-
 
 /* newsrc file functions */
 
@@ -733,7 +662,6 @@ char *newsrc_getseq (char *name, char *buf)
   return NULL;
 }
 
-
 /* newsrc_backup () 
    Expects: Nothing
    Returns: Nothing
@@ -742,7 +670,7 @@ char *newsrc_getseq (char *name, char *buf)
 */
 void newsrc_backup ()
 {
-  FILE *old, *new;
+  FILE *old, *nw;
   char b[MAX_BUF+1];
 
   sprintf (newsrc_filenamebak, "%s.old", newsrc_filename);
@@ -750,16 +678,16 @@ void newsrc_backup ()
     return;
   }
 
-  if ((new = fopen (newsrc_filename, "r")) == NULL) {
+  if ((nw = fopen (newsrc_filename, "r")) == NULL) {
     fclose (old);
     return;
   }
 
-  while (fgets (b,MAX_BUF,new)) 
+  while (fgets (b,MAX_BUF,nw)) 
     fprintf (old, b);
 
   fclose (old);
-  fclose (new);
+  fclose (nw);
 }
 
 
@@ -815,7 +743,7 @@ char *newsrc_writeseq (newsgroup_t *ng, char *buf, int max)
   }
   
   /* Remove the trailing comma */
-  if ((s = strrchr (buf,',')) != NULL) 
+  if ((s = strrchr (buf,',')) != NULL)
     *s = 0;
   return buf;
 }
@@ -830,43 +758,42 @@ char *newsrc_writeseq (newsgroup_t *ng, char *buf, int max)
 */
 int newsrc_flush ()
 {
-  extern XtAppContext app_context;
   newsgroup_t *n;
-  FILE *new;
+  FILE *nw;
   char b[2*MAX_BUF+1], seq[MAX_BUF+1];
-  long del;
-
+  long del;                           
+                                      
   if (!newsrc_flushit || !newsUseNewsRC)
-    return 0;
-
-  if (newsrc_timer)
-    XtRemoveTimeOut (newsrc_ti);
-
-  newsrc_backup ();
-  if ((new = fopen (newsrc_filename, "w+")) == NULL) {
+    return 0;                         
+                                      
+  if (newsrc_timer)                   
+    XtRemoveTimeOut (newsrc_ti);      
+                                      
+  newsrc_backup ();                   
+  if ((nw = fopen (newsrc_filename, "w+")) == NULL) {
     HTProgress ("Could not open newsrc file");
-
-    return 1;
-  }
-  
-  n = firstgroup (-1);
-  while (n) {
-    seq[0] = 0;
-    newsrc_writeseq (n,seq,MAX_BUF);
+                                      
+    return 1;                         
+  }                                   
+                                      
+  n = firstgroup (-1);                
+  while (n) {                         
+    seq[0] = 0;                       
+    newsrc_writeseq (n,seq,MAX_BUF);  
     sprintf (b, "%s%c %s\n", n->name, (n->attribs&naSUBSCRIBED)?':':'!', seq);
-    fprintf (new, b);
-    n->attribs &= ~(naUPDATE);
-    n = nextgroup (n);
-  }
+    fprintf (nw, b);                 
+    n->attribs &= ~(naUPDATE);        
+    n = nextgroup (n);                
+  }                                   
+                                      
+  fclose (nw);                       
+  newsrc_flushit = 0;                 
+  newsNoNewsRC = 0;                                      
 
-  fclose (new);
-  newsrc_flushit = 0;
-  newsNoNewsRC = 0;
-  
-  if (newsrc_timer) {
+  if (newsrc_timer) {                 
     del = get_pref_int (eBACKGROUNDFLUSHTIME);
     newsrc_ti = XtAppAddTimeOut (app_context, 1000L*del, newsrc_flushcb, NULL);
-  }
+  }                                   
   return 0;
 }
 
@@ -879,20 +806,17 @@ int newsrc_flush ()
 */
 void newsrc_flushcb (XtPointer cld, XtIntervalId *id)
 {
-  extern XtAppContext app_context;
-  char buf[MAX_BUF+1];
-  int del;
-
-  newsrc_flush ();
+  char buf[MAX_BUF+1];                
+  int del;                            
+                                      
+  newsrc_flush ();                    
   del = get_pref_int (eBACKGROUNDFLUSHTIME);
   newsrc_ti = XtAppAddTimeOut (app_context, 1000L*del, newsrc_flushcb, NULL);
   newsrc_timer = 1;
-  return;
 }
 
 void newsrc_initflush ()
 {
-  extern XtAppContext app_context;
   int del = get_pref_int (eBACKGROUNDFLUSHTIME);
   int i = 1;
 
@@ -900,8 +824,6 @@ void newsrc_initflush ()
   newsrc_timer = 1;
   set_pref (eUSEBACKGROUNDFLUSH, &i);
 }
-
-
 
 /* newsrc_kill ()
    Expects: Nothing
@@ -914,35 +836,31 @@ void newsrc_initflush ()
 */
 int newsrc_kill (void)
 {
-  newsgroup_t *n, *n2;
-  int i;
+	newsgroup_t *n, *n2;
+	int i;
 
-  if (newsrc_timer)
-    XtRemoveTimeOut (newsrc_ti);
+	if (newsrc_timer)
+		XtRemoveTimeOut (newsrc_ti);
 
   newsrc_flush ();
-
-  /* Kill hash table */
-  for (i=0; i<ACTIVE_BINS; i++) {
-    n = newsrc_groups[i];
-    while (n) {
-      n2 = n->next;
-      if (n->read)
-	free (n->read);
-      if (n->name)
-	free (n->name);
-      free (n);
-      n = n2;
-    }
-    newsrc_groups[i] = NULL;
-  }
-
-  newsrc_active = 0;
-  return 0;
+  /* Kill hash table */               
+  for (i=0; i<ACTIVE_BINS; i++) {     
+    n = newsrc_groups[i];             
+    while (n) {                       
+      n2 = n->next;                   
+      if (n->read)                    
+        free (n->read);               
+      if (n->name)                    
+        free (n->name);               
+      free (n);                       
+      n = n2;                         
+    }                                 
+    newsrc_groups[i] = NULL;          
+  }                                   
+                                      
+  newsrc_active = 0;                  
+  return 0; 
 }
-
-
-
 
 /* newsrc_init ()
    Expects: newshost -- name of newshost to open the newsrc for.
@@ -953,78 +871,61 @@ int newsrc_kill (void)
 */
 int newsrc_init (char *newshost)
 {
-  extern XtAppContext app_context;
-  int i;
-  newsgroup_t *n, *n2;
-  char *nntp, buf[MAX_BUF+1];
-  long lo, hi;
-  char *home = getenv ("HOME");
-  char *npref = NULL;
-  int spref = 1;
-
-  if (newshost == NULL)
-    return 1;
-
-  /* If they want to reinit the current system, they have to do it the hard way */
-  if (newsrc_active) 
-    return 0;
-
+  int i;                              
+  newsgroup_t *n, *n2;                
+  char *nntp, buf[MAX_BUF+1];         
+  long lo, hi;                        
+  char *home = getenv ("HOME");       
+  char *npref = NULL;                 
+  int spref = 1;                      
+                                      
+  if (newshost == NULL)               
+    return 1;                         
+                                      
+  /* If they want to reinit the current system, they have to do it the hard way
+*/                                    
+  if (newsrc_active)
+    return 0;                         
+                                      
   sprintf (buf, "Initializing newsrc for %s", newshost);
-  HTProgress (buf);
-
-  for (i=0; i<ACTIVE_BINS; i++) {
-    newsrc_groups[i] = NULL;
-  }
-
+  HTProgress (buf);                   
+                                      
+  for (i=0; i<ACTIVE_BINS; i++) {     
+    newsrc_groups[i] = NULL;          
+  }                                   
+                                      
   newsUseNewsRC = get_pref_boolean (eUSENEWSRC);
-  if (!newsUseNewsRC) {
-    newsNoNewsRC = 1;
-    newsrc_active = 0;
-    return 0;
-  }
-
-  npref = get_pref_string (eNEWSRCPREFIX);
+  if (!newsUseNewsRC) {               
+    newsNoNewsRC = 1;                 
+    newsrc_active = 0; 
+    return 0;                         
+  }                                   
+                                      
+  npref = get_pref_string (eNEWSRCPREFIX); 
   spref = get_pref_boolean (eUSESHORTNEWSRC);
-  sprintf (newsrc_filename, "%s/%s%s%s", home, npref, spref?"":"-",spref?"":newshost);
+  sprintf (newsrc_filename, "%s/%s%s%s", home, npref, spref?"":"-",spref?"":newshost);                                
   if ((newsrc_fp = fopen (newsrc_filename, "r")) == NULL) {
-    sprintf (buf, "News file %s/%s%s%s does not exist", 
-	     home, npref, spref?"":"-",spref?"":newshost);
-    HTProgress (buf);
-    newsNoNewsRC = 1;
-    newsrc_active = 1;
-    return 0;
-  }
-
-  newsrc_line = 0;
+    sprintf (buf, "News file %s/%s%s%s does not exist",
+             home, npref, spref?"":"-",spref?"":newshost);
+    HTProgress (buf);                 
+    newsNoNewsRC = 1;                 
+    newsrc_active = 1;                
+    return 0;                         
+  }                                   
+                                      
+  newsrc_line = 0;                    
   while (newsrc_readline (buf) == 0) {
-    if (strchr (buf, ':')) 
-      addgroup (buf, 0, -1, 0) ;
-  }
-  fclose (newsrc_fp);
-  
+    if (strchr (buf, ':'))            
+      addgroup (buf, 0, -1, 0) ;      
+  }                                   
+  fclose (newsrc_fp);                 
+                                      
   if (get_pref_boolean (eUSEBACKGROUNDFLUSH)) {
-    newsrc_ti = XtAppAddTimeOut (app_context, 
-			       1000L*get_pref_int (eBACKGROUNDFLUSHTIME),
-			       newsrc_flushcb, NULL);
-    newsrc_timer = 1;
-  }
-  newsrc_active = 1;
-  return 0;
+    newsrc_ti = XtAppAddTimeOut (app_context,
+                               1000L*get_pref_int (eBACKGROUNDFLUSHTIME),
+                               newsrc_flushcb, NULL);
+    newsrc_timer = 1;                 
+  }                                   
+  newsrc_active = 1;                  
+  return 0; 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

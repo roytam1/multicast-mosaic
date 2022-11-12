@@ -1,5 +1,5 @@
 /* Simple string sorting support, thanks to qsort(). */
-#include "../config.h"
+
 #include "HTUtils.h"
 #include <string.h>
 
@@ -11,15 +11,11 @@ static int count;
 
 void HTSortInit (void)
 {
-  count = 0;
-
-  if (!hunk)
-    {
-      size_of_hunk = SIZE_OF_HUNK;
-      hunk = (char **)malloc (sizeof (char *) * size_of_hunk);
-    }
-    
-  return;
+	count = 0;
+	if (!hunk) {
+		size_of_hunk = SIZE_OF_HUNK;
+		hunk = (char **)malloc (sizeof (char *) * size_of_hunk);
+	}
 }
 
 static void expand_hunk (void)
@@ -27,8 +23,6 @@ static void expand_hunk (void)
   /* Make hunk bigger by SIZE_OF_HUNK elements. */
   size_of_hunk += SIZE_OF_HUNK;
   hunk = (char **)realloc (hunk, sizeof (char *) * size_of_hunk);
-
-  return;
 }
 
 void HTSortAdd (char *str)
@@ -38,8 +32,6 @@ void HTSortAdd (char *str)
     expand_hunk ();
 
   hunk[count++] = str;
-  
-  return;
 }
 
 static int dsortf (char **s1, char **s2)
@@ -52,14 +44,7 @@ void HTSortSort (void)
   qsort ((void *)hunk, 
 	 count, 
 	 sizeof (char *), 
-	 (void *)dsortf);
-
-  return;
-}
-
-int HTSortCurrentCount (void)
-{
-  return count;
+	 (int (*)(void*,void*))dsortf);
 }
 
 char *HTSortFetch (int i)

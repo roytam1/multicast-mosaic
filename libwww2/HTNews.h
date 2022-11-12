@@ -18,6 +18,7 @@
 extern HTProtocol HTNews;
 
 extern void HTSetNewsHost PARAMS((WWW_CONST char *value));
+void news_status(char *url, int *prevt, int *nextt, int *prev, int *next, int *follow);
 extern WWW_CONST char * HTGetNewsHost NOPARAMS;
 
 extern char * HTNewsHost;

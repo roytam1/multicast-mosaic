@@ -1,9 +1,10 @@
 typedef int	ListenAddress;
 
-extern ListenAddress NetServerInitSocket();
-extern PortDescriptor *NetServerAccept();
-extern int NetRead();
-extern int NetServerWrite();
-extern int NetCloseConnection();
-extern int NetIsThereInput();
-
+extern ListenAddress NetServerInitSocket(int portNumber);
+extern PortDescriptor *NetServerAccept(ListenAddress socketFD);
+extern int NetRead(PortDescriptor *c,char *buffer,int bufferSize);
+extern int NetServerWrite(PortDescriptor *c,char *buffer,int bufferSize);
+extern void NetCloseConnection(PortDescriptor *c);
+extern int NetIsThereInput(PortDescriptor *p);
+void NetCloseAcceptPort(int s);
+int NetIsThereAConnection(int socketFD);

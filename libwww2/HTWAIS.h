@@ -31,6 +31,4 @@ extern HTProtocol HTWAIS;
 
 #endif
 
-/*
-
-                                                                                Tim BL  */
+/* Tim BL  */

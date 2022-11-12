@@ -1,59 +1,5 @@
-/****************************************************************************
- * NCSA Mosaic for the X Window System                                      *
- * Software Development Group                                               *
- * National Center for Supercomputing Applications                          *
- * University of Illinois at Urbana-Champaign                               *
- * 605 E. Springfield, Champaign IL 61820                                   *
- * mosaic@ncsa.uiuc.edu                                                     *
- *                                                                          *
- * Copyright (C) 1993, Board of Trustees of the University of Illinois      *
- *                                                                          *
- * NCSA Mosaic software, both binary and source (hereafter, Software) is    *
- * copyrighted by The Board of Trustees of the University of Illinois       *
- * (UI), and ownership remains with the UI.                                 *
- *                                                                          *
- * The UI grants you (hereafter, Licensee) a license to use the Software    *
- * for academic, research and internal business purposes only, without a    *
- * fee.  Licensee may distribute the binary and source code (if released)   *
- * to third parties provided that the copyright notice and this statement   *
- * appears on all copies and that no charge is associated with such         *
- * copies.                                                                  *
- *                                                                          *
- * Licensee may make derivative works.  However, if Licensee distributes    *
- * any derivative work based on or derived from the Software, then          *
- * Licensee will (1) notify NCSA regarding its distribution of the          *
- * derivative work, and (2) clearly notify users that such derivative       *
- * work is a modified version and not the original NCSA Mosaic              *
- * distributed by the UI.                                                   *
- *                                                                          *
- * Any Licensee wishing to make commercial use of the Software should       *
- * contact the UI, c/o NCSA, to negotiate an appropriate license for such   *
- * commercial use.  Commercial use includes (1) integration of all or       *
- * part of the source code into a product for sale or license by or on      *
- * behalf of Licensee to third parties, or (2) distribution of the binary   *
- * code or source code to third parties that need it to utilize a           *
- * commercial product sold or licensed by or on behalf of Licensee.         *
- *                                                                          *
- * UI MAKES NO REPRESENTATIONS ABOUT THE SUITABILITY OF THIS SOFTWARE FOR   *
- * ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED          *
- * WARRANTY.  THE UI SHALL NOT BE LIABLE FOR ANY DAMAGES SUFFERED BY THE    *
- * USERS OF THIS SOFTWARE.                                                  *
- *                                                                          *
- * By using or copying this Software, Licensee agrees to abide by the       *
- * copyright law and all other applicable laws of the U.S. including, but   *
- * not limited to, export control laws, and the terms of this license.      *
- * UI shall have the right to terminate this license immediately by         *
- * written notice upon Licensee's breach of, or non-compliance with, any    *
- * of its terms.  Licensee may be held legally responsible for any          *
- * copyright infringement that is caused or encouraged by Licensee's        *
- * failure to abide by the terms of this license.                           *
- *                                                                          *
- * Comments and questions are welcome and can be sent to                    *
- * mosaic-x@ncsa.uiuc.edu.                                                  *
- ****************************************************************************/
-
-#ifndef __CCI_H__
-#define __CCI_H__
+#ifndef NCSA_CCI_H
+#define NCSA_CCI_H
 
 #define MCCI_MAX_RETURN_TEXT	1024
 
@@ -92,9 +38,9 @@
 #define MCCI_S_SEND		"SEND"
 #define MCCI_S_OUTPUT		"OUTPUT"
 #define MCCI_S_ANCHOR		"ANCHOR" 
+#define MCCI_S_HANDLER          "HANDLER"   /* ADC ZZZ */
 #define MCCI_S_BEFORE		"BEFORE"
 #define MCCI_S_AFTER		"AFTER"
-#define MCCI_S_HANDLER          "HANDLER"   /* ADC ZZZ */
 #define MCCI_S_BROWSERVIEW	"BROWSERVIEW"
 #define MCCI_S_GETANNOTATION	"GETANNOTATION"
 #define MCCI_S_PUTANNOTATION	"PUTANNOTATION"
@@ -255,14 +201,14 @@
 typedef enum{
 
 /* selected from menu */
-  MOSAIC_NEW, MOSAIC_CLONE, MOSAIC_OPEN_URL, FILE_OPEN_LOCAL, 
+	MOSAIC_NEW, MOSAIC_CLONE, MOSAIC_OPEN_URL, FILE_OPEN_LOCAL, 
   	MOSAIC_RELOAD_CURRENT,
 /*5*/	FILE_RELOAD_IMAGES, FILE_REFRESH_CURRENT, FILE_FIND_IN_CURRENT,
 /*8*/	FILE_VIEW_SOURCE, FILE_EDIT_SOURCE, FILE_SOURCE_DATE, MOSAIC_SAVE_AS,
 /*12*/	FILE_PRINT, FILE_MAIL_TO, FILE_CCI, MOSAIC_CLOSE, FILE_EXIT_PROGRAM,
 
 /*17*/
-  OPTIONS_FANCY_SELECTIONS_ON, OPTIONS_FANCY_SELECTIONS_OFF, 
+  	OPTIONS_FANCY_SELECTIONS_ON, OPTIONS_FANCY_SELECTIONS_OFF, 
 	OPTIONS_LOAD_TO_LOCAL_DISK_ON, OPTIONS_LOAD_TO_LOCAL_DISK_OFF,
 	OPTIONS_DELAY_IMAGE_LOADING_ON, OPTIONS_DELAY_IMAGE_LOADING_OFF,
 	OPTIONS_LOAD_IMAGES_IN_CURRENT, OPTIONS_RELOAD_CONFIG_FILES, 
@@ -277,47 +223,46 @@ typedef enum{
 	OPTIONS_ANCHOR_UNDERLINES_MU, OPTIONS_ANCHOR_UNDERLINES_HU,
 	OPTIONS_ANCHOR_UNDERLINES_NU,
 /*44*/
-  MOSAIC_BACK, MOSAIC_FORWARD, MOSAIC_HOME_DOCUMENT, 
+  	MOSAIC_BACK, MOSAIC_FORWARD, MOSAIC_HOME_DOCUMENT, 
 	NAVIGATE_WINDOW_HISTORY, NAVIGATE_HOTLIST, 
 	NAVIGATE_ADD_CURRENT_TO_HOTLIST, NAVIGATE_INTERNET_STARTING_POINTS, 
 	NAVIGATE_INTERNET_RESOURCES_META_INDEX,
 /*52*/
-  ANNOTATE_ANNOTATE, ANNOTATE_AUDIO_ANNOTATE, ANNOTATE_EDIT_THIS_ANNOTATION, 
+  	ANNOTATE_ANNOTATE,ANNOTATE_AUDIO_ANNOTATE, ANNOTATE_EDIT_THIS_ANNOTATION, 
 	ANNOTATE_DELETE_THIS_ANNOTATION,
 /*56*/
-  NEWS_NEXT, NEWS_PREV, NEWS_NEXT_THREAD, NEWS_PREV_THREAD, NEWS_INDEX,
+  	NEWS_NEXT, NEWS_PREV, NEWS_NEXT_THREAD, NEWS_PREV_THREAD, NEWS_INDEX,
 	NEWS_LIST_GROUPS, NEWS_POST, NEWS_FOLLOW_UP, NEWS_FORMAT_TV,
 	NEWS_FORMAT_GV,
 /*66*/
 /* when user click on globe */
-  MOSAIC_GLOBE,
+  	MOSAIC_GLOBE,
 
 /* when user make selections from the bottom panel */
-  AUTHENTICATION_BUTTON,
+  	AUTHENTICATION_BUTTON,
 
 /* when user submit a form, has to be valid */
-  FORM_SUBMIT,
+  	FORM_SUBMIT,
 
 /* when user edits the url text field in mosaic window and hit return */
-  MOSAIC_URL_TEXT_FIELD,
+  	MOSAIC_URL_TEXT_FIELD,
 
 /*71*/
 /* triggering anchor in HTML widget */
-  MOSAIC_URL_TRIGGER,
+  	MOSAIC_URL_TRIGGER,
 
 /* SWP -- 8/3/95 */
-  HELP_DEMO, HELP_MANUAL, HELP_ABOUT, HELP_ON_WINDOW, HELP_WHATS_NEW,
-  HELP_ON_VERSION, HELP_ON_FAQ, HELP_ON_HTML, HELP_ON_URLS,
-  HELP_MAIL_TECH_SUPPORT, FILE_OPEN_DTM_OUTPORT, FILE_BROADCAST_DOCUMENT,
-  FILE_KERBEROS_V4_LOGIN, FILE_KERBEROS_V5_LOGIN, HELP_COMMENT_CARD,
-  IMAGE_LOADED, LINK_LOADED, STARTUP,
+  	HELP_DEMO, HELP_MANUAL, HELP_ABOUT, HELP_ON_WINDOW, HELP_WHATS_NEW,
+  	HELP_ON_VERSION, HELP_ON_FAQ, HELP_ON_HTML, HELP_ON_URLS,
+  	HELP_MAIL_TECH_SUPPORT, FILE_OPEN_DTM_OUTPORT, FILE_BROADCAST_DOCUMENT,
+  	FILE_KERBEROS_V4_LOGIN, FILE_KERBEROS_V5_LOGIN, HELP_COMMENT_CARD,
+  	IMAGE_LOADED, LINK_LOADED, STARTUP,
 
 /*90*/
 /* Events for FTP transfer/commands. */
-  FTP_PUT, FTP_REMOVE, FTP_MKDIR ,
+  	FTP_PUT, FTP_REMOVE, FTP_MKDIR ,
 
-  OPTIONS_FLUSH_PASSWD_CACHE 
-
+  	OPTIONS_FLUSH_PASSWD_CACHE
 }CCI_events;
 
 
@@ -326,4 +271,57 @@ typedef enum{
 #include "port.h"
 typedef PortDescriptor *MCCIPort;
 
+void MoCCIStartListening( Widget w, int port);
+void MoCCISendAnchorToCCI( char *url, int beforeAfter);
+void MoCCISendBrowserViewOutput(char *url, char *contentType, char *data, int dataLength);
+void MoCCISendBrowserView( MCCIPort client, int on);
+void MoCCIAddAnchorToURL(char *url, char *urlAndAnchor);
+int MoCCISendBrowserViewFile( char *url, char *contentType, char *filename);
+void MoCCISendEvent( MCCIPort client, int on);
+
+void MoCCITerminateAConnection(MCCIPort client);
+int MoCCIMaxNumberOfConnectionsAllowed();
+int MoCCICurrentNumberOfConnections();
+
+void MCCIRequestDoCommand( int *retCode, char *retText,
+        char *command, char *parameter);
+void MCCIRequestGetURL( int *retCode, char *retText, char *url,
+        int output, char *additionalHeader);
+void MCCIRequestForm( MCCIPort client, int *retCode,
+        char *retText, /* must be less MCCI_MAX_RETURN_TEXT*/
+        char *actionID, int status);
+void MCCIRequestSendAnchor( int *retCode,
+        char *retText, /* must be less MCCI_MAX_RETURN_TEXT*/
+        MCCIPort client,        
+        int status);
+void MCCIRequestSendOutput( int *retCode,
+        char *retText, /* must be less MCCI_MAX_RETURN_TEXT*/
+        MCCIPort client,
+        int on,         /* boolean value....turn on - true, off - false */
+        char *type);
+void MCCIRequestSendEvent( int *retCode,
+        char *retText, /* must be less MCCI_MAX_RETURN_TEXT*/
+        MCCIPort client,
+        int on);
+void MCCIRequestSendBrowserView( int *retCode,
+        char *retText, /* must be less MCCI_MAX_RETURN_TEXT*/
+        MCCIPort client,
+        int on);
+void MCCIRequestPost( MCCIPort client, int *retCode, char *retText,
+        char *url, char *contentType, char *postData, int dataLength,
+        int output);
+void MCCIRequestDisplay(MCCIPort client, int *retCode, char *retText, char *url,
+        char *contentType, char *displayData, int dataLength, int output);
+void MCCIRequestQuit();
+void MCCIRequestGetAnnotation( int *retCode, char *retText, char **retData,
+        int *retDataLength, char *url, int type);
+void MCCIRequestPutAnnotation( int *retCode, char *retText, int type,
+        char *url, char *annotation, int annotationLength);
+void MCCIRequestFileToURL( int *retCode, char *retText, char *fileName);
+void cciStatPreventSendAnchor(MCCIPort client, char *url);
+
+void MoCCISendAnchor( MCCIPort client, int sendIt);
+void MoCCISendOutputToClient(char *contentType, char *fileName);
+void MoCCISendOutput(MCCIPort client, Boolean sendIt, char *contentType);
+void MoCCIForm(MCCIPort client, char *actionID, int stat, int close_connection);
 #endif

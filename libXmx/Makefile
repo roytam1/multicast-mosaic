@@ -16,7 +16,9 @@ $(LIBTARGET): $(OBJS)
 Xmx.o: Xmx.c Xmx.h XmxP.h
 Xmx2.o: Xmx2.c Xmx.h XmxP.h
 
+
 clean:
 	-rm $(LIBTARGET) *.o
+	-rm -rf .sb
 tags:
 	etags -t *.[ch]

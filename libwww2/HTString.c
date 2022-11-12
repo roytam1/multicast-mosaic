@@ -6,7 +6,6 @@
 **	23 Jan 92 (TBL) Changed strallocc* to 8 char HTSAC* for VM and suchlike
 **	 6 Oct 92 (TBL) Moved WWW_TraceFlag in here to be in library
 */
-#include "../config.h"
 #include <ctype.h>
 #include "HTUtils.h"
 #include "tcp.h"
@@ -56,13 +55,12 @@ PUBLIC int strncasecomp ARGS3(WWW_CONST char*,a, WWW_CONST char *,b, int,n)
 
 /*	Allocate a new copy of a string, and returns it
 */
-PUBLIC char * HTSACopy
-  ARGS2 (char **,dest, WWW_CONST char *,src)
+PUBLIC char * HTSACopy ARGS2 (char **,dest, WWW_CONST char *,src)
 {
   if (!dest)
-    return NULL;
+	return NULL;
   if (*dest) free(*dest);
-  if (!src)
+  if (! src)
     *dest = NULL;
   else {
     *dest = (char *) malloc (strlen(src) + 1);
@@ -74,8 +72,7 @@ PUBLIC char * HTSACopy
 
 /*	String Allocate and Concatenate
 */
-PUBLIC char * HTSACat
-  ARGS2 (char **,dest, WWW_CONST char *,src)
+PUBLIC char * HTSACat ARGS2 (char **,dest, WWW_CONST char *,src)
 {
   if (src && *src) {
     if (*dest) {

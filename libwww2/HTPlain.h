@@ -1,7 +1,5 @@
 /*              Plain text object                       HTPlain.h
 **              -----------------
-**
-**
 */
 
 #ifndef HTPLAIN_H

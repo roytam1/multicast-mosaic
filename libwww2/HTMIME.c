@@ -11,12 +11,11 @@
 **	   Feb 92	Written Tim Berners-Lee, CERN
 **
 */
-#include "../config.h"
 #include "HTMIME.h"		/* Implemented here */
 #include "HTAlert.h"
 #include "HTFile.h"
 #include "tcp.h"
-#include "../libnut/str-tools.h"
+
 #if defined(KRB4) || defined(KRB5)              /* ADC, 6/28/95 */
 #define HAVE_KERBEROS
 #endif
@@ -65,10 +64,10 @@ typedef enum _MIME_state
   NEWLINE,		        /* Just found a LF .. maybe continuation */
   CHECK,			/* check against check_pointer */
   MIME_TRANSPARENT,	        /* put straight through to target ASAP! */
-  MIME_IGNORE,		        /* ignore entire file */
+  MIME_IGNORE		        /* ignore entire file */
   /* TRANSPARENT and IGNORE are defined as stg else in _WINDOWS */
 #ifdef HAVE_KERBEROS
-  WWW_AUTHENTICATE,             /* for kerberos mutual authentication */
+  ,WWW_AUTHENTICATE             /* for kerberos mutual authentication */
 #endif
 } MIME_state;
 
@@ -138,8 +137,7 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
 	me->header_length ++; /* bjs - update this first */
     }
 
-  switch(me->state) 
-    {
+  switch(me->state) {
     case MIME_IGNORE:
 #ifndef DISABLE_TRACE
       if (www2Trace)
@@ -150,8 +148,7 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
 /*    case MIME_TRANSPARENT:*/
       
     case NEWLINE:
-      if (c != '\n' && WHITE(c)) 
-        {
+      if (c != '\n' && WHITE(c)) {
           /* Folded line */
           me->state = me->fold_state;	/* pop state before newline */
           break;
@@ -159,8 +156,7 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
       /* else Falls through */
       
     case BEGINNING_OF_LINE:
-      switch(c) 
-        {
+      switch(c) {
         case 'c':
         case 'C':
           me->check_pointer = "ontent-";
@@ -279,9 +275,7 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
                 me->state = MIME_TRANSPARENT; 
 		/* bjs note: header is now completely read */
 		
-              } 
-            else 
-              {
+              } else {
                 /* This is HIGHLY EVIL -- the browser WILL BREAK
                    if it ever reaches here.  Thus the default to
                    HTML above, which should always happen... */
@@ -300,19 +294,14 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
             fprintf (stderr, "[MIME] Got nothing at beginning of line; bleah.\n");
 #endif
           goto bad_field_name;
-          break;
-          
 	} /* switch on character */
       break;
       
     case CHECK:				/* Check against string */
-      if (TOLOWER(c) == *(me->check_pointer)++) 
-        {
+      if (TOLOWER(c) == *(me->check_pointer)++) {
           if (!*me->check_pointer) 
             me->state = me->if_ok;
-        } 
-      else 
-        {		/* Error */
+        } else {		/* Error */
 #ifndef DISABLE_TRACE
           if (www2Trace) 
             fprintf(stderr,
@@ -329,8 +318,7 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
         fprintf (stderr, 
                  "[MIME] in case CONTENT_\n");
 #endif
-      switch(c) 
-        {
+      switch(c) {
 	case 't':
 	case 'T':
           me->state = CONTENT_T;
@@ -340,7 +328,6 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
                      "[MIME] Was CONTENT_, found T, state now CONTENT_T\n");
 #endif
           break;
-          
 	case 'e':
 	case 'E':
           me->check_pointer = "ncoding:";
@@ -382,8 +369,7 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
         fprintf (stderr, 
                  "[MIME] in case CONTENT_T\n");
 #endif
-      switch(c) 
-        {
+      switch(c) {
 	case 'r':
 	case 'R':
           me->check_pointer = "ansfer-encoding:";
@@ -617,13 +603,10 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
 #endif
               break;
             case EXPIRES:
-		if (me->value_pointer < me->value + VALUE_SIZE - 1)
-		{
+		if (me->value_pointer < me->value + VALUE_SIZE - 1) {
 			*me->value_pointer++ = c;
 			*me->value_pointer = 0;
-		}
-		else
-		{
+		} else {
 			goto value_too_long;
 		}
 		if (me->expires)
@@ -636,13 +619,10 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
 #endif
 		break;
             case LAST_MODIFIED:
-		if (me->value_pointer < me->value + VALUE_SIZE - 1)
-		{
+		if (me->value_pointer < me->value + VALUE_SIZE - 1) {
 			*me->value_pointer++ = c;
 			*me->value_pointer = 0;
-		}
-		else
-		{
+		} else {
 			goto value_too_long;
 		}
 		if (me->last_modified)
@@ -684,18 +664,18 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
                     validate_kerberos_server_auth(kscheme, me->value);
                     got_kerb = 0;       /* reset kerb state */
                     me->state = me->field;
-		} else if (!my_strncasecmp(me->value, "kerb", 4)) {
+		} else if (!strncasecmp(me->value, "kerb", 4)) {
                     if (0) {    /* just to get things started */
 		    }
 #ifdef KRB4
-                    else if (!my_strncasecmp(me->value, "KerberosV4", 10)) {
+                    else if (!strncasecmp(me->value, "KerberosV4", 10)) {
                         kscheme = HTAA_KERBEROS_V4;
                         got_kerb = 1;
                         me->state = SKIP_GET_VALUE;
 		    }
 #endif
 #ifdef KRB5
-                    else if (!my_strncasecmp(me->value, "KerberosV5", 10)) {
+                    else if (!strncasecmp(me->value, "KerberosV5", 10)) {
                         kscheme = HTAA_KERBEROS_V5;
                         got_kerb = 1;
                         me->state = SKIP_GET_VALUE;
@@ -749,24 +729,18 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
 	    default:		/* Should never get here */
               break;
 	    }
-	}
-      else
-        {
-          if (me->value_pointer < me->value + VALUE_SIZE - 1) 
-            {
+	} else {
+          if (me->value_pointer < me->value + VALUE_SIZE - 1) {
               *me->value_pointer++ = c;
               break;
-            }
-          else
-            {
+            } else {
               goto value_too_long;
 	    }
 	}
       /* Fall through */
       
     case JUNK_LINE:
-      if (c == '\n') 
-        {
+      if (c == '\n') {
           me->state = NEWLINE;
           me->fold_state = me->state;
 	}
@@ -817,9 +791,7 @@ PRIVATE void HTMIME_put_string ARGS2(HTStream *, me, WWW_CONST char*, s)
 #endif
       for (p=s; *p; p++) 
         HTMIME_put_character(me, *p);
-    }
-  else
-    {
+    } else {
 #ifndef DISABLE_TRACE
       if (www2Trace)
         fprintf (stderr, "[HTMIME_put_string] DOING NOTHING!\n");
@@ -846,9 +818,7 @@ PRIVATE void HTMIME_write ARGS3(HTStream *, me, WWW_CONST char*, s, int, l)
         fprintf (stderr, "[HTMIME_write] Doing transparent put_block\n");
 #endif
       (*me->targetClass.put_block)(me->target, s, l);
-    }
-  else if (me->state != MIME_IGNORE)
-    {
+    } else if (me->state != MIME_IGNORE) {
 #ifndef DISABLE_TRACE
       if (www2Trace)
         fprintf (stderr, "[HTMIME_write] Doing char-by-char put_character\n");
@@ -856,9 +826,7 @@ PRIVATE void HTMIME_write ARGS3(HTStream *, me, WWW_CONST char*, s, int, l)
 
       for (p=s; p < s+l; p++) 
         HTMIME_put_character(me, *p);
-    }
-  else
-    {
+    } else {
 #ifndef DISABLE_TRACE
       if (www2Trace)
         fprintf (stderr, "[HTMIME_write] DOING NOTHING!\n");
@@ -876,8 +844,7 @@ PRIVATE void HTMIME_write ARGS3(HTStream *, me, WWW_CONST char*, s, int, l)
 */
 PRIVATE void HTMIME_free ARGS1(HTStream *, me)
 {
-  if (!me->target)
-    {
+  if (!me->target) {
 #ifndef DISABLE_TRACE
       if (www2Trace)
         fprintf (stderr, "[HTMIME_free] Caught case where we didn't get a target.\n");
@@ -904,8 +871,7 @@ PRIVATE void HTMIME_free ARGS1(HTStream *, me)
   if (me->target) 
     (*me->targetClass.free)(me->target);
       
-  if (me->expires)
-     {
+  if (me->expires) {
        char *p;
 
        if (HTTP_expires)
@@ -919,8 +885,7 @@ PRIVATE void HTMIME_free ARGS1(HTStream *, me)
 
      }
 
-   if (me->last_modified)
-     {
+   if (me->last_modified) {
        char *p;
 
        if (HTTP_last_modified)
@@ -988,7 +953,7 @@ PUBLIC HTStream* HTMIMEConvert ARGS5(
 {
     HTStream* me;
     
-    me = malloc(sizeof(*me));
+    me = (HTStream*)malloc(sizeof(*me));
     me->isa = &HTMIME;       
 
 #ifndef DISABLE_TRACE

@@ -10,7 +10,7 @@
    
 Preamble
 
- */
+*/
 #ifndef HTFORMAT_H
 #define HTFORMAT_H
 
@@ -19,23 +19,15 @@ Preamble
 #include "HTAtom.h"
 #include "HTList.h"
 
-#ifdef SHORT_NAMES
-#define HTOutputSource HTOuSour
-#define HTOutputBinary HTOuBina
-#endif
-
 /*
-
 The HTFormat type
 
    We use the HTAtom object for holding representations. This allows faster manipulation
    (comparison and copying) that if we stayed with strings.
-   
  */
 typedef HTAtom * HTFormat;
                         
 /*
-
    These macros (which used to be constants) define some basic internally referenced
    representations.  The www/xxx ones are of course not MIME standard.
    
@@ -47,24 +39,18 @@ typedef HTAtom * HTFormat;
 #define WWW_SOURCE HTAtom_for("www/source")     /* Whatever it was originally*/
 
 /*
-
    www/present represents the user's perception of the document.  If you convert to
    www/present, you present the material to the user.
-   
  */
 #define WWW_PRESENT HTAtom_for("www/present")   /* The user's perception */
 
 /*
-
    The message/rfc822 format means a MIME message or a plain text message with no MIME
    header. This is what is returned by an HTTP server.
-   
  */
 #define WWW_MIME HTAtom_for("www/mime")         /* A MIME message */
 /*
-
    www/print is like www/present except it represents a printed copy.
-   
  */
 #define WWW_PRINT HTAtom_for("www/print")       /* A printed copy */
 
@@ -75,7 +61,6 @@ typedef HTAtom * HTFormat;
 #define WWW_BINARY      HTAtom_for("application/octet-stream")
 
 /*
-
    We must include the following file after defining HTFormat, to which it makes
    reference.
    
@@ -335,7 +320,12 @@ extern void HTFormatInit NOPARAMS;
 Epilogue
 
  */
-extern BOOL HTOutputSource;     /* Flag: shortcut parser */
+extern HT_BOOL HTOutputSource;     /* Flag: shortcut parser */
+
+extern void HTRemoveConversion PARAMS((
+        WWW_CONST char * representation_in,
+        WWW_CONST char * representation_out,
+        HTConverter*   converter));
 #endif
 
 /*

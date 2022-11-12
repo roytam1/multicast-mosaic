@@ -14,35 +14,6 @@
 #include "HTList.h"
 #include "HTAtom.h"
 
-#ifdef SHORT_NAMES
-#define HTAnchor_findChild                      HTAnFiCh
-#define HTAnchor_findChildAndLink               HTAnFiLi
-#define HTAnchor_findAddress                    HTAnFiAd
-#define HTAnchor_delete                         HTAnDele
-#define HTAnchor_makeLastChild                  HTAnMaLa
-#define HTAnchor_parent                         HTAnPare
-#define HTAnchor_setDocument                    HTAnSeDo
-#define HTAnchor_document                       HTAnDocu
-#define HTAnchor_setFormat                      HTAnSeFo
-#define HTAnchor_format                         HTAnForm
-#define HTAnchor_setIndex                       HTAnSeIn
-#define HTAnchor_isIndex                        HTAnIsIn
-#define HTAnchor_address                        HTAnAddr
-#define HTAnchor_hasChildren                    HTAnHaCh
-#define HTAnchor_title                          HTAnTitl
-#define HTAnchor_setTitle                       HTAnSeTi
-#define HTAnchor_appendTitle                    HTAnApTi
-#define HTAnchor_link                           HTAnLink
-#define HTAnchor_followMainLink                 HTAnFoMa
-#define HTAnchor_followTypedLink                HTAnFoTy
-#define HTAnchor_makeMainLink                   HTAnMaMa
-#define HTAnchor_setProtocol                    HTAnSePr
-#define HTAnchor_protocol                       HTAnProt
-#define HTAnchor_physical                       HTAnPhys
-#define HTAnchor_setPhysical                    HTAnSePh
-#define HTAnchor_methods                        HtAnMeth
-#endif
-
 /*                      Main definition of anchor
 **                      =========================
 */
@@ -81,7 +52,7 @@ struct _HTParentAnchor {
   HyperDoc *    document;       /* The document within which this is an anchor */
   char *        address;        /* Absolute address of this node */
   HTFormat      format;         /* Pointer to node format descriptor */
-  BOOL          isIndex;        /* Acceptance of a keyword search */
+  HT_BOOL          isIndex;        /* Acceptance of a keyword search */
   char *        title;          /* Title of document */
 
   HTList*       methods;        /* Methods available as HTAtoms */
@@ -154,7 +125,7 @@ extern HTAnchor * HTAnchor_findAddress
 **      If this anchor's source list is empty, we delete it and its children.
 */
 
-extern BOOL HTAnchor_delete
+extern HT_BOOL HTAnchor_delete
   PARAMS(
      (HTParentAnchor *me)
      );
@@ -220,12 +191,12 @@ extern void HTAnchor_setIndex
      (HTParentAnchor *me)
      );
 
-extern BOOL HTAnchor_isIndex
+extern HT_BOOL HTAnchor_isIndex
   PARAMS(
      (HTParentAnchor *me)
      );
 
-extern BOOL HTAnchor_hasChildren
+extern HT_BOOL HTAnchor_hasChildren
   PARAMS(
      (HTParentAnchor *me)
      );
@@ -251,7 +222,7 @@ extern void HTAnchor_appendTitle
 **      -------------------------------------
 */
 
-extern BOOL HTAnchor_link
+extern HT_BOOL HTAnchor_link
   PARAMS(
      (HTAnchor *source, HTAnchor *destination, HTLinkType *type)
      );
@@ -270,7 +241,7 @@ extern HTAnchor * HTAnchor_followTypedLink
      (HTAnchor *me, HTLinkType *type)
      );
 
-extern BOOL HTAnchor_makeMainLink
+extern HT_BOOL HTAnchor_makeMainLink
   PARAMS(
      (HTAnchor *me, HTLink *movingLink)
      );

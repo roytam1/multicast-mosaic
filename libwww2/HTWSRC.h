@@ -38,8 +38,4 @@ extern char * HTEnSlash PARAMS((WWW_CONST char * str));
 
 #endif
 
-/*
-
-                                                                                    Tim BL
-                                                                                          
-    */
+/* Tim BL */

@@ -1,5 +1,5 @@
-/*                              ENCODING TO PRINTABLE CHARACTERS
-                                             
+/*                         ENCODING TO PRINTABLE CHARACTERS
+
    File module provides functions HTUU_encode() and HTUU_decode() which convert a buffer
    of bytes to/from RFC 1113 printable encoding format. This technique is similar to the
    familiar Unix uuencode format in that it maps 6 binary bits to one ASCII character (or
@@ -22,6 +22,3 @@ PUBLIC int HTUU_decode PARAMS((char *bufcoded,
                                int outbufsize));
 
 #endif
-/*
-
-   End of file.  */

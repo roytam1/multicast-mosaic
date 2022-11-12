@@ -7,33 +7,19 @@
 **	25 Jun 92  JFG  Added DECNET option through TCP socket emulation.
 */
 
-/* SOCKS mods by:
- * Ying-Da Lee, <ylee@syl.dl.nec.com>
- * NEC Systems Laboratory
- * C&C Software Technology Center
- */
-#include "../config.h"
 #include "HTUtils.h"
 #include "HTParse.h"
 #include "HTAlert.h"
 #include "HTAccess.h"
-#include "tcp.h"		/* Defines SHORT_NAMES if necessary */
-#ifdef SHORT_NAMES
-#define HTInetStatus		HTInStat
-#define HTInetString 		HTInStri
-#define HTParseInet		HTPaInet
-#endif
+#include "tcp.h"
 
 #ifdef __STDC__
 #include <stdlib.h>
 #endif
 
-#if defined(SVR4) && !defined(SCO) && !defined(linux) && !defined(DGUX)
+#if defined(SVR4) && !defined(SCO) && !defined(linux)
 #include <sys/filio.h>
-#endif
-
-#if defined(DGUX)
-#include <sys/file.h>
+#include <unistd.h>
 #endif
 
 /* Apparently needed for AIX 3.2. */
@@ -46,14 +32,24 @@ extern int httpTrace;
 extern int www2Trace;
 #endif
 
-/*	Module-Wide variables
-*/
+#ifdef SOLARIS
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
+int gethostname(char *name, int namelen); /* because solaris 2.5 include bug */
+
+#ifdef  __cplusplus
+}
+#endif
+#endif
+
+/*	Module-Wide variables */
 
 PRIVATE char *hostname=0;		/* The name of this host */
 
 
-/*	PUBLIC VARIABLES
-*/
+/*	PUBLIC VARIABLES */
 
 /* PUBLIC SockA HTHostAddress; */	/* The internet address of the host */
 					/* Valid after call to HTHostName() */
@@ -74,65 +70,6 @@ extern int errno;
 
 extern char *sys_errlist[];		/* see man perror on cernvax */
 extern int sys_nerr;
-
-/*	Report Internet Error
-**	---------------------
-*/
-#ifdef __STDC__
-PUBLIC int HTInetStatus(char *where)
-#else
-PUBLIC int HTInetStatus(where)
-    char    *where;
-#endif
-{
-#ifndef DISABLE_TRACE
-    if (www2Trace) {
-	fprintf(stderr, "TCP: Error %d in `errno' after call to %s() failed.\n\t%s\n",
-	    errno,  where,
-	    errno < sys_nerr ? sys_errlist[errno] : "Unknown error" );
-    }
-#endif
-
-    return -1;
-}
-
-
-/*	Parse a cardinal value				       parse_cardinal()
-**	----------------------
-**
-** On entry,
-**	*pp	    points to first character to be interpreted, terminated by
-**		    non 0:9 character.
-**	*pstatus    points to status already valid
-**	maxvalue    gives the largest allowable value.
-**
-** On exit,
-**	*pp	    points to first unread character
-**	*pstatus    points to status updated iff bad
-*/
-
-PUBLIC unsigned int HTCardinal ARGS3
-	(int *,		pstatus,
-	char **,	pp,
-	unsigned int,	max_value)
-{
-    int   n;
-    if ( (**pp<'0') || (**pp>'9')) {	    /* Null string is error */
-	*pstatus = -3;  /* No number where one expeceted */
-	return 0;
-    }
-
-    n=0;
-    while ((**pp>='0') && (**pp<='9')) n = n*10 + *((*pp)++) - '0';
-
-    if (n>max_value) {
-	*pstatus = -4;  /* Cardinal outside range */
-	return 0;
-    }
-
-    return n;
-}
-
 
 /*	Produce a string for an Internet address
 **	----------------------------------------
@@ -181,56 +118,42 @@ PUBLIC int HTParseInet ARGS2(SockA *,sin, WWW_CONST char *,str)
   strcpy(host, str);		/* Take a copy we can mutilate */
   
   /* Parse port number if present */    
-  if (port=strchr(host, ':')) 
-    {
+  if (port=strchr(host, ':')) {
       *port++ = 0;		/* Chop off port */
-      if (port[0]>='0' && port[0]<='9') 
-        {
+      if (port[0]>='0' && port[0]<='9') {
           sin->sin_port = htons(atol(port));
 	}
     }
   
   /* Parse host number if present. */  
   numeric_addr = 1;
-  for (tmp = host; *tmp; tmp++)
-    {
+  for (tmp = host; *tmp; tmp++) {
       /* If there's a non-numeric... */
-      if ((*tmp < '0' || *tmp > '9') && *tmp != '.')
-        {
+      if ((*tmp < '0' || *tmp > '9') && *tmp != '.') {
           numeric_addr = 0;
           goto found_non_numeric_or_done;
         }
     }
   
  found_non_numeric_or_done:
-  if (numeric_addr) 
-    {   /* Numeric node address: */
+  if (numeric_addr) {   /* Numeric node address: */
       sin->sin_addr.s_addr = inet_addr(host); /* See arpa/inet.h */
-    } 
-  else 
-    {		    /* Alphanumeric node name: */
-      if (cached_host && (strcmp (cached_host, host) == 0))
-        {
+    } else {		    /* Alphanumeric node name: */
+      if (cached_host && (strcmp (cached_host, host) == 0)) {
 #if 0
           fprintf (stderr, "=-= Matched '%s' and '%s', using cached_phost.\n",
                    cached_host, host);
 #endif
           memcpy(&sin->sin_addr, cached_phost_h_addr, cached_phost_h_length);
-        }
-      else
-        {
-	  extern int h_errno;
+        } else {
 #if 0
           fprintf (stderr, "=+= Fetching on '%s'\n", host);
 #endif
           phost = gethostbyname (host);
-          if (!phost) 
-            {
+          if (!phost) {
 #ifndef DISABLE_TRACE
-              if (www2Trace) 
-                fprintf
-                  (stderr, 
-                   "HTTPAccess: Can't find internet node name `%s'.\n",host);
+if (www2Trace) fprintf (stderr, 
+"HTTPAccess: Can't find internet node name `%s'.\n",host);
 #endif
               return -1;  /* Fail? */
             }
@@ -247,20 +170,15 @@ PUBLIC int HTParseInet ARGS2(SockA *,sin, WWW_CONST char *,str)
 
           /* Cache new stuff. */
           cached_host = strdup (host);
-          cached_phost_h_addr = calloc (phost->h_length + 1, 1);
+          cached_phost_h_addr = (char*)calloc (phost->h_length + 1, 1);
           memcpy (cached_phost_h_addr, phost->h_addr, phost->h_length);
-#if 0
-          cached_phost_h_addr = strdup (phost->h_addr);
-#endif
           cached_phost_h_length = phost->h_length;
-
           memcpy(&sin->sin_addr, phost->h_addr, phost->h_length);
         }
     }
   
 #ifndef DISABLE_TRACE
-  if (www2Trace) 
-    fprintf(stderr,  
+if (www2Trace) fprintf(stderr,  
             "TCP: Parsed address as port %d, IP address %d.%d.%d.%d\n",
             (int)ntohs(sin->sin_port),
             (int)*((unsigned char *)(&sin->sin_addr)+0),
@@ -272,21 +190,14 @@ PUBLIC int HTParseInet ARGS2(SockA *,sin, WWW_CONST char *,str)
   return 0;	/* OK */
 }
 
-
 /*	Derive the name of the host on which we are
 **	-------------------------------------------
 **
 */
-#ifdef __STDC__
-PRIVATE void get_host_details(void)
-#else
-PRIVATE void get_host_details()
-#endif
-
 #ifndef MAXHOSTNAMELEN
 #define MAXHOSTNAMELEN 64		/* Arbitrary limit */
 #endif
-
+PRIVATE void get_host_details(void)
 {
     char name[MAXHOSTNAMELEN+1];	/* The name of this host */
 #ifdef NEED_HOST_ADDRESS		/* no -- needs name server! */
@@ -324,20 +235,11 @@ PRIVATE void get_host_details()
 #endif
 }
 
-#ifdef __STDC__
 PUBLIC char * HTHostName(void)
-#else
-PUBLIC char * HTHostName()
-#endif
 {
     get_host_details();
     return hostname;
 }
-
-#ifdef SOCKS
-struct in_addr SOCKS_ftpsrv;
-#endif
-
 
 PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
 {
@@ -353,19 +255,17 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
   {
     char line[256];
     char *p1 = HTParse(url, "", PARSE_HOST);
-    int status;
 
     sprintf (line, "Looking up %s.", p1);
     HTProgress (line);
 
     status = HTParseInet(sin, p1);
-    if (status) 
-      {
+    if (status) {
         sprintf (line, "Unable to locate remote host %s.", p1);
         HTProgress(line);
         free (p1);
         return HT_NO_DATA;
-      }
+    }
 
     sprintf (line, "Making %s connection to %s.", protocol, p1);
     HTProgress (line);
@@ -374,29 +274,6 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
 
   /* Now, let's get a socket set up from the server for the data: */      
   *s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-#ifdef SOCKS
-  /* SOCKS can't yet deal with non-blocking connect request */
-  HTClearActiveIcon();
-  status = Rconnect(*s, (struct sockaddr*)&soc_address, sizeof(soc_address));
-  if ((status == 0) && (strcmp(protocol, "FTP") == 0))
-     SOCKS_ftpsrv.s_addr = soc_address.sin_addr.s_addr;
-  {
-    int intr;
-    intr = HTCheckActiveIcon(1);
-    if (intr)
-      {
-#ifndef DISABLE_TRACE
-        if (www2Trace)
-          fprintf (stderr, "*** INTERRUPTED in middle of connect.\n");
-#endif
-        status = HT_INTERRUPTED;
-        errno = EINTR;
-      }
-  }
-  return status;
-#else /* SOCKS not defined */
-
 
   /*
    * Make the socket non-blocking, so the connect can be canceled.
@@ -409,11 +286,10 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
     char line[256];
     
     ret = ioctl(*s, FIONBIO, &val);
-    if (ret == -1)
-      {
+    if (ret == -1) {
         sprintf (line, "Could not make connection non-blocking.");
         HTProgress(line);
-      }
+    }
   }
   HTClearActiveIcon();
 
@@ -452,8 +328,7 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
       int ret;
 
       ret = 0;
-      while (ret <= 0)
-	{
+      while (ret <= 0) {
           fd_set writefds;
           int intr;
           
@@ -480,13 +355,10 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
            * Otherwise if it is EALREADY keep on trying to complete the
 	   * connection.
 	   */
-          if ((ret < 0)&&(errno != EALREADY))
-            {
+          if ((ret < 0)&&(errno != EALREADY)) {
               status = ret;
               break;
-            }
-          else if (ret > 0)
-            {
+          } else if (ret > 0) {
 	      /*
 	       * Extra check here for connection success, if we try to connect
 	       * again, and get EISCONN, it means we have a successful
@@ -495,11 +367,9 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
               status = connect(*s, (struct sockaddr*)&soc_address,
                                sizeof(soc_address));
               if ((status < 0)&&(errno == EISCONN))
-                {
                   status = 0;
-                }
               break;
-            }
+          }
 	  /*
 	   * The select says we aren't ready yet.
 	   * Try to connect again to make sure.  If we don't get EALREADY
@@ -507,8 +377,7 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
 	   * For some reason SVR4 returns EAGAIN here instead of EALREADY,
 	   * even though the man page says it should be EALREADY.
 	   */
-          else
-            {
+          else {
               status = connect(*s, (struct sockaddr*)&soc_address,
                                sizeof(soc_address));
 #ifdef SVR4
@@ -538,30 +407,24 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
   /*
    * Make the socket blocking again on good connect
    */
-  if (status >= 0)
-    {
+  if (status >= 0) {
       int ret;
       int val = 0;
       char line[256];
       
       ret = ioctl(*s, FIONBIO, &val);
-      if (ret == -1)
-	{
+      if (ret == -1) {
           sprintf (line, "Could not restore socket to blocking.");
           HTProgress(line);
 	}
-    }
+  }
   /*
    * Else the connect attempt failed or was interrupted.
    * so close up the socket.
    */
   else
-    {
 	close(*s);
-    }
-
   return status;
-#endif /* #ifdef SOCKS */
 }
 
 /* This is so interruptible reads can be implemented cleanly. */
@@ -573,8 +436,7 @@ int HTDoRead (int fildes, void *buf, unsigned nbyte)
   char *adtestbuf;
 
   ready = 0;
-  while (!ready)
-    {
+  while (!ready) {
         FD_ZERO(&readfds);
         FD_SET(fildes, &readfds);
 
@@ -582,38 +444,28 @@ int HTDoRead (int fildes, void *buf, unsigned nbyte)
 	     let's reset it every time. bjs */
 	timeout.tv_sec = 0;
 	timeout.tv_usec = 100000;
-
 #ifdef __hpux
         ret = select(FD_SETSIZE, (int *)&readfds, NULL, NULL, &timeout);
 #else
         ret = select(FD_SETSIZE, &readfds, NULL, NULL, &timeout);
 #endif
         if (ret < 0)
-          {
                 return -1;
-          }
-        else if (ret > 0)
-          {
+        if (ret > 0) {
                 ready = 1;
-          }
-        else
-          {
+        } else {
                 intr = HTCheckActiveIcon(1);
                 if (intr)
-                  {
                         return HT_INTERRUPTED;
-                  }
-          }
-    }
-
+        }
+  }
   ret = read (fildes, buf, nbyte);
 
 #ifndef DISABLE_TRACE
   if (httpTrace) {
-	adtestbuf = buf;
+	adtestbuf = (char*) buf;
 	for (intr = 0; intr < ret; fprintf(stderr,"%c",adtestbuf[intr++]) ) ;
   }
 #endif
-
   return ret;
 }

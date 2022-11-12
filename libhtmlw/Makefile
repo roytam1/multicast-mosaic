@@ -2,10 +2,10 @@ LIBTARGET = libhtmlw.a
 
 all: $(LIBTARGET)
 
-CFILES = HTML.c HTMLlists.c HTMLformat.c HTMLparse.c HTMLimages.c HTMLwidgets.c HTML-PSformat.c DrawingArea.c HTMLjot.c HTMLtable.c list.c 
+CFILES = HTMLtext.c HTML.c HTMLlists.c HTMLformat.c HTMLparse.c HTMLtable.c HTMLimages.c HTMLwidgets.c HTML-PSformat.c list.c HTMLmc.c HTMLaprog.c
 
 OBJS = $(CFILES:.c=.o)
-$(OBJS): HTML.h HTMLP.h
+$(OBJS): HTML.h HTMLP.h HTMLimages.h HTMLPutil.h HTMLamp.h
 
 
 $(LIBTARGET): $(OBJS)
@@ -13,9 +13,10 @@ $(LIBTARGET): $(OBJS)
 	ar rv $(LIBTARGET) $(OBJS)
 	$(RANLIB) $(LIBTARGET)
 
-HTMLimages.o: AnchoredImage.xbm DelayedImage.xbm
+HTMLimages.o: images/AnchoredImage.xbm images/DelayedImage.xbm
 
 clean:
 	-rm $(LIBTARGET) *.o
+	-rm -rf .sb
 tags:
 	etags -t *.[ch]

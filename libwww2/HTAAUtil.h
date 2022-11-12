@@ -36,20 +36,6 @@
 #include "tcp.h"
 #endif
 
-#ifdef SHORT_NAMES
-#define HTAASenu        HTAAScheme_enum
-#define HTAASnam        HTAAScheme_name
-#define HTAAMenu        HTAAMethod_enum
-#define HTAAMnam        HTAAMethod_name
-#define HTAAMinL        HTAAMethod_inList
-#define HTAAteMa        HTAA_templateMatch
-#define HTAAmaPT        HTAA_makeProtectionTemplate
-#define HTAApALi        HTAA_parseArgList
-#define HTAAsuRe        HTAA_setupReader
-#define HTAAgUfL        HTAA_getUnfoldedLine
-#endif /*SHORT_NAMES*/
-
-
 /*
 
 Default filenames
@@ -192,7 +178,7 @@ PUBLIC char *HTAAMethod_name PARAMS((HTAAMethod method));
 **      returns         YES, if method was found.
 **                      NO, if not found.
 */
-PUBLIC BOOL HTAAMethod_inList PARAMS((HTAAMethod        method,
+PUBLIC HT_BOOL HTAAMethod_inList PARAMS((HTAAMethod        method,
                                      HTList *           list));
 /*
 
@@ -222,7 +208,7 @@ Match Template Against Filename
 **      returns         YES, if filename matches the template.
 **                      NO, otherwise.
 */
-PUBLIC BOOL HTAA_templateMatch PARAMS((WWW_CONST char * template,
+PUBLIC HT_BOOL HTAA_templateMatch PARAMS((WWW_CONST char * tmpl,
                                        WWW_CONST char * filename));
 
 

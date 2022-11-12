@@ -2,12 +2,40 @@ LIBTARGET = libwww.a
 
 all: $(LIBTARGET)
 
-CFILES = CUkerb.c HTAccess.c HTAlert.c HTAnchor.c HTAtom.c HTSort.c HTChunk.c \
-  HTFTP.c HTFWriter.c HTFile.c HTFormat.c HTGopher.c HTInit.c HTList.c \
-  HTMIME.c HTML.c HTMLDTD.c HTMLGen.c HTNews.c HTParse.c HTPlain.c \
-  HTMosaicHTML.c HTString.c HTTCP.c HTTP.c HTTelnet.c HTWSRC.c HTWriter.c \
-  SGML.c HTWAIS.c HTIcon.c HTCompressed.c HTAAUtil.c HTAssoc.c HTUU.c \
-  HTAABrow.c HTMailto.c
+CFILES = \
+CUkerb.c \
+HTAABrow.c \
+HTAAUtil.c \
+HTAccess.c \
+HTAlert.c \
+HTAnchor.c \
+HTAssoc.c \
+HTAtom.c \
+HTChunk.c \
+HTCompressed.c \
+HTFile.c \
+HTFTP.c \
+HTFWriter.c \
+HTFormat.c \
+HTGopher.c \
+HTIcon.c \
+HTInit.c \
+HTList.c \
+HTMIME.c \
+HTMosaicHTML.c \
+HTML.c \
+HTNews.c \
+HTParse.c \
+HTPlain.c \
+HTString.c \
+HTTCP.c \
+HTTP.c \
+HTTelnet.c \
+HTWSRC.c \
+HTWAIS.c \
+HTSort.c \
+HTUU.c \
+HTMailto.c
 
 OBJS = $(CFILES:.c=.o)
 
@@ -20,6 +48,7 @@ $(OBJS): HTUtils.h
 HTFTP.o: HTFTP.h
 
 clean:
-	rm $(LIBTARGET) *.o
+	-rm $(LIBTARGET) *.o
+	-rm -rf .sb
 tags:
 	etags -t *.[ch]

@@ -11,13 +11,6 @@
 #include "HTList.h"
 
 
-#ifdef SHORT_NAMES
-#define HTAL_new        HTAssocList_new
-#define HTAL_del        HTAssocList_delete
-#define HTAL_add        HTAssocList_add
-#define HTAL_lup        HTAssocList_lookup
-#endif /*SHORT_NAMES*/
-
 typedef HTList HTAssocList;
 
 typedef struct {
@@ -37,6 +30,3 @@ PUBLIC char *HTAssocList_lookup PARAMS((HTAssocList *   alist,
                                         WWW_CONST char *    name));
 
 #endif /* not HTASSOC_H */
-/*
-
-   End of file HTAssoc.h.  */

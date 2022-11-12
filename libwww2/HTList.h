@@ -1,5 +1,3 @@
-/*  */
-
 /*              List object
 **
 **      The list object is a generic container for storing collections
@@ -13,22 +11,10 @@
 typedef struct _HTList HTList;
 
 struct _HTList {
-  void * object;
-  HTList * next;
-  HTList * last;
+	void * object;
+	HTList * next;
+	HTList * last;
 };
-
-#ifdef SHORT_NAMES
-#define HTList_new                      HTLiNew
-#define HTList_delete                   HTLiDele
-#define HTList_addObject                HTLiAdOb
-#define HTList_removeObject             HTLiReOb
-#define HTList_removeLastObject         HTLiReLa
-#define HTList_removeFirstObject        HTLiReFi
-#define HTList_count                    HTLiCoun
-#define HTList_indexOf                  HTLiInOf
-#define HTList_objectAt                 HTLiObAt
-#endif
 
 extern HTList * HTList_new NOPARAMS;
 extern void     HTList_delete PARAMS((HTList *me));
@@ -39,7 +25,7 @@ extern void     HTList_addObject PARAMS((HTList *me, void *newObject));
 extern void     HTList_addObjectAtEnd PARAMS((HTList *me, void *newObject));
 
 
-extern BOOL     HTList_removeObject PARAMS((HTList *me, void *oldObject));
+extern HT_BOOL     HTList_removeObject PARAMS((HTList *me, void *oldObject));
 extern void *   HTList_removeLastObject PARAMS((HTList *me));
 extern void *   HTList_removeFirstObject PARAMS((HTList *me));
 #define         HTList_isEmpty(me) (me ? me->next == NULL : YES)
@@ -56,6 +42,3 @@ extern void *   HTList_objectAt PARAMS((HTList *me, int position));
   (me && (me = me->next) ? me->object : NULL)
 
 #endif /* HTLIST_H */
-/*
-
-    */

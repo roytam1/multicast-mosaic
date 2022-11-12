@@ -5,10 +5,12 @@
 **	26 Sep 90	Adapted from other accesses (News, HTTP) TBL
 **	29 Nov 91	Downgraded to C, for portable implementation.
 */
-#include "../config.h"
+
 /* Implements:
 */
+#include <unistd.h>
 #include "HTGopher.h"
+#include "HTAlert.h"
 
 
 #define GOPHER_PORT 70		/* See protocol spec */
@@ -55,10 +57,7 @@
 */
 #include "HTML.h"
 
-#define PUTC(c) (*targetClass.put_character)(target, c)
 #define PUTS(s) (*targetClass.put_string)(target, s)
-#define START(e) (*targetClass.start_element)(target, e, 0, 0)
-#define END(e) (*targetClass.end_element)(target, e)
 #define END_TARGET (*targetClass.end_document)(target)
 #define FREE_TARGET (*targetClass.free)(target)
 struct _HTStructured {
@@ -83,8 +82,8 @@ PRIVATE int s;					/* Socket for GopherHost */
 **	-----------------------------------------
 */
 
-PRIVATE BOOL acceptable[256];
-PRIVATE BOOL acceptable_inited = NO;
+PRIVATE HT_BOOL acceptable[256];
+PRIVATE HT_BOOL acceptable_inited = NO;
 
 PRIVATE void init_acceptable NOARGS
 {
@@ -130,21 +129,17 @@ PRIVATE void write_anchor ARGS3(WWW_CONST char *,text, WWW_CONST char *,addr,
     PUTS ("\">");
 
     /* Throw in an inlined image, if one has been requested. */
-    if (image_text)
-      {
+    if (image_text) {
         PUTS ("<IMG SRC=\"");
         PUTS (image_text);
         PUTS ("\"> ");
-      }
-    	    
+    }
     PUTS(text);
     PUTS("</A>");
 }
 
-
 /*	Parse a Gopher Menu document
 **	============================
-**
 */
 
 PRIVATE int parse_menu ARGS2 (
@@ -160,7 +155,6 @@ PRIVATE int parse_menu ARGS2 (
   char *port;
   char *p = line;
   extern int interrupted_in_htgetcharacter;
-  WWW_CONST char *title;
   
 #define TAB 		'\t'
 #define HEX_ESCAPE 	'%'
@@ -169,11 +163,9 @@ PRIVATE int parse_menu ARGS2 (
 
   PUTS("<H1>Gopher Menu</H1>\n");
   
-  START(HTML_DL);
-  while ((ch=HTGetCharacter ()) != (char)EOF) 
-    {
-      if (interrupted_in_htgetcharacter)
-        {
+  PUTS("\n<DL>\n");
+  while ((ch=HTGetCharacter ()) != (char)EOF) {
+      if (interrupted_in_htgetcharacter) {
 #ifndef DISABLE_TRACE
           if (www2Trace)
             fprintf (stderr, "parse_menu: picked up interrupt in htgc\n");
@@ -181,13 +173,10 @@ PRIVATE int parse_menu ARGS2 (
           (*targetClass.handle_interrupt)(target);
           return HT_INTERRUPTED;
         }
-      if (ch != LF) 
-        {
+      if (ch != LF) {
           *p = ch;		/* Put character in line */
           if (p< &line[BIG-1]) p++;
-        } 
-      else 
-        {
+        } else {
           *p++ = 0;		/* Terminate line */
           p = line;		/* Scan it to parse it */
           port = 0;		/* Flag "not parsed" */
@@ -201,21 +190,17 @@ PRIVATE int parse_menu ARGS2 (
           if ((gtype=='.') && ((*p=='\r') || (*p==0))) 
             break;
           
-          if (gtype && *p) 
-            {
+          if (gtype && *p) {
               name = p;
               selector = strchr(name, TAB);
-              START(HTML_DD);
-              if (selector) 
-                {
+              PUTS("\n<DD> ");
+              if (selector) {
                   *selector++ = 0;	/* Terminate name */
                   host = strchr(selector, TAB);
-                  if (host) 
-                    {
+                  if (host) {
                       *host++ = 0;	/* Terminate selector */
                       port = strchr(host, TAB);
-                      if (port) 
-                        {
+                      if (port) {
                           char *junk;
                           port[0] = ':';	/* delimit host a la W3 */
                           junk = strchr(port, TAB);
@@ -228,39 +213,29 @@ PRIVATE int parse_menu ARGS2 (
 		} /* selector ok */
 	    } /* gtype and name ok */
           
-          if (gtype == GOPHER_WWW) 
-            {	/* Gopher pointer to W3 */
+          if (gtype == GOPHER_WWW) {	/* Gopher pointer to W3 */
               write_anchor(name, selector, "internal-gopher-text");
-	    } 
-          else if (port) 
-            {		/* Other types need port */
-              if (gtype == GOPHER_TELNET) 
-                {
+	    } else if (port) {		/* Other types need port */
+              if (gtype == GOPHER_TELNET) {
                   if (*selector) 
                     sprintf(address, "telnet://%s@%s/",
                             selector, host);
                   else 
                     sprintf(address, "telnet://%s/", host);
-                } 
-              else if (gtype == GOPHER_TN3270) 
-                {
+                } else if (gtype == GOPHER_TN3270) {
                   if (*selector) 
                     sprintf(address, "tn3270://%s@%s/",
                             selector, host);
                   else 
                     sprintf(address, "tn3270://%s/", host);
-                }
-              else 
-                {			/* If parsed ok */
+                } else {			/* If parsed ok */
                   char *q;
                   unsigned char *p;
                   sprintf(address, "//%s/%c", host, gtype);
                   q = address+ strlen(address);
-                  for(p=(unsigned char *)selector; *p; p++) 
-                    {	/* Encode selector string */
+                  for(p=(unsigned char *)selector; *p; p++) {	/* Encode selector string */
                       if (acceptable[*p]) *q++ = *p;
-                      else 
-                        {
+                      else {
                           *q++ = HEX_ESCAPE;	/* Means hex coming */
                           *q++ = hex[(*p) >> 4];
                           *q++ = hex[(*p) & 15];
@@ -273,10 +248,8 @@ PRIVATE int parse_menu ARGS2 (
               if (strcmp (address, "//error.host:1/0") != 0 &&
                   strcmp (address, "//error/0error") != 0 &&
                   strcmp (address, "//:/0") != 0 &&
-                  gtype != GOPHER_ERROR)
-                {
-                  switch (gtype)
-                    {
+                  gtype != GOPHER_ERROR) {
+                  switch (gtype) {
                     case GOPHER_MENU:
                       write_anchor(name, address, "internal-gopher-menu");
                       break;
@@ -312,41 +285,33 @@ PRIVATE int parse_menu ARGS2 (
                     default:
                       write_anchor(name, address, "internal-gopher-unknown");
                       break;
-                    }
-                }
-              else
-                {
+                  }
+              } else {
                   /* Good error handling??? */
                   PUTS(line);
-                }
-	    } 
-          else 
-            { /* parse error */
+              }
+	  } else { /* parse error */
 #ifndef DISABLE_TRACE
               if (www2Trace) fprintf(stderr,
                                  "HTGopher: Bad menu item.\n");
 #endif
               PUTS(line);
-	    } /* parse error */
+	  } /* parse error */
           p = line;	/* Start again at beginning of line */
-        } /* if end of line */
-    } /* Loop over characters */
-  if (interrupted_in_htgetcharacter)
-    {
+      } /* if end of line */
+  } /* Loop over characters */
+  if (interrupted_in_htgetcharacter) {
 #ifndef DISABLE_TRACE
       if (www2Trace)
         fprintf (stderr, "parse_menu: picked up interrupt in htgc\n");
 #endif
       (*targetClass.handle_interrupt)(target);
       return HT_INTERRUPTED;
-    }
-  
-  END(HTML_DL);
+  }
+  PUTS("\n<DL>\n");
   END_TARGET;
   FREE_TARGET;
-
   HTProgress ("Retrieved Gopher menu.");
-  
   return 1;
 }
 
@@ -408,10 +373,8 @@ PRIVATE int parse_cso ARGS2 (WWW_CONST char *,	arg,
   PUTS("<H1>CSO Search Results</H1>\n<PRE>");
 
   /* start grabbing chars from the network */
-  while ((ch=HTGetCharacter ()) != (char)EOF) 
-    {
-      if (interrupted_in_htgetcharacter)
-        {
+  while ((ch=HTGetCharacter ()) != (char)EOF) {
+      if (interrupted_in_htgetcharacter) {
 #ifndef DISABLE_TRACE
           if (www2Trace)
             fprintf (stderr, "parse_cso: picked up interrupt in htgc\n");
@@ -419,13 +382,10 @@ PRIVATE int parse_cso ARGS2 (WWW_CONST char *,	arg,
           (*targetClass.handle_interrupt)(target);
           return HT_INTERRUPTED;
         }
-      if (ch != '\n') 
-        {
+      if (ch != '\n') {
           *p = ch;		/* Put character in line */
           if (p< &line[BIG-1]) p++;
-        } 
-      else 
-        {
+        } else {
           *p++ = 0;		/* Terminate line */
           p = line;		/* Scan it to parse it */
 
@@ -441,9 +401,9 @@ PRIVATE int parse_cso ARGS2 (WWW_CONST char *,	arg,
 	   *  print them and quit
 	   */
           if (*p == '5') {
-            START(HTML_H2);
+            PUTS("<H2>");
             PUTS(p+4);
-            END(HTML_H2);
+            PUTS("</H2>\n");
             break;
           }
 
@@ -462,10 +422,9 @@ PRIVATE int parse_cso ARGS2 (WWW_CONST char *,	arg,
 
              if(second_colon != NULL) {  /* error check */
 
-                 if (*(second_colon-1) != last_char)   /* print seperator */
-                   {
-                     END(HTML_PRE);
-                     START(HTML_H2);
+                 if (*(second_colon-1) != last_char)   /* print seperator */ {
+                     PUTS("</PRE>\n");
+                     PUTS("<H2>");
                    }
 
 		 /* right now the record appears with the alias (first line)
@@ -484,10 +443,9 @@ PRIVATE int parse_cso ARGS2 (WWW_CONST char *,	arg,
                  PUTS(second_colon+1);
                  PUTS("\n");
 
-                 if (*(second_colon-1) != last_char)   /* end seperator */
-                   {
-                     END(HTML_H2);
-                     START(HTML_PRE);
+                 if (*(second_colon-1) != last_char)   /* end seperator */ {
+                     PUTS("</H2>\n");
+                     PUTS("<PRE>");
                    }
 
 		  /* save the char before the second colon
@@ -500,8 +458,7 @@ PRIVATE int parse_cso ARGS2 (WWW_CONST char *,	arg,
         } /* if end of line */
       
     } /* Loop over characters */
-  if (interrupted_in_htgetcharacter)
-    {
+  if (interrupted_in_htgetcharacter) {
 #ifndef DISABLE_TRACE
       if (www2Trace)
         fprintf (stderr, "parse_cso: picked up interrupt in htgc\n");
@@ -588,16 +545,13 @@ PUBLIC int HTLoadGopher ARGS4(
     char * p1 = HTParse(arg, "", PARSE_PATH|PARSE_PUNCTUATION);
     gtype = '1';		/* Default = menu */
     selector = p1;
-    if ((*selector++=='/') && (*selector)) 
-      {	/* Skip first slash */
+    if ((*selector++=='/') && (*selector)) {	/* Skip first slash */
         gtype = *selector++;			/* Pick up gtype */
       }
-    if (gtype == GOPHER_INDEX) 
-      {
+    if (gtype == GOPHER_INDEX) {
         char * query;
         query = strchr(selector, '?');	/* Look for search string */
-        if (!query || !query[1]) 
-          {		/* No search required */
+        if (!query || !query[1]) {		/* No search required */
             target = HTML_new(anAnchor, format_out, sink);
             targetClass = *target->isa;
             display_index(arg, anAnchor);	/* Display "cover page" */
@@ -605,19 +559,16 @@ PUBLIC int HTLoadGopher ARGS4(
           }
         *query++ = 0;			/* Skip '?' 	*/
         HTUnEscape (query);
-        command = malloc(strlen(selector)+ 1 + strlen(query)+ 2 + 1);
+        command = (char*)malloc(strlen(selector)+ 1 + strlen(query)+ 2 + 1);
         
         de_escape(command, selector);
         
         strcat(command, "\t");
         strcat(command, query);
-      } 
-    else if (gtype == GOPHER_CSO) 
-      {
+      } else if (gtype == GOPHER_CSO) {
         char * query;
         query = strchr(selector, '?');      /* Look for search string */
-        if (!query || !query[1]) 
-          {          /* No search required */
+        if (!query || !query[1]) {          /* No search required */
             target = HTML_new(anAnchor, format_out, sink);
             targetClass = *target->isa;
             display_cso(arg, anAnchor);     /* Display "cover page" */
@@ -625,16 +576,14 @@ PUBLIC int HTLoadGopher ARGS4(
           }
         *query++ = 0;                       /* Skip '?'     */
         HTUnEscape (query);
-        command = malloc(strlen("query")+ 1 + strlen(query)+ 2 + 1);
+        command = (char*)malloc(strlen("query")+ 1 + strlen(query)+ 2 + 1);
         
         de_escape(command, selector);
         
         strcpy(command, "query ");
         strcat(command, query);
-      } 
-    else 
-      {				/* Not index */
-        command = malloc(strlen(selector)+2+1);
+      } else {				/* Not index */
+        command = (char*)malloc(strlen(selector)+2+1);
         de_escape(command, selector);
       }
     free(p1);
@@ -660,8 +609,7 @@ PUBLIC int HTLoadGopher ARGS4(
   }
 
   status = HTDoConnect (arg, "Gopher", 70, &s);
-  if (status == HT_INTERRUPTED)
-    {
+  if (status == HT_INTERRUPTED) {
       /* Interrupt cleanly. */
 #ifndef DISABLE_TRACE
       if (www2Trace)
@@ -671,8 +619,7 @@ PUBLIC int HTLoadGopher ARGS4(
       HTProgress ("Connection interrupted.");
       return HT_INTERRUPTED;
     }
-  if (status<0)
-    {
+  if (status<0) {
 #ifndef DISABLE_TRACE
       if (www2Trace) 
         fprintf(stderr, 
@@ -694,8 +641,7 @@ PUBLIC int HTLoadGopher ARGS4(
   
   status = NETWRITE(s, command, (int)strlen(command));
   free(command);
-  if (status<0)
-    {
+  if (status<0) {
 #ifndef DISABLE_TRACE
       if (www2Trace) fprintf(stderr, "HTGopher: Unable to send command.\n");
 #endif
@@ -704,8 +650,7 @@ PUBLIC int HTLoadGopher ARGS4(
     }
   
   /* Now read the data from the socket: */    
-  switch (gtype) 
-    {
+  switch (gtype) {
       int compressed;
       HTAtom *enc;
       extern int tweak_gopher_types;
@@ -790,13 +735,10 @@ PUBLIC int HTLoadGopher ARGS4(
     } /* switch(gtype) */
   
   NETCLOSE(s);
-  if (rv == HT_INTERRUPTED)
-    {
+  if (rv == HT_INTERRUPTED) {
       HTProgress ("Connection interrupted.");
       return HT_INTERRUPTED;
-    }
-  else
-    {
+    } else {
       return HT_LOADED;
     }
 }

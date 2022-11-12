@@ -1,0 +1,10 @@
+alias s step
+alias n next
+alias p print
+alias l list
+alias c cont
+alias sl showleaks
+alias sla showleaks -a
+check -leaks
+stop in mo_close_window
+stop in mo_clone_window

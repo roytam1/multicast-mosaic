@@ -1,5 +1,4 @@
-/*                     /Net/dxcern/userd/timbl/hypertext/WWW/Library/Implementation/SGML.html
-                               SGML AND STRUCTURED STREAMS
+/* SGML AND STRUCTURED STREAMS
                                              
    The SGML parser is a state machine. It is called for every
    character of the input stream. The DTD data structure contains
@@ -22,73 +21,7 @@
 #include "HTUtils.h"
 #include "HTStream.h"
 
-/*
 
-SGML content types
-
- */
-typedef enum _SGMLContent{
-  SGML_EMPTY,    /* no content */
-  SGML_LITTERAL, /* character data. Recognised excat close tag only. litteral
-                    Old www server compatibility only! Not SGML */
-  SGML_CDATA,    /* character data. recognize </ only */
-  SGML_RCDATA,   /* replaceable character data. recognize </ and &ref; */
-  SGML_MIXED,    /* elements and parsed character data. recognize all markup */
-  SGML_ELEMENT   /* any data found will be returned as an error*/
-  } SGMLContent;
-
-
-typedef struct {
-    char *      name;           /* The (constant) name of the attribute */
-                                /* Could put type info in here */
-} attr;
-
-
-/*              A tag structure describes an SGML element.
-**              -----------------------------------------
-**
-**
-**      name            is the string which comes after the tag opener "<".
-**
-**      attributes      points to a zero-terminated array
-**                      of attribute names.
-**
-**      litteral        determines how the SGML engine parses the charaters
-**                      within the element. If set, tag openers are ignored
-**                      except for that which opens a matching closing tag.
-**
-*/
-typedef struct _tag HTTag;
-struct _tag{
-    char *      name;                   /* The name of the tag */
-    attr *      attributes;             /* The list of acceptable attributes */
-    int         number_of_attributes;   /* Number of possible attributes */
-    SGMLContent contents;               /* End only on end tag @@ */
-};
-
-
-
-
-/*              DTD Information
-**              ---------------
-**
-** Not the whole DTD, but all this parser usues of it.
-*/
-typedef struct {
-    HTTag *             tags;           /* Must be in strcmp order by name */
-    int                 number_of_tags;
-    WWW_CONST char **       entity_names;   /* Must be in strcmp order by name */
-    int                 number_of_entities;
-} SGML_dtd;
-
-
-/*      SGML context passed to parsers
-*/
-typedef struct _HTSGMLContext *HTSGMLContext;   /* Hidden */
-
-
-/*__________________________________________________________________________
-*/
 /*              Structured Object definition
 **
 **      A structured object is something which can reasonably be
@@ -116,65 +49,19 @@ typedef struct _HTSGMLContext *HTSGMLContext;   /* Hidden */
 typedef struct _HTStructured HTStructured;
 
 typedef struct _HTStructuredClass{
-
         char*  name;                            /* Just for diagnostics */
-
-        void (*free) PARAMS((
-                HTStructured*   me));
-
-        void (*end_document) PARAMS((
-                HTStructured*   me));
-                
-        void (*handle_interrupt) PARAMS((
-                HTStructured*   me));
-                
-        void (*put_character) PARAMS((
-                HTStructured*   me,
-                char            ch));
-                                
-        void (*put_string) PARAMS((
-                HTStructured*   me,
-                WWW_CONST char *    str));
-                
+        void (*free) PARAMS(( HTStructured*   me));
+        void (*end_document) PARAMS(( HTStructured*   me));
+        void (*handle_interrupt) PARAMS(( HTStructured*   me));
+        void (*put_character) PARAMS(( HTStructured*   me, char ch));
+        void (*put_string) PARAMS(( HTStructured* me, WWW_CONST char * str));
         void (*write) PARAMS((
                 HTStructured*   me,
                 WWW_CONST char *    str,
                 int             len));
-                
-        void (*start_element) PARAMS((
-                HTStructured*   me,
-                int             element_number,
-                WWW_CONST BOOL*             attribute_present,
-                WWW_CONST char**            attribute_value));
-                
-        void (*end_element) PARAMS((
-                HTStructured*   me,
-                int             element_number));
-
         void (*put_entity) PARAMS((
                 HTStructured*   me,
                 int             entity_number));
-                
 }HTStructuredClass;
-
-
-
-/*      Create an SGML parser
-**
-** On entry,
-**      dtd             must point to a DTD structure as defined above
-**      callbacks       must point to user routines.
-**      callData        is returned in callbacks transparently.
-** On exit,
-**              The default tag starter has been processed.
-*/
-
-
-extern HTStream* SGML_new PARAMS((
-        WWW_CONST SGML_dtd *                dtd,
-        HTStructured *          target));
-
-extern WWW_CONST HTStreamClass SGMLParser;
-
 
 #endif  /* SGML_H */

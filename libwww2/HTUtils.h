@@ -1,10 +1,10 @@
-/*                                                    Utitlity macros for the W3 code library
+/*                  Utitlity macros for the W3 code library
                                   MACROS FOR GENERAL USE
-                                             
+
    Generates: HTUtils.h
-   
+
    See also: the system dependent file "tcp.h"
-   
+
  */
 
 #ifndef DEBUG
@@ -14,15 +14,7 @@
 #ifndef HTUTILS_H
 #define HTUTILS_H
 
-#ifdef SHORT_NAMES
-#define WWW_TraceFlag HTTrFlag
-#endif
-
-/*
-
-Debug message control.
-
- */
+/* Debug message control.  */
 #ifndef STDIO_H
 #include <stdio.h>
 #define STDIO_H
@@ -36,30 +28,7 @@ Debug message control.
  */
 
 /*
-#ifdef DEBUG
-#define TRACE (WWW_TraceFlag)
-#define PROGRESS(str) printf(str)
-        extern int WWW_TraceFlag;
-#else
-#define TRACE 0
-#define PROGRESS(str)
-#endif
-
-
-#undef TRACE
-#define TRACE 1
-#ifdef TRACE
-#define HTTP_TRACE 1
-#endif
-
-#define CTRACE if(TRACE)fprintf
-#define tfp stderr
-*/
-
-/*
-
 Standard C library for malloc() etc
-
  */
 #ifdef vax
 #ifdef unix
@@ -67,7 +36,6 @@ Standard C library for malloc() etc
 #endif
 #endif
 
-#ifndef VMS
 #ifndef ultrix
 #ifdef NeXT
 #include <libc.h>       /* NeXT */
@@ -81,20 +49,12 @@ Standard C library for malloc() etc
 #include <stdio.h>
 #endif
 
-#else   /* VMS */
-#include <stdio.h>
-#include <ctype.h>
-#endif
-
 #ifdef __sgi
 #include <malloc.h>
 #endif
 
-
 /*
-
 Macros for declarations
-
  */
 #define PUBLIC                  /* Accessible outside this module     */
 #define PRIVATE static          /* Accessible only within this module */
@@ -171,21 +131,17 @@ Booleans
 /* #define GOOD(status) ((status)38;1)   VMS style status: test bit 0         */
 /* #define BAD(status)  (!GOOD(status))  Bit 0 set if OK, otherwise clear   */
 
-#ifndef BOOLEAN_DEFINED
-        typedef char    BOOLEAN;                /* Logical value */
+typedef unsigned char HT_BOOL;
+
 #ifndef TRUE
-#define TRUE    (BOOLEAN)1
-#define FALSE   (BOOLEAN)0
-#endif
-#define BOOLEAN_DEFINED
+#define TRUE    (HT_BOOL)1
+#define FALSE   (HT_BOOL)0
 #endif
 
-#ifndef BOOL
-#define BOOL BOOLEAN
-#endif
+
 #ifndef YES
-#define YES (BOOLEAN)1
-#define NO (BOOLEAN)0
+#define YES (HT_BOOL)1
+#define NO (HT_BOOL)0
 #endif
 
 #ifndef min
@@ -202,9 +158,7 @@ Booleans
 
 
 /*
-
 Sucess (>=0) and failure (<0) codes
-
  */
 
 #define HT_REDIRECTING 29998
@@ -262,7 +216,3 @@ Upper- and Lowercase macros
 #define LF '\012'	/* Must be converted to ^J for transmission */
 
 #endif /* HTUTILS_H */
-
-/*
-
-   end of utilities  */

@@ -1,9 +1,8 @@
 /*  Ben Fried deserves credit for writing the code that upon which
  *  this source is based. 				ADC 
  */
-#include "../config.h"    
 
-#if defined(KRB4) || defined(KRB5)
+#if defined(KRB5)
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -12,20 +11,11 @@
 
 #include "HTAAUtil.h"	/* for HTAA_KERBEROS_Vx defines */
 
-#ifdef KRB4
-#include <krb.h>
-#define MAX_KDATA_LEN MAX_KTXT_LEN
-static des_cblock session;        /* Our session key */
-static des_key_schedule schedule; /* Schedule for our session key */
-int k4checksum;
-#endif
-
-#ifdef KRB5
 #include <krb5.h>
 #include <krb_err.h>
+
 #ifndef MAX_KDATA_LEN
 #define MAX_KDATA_LEN 1250
-#endif
 #define KRB5_DEFAULT_LIFE 60*60*8	/* 8 hours */
 krb5_auth_context *k5auth_context;
 krb5_context	  k5context = 0;
@@ -34,7 +24,7 @@ krb5_ccache	  k5ccache;
 
 /* is all of this necessary?  ADC */
 
-char *getenv(), *getlogin(); /*  *index(), *malloc(), *realloc(); */
+char *getenv(), *getlogin();
 struct passwd *getpwnam(), *getpwuid();
 static char *envariables[] = { "USER", "LOGNAME" };
 
@@ -66,54 +56,34 @@ static char dec[256] = {
  * Returns 0 on success
  * Returns 1 on failure (after reporting error to user)
  ***************************************************************************/
-int scheme_login(scheme)
-    int scheme;
+int scheme_login( int scheme)
 {
-    char *username, *password, buf[BUFSIZ], erbuf[BUFSIZ];
-    int code;
+	char *username, *password, buf[BUFSIZ], erbuf[BUFSIZ];
+	int code;
 
-    username = (char *) prompt_for_string("Kerberos Username:");
+	username = (char *) prompt_for_string("Kerberos Username:");
 
-    if (!username || !*username) {
-	application_user_info_wait("You did not enter a Username.\nCannot get Kerberos ticket-granting ticket\n");
-	return 1;
-    }
-
-    sprintf(buf, "Password for %s:", username);
-    password = (char *) prompt_for_password(buf);
-
-    if (!password || !*password) {
-	application_user_info_wait("You did not enter a Password.\nCannot obtain ticket-granting ticket\n");
-	return 1;
-    }
-
-    if (0) {	/* just to get things started */
-    }
-#ifdef KRB4
-    else if (scheme == HTAA_KERBEROS_V4) {
-	if (useAFS) {
-	    code = AFSgetTGT(username, password, buf);
+	if (!username || !*username) {
+		application_user_info_wait("You did not enter a Username.\nCannot get Kerberos ticket-granting ticket\n");
+		return 1;
 	}
-        else {
-	    code = k4getTGT(username, password, buf);
+	sprintf(buf, "Password for %s:", username);
+	password = (char *) prompt_for_password(buf);
+	if (!password || !*password) {
+		application_user_info_wait("You did not enter a Password.\nCannot obtain ticket-granting ticket\n");
+		return 1;
 	}
-    }
-#endif
-#ifdef KRB5
-    else if (scheme == HTAA_KERBEROS_V5) {
-	code = k5getTGT(username, password, buf);
-    }
-#endif
-
-    memset(password, 0, sizeof(password));
-
-    if (code) {
-	sprintf(erbuf,"Kerberos login error:\n%s",buf);
-	application_user_info_wait(erbuf);
-	return 1;
-    }
-
-    return 0;
+	if (0) {	/* just to get things started */
+	} else if (scheme == HTAA_KERBEROS_V5) {
+		code = k5getTGT(username, password, buf);
+	}
+	memset(password, 0, sizeof(password));
+	if (code) {
+		sprintf(erbuf,"Kerberos login error:\n%s",buf);
+		application_user_info_wait(erbuf);
+		return 1;
+	}
+	return 0;
 }
 
 /****************************************************************************
@@ -125,102 +95,40 @@ int scheme_login(scheme)
 int AFSgetTGT(username, password, err_string) 
     char *err_string, *username, *password;
 {
-    char reason[256];
-    register int code;
+	char reason[256];
+	register int code;
+	FILE *fp;
+	char lngbuf[BUFSIZ*2],buf[BUFSIZ];
+	char stop=0;
+	int n;
 
-    FILE *fp;
-    char lngbuf[BUFSIZ*2],buf[BUFSIZ];
-    char stop=0;
-    int n;
+	sprintf(buf,"klog -tmp -pr %s -pa %s 2>&1",username,password);
+	if (!(fp=popen(buf,"r"))) {
+		application_user_info_wait("Error: Could not startup external klog command.\n");
+		return(1);
+	}
 
-    sprintf(buf,"klog -tmp -pr %s -pa %s 2>&1",username,password);
-    if (!(fp=popen(buf,"r"))) {
-	application_user_info_wait("Error: Could not startup external klog command.\n");
-	return(1);
-    }
-
-    strcpy(buf," ");
-    strcpy(lngbuf," ");
-    n=1;
-    while (n>0) {
-	n=fread(buf,sizeof(char),BUFSIZ-1,fp);
-	if (n>0) {
-	    if (!stop && (n+strlen(lngbuf))<BUFSIZ*2) {
-		buf[n]='\0';
-		strcat(lngbuf,buf);
-	    }
-	    else {
-		stop=1;
-	    }
-        }
-    }
-
-    pclose(fp);
-
-    if (strlen(lngbuf)>1) {
-	application_user_info_wait(lngbuf);
-    }
-
-    return(0);
+	strcpy(buf," ");
+	strcpy(lngbuf," ");
+	n=1;
+	while (n>0) {
+		n=fread(buf,sizeof(char),BUFSIZ-1,fp);
+		if (n>0) {
+			if (!stop && (n+strlen(lngbuf))<BUFSIZ*2) {
+				buf[n]='\0';
+				strcat(lngbuf,buf);
+			} else {
+				stop=1;
+			}
+		}
+	}
+	pclose(fp);
+	if (strlen(lngbuf)>1) {
+		application_user_info_wait(lngbuf);
+	}
+	return(0);
 }
 
-#ifdef KRB4
-/****************************************************************************
- * passwd_to_key -- convert users password to numeric key
- *
- * (cribbed from MIT's krb_get_in_tkt.c)
- * this can probably be augmented to support Transarc's string-to-key
- ***************************************************************************/
-static int passwd_to_key(user,instance,realm,passwd,key)
-    char *user, *instance, *realm, *passwd;
-    C_Block key;
-{
-    string_to_key(passwd, key);
-    return (0);
-}
-
-/****************************************************************************
- * k4getTGT() -- calls K4 libraries to get TGT   (non-AFS)
- *
- * Returns 0 on success (err_string = "")
- * Returns 1 on failure (err_string = something meaningful)
- ***************************************************************************/
-int k4getTGT(username, password, err_string)
-    char *err_string, *username, *password;
-{
-    char instance[INST_SZ], *sinstance;
-    char realm[REALM_SZ];
-    char pname[MAX_K_NAME_SZ];
-    int  lifetime = DEFAULT_TKT_LIFE;
-    int  code;
-
-    *instance = '\0';   /* assume client principal "user@realm" (no instance */
-
-    krb_get_lrealm(realm, 1);           /* get local realm */
-
-    strcpy(pname, username);
-    strcat(pname, "@");
-    strncat(pname, realm, REALM_SZ);
-
-    sinstance = realm;  /* assume tgt is for krbtgt.realm@realm */
-
-    in_tkt(pname, instance);    /* to initialize ticket store  */
-
-    code = krb_get_in_tkt(username, instance, realm, "krbtgt", sinstance,
-                          lifetime, passwd_to_key , NULL, password);
-
-    if (code == INTK_BADPW) {
-        strcpy(err_string, "Wrong password");
-        return 1;
-   }
-    else if (code != INTK_OK) {
-        strcpy(err_string, krb_err_txt[code]);
-        return 1;
-    }
-    return 0;
-}
-#endif /* KRB4 */
-#ifdef KRB5
 /****************************************************************************
  * k5getTGT() -- calls K5 libraries to get TGT   (non-AFS)  
  *		 most of this was copied from the Krb5 kinit.c
@@ -237,11 +145,7 @@ int k5getTGT(username, password, err_string)
     krb5_principal me, server;
     krb5_preauthtype *preauth = NULL;
 /* SWP -- For CodeCenter --
-    krb5_data tgtname = {
-        0,
-        KRB5_TGS_NAME_SIZE,
-        KRB5_TGS_NAME
-    };
+    krb5_data tgtname = { 0, KRB5_TGS_NAME_SIZE, KRB5_TGS_NAME };
 */
     krb5_data tgtname;
 
@@ -277,7 +181,6 @@ int k5getTGT(username, password, err_string)
         sprintf(err_string,"Couldn't build server principal name");
         return 1;
     }
-
     my_creds.server = server;
     my_creds.times.starttime = 0;       
     my_creds.times.endtime = 0;		/* now + KRB5_DEFAULT_LIFE; */
@@ -293,11 +196,8 @@ int k5getTGT(username, password, err_string)
 	sprintf(err_string,"krb5_get_in_tkt error: %s", error_message(code));
 	return 1;
     } 
-    else {
-	return 0; 
-    }
+    return 0; 
 }
-#endif
 
 /*************************************************************************
  * kdata_to_str -- convert 8-bit char array to ascii string
@@ -327,7 +227,6 @@ static char *kdata_to_str(in_data, length)
     return result;
 }
 
-
 /*************************************************************************
  * str_to_kdata -- Converts ascii string to a (binary) char array
  *
@@ -352,7 +251,6 @@ int str_to_kdata(in_str, out_str)
     return outlen;
 }
 
-
 /****************************************************************************
  * compose_kerberos_auth_string 
  *
@@ -368,57 +266,12 @@ char *compose_kerberos_auth_string(scheme, hostname)
     char user[BUFSIZ], *inst, *pass, *tmp = 0;
     int code, retval, firsttime = 1;
     char buf[BUFSIZ], krb_err_str[BUFSIZ];
-#ifdef KRB4
-    CREDENTIALS k4cr, k4c;
-    KTEXT_ST k4authent;
-    Key_schedule k4key_s;
-    char *krb_get_phost();
-    static char *better_err_str[] = { "Server principal unrecognized by KDC",
-				      "System clocks out of sync" };
-#endif
-#ifdef KRB5
     krb5_data k5ap_req;
     krb5_principal k5clientp, k5serverp;
     krb5_creds k5in_creds, *k5out_creds;
     krb5_timestamp now;
-#endif
 
     while (code || firsttime) {
-
-#ifdef KRB4
-	if (scheme == HTAA_KERBEROS_V4) {
-   	    k4checksum = time(0) ^ getpid();
-	    strcpy(phost, krb_get_phost(hostname));
-    	    code = krb_mk_req(&k4authent, "khttp", phost,
-		      	      krb_realmofhost(hostname), k4checksum);
-
-    	    if (!code) {  		/* check for ticket expired */
-
-		code = krb_get_cred("khttp",phost,krb_realmofhost(hostname),&k4c);
-
-		if (!code) {
-		    k4c.issue_date += ((unsigned char) k4c.lifetime) * 5 * 60;
-		    if (time(0) >= k4c.issue_date) {
-			code=26;
-		    }
-		}
-	    }
-
-	    if (!code) {
-		strcpy(user,k4c.pname);
-		pass = kdata_to_str(k4authent.dat, k4authent.length);
-	    }
-	    else if (code == 1) {   /* normally "Principal Expired" */
-		strcpy(krb_err_str, better_err_str[0]);
-	    }
-	    else if (code == RD_AP_TIME) {
-		strcpy(krb_err_str, better_err_str[1]);
-	    }
-	    else {
-		strcpy(krb_err_str, krb_err_txt[code]);
-	    }
-	}
-#endif
 #ifdef KRB5
 	if (scheme == HTAA_KERBEROS_V5) {
 	    krb_err_str[0] = '\0';
@@ -496,8 +349,7 @@ char *compose_kerberos_auth_string(scheme, hostname)
 	   	if (!krb_err_str[0]) {
 		    sprintf(krb_err_str,"krb5_mk_req: %s\n",error_message(code));
 		}
-            }
-	    else { 
+            } else { 
                 pass = kdata_to_str(k5ap_req.data, k5ap_req.length);
 	    }
 	}
@@ -508,8 +360,7 @@ char *compose_kerberos_auth_string(scheme, hostname)
 
 	    if (!prompt_for_yes_or_no(buf)) {
 		return (char *) NULL;
-	    }
-	    else {
+	    } else {
 		if (scheme_login(scheme))
 		    return (char *) NULL;
 	    }
@@ -582,18 +433,9 @@ int validate_kerberos_server_auth(scheme, str)
 
 
     if (0) {  /* just to get things started */
-    }
-#ifdef KRB4
-    else if (scheme == HTAA_KERBEROS_V4) {
-	retval = k4validate_kerberos_server_auth(str);
-    }
-#endif 
-#ifdef KRB5
-    else if (scheme == HTAA_KERBEROS_V5) {
+    } else if (scheme == HTAA_KERBEROS_V5) {
 	retval = k5validate_kerberos_server_auth(str);
-    }
-#endif
-    else {
+    } else {
 	retval = 1;
     }
 
@@ -606,54 +448,12 @@ krb_server_validate_getout:
         application_user_info_wait(buf);
     }
 
-/*
-    bzero(Hostname, sizeof(Hostname));
-    bzero(phost, sizeof(phost));
-*/
     memset(Hostname,0,sizeof(Hostname));
     memset(phost,0,sizeof(phost));
-
     doing_kerb_auth = 0;
-
     return retval;
 }
-/************************************************************************/
-#ifdef KRB4
-int k4validate_kerberos_server_auth(str)
-    char *str;
-{
-    KTEXT_ST k4authent;
-    CREDENTIALS k4cr;
-    Key_schedule k4key_s;
-    char buf[256];
-
-    k4authent.length = str_to_kdata(str, k4authent.dat);
-
-    if (k4authent.length == 0 || k4authent.length != 8) {
-	fprintf(stderr,"\n\nbad length\n\n");
-	return 1;
-    }
-
-    if (krb_get_cred("khttp", phost, krb_realmofhost(Hostname),&k4cr)) {
-	fprintf(stderr,"\n\ncouldn't get credentials");
-	return 1;
-    }
-
-    des_key_sched(k4cr.session, k4key_s);
-    des_ecb_encrypt(k4authent.dat, k4authent.dat, k4key_s, 0);
-
-    if (ntohl(*(long *)k4authent.dat) != k4checksum + 1) {
-	fprintf(stderr,"\n\nchecksum just doesn't check out\n\n");
-	return 1; 
-    }
- 
-    return 0;
-}
-#endif
-/************************************************************************/
-#ifdef KRB5
-int k5validate_kerberos_server_auth(instr)
-    char *instr;
+int k5validate_kerberos_server_auth( char *instr)
 {
     int code;
     char buf[256];
@@ -677,7 +477,12 @@ int k5validate_kerberos_server_auth(instr)
 
     return 0;
 }
-#endif /* KRB5 */
-/************************************************************************/
 #endif /* KRB4 or KRB5 */
 
+/* The DEC C compiler does not support empty module grrr... */
+
+#ifdef DECOSF1
+static dummy()
+{
+}
+#endif

@@ -1,7 +1,7 @@
 /*		Parse HyperText Document Address		HTParse.c
 **		================================
 */
-#include "../config.h"
+
 #include "HTUtils.h"
 #include "HTParse.h"
 #include "tcp.h"
@@ -28,12 +28,7 @@ extern int www2Trace;
 **	All trailing white space is OVERWRITTEN with zero.
 */
 
-#ifdef __STDC__
 char * HTStrip(char * s)
-#else
-char * HTStrip(s)
-	char *s;
-#endif
 {
 #define SPACE(c) ((c==' ')||(c=='\t')||(c=='\n')) 
     char * p=s;
@@ -57,13 +52,7 @@ char * HTStrip(s)
 **	host, anchor and access may be nonzero if they were specified.
 **	Any which are nonzero point to zero terminated strings.
 */
-#ifdef __STDC__
 PRIVATE void scan(char * name, struct struct_parts *parts)
-#else
-PRIVATE void scan(name, parts)
-    char * name;
-    struct struct_parts *parts;
-#endif
 {
     char * after_access;
     char * p;
@@ -142,15 +131,7 @@ PRIVATE void scan(name, parts)
 ** On exit,
 **	returns		A pointer to a malloc'd string which MUST BE FREED
 */
-#ifdef __STDC__
 char * HTParse(char * aName, char * relatedName, int wanted)
-#else
-char * HTParse(aName, relatedName, wanted)
-    char * aName;
-    char * relatedName;
-    int wanted;
-#endif
-
 {
     char * result = 0;
     char * return_value = 0;
@@ -331,38 +312,25 @@ char * HTParse(aName, relatedName, wanted)
 //
 //	or	../../albert.html
 */
-#ifdef __STDC__
 void HTSimplify(char * filename)
-#else
-void HTSimplify(filename)
-    char * filename;
-#endif
-
 {
   char * p;
   char * q;
-  if (filename[0] && filename[1])
-    {
-      for(p=filename+2; *p; p++) 
-        {
-          if (*p=='/') 
-            {
-              if ((p[1]=='.') && (p[2]=='.') && (p[3]=='/' || !p[3] )) 
-                {
+  if (filename[0] && filename[1]) {
+      for(p=filename+2; *p; p++) {
+          if (*p=='/') {
+              if ((p[1]=='.') && (p[2]=='.') && (p[3]=='/' || !p[3] )) {
                   /* Changed clause below to (q>filename) due to attempted
                      read to q = filename-1 below. */
                   for (q = p-1; (q>filename) && (*q!='/'); q--)
                     ; /* prev slash */
                   if (q[0]=='/' && 0!=strncmp(q, "/../", 4)
-                      && !(q-1>filename && q[-1]=='/')) 
-                    {
+                      && !(q-1>filename && q[-1]=='/')) {
                       strcpy(q, p+3);	/* Remove  /xxx/..	*/
                       if (!*filename) strcpy(filename, "/");
                       p = q-1;		/* Start again with prev slash 	*/
                     } 
-                } 
-              else if ((p[1]=='.') && (p[2]=='/' || !p[2])) 
-                {
+                } else if ((p[1]=='.') && (p[2]=='/' || !p[2])) {
                   strcpy(p, p+2);			/* Remove a slash and a dot */
                 }
             }
@@ -388,13 +356,7 @@ void HTSimplify(filename)
 **	The caller is responsible for freeing the resulting name later.
 **
 */
-#ifdef __STDC__
 char * HTRelative(char * aName, char *relatedName)
-#else
-char * HTRelative(aName, relatedName)
-   char * aName;
-   char * relatedName;
-#endif
 {
     char * result = 0;
     WWW_CONST char *p = aName;
@@ -462,28 +424,19 @@ char *HTEscape (char *part)
 
   escaped = (char *)malloc (strlen (part) * 3 + 1);
   
-  for (q = escaped, p = part; *p != '\0'; p++)
-    {
+  for (q = escaped, p = part; *p != '\0'; p++) {
       int c = (int)((unsigned char)(*p));
-      if (c >= 32 && c <= 127 && isAcceptable[c-32])
-        {
+      if (c >= 32 && c <= 127 && isAcceptable[c-32]) {
           *q++ = *p;
-        }
-      else
-        {
+        } else {
           *q++ = '%';
           *q++ = HT_HEX(c / 16);
           *q++ = HT_HEX(c % 16);
         }
     }
-  
   *q=0;
-  
   return escaped;
 }
-
-
-
 
 /*		Decode %xx escaped characters			HTUnEscape()
 **		-----------------------------
@@ -511,8 +464,7 @@ PUBLIC char * HTUnEscape ARGS1( char *, str)
 	    if (*p) *q = from_hex(*p++) * 16;
 	    if (*p) *q = (*q + from_hex(*p++));
 	    q++;
-        } else if (*p == '+')
-          {
+        } else if (*p == '+') {
             p++;
             *q++ = ' ';
 	} else {

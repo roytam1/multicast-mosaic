@@ -1,5 +1,3 @@
-/*  */
-
 /*              MIME Parser                     HTMIME.h
 **              -----------
 **

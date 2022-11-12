@@ -2,8 +2,8 @@
 
 struct toolbar 
 {
-    Widget w;
-    int gray;
+	Widget w;
+	int gray;
 };
 
 #define BTN_PREV 0
@@ -17,20 +17,14 @@ struct toolbar
 #define BTN_COUNT 23
 
 struct tool {
-    char *text;            /* button text */
-    char *long_text;       /* long button text */
-    char *label;           /* tracker label */
-    int action;            /* mo_* for menubar dispatcher */
-    Pixmap *image;         /* the icon */
-    Pixmap *greyimage;     /* the greyed icon or NULL */
-    int toolset;           /* toolset it belongs too (0=always on) */
-    int kioskok;           /* allowed in kiosk mode */
-    char *unused;
-    
+	char *text;            /* button text */
+	char *long_text;       /* long button text */
+	char *label;           /* tracker label */
+	XtCallbackProc action; /* mo_* for menubar dispatcher */
+	Pixmap *image;         /* the icon */
+	Pixmap *greyimage;     /* the greyed icon or NULL */
+	int toolset;           /* toolset it belongs too (0=always on) */
+	char *unused;
 };
 
-int mo_tool_state(struct toolbar *t,int state, int index);
-
-
-
-
+void mo_tool_state(struct toolbar *t,int state, int index);

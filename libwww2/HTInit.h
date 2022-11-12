@@ -1,5 +1,3 @@
-/*  */
-
 /*              Initialisation module                   HTInit.h
 **
 **      This module resisters all the plug&play software modules which

@@ -1,65 +1,13 @@
-/****************************************************************************
- * NCSA Mosaic for the X Window System                                      *
- * Software Development Group                                               *
- * National Center for Supercomputing Applications                          *
- * University of Illinois at Urbana-Champaign                               *
- * 605 E. Springfield, Champaign IL 61820                                   *
- * mosaic@ncsa.uiuc.edu                                                     *
- *                                                                          *
- * Copyright (C) 1993, Board of Trustees of the University of Illinois      *
- *                                                                          *
- * NCSA Mosaic software, both binary and source (hereafter, Software) is    *
- * copyrighted by The Board of Trustees of the University of Illinois       *
- * (UI), and ownership remains with the UI.                                 *
- *                                                                          *
- * The UI grants you (hereafter, Licensee) a license to use the Software    *
- * for academic, research and internal business purposes only, without a    *
- * fee.  Licensee may distribute the binary and source code (if released)   *
- * to third parties provided that the copyright notice and this statement   *
- * appears on all copies and that no charge is associated with such         *
- * copies.                                                                  *
- *                                                                          *
- * Licensee may make derivative works.  However, if Licensee distributes    *
- * any derivative work based on or derived from the Software, then          *
- * Licensee will (1) notify NCSA regarding its distribution of the          *
- * derivative work, and (2) clearly notify users that such derivative       *
- * work is a modified version and not the original NCSA Mosaic              *
- * distributed by the UI.                                                   *
- *                                                                          *
- * Any Licensee wishing to make commercial use of the Software should       *
- * contact the UI, c/o NCSA, to negotiate an appropriate license for such   *
- * commercial use.  Commercial use includes (1) integration of all or       *
- * part of the source code into a product for sale or license by or on      *
- * behalf of Licensee to third parties, or (2) distribution of the binary   *
- * code or source code to third parties that need it to utilize a           *
- * commercial product sold or licensed by or on behalf of Licensee.         *
- *                                                                          *
- * UI MAKES NO REPRESENTATIONS ABOUT THE SUITABILITY OF THIS SOFTWARE FOR   *
- * ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED          *
- * WARRANTY.  THE UI SHALL NOT BE LIABLE FOR ANY DAMAGES SUFFERED BY THE    *
- * USERS OF THIS SOFTWARE.                                                  *
- *                                                                          *
- * By using or copying this Software, Licensee agrees to abide by the       *
- * copyright law and all other applicable laws of the U.S. including, but   *
- * not limited to, export control laws, and the terms of this license.      *
- * UI shall have the right to terminate this license immediately by         *
- * written notice upon Licensee's breach of, or non-compliance with, any    *
- * of its terms.  Licensee may be held legally responsible for any          *
- * copyright infringement that is caused or encouraged by Licensee's        *
- * failure to abide by the terms of this license.                           *
- *                                                                          *
- * Comments and questions are welcome and can be sent to                    *
- * mosaic-x@ncsa.uiuc.edu.                                                  *
- ****************************************************************************/
+/* Please read copyright.ncsa. Don't remove next line */
+#include "copyright.ncsa"
 
 /* Interface for mailto: URLs, stolen from techsupport.c */
-#include "../config.h"
+
+#include "../libhtmlw/HTML.h"
 #include "mosaic.h"
-#include "gui.h"
-#include <stdio.h>
 
 #include "../libnut/url-utils.h"
-#include "libnut/system.h"
+#include "gui-dialogs.h"
 
 #ifndef DISABLE_TRACE
 extern int srcTrace;
@@ -84,7 +32,7 @@ static XmxCallback (include_fsb_cb)
   FILE *fp;
   char line[MO_LINE_LENGTH], *status;
 
-  mo_window *win = mo_fetch_window_by_id (XmxExtractUniqid ((int)client_data));
+mo_window *win = (mo_window*)client_data;
 
   if (!win)
     return;
@@ -96,12 +44,10 @@ static XmxCallback (include_fsb_cb)
                    XmSTRING_DEFAULT_CHARSET,
                    &fname);
 
-
   pathEval (efname, fname);
 
   fp = fopen (efname, "r");
-  if (!fp)
-    {
+  if (!fp) {
         char *buf, *final, tmpbuf[80];
 	int final_len;
 
@@ -111,7 +57,7 @@ static XmxCallback (include_fsb_cb)
                 buf=tmpbuf;
 	}
 
-        final_len=30+((!efname || !*efname?3:strlen(efname))+13)+15+(strlen(buf)+13);
+	final_len=30+((!efname || !*efname?3:strlen(efname))+13)+15+(strlen(buf)+13);
         final=(char *)calloc(final_len,sizeof(char));
 
         strcpy(final,"\nUnable to Open File:\n");
@@ -136,7 +82,7 @@ static XmxCallback (include_fsb_cb)
       long pos;
       status = fgets (line, MO_LINE_LENGTH, fp);
       if (!status || !(*line))
-	break;
+        break;
       
       XmTextInsert (win->mailto_text,
                     pos = XmTextGetInsertionPosition (win->mailto_text),
@@ -149,61 +95,59 @@ static XmxCallback (include_fsb_cb)
   return;
 }
 
-static XmxCallback (mailto_win_cb)
+static XmxCallback (mailto_win_cb0)		/* send */
 {
-  mo_window *win = mo_fetch_window_by_id (XmxExtractUniqid ((int)client_data));
-  char *msg, *subj, *to;
-  long pos;
-  
-  
-  switch (XmxExtractToken ((int)client_data))
-    {
-    case 0:  /* send */
-      XtUnmanageChild (win->mailto_win);
+	mo_window *win = (mo_window*)client_data;
+	char *msg, *subj, *to;
       
-      msg = XmxTextGetString (win->mailto_text);
-      if (!msg)
-        return;
-      if (msg[0] == '\0')
-        return;
+	XtUnmanageChild (win->mailto_win);
+	msg = XmxTextGetString (win->mailto_text);
+	if (!msg)
+		return;
+	if (msg[0] == '\0')
+		return;
+	to = XmxTextGetString (win->mailto_tofield);
+	subj = XmxTextGetString (win->mailto_subfield);
+	mo_send_mailto_message(msg,to,subj,"text/plain",win->current_node->url);
+	free (msg);
+	free (to);
+	free (subj);
+}
+static XmxCallback (mailto_win_cb1)		/* dismiss */
+{
+	mo_window *win = (mo_window*)client_data;
 
+	XtUnmanageChild (win->mailto_win); 
+}
+static XmxCallback (mailto_win_cb2)		/* help */
+{
+	mo_window *win = (mo_window*)client_data;
+
+	mo_open_another_window (win, 
+		mo_assemble_help_url ("help-on-mailto.html"),
+		NULL, NULL);
+}
+static XmxCallback (mailto_win_cb3)		/* insert file */
+{
+	mo_window *win = (mo_window*)client_data;
       
-      to = XmxTextGetString (win->mailto_tofield);
-      subj = XmxTextGetString (win->mailto_subfield);
-
-      mo_send_mailto_message (msg, to, subj, "text/plain", 
-			      win->current_node->url);
-      free (msg);
-      free (to);
-      free (subj);
-
-      break;
-    case 1:   /* dismiss */
-      XtUnmanageChild (win->mailto_win); 
-      /* Do nothing. */
-      break;
-    case 2:   /* help */
-      mo_open_another_window
-        (win, 
-         mo_assemble_help_url ("help-on-mailto.html"),
-         NULL, NULL);
-      break;
-      
-    case 3:    /* insert file */
 	if (!win->mail_fsb_win) {
-	    win->mail_fsb_win = XmxMakeFileSBDialog
-		(win->mailto_win,
-		 "NCSA Mosaic: Include File In Mail Message",
-		 "Name of file to include:",
-		 include_fsb_cb, 0);
+		win->mail_fsb_win = XmxMakeFileSBDialog (win->mailto_win,
+			"NCSA Mosaic: Include File In Mail Message",
+			"Name of file to include:",
+			include_fsb_cb, (XtPointer)win);
 	} else {
-	    XmFileSelectionDoSearch (win->mail_fsb_win, NULL);
+		XmFileSelectionDoSearch (win->mail_fsb_win, NULL);
 	}
-	
 	XmxManageRemanage (win->mail_fsb_win);
-	break;
-    case 4:
-        if(win->current_node->url){
+}
+
+static XmxCallback (mailto_win_cb4)		/* insert url */
+{
+	mo_window *win = (mo_window*)client_data;
+	long pos;
+
+        if(win->current_node->url){   
             XmTextInsert (win->mailto_text,
                           pos = XmTextGetInsertionPosition (win->mailto_text),
                           win->current_node->url);
@@ -211,56 +155,47 @@ static XmxCallback (mailto_win_cb)
                    to avoid inserting the lines in reverse order */
             XmTextSetInsertionPosition (win->mailto_text,
                                         pos + strlen(win->current_node->url));
-        }
-        break;
-    }
-
-  return;
+        }  
 }
 
-static XmxCallback (mailto_form_win_cb)
+
+static XmxCallback (mailto_form_win_cb0) 		/* send */
 {
-  mo_window *win = mo_fetch_window_by_id (XmxExtractUniqid ((int)client_data));
-  char *subj, *to, *namestr;
-  
-  switch (XmxExtractToken ((int)client_data))
-    {
-    case 0:  /* send */
-      XtUnmanageChild (win->mailto_form_win);
-      
-      to = XmxTextGetString (win->mailto_form_tofield);
-      subj = XmxTextGetString (win->mailto_form_subfield);
-      namestr = XmxTextGetString(win->mailto_form_fromfield);
+	mo_window *win =  (mo_window*)client_data;
+	char *subj, *to, *namestr;
 
-      do_mailto_post(win,to,namestr,subj,win->post_data);
+	XtUnmanageChild (win->mailto_form_win);
+	to = XmxTextGetString (win->mailto_form_tofield);
+	subj = XmxTextGetString (win->mailto_form_subfield);
+	namestr = XmxTextGetString(win->mailto_form_fromfield);
+	do_mailto_post(win,to,namestr,subj,win->post_data);
+	free (namestr);
+	free (to);
+	free (subj);
+	if (win->post_data) {
+		free (win->post_data);
+		win->post_data=NULL;
+	}
+}
 
-      free (namestr);
-      free (to);
-      free (subj);
-      if (win->post_data) {
-	free (win->post_data);
-	win->post_data=NULL;
-      }
+static XmxCallback (mailto_form_win_cb1)		/* dismiss */
+{
+	mo_window *win =  (mo_window*)client_data;
 
-      break;
-    case 1:   /* dismiss */
-      XtUnmanageChild (win->mailto_form_win); 
-      /* Do nothing. */
-      if (win->post_data) {
-	free (win->post_data);
-	win->post_data=NULL;
-      }
+	XtUnmanageChild (win->mailto_form_win); 
+	if (win->post_data) {
+		free (win->post_data);
+		win->post_data=NULL;
+	}
+}
 
-      break;
-    case 2:   /* help */
-      mo_open_another_window
-        (win, 
-         mo_assemble_help_url ("help-on-mailto-form.html"),
-         NULL, NULL);
-      break;
-    }
+static XmxCallback (mailto_form_win_cb2)		/* help */
+{
+	mo_window *win =  (mo_window*)client_data;
 
-  return;
+	mo_open_another_window (win, 
+		mo_assemble_help_url ("help-on-mailto-form.html"),
+		NULL, NULL);
 }
 
 mo_status mo_post_mailto_win (char *to_address, char *subject)
@@ -291,9 +226,8 @@ mo_status mo_post_mailto_win (char *to_address, char *subject)
       Widget tolabel, sublabel, fromlabel;
       
       /* Create it for the first time. */
-      XmxSetUniqid (win->id);
-      win->mailto_win = XmxMakeFormDialog 
-        (win->base, "NCSA Mosaic: Mail To Author");
+      win->mailto_win = XmxMakeFormDialog (win->base, 
+		"NCSA Mosaic: Mail To Author");
       dialog_frame = XmxMakeFrame (win->mailto_win, XmxShadowOut);
       
       /* Constraints for base. */
@@ -354,16 +288,16 @@ mo_status mo_post_mailto_win (char *to_address, char *subject)
 	(sublabel, XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, 
 	 XmATTACH_NONE, win->mailto_tofield, NULL, NULL, NULL);
       XmxSetOffsets(win->mailto_subfield, 10, 10, 10, 10);
-      XmxSetConstraints
-	(win->mailto_subfield, XmATTACH_WIDGET, XmATTACH_NONE, 
+      XmxSetConstraints (win->mailto_subfield, XmATTACH_WIDGET, XmATTACH_NONE, 
 	 XmATTACH_WIDGET, XmATTACH_FORM, win->mailto_tofield, NULL, 
 	 sublabel, NULL);
 
       /* create buttons */
-      buttons_form = XmxMakeFormAndFiveButtons
-        (mailto_form, mailto_win_cb,
-         "Send", "Insert File", "Insert URL", "Dismiss", "Help...",
-         0, 3, 4, 1, 2);
+      buttons_form = XmxMakeFormAndFiveButtons (mailto_form, 
+		"Send", "Insert File", "Insert URL", "Dismiss", "Help...",
+         	mailto_win_cb0, mailto_win_cb3, 
+		mailto_win_cb4, mailto_win_cb1, mailto_win_cb2,
+		(XtPointer)win);
 
       XmxSetOffsets (XtParent (win->mailto_text), 3, 0, 3, 3);
       XmxSetConstraints
@@ -493,30 +427,24 @@ char *b=NULL;
 mo_status mo_post_mailto_form_win (char *to_address, char *subject)
 {
   mo_window *win = current_win;
-  FILE *fp;
-  long pos;
-  char namestr[1024],tmp[1024],*buf=NULL;
+  char namestr[1024],*buf=NULL;
 
-  if (!do_post) {
+  if (!do_post)
 	return(mo_fail);
-  }
 
-  if (!win->mailto_form_win)
-    {
+  if (!win->mailto_form_win) {
       Widget dialog_frame;
       Widget dialog_sep, buttons_form;
       Widget mailto_form_form;
       Widget tolabel, sublabel, fromlabel;
       
       /* Create it for the first time. */
-      XmxSetUniqid (win->id);
-      win->mailto_form_win = XmxMakeFormDialog 
-        (win->base, "NCSA Mosaic: Mail Form Results To Author");
+      win->mailto_form_win = XmxMakeFormDialog (win->base, 
+			"NCSA Mosaic: Mail Form Results To Author");
       dialog_frame = XmxMakeFrame (win->mailto_form_win, XmxShadowOut);
       
       /* Constraints for base. */
-      XmxSetConstraints 
-        (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
+      XmxSetConstraints (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
          XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
       
       /* Main form. */
@@ -580,10 +508,10 @@ mo_status mo_post_mailto_form_win (char *to_address, char *subject)
 	 sublabel, NULL);
 
       /* create buttons */
-      buttons_form = XmxMakeFormAndThreeButtons
-        (mailto_form_form, mailto_form_win_cb,
-         "Send", "Dismiss", "Help...",
-         0, 1, 2);
+      buttons_form = XmxMakeFormAndThreeButtons(mailto_form_form, 
+		"Send", "Dismiss", "Help...", 
+		mailto_form_win_cb0, mailto_form_win_cb1, 
+		mailto_form_win_cb2,(XtPointer)win);
 
       XmxSetOffsets (XtParent (win->mailto_form_text), 3, 0, 3, 3);
       XmxSetConstraints
@@ -617,17 +545,12 @@ mo_status mo_post_mailto_form_win (char *to_address, char *subject)
 
   buf=makeReadable(post_data,1);
   XmTextSetString (win->mailto_form_text, buf);
-  if (buf) {
+  if (buf)
 	free(buf);
-  }
-
   XmTextSetInsertionPosition (win->mailto_form_text, 0);
-
   XmxManageRemanage (win->mailto_form_win);
-
   return mo_succeed;
 }
-
 
 /* SWP -- 11.15.95 -- ACTION=mailto support for Forms */
 void do_mailto_post(mo_window *win, char *to, char *from, char *subject, char *body) {
@@ -639,25 +562,19 @@ void do_mailto_post(mo_window *win, char *to, char *from, char *subject, char *b
 	}
 
 	if (!strcmp(post_content_type,"text/plain")) {
-
 		char *buf=NULL;
 
 		buf=makeReadable(body,0);
-
 #ifndef DISABLE_TRACE
 		if (srcTrace) {
 			fprintf(stderr,"To: [%s]\nFrom: [%s]\nSubj: [%s]\nBody: [%s]\n",to,from,subject,buf);
 		}
 #endif
-
 		mo_send_mailto_message(buf, to, subject, post_content_type, 
 				       win->current_node->url);
-
-		if (buf) {
+		if (buf)
 			free(buf);
-		}
-	}
-	else {
+	} else {
 #ifndef DISABLE_TRACE
 		if (srcTrace) {
 			fprintf(stderr,"To: [%s]\nFrom: [%s]\nSubj: [%s]\nBody: [%s]\n",to,from,subject,body);
@@ -667,33 +584,25 @@ void do_mailto_post(mo_window *win, char *to, char *from, char *subject, char *b
 		mo_send_mailto_message(body, to, subject, post_content_type, 
 				       win->current_node->url);
 	}
-
-	return;
 }
 
-
-/* ------------------------------------------------------------------------ */
 /* these are not currently used.  We just use the functions in techsupport.c */
 /* ------------------------------------------------------------------------ */
 
 static FILE *_fp = NULL;
 
 FILE *mo_start_sending_mailto_message (char *to, char *subj, 
-                                     char *content_type, char *url)
+	char *content_type, char *url)
 {
   char cmd[2048];
-/*  char *tmp;*/
 
   if (!to)
     return NULL;
   
-  if (get_pref_string(eMAIL_FILTER_COMMAND))
-    {
+  if (get_pref_string(eMAIL_FILTER_COMMAND)) {
       sprintf (cmd, "%s | %s", get_pref_string(eMAIL_FILTER_COMMAND), 
                get_pref_string(eSENDMAIL_COMMAND));
-    }
-  else
-    {
+    } else {
       sprintf (cmd, "%s", get_pref_string(eSENDMAIL_COMMAND));
     }
 
@@ -712,37 +621,28 @@ FILE *mo_start_sending_mailto_message (char *to, char *subj,
   fprintf (_fp, "\n");
   
   /* Stick in BASE tag as appropriate. */
-  if (url && content_type && 
-      strcmp (content_type, "text/x-html") == 0)
+  if (url && content_type && strcmp (content_type, "text/x-html") == 0)
     fprintf (_fp, "<base href=\"%s\">\n", url);
-
   return _fp;
 }
 
 mo_status mo_finish_sending_mailto_message (void)
 {
-  if (_fp)
-    pclose (_fp);
-
-  _fp = NULL;
-
-  return mo_succeed;
+	if (_fp)
+		pclose (_fp);
+	_fp = NULL;
+	return mo_succeed;
 }
 
-/* ------------------------------------------------------------------------ */
-
 mo_status mo_send_mailto_message (char *text, char *to, char *subj, 
-                                char *content_type, char *url)
+	char *content_type, char *url)
 {
-  FILE *fp;
+	FILE *fp;
 
-  fp = mo_start_sending_mailto_message (to, subj, content_type, url);
-  if (!fp)
-    return mo_fail;
-  
-  fputs (text, fp);
-
-  mo_finish_sending_mailto_message ();
-
-  return mo_succeed;
+	fp = mo_start_sending_mailto_message (to, subj, content_type, url);
+	if (!fp)
+		return mo_fail;
+	fputs (text, fp);
+	mo_finish_sending_mailto_message ();
+	return mo_succeed;
 }

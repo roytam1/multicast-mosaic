@@ -1,12 +1,12 @@
-/*                                                                      File access in libwww
-                                       FILE ACCESS
+/*       File access in libwww
+                              FILE ACCESS
                                              
    These are routines for local file access used by WWW browsers and
    servers. Implemented by HTFile.c.
    
    If the file is not a local file, then we pass it on to HTFTP in
    case it can be reached by FTP.
-   
+
  */
 #ifndef HTFILE_H
 #define HTFILE_H
@@ -15,11 +15,7 @@
 #include "HTAccess.h"
 #include "HTML.h"               /* SCW */
 
-
-
-/*
-
-Controlling globals
+/* Controlling globals
 
    These flags control how directories and files are represented as
    hypertext, and are typically set by the application from command
@@ -45,31 +41,21 @@ extern int HTDirReadme;         /* Include readme files in listing? */
 extern HTList *HTSuffixes;
 
 /*
-
 Convert filenames between local and WWW formats
-
  */
 extern char * HTLocalName PARAMS((WWW_CONST char * name));
 
-
 /*
-
 Make a WWW name from a full local path name
-
  */
 extern char * WWW_nameOfFile PARAMS((char * name));
 
-
 /*
-
 Generate the name of a cache file
-
  */
 extern char * HTCacheFileName PARAMS((WWW_CONST char * name));
 
-
 /*
-
 Output directory titles
 
    This is (like the next one) used by HTFTP. It is common code to
@@ -180,7 +166,7 @@ Determine write access to a file
  */
 
 
-extern BOOL HTEditable PARAMS((WWW_CONST char * filename));
+extern HT_BOOL HTEditable PARAMS((WWW_CONST char * filename));
 
 
 /*

@@ -8,19 +8,21 @@
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
-#prereleaseflags = -DPRERELEASE
-prereleaseflags = -DPRERELEASE
+prereleaseflags = -O
 
-#RANLIB = /bin/true
+RANLIB = /bin/true
 #### On non-SGI's, this should be ranlib.
-RANLIB = ranlib
+#RANLIB = ranlib
 
-#CC = cc
+#CC = gcc
 #### On Sun's, this should be gcc (ANSI required).
-CC = gcc
+#CC = cc
+# mjr: better put commenting code into comments; ' and " may confuse the preprocessor
+CC = 'gcc -pipe -UTODO -UTO_DO'
 
 #### Linker Flags 
-ldflags =
+#ldflags = -static
+ldflags = -s
 
 #### For a few files in the source, some compilers may need to be kicked
 #### in K&R mode.  E.g., on SGI's, -cckr does this.
@@ -40,7 +42,8 @@ knrflag =
 #### For Convex whatever, do -DCONVEX
 #### For SCO ODT 3.0, do -DSCO -DSVR4 -DMOTIF1_2
 #### For Motorola SVR4, do -DSVR4 -DMOTOROLA -DMOTIF1_2
-sysconfigflags = -DMOTIF1_2 -DLINUX
+#sysconfigflags = -Dlinux -DSVR4 -DMOTIF1_2 -DSOLARIS25
+sysconfigflags = -Dlinux  -DMOTIF1_2 -DSOLARIS25
 
 #### System libraries.
 # syslibs = -lPW -lsun -lmalloc
@@ -61,7 +64,6 @@ sysconfigflags = -DMOTIF1_2 -DLINUX
 #### For Motorola SVR4:
 # syslibs = -lnsl -lsocket -lgen
 
-syslibs = -lc
 
 #### X include file locations -- if your platform puts the X include
 #### files in a strange place, set this variable appropriately.  Else
@@ -73,9 +75,9 @@ syslibs = -lc
 #### NeXT version:
 # xinc = -I/usr/include/X11
 #### BSD/386
-# xinc = -I/usr/X11/include
+xinc = -I/usr/X11/include
 
-xinc = -I/usr/include/X11/Xm
+#xinc = -I/usr/include/X11/Xm
 
 #### X library locations.
 # xlibs = -lXm_s -lXmu -lXt_s -lX11_s
@@ -97,9 +99,13 @@ xinc = -I/usr/include/X11/Xm
 #### For Linux -- You must set "LD_LIBRARY_PATH" to include the path to
 ####   your X libs, or some may not be found by the loader. Check the
 ####   loader with "ldd Mosaic" after you build.
-xlibs = -L/usr/X11R6/lib -lXext -lXpm -lXm -lXmu -lXt -lX11 -lICE -lSM
-static_motif_xlibs = -L/usr/X11R6/lib -lXext -lXpm /usr/X11R6/lib/libXm.a -lXmu -lXt -lX11 -lICE -lSM
-static_xlibs = /usr/X11R6/lib/libXpm.a /usr/X11R6/lib/libXm.a /usr/X11R6/lib/libXmu.a /usr/X11R6/lib/libXt.a /usr/X11R6/lib/libXext.a /usr/X11R6/lib/libX11.a /usr/X11R6/lib/libSM.a /usr/X11R6/lib/libICE.a
+xlibs = -R/usr/X11/lib -L/usr/X11/lib -L/usr/X11/lib -R/usr/X11/lib -lXm
+xlibs += -lXmu -lXt
+xlibs += -lXext -lX11
+xlibs += -lm -lXpm -lSM -lICE
+#xlibs = -L/usr/X11R6/lib -lXext -lXpm -lXm -lXmu -lXt -lX11 -lICE -lSM
+#static_motif_xlibs = -L/usr/X11R6/lib -lXext -lXpm /usr/X11R6/lib/libXm.a -lXmu -lXt -lX11 -lICE -lSM
+#static_xlibs = /usr/X11R6/lib/libXpm.a /usr/X11R6/lib/libXm.a /usr/X11R6/lib/libXmu.a /usr/X11R6/lib/libXt.a /usr/X11R6/lib/libXext.a /usr/X11R6/lib/libX11.a /usr/X11R6/lib/libSM.a /usr/X11R6/lib/libICE.a
 #### For BSD/386:
 # xlibs = -L/usr/X11/lib -lXm -lXmu -lXt -lX11
 #### For Motorola SVR4:
@@ -202,32 +208,20 @@ krblibs   = $(krb4libs) $(krb5libs)
 #### . If you want to define the default Mosaic documentation directory
 ####   (should be a URL), set -DDOCS_DIRECTORY_DEFAULT=\\\"url\\\"
 #### . Other things you can define are spelled out in src/mosaic.h.
-customflags =
-
-
-
-
-########
-########
-####      NOTE! If you get errors because of the following line, it means
-####      you are NOT using GNUs Make program. The following line is basically
-####      for the developers at NCSA to customize the build process without
-####      modifying the Makefiles, so you may comment it out without harm.
-########
-########
--include local-defines/$(DEV_ARCH)
-
+customflags = -DMULTICAST
 
 
 # ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------
 
-CFLAGS = -g $(sysconfigflags) $(prereleaseflags)
+#CFLAGS = -g $(sysconfigflags) $(prereleaseflags)
+# mjr: -g should be configurable 
+CFLAGS = $(sysconfigflags) $(prereleaseflags)
 
 # Don't worry about these -- for development purposes only.
 PURIFY = purify
 QUANTIFY = quantify
 
-default: $(dtmdirs) libwww2 libXmx libhtmlw libnut src
+default: $(dtmdirs) libwww2 libXmx libhtmlw libnut libmc libaprog src
 	@echo \*\*\* Welcome to NCSA Mosaic.
 purifyd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-purifyd
 	@echo \*\*\* Welcome to Purify'd NCSA Mosaic.
@@ -237,87 +231,73 @@ staticd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-static
 	@echo \*\*\* Welcome to NCSA Mosaic linked static.
 static_motifd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-static-motif
 	@echo \*\*\* Welcome to NCSA Mosaic linked static for motif.
-p_staticd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-static-purifyd
-	@echo \*\*\* Welcome to Purify'd NCSA Mosaic linked static.
-p_static_motifd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-static-motif-purifyd
-	@echo \*\*\* Welcome to Purify'd NCSA Mosaic linked static for motif.
-q_staticd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-static-quantifyd
-	@echo \*\*\* Welcome to Quantify'd NCSA Mosaic linked static.
-q_static_motifd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-static-motif-quantifyd
-	@echo \*\*\* Welcome to Quantify'd NCSA Mosaic linked static for motif.
 
 libXmx::
 	@echo --- Building libXmx
-	cd libXmx; $(MAKE) CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc)"
+	cd libXmx; make -k CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc)"
 
 libhtmlw::
 	@echo --- Building libhtmlw
-	cd libhtmlw; $(MAKE) CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag) $(xinc) -DMOTIF -DXMOSAIC"
+	cd libhtmlw; make -k CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag) $(xinc) $(customflags) -DMOTIF -DXMOSAIC"
+
+libmc::
+	@echo --- Building libmc
+	cd libmc; make -k CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc) $(customflags)"
+
+libaprog::
+	@echo --- Building libaprog
+	cd libaprog; make -k CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc) $(customflags)" X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)"
 
 libwww2::
 	@echo --- Building libwww2
-	cd libwww2; $(MAKE) CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag) $(waisflags) $(krbflags) $(xinc)"
+	cd libwww2; make -k CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag) $(waisflags) $(krbflags) $(xinc)"
 
 libnut::
 	@echo --- Building libnut
-	cd libnut; $(MAKE) CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag)"
+	cd libnut; make -k CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag)"
 
 src::
 	@echo --- Building src
-	cd src; $(MAKE) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic"
+	cd src; make -k CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut LIBMC_DIR=../libmc MOSAIC="Mosaic"
 
 src-purifyd::
 	@echo --- Building Purify'd src
-	cd src; $(MAKE) PURIFY=$(PURIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-p"
+	cd src; make -k PURIFY=$(PURIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-p"
 
 src-quantifyd::
 	@echo --- Building Quantify'd src
-	cd src; $(MAKE) PURIFY=$(QUANTIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-q"
+	cd src; make -k PURIFY=$(QUANTIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-q"
 
 src-static::
 	@echo --- Building src-static
-	cd src; $(MAKE) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags) -static" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(static_xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic"
+	cd src; make -k CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags) -static" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(static_xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic"
 
 src-static-motif::
 	@echo --- Building src-static-motif
-	cd src; $(MAKE) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(static_motif_xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic"
-
-src-static-purifyd::
-	@echo --- Building src-static-purifyd
-	cd src; $(MAKE) PURIFY=$(PURIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags) -static" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(static_xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-p"
-
-src-static-motif-purifyd::
-	@echo --- Building src-static-motif-purifyd
-	cd src; $(MAKE) PURIFY=$(PURIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(static_motif_xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-p"
-
-src-static-quantifyd::
-	@echo --- Building src-static-quantifyd
-	cd src; $(MAKE) PURIFY=$(QUANTIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags) -static" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(static_xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-q"
-
-src-static-motif-quantifyd::
-	@echo --- Building src-static-motif-quantifyd
-	cd src; $(MAKE) PURIFY=$(QUANTIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(static_motif_xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-q"
+	cd src; make -k CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(static_motif_xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic"
 
 libnet::
 	@echo --- Building libnet
-	cd libnet; $(MAKE) CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(dtmflags)"
+	cd libnet; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(dtmflags)"
 
 libdtm::
 	@echo --- Building libdtm
-	cd libdtm; $(MAKE) $(dtmmachtype) CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(dtmflags)"
+	cd libdtm; make -k $(dtmmachtype) CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(dtmflags)"
 
 clean:
-	cd libXmx; $(MAKE) $@
-	cd libhtmlw; $(MAKE) $@
-	cd libwww2; $(MAKE) $@
-	cd src; $(MAKE) MOSAIC="Mosaic" $@
-	cd libnet; $(MAKE) $@
-	cd libdtm; $(MAKE) $@
-	cd libnut; $(MAKE) $@
+	cd libXmx; make $@
+	cd libhtmlw; make $@
+	cd libwww2; make $@
+	cd src; make $@
+	cd libnet; make $@
+	cd libdtm; make $@
+	cd libnut; make $@
+	cd libmc; make $@
+	cd libaprog; make $@
 
 wclean:
-	cd libhtmlw; $(MAKE) $@
-	cd src; $(MAKE) MOSAIC="Mosaic" $@
+	cd libhtmlw; make $@
+	cd src; make $@
 
 commit:
 	cvs commit

@@ -12,7 +12,7 @@
 **
 **	(c) Copyright CERN 1991 - See Copyright.html
 */
-#include "../config.h"
+
 #define HASH_SIZE 101		/* Arbitrary prime. Memory/speed tradeoff */
 
 #include <ctype.h>
@@ -25,8 +25,6 @@
 extern int www2Trace;
 #endif
 
-typedef struct _HyperDoc Hyperdoc;
-
 PRIVATE HTList **adult_table=0;  /* Point to table of lists of all parents */
 
 /*				Creation Methods
@@ -37,21 +35,18 @@ PRIVATE HTList **adult_table=0;  /* Point to table of lists of all parents */
 **	anchor you are creating : use newWithParent or newWithAddress.
 */
 
-PRIVATE HTParentAnchor * HTParentAnchor_new
-  NOARGS
+PRIVATE HTParentAnchor * HTParentAnchor_new NOARGS
 {
-  HTParentAnchor *newAnchor = 
-    (HTParentAnchor *) calloc (1, sizeof (HTParentAnchor));  /* zero-filled */
-  newAnchor->parent = newAnchor;
-  return newAnchor;
+	HTParentAnchor *newAnchor = 
+		(HTParentAnchor *)calloc(1,sizeof (HTParentAnchor));/*zero-fill*/
+	newAnchor->parent = newAnchor;
+	return newAnchor;
 }
 
-PRIVATE HTChildAnchor * HTChildAnchor_new
-  NOARGS
+PRIVATE HTChildAnchor * HTChildAnchor_new NOARGS
 {
   return (HTChildAnchor *) calloc (1, sizeof (HTChildAnchor));  /* zero-filled */
 }
-
 
 /*	Case insensitive string comparison
 **	----------------------------------
@@ -63,19 +58,17 @@ PRIVATE HTChildAnchor * HTChildAnchor_new
 **		NO if they differ in more than  their case.
 */
 
-PRIVATE BOOL equivalent
-  ARGS2 (WWW_CONST char *,s, WWW_CONST char *,t)
+PRIVATE HT_BOOL equivalent ARGS2 (WWW_CONST char *,s, WWW_CONST char *,t)
 {
-  if (s && t) {  /* Make sure they point to something */
-    for ( ; *s && *t ; s++, t++) {
-        if (TOUPPER(*s) != TOUPPER(*t))
-	  return NO;
-    }
-    return TOUPPER(*s) == TOUPPER(*t);
-  } else
-    return s == t;  /* Two NULLs are equivalent, aren't they ? */
+	if (s && t) {  /* Make sure they point to something */
+		for ( ; *s && *t ; s++, t++) {
+			if (TOUPPER(*s) != TOUPPER(*t))
+				return NO;
+		}
+		return TOUPPER(*s) == TOUPPER(*t);
+	} else
+		return s == t;  /* Two NULLs are equivalent, aren't they ? */
 }
-
 
 /*	Create new or find old sub-anchor
 **	---------------------------------
@@ -87,40 +80,40 @@ PRIVATE BOOL equivalent
 PUBLIC HTChildAnchor * HTAnchor_findChild
   ARGS2 (HTParentAnchor *,parent, WWW_CONST char *,tag)
 {
-  HTChildAnchor *child;
-  HTList *kids;
+	HTChildAnchor *child;
+	HTList *kids;
 
-  if (! parent) {
+	if (! parent) {
 #ifndef DISABLE_TRACE
-    if (www2Trace) printf ("HTAnchor_findChild called with NULL parent.\n");
+		if (www2Trace) printf ("HTAnchor_findChild called with NULL parent.\n");
 #endif
-    return NULL;
-  }
-  if (kids = parent->children) {  /* parent has children : search them */
-    if (tag && *tag) {		/* TBL */
-	while (child = HTList_nextObject (kids)) {
-	    if (equivalent(child->tag, tag)) { /* Case sensitive 920226 */
+		return NULL;
+	}
+	if (kids = parent->children) {  /* parent has children : search them */
+		if (tag && *tag) {		/* TBL */
+			while(child = (HTChildAnchor *)HTList_nextObject (kids)) {
+				if (equivalent(child->tag, tag)) {
+					 /* Case sensitive 920226 */
 #ifndef DISABLE_TRACE
 		if (www2Trace) fprintf (stderr,
 	       "Child anchor %p of parent %p with name `%s' already exists.\n",
 		    (void*)child, (void*)parent, tag);
 #endif
-		return child;
-	    }
-	}
-     }  /*  end if tag is void */
-  } else  /* parent doesn't have any children yet : create family */
-    parent->children = HTList_new ();
-
-  child = HTChildAnchor_new ();
+return child;
+				}
+			}
+		}  /*  end if tag is void */
+	} else  /* parent doesn't have any children yet : create family */
+		parent->children = HTList_new ();
+	child = HTChildAnchor_new ();
 #ifndef DISABLE_TRACE
   if (www2Trace) fprintf(stderr, "new Anchor %p named `%s' is child of %p\n",
        (void*)child, (int)tag ? tag : (WWW_CONST char *)"" , (void*)parent); /* int for apollo */
 #endif
-  HTList_addObject (parent->children, child);
-  child->parent = parent;
-  StrAllocCopy(child->tag, tag);
-  return child;
+	HTList_addObject (parent->children, child);
+	child->parent = parent;
+	StrAllocCopy(child->tag, tag);
+	return child;
 }
 
 
@@ -168,8 +161,7 @@ HTAnchor * HTAnchor_findAddress
 
   /* If the address represents a sub-anchor, we recursively load its parent,
      then we create a child anchor within that document. */
-  if (tag && *tag) 
-    {
+  if (tag && *tag) {
       char *docAddress = HTParse(address, "", PARSE_ACCESS | PARSE_HOST |
                                  PARSE_PATH | PARSE_PUNCTUATION);
       HTParentAnchor * foundParent =
@@ -178,9 +170,7 @@ HTAnchor * HTAnchor_findAddress
       free (docAddress);
       free (tag);
       return (HTAnchor *) foundAnchor;
-    }
-  
-  else { /* If the address has no anchor tag, 
+    } else { /* If the address has no anchor tag, 
 	    check whether we have this node */
     int hash;
     WWW_CONST char *p;
@@ -201,7 +191,7 @@ HTAnchor * HTAnchor_findAddress
 
     /* Search list for anchor */
     grownups = adults;
-    while (foundAnchor = HTList_nextObject (grownups)) {
+    while (foundAnchor = (HTParentAnchor*)HTList_nextObject (grownups)) {
        if (equivalent(foundAnchor->address, address)) {
 #ifndef DISABLE_TRACE
 	if (www2Trace) fprintf(stderr, "Anchor %p with address `%s' already exists.\n",
@@ -249,7 +239,7 @@ PRIVATE void deleteLinks
   }
   if (me->links) {  /* Extra destinations */
     HTLink *target;
-    while (target = HTList_removeLastObject (me->links)) {
+    while (target = (HTLink*)HTList_removeLastObject (me->links)) {
       HTParentAnchor *parent = target->dest->parent;
       HTList_removeObject (parent->sources, me);
       if (! parent->document)  /* Test here to avoid calling overhead */
@@ -258,7 +248,7 @@ PRIVATE void deleteLinks
   }
 }
 
-PUBLIC BOOL HTAnchor_delete
+PUBLIC HT_BOOL HTAnchor_delete
   ARGS1 (HTParentAnchor *,me)
 {
   HTChildAnchor *child;
@@ -273,14 +263,14 @@ PUBLIC BOOL HTAnchor_delete
   if (! HTList_isEmpty (me->sources)) {  /* There are still incoming links */
     /* Delete all outgoing links from children, if any */
     HTList *kids = me->children;
-    while (child = HTList_nextObject (kids))
+    while (child = (HTChildAnchor *)HTList_nextObject (kids))
       deleteLinks ((HTAnchor *) child);
     return NO;  /* Parent not deleted */
   }
 
   /* No more incoming links : kill everything */
   /* First, recursively delete children */
-  while (child = HTList_removeLastObject (me->children)) {
+  while (child = (HTChildAnchor *)HTList_removeLastObject (me->children)) {
     deleteLinks ((HTAnchor *) child);
     free (child->tag);
     free (child);
@@ -303,8 +293,7 @@ PUBLIC BOOL HTAnchor_delete
 **	is put in the correct order as we load the document.
 */
 
-void HTAnchor_makeLastChild
-  ARGS1(HTChildAnchor *,me)
+void HTAnchor_makeLastChild ARGS1(HTChildAnchor *,me)
 {
   if (me->parent != (HTParentAnchor *) me) {  /* Make sure it's a child */
     HTList * siblings = me->parent->children;
@@ -317,46 +306,39 @@ void HTAnchor_makeLastChild
 **	---------------------
 */
 
-PUBLIC HTParentAnchor * HTAnchor_parent
-  ARGS1 (HTAnchor *,me)
+PUBLIC HTParentAnchor * HTAnchor_parent ARGS1 (HTAnchor *,me)
 {
   return me ? me->parent : NULL;
 }
 
-void HTAnchor_setDocument
-  ARGS2 (HTParentAnchor *,me, HyperDoc *,doc)
+void HTAnchor_setDocument ARGS2 (HTParentAnchor *,me, HyperDoc *,doc)
 {
   if (me)
     me->document = doc;
 }
 
-HyperDoc * HTAnchor_document
-  ARGS1 (HTParentAnchor *,me)
+HyperDoc * HTAnchor_document ARGS1 (HTParentAnchor *,me)
 {
   return me ? me->document : NULL;
 }
 
-
 /* We don't want code to change an address after anchor creation... yet ?
-void HTAnchor_setAddress
-  ARGS2 (HTAnchor *,me, char *,addr)
+void HTAnchor_setAddress ARGS2 (HTAnchor *,me, char *,addr)
 {
   if (me)
     StrAllocCopy (me->parent->address, addr);
 }
 */
 
-char * HTAnchor_address
-  ARGS1 (HTAnchor *,me)
+char * HTAnchor_address ARGS1 (HTAnchor *,me)
 {
   char *addr = NULL;
   if (me) {
     if (((HTParentAnchor *) me == me->parent) ||
     	!((HTChildAnchor *) me)->tag) {  /* it's an adult or no tag */
       StrAllocCopy (addr, me->parent->address);
-    }
-    else {  /* it's a named child */
-      addr = malloc (2 + strlen (me->parent->address)
+    } else {  /* it's a named child */
+      addr = (char*)malloc (2 + strlen (me->parent->address)
 		     + strlen (((HTChildAnchor *) me)->tag));
       if (addr == NULL) outofmem(__FILE__, "HTAnchor_address");
       sprintf (addr, "%s#%s", me->parent->address,
@@ -366,60 +348,45 @@ char * HTAnchor_address
   return addr;
 }
 
-
-
-void HTAnchor_setFormat
-  ARGS2 (HTParentAnchor *,me, HTFormat ,form)
+void HTAnchor_setFormat ARGS2 (HTParentAnchor *,me, HTFormat ,form)
 {
   if (me)
     me->format = form;
 }
 
-HTFormat HTAnchor_format
-  ARGS1 (HTParentAnchor *,me)
+HTFormat HTAnchor_format ARGS1 (HTParentAnchor *,me)
 {
   return me ? me->format : NULL;
 }
 
-
-
-void HTAnchor_setIndex
-  ARGS1 (HTParentAnchor *,me)
+void HTAnchor_setIndex ARGS1 (HTParentAnchor *,me)
 {
   if (me)
     me->isIndex = YES;
 }
 
-BOOL HTAnchor_isIndex
-  ARGS1 (HTParentAnchor *,me)
+HT_BOOL HTAnchor_isIndex ARGS1 (HTParentAnchor *,me)
 {
   return me ? me->isIndex : NO;
 }
 
-
-
-BOOL HTAnchor_hasChildren
-  ARGS1 (HTParentAnchor *,me)
+HT_BOOL HTAnchor_hasChildren ARGS1 (HTParentAnchor *,me)
 {
   return me ? ! HTList_isEmpty(me->children) : NO;
 }
 
-/*	Title handling
-*/
-WWW_CONST char * HTAnchor_title
-  ARGS1 (HTParentAnchor *,me)
+/*	Title handling */
+WWW_CONST char * HTAnchor_title ARGS1 (HTParentAnchor *,me)
 {
   return me ? me->title : 0;
 }
 
-void HTAnchor_setTitle
-  ARGS2(HTParentAnchor *,me, WWW_CONST char *,title)
+void HTAnchor_setTitle ARGS2(HTParentAnchor *,me, WWW_CONST char *,title)
 {
   StrAllocCopy(me->title, title);
 }
 
-void HTAnchor_appendTitle
-  ARGS2(HTParentAnchor *,me, WWW_CONST char *,title)
+void HTAnchor_appendTitle ARGS2(HTParentAnchor *,me, WWW_CONST char *,title)
 {
   StrAllocCat(me->title, title);
 }
@@ -428,7 +395,7 @@ void HTAnchor_appendTitle
 **	-------------------------------------
 */
 
-BOOL HTAnchor_link
+HT_BOOL HTAnchor_link
   ARGS3(HTAnchor *,source, HTAnchor *,destination, HTLinkType *,type)
 {
   if (! (source && destination))
@@ -459,21 +426,19 @@ BOOL HTAnchor_link
 **	---------------------
 */
 
-HTAnchor * HTAnchor_followMainLink
-  ARGS1 (HTAnchor *,me)
+HTAnchor * HTAnchor_followMainLink ARGS1 (HTAnchor *,me)
 {
   return me->mainLink.dest;
 }
 
-HTAnchor * HTAnchor_followTypedLink
-  ARGS2 (HTAnchor *,me, HTLinkType *,type)
+HTAnchor * HTAnchor_followTypedLink ARGS2 (HTAnchor *,me, HTLinkType *,type)
 {
   if (me->mainLink.type == type)
     return me->mainLink.dest;
   if (me->links) {
     HTList *links = me->links;
     HTLink *link;
-    while (link = HTList_nextObject (links))
+    while (link = (HTLink *)HTList_nextObject (links))
       if (link->type == type)
 	return link->dest;
   }
@@ -481,10 +446,8 @@ HTAnchor * HTAnchor_followTypedLink
 }
 
 
-/*	Make main link
-*/
-BOOL HTAnchor_makeMainLink
-  ARGS2 (HTAnchor *,me, HTLink *,movingLink)
+/*	Make main link */
+HT_BOOL HTAnchor_makeMainLink ARGS2 (HTAnchor *,me, HTLink *,movingLink)
 {
   /* Check that everything's OK */
   if (! (me && HTList_removeObject (me->links, movingLink)))

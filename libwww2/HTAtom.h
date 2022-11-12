@@ -1,5 +1,3 @@
-/*  */
-
 /*                      Atoms: Names to numbers                 HTAtom.h
 **                      =======================
 **
@@ -43,6 +41,3 @@ extern HTAtom * HTAtom_exists();
 #define HTAtom_name(a) ((a)->name)
 
 #endif  /* HTATOM_H */
-/*
-
-    */

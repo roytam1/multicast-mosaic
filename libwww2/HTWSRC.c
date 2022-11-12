@@ -7,7 +7,7 @@
 **
 **	3 June 93	Bug fix: Won't crash if no description
 */
-#include "../config.h"
+
 #include "HTWSRC.h"
 
 #include <stdio.h>
@@ -31,8 +31,6 @@ struct _HTStructured {
 
 #define PUTC(c) (*me->target->isa->put_character)(me->target, c)
 #define PUTS(s) (*me->target->isa->put_string)(me->target, s)
-#define START(e) (*me->target->isa->start_element)(me->target, e, 0, 0)
-#define END(e) (*me->target->isa->end_element)(me->target, e)
 
 
 /*	Here are the parameters which can be specified in a  source file
@@ -246,7 +244,7 @@ void give_parameter ARGS2(HTStream *, me, int, p)
 /*			Generate Outout
 **			===============
 */
-PRIVATE void WSRC_gen_html ARGS2(HTStream *, me, BOOL, source_file)
+PRIVATE void WSRC_gen_html ARGS2(HTStream *, me, HT_BOOL, source_file)
 
 {
     if (me->par_value[PAR_DATABASE_NAME]) {
@@ -258,23 +256,23 @@ PRIVATE void WSRC_gen_html ARGS2(HTStream *, me, BOOL, source_file)
 	    shortname[l-4] = 0;	/* Chop of .src -- boring! */
 	}
 	
-	START(HTML_TITLE);
+	PUTS("<TITLE>");
 	PUTS(shortname);
 	PUTS(source_file ? " WAIS source file" : " index");
-	END(HTML_TITLE);
+	PUTS("</TITLE>\n");
     
-	START(HTML_H1);
+	PUTS("<H1>");
 	PUTS(shortname);
 	PUTS(source_file ? " description" : " index");
-	END(HTML_H1);
+	PUTS("</H1>\n");
     }
     
-    START(HTML_DL);		/* Definition list of details */
+    PUTS("\n<DL>\n");		/* Definition list of details */
     
     if (source_file) {
-	START(HTML_DT);
+	PUTS("\n<DT> ");
 	PUTS("Access links");
-	START(HTML_DD);
+	PUTS("\n<DD> ");
 	if (me->par_value[PAR_IP_NAME] &&
 	    me->par_value[PAR_DATABASE_NAME]) {
     
@@ -316,22 +314,22 @@ PRIVATE void WSRC_gen_html ARGS2(HTStream *, me, BOOL, source_file)
     } /* end if source_file */
     
     if (me->par_value[PAR_MAINTAINER]) {
-	START(HTML_DT);
+	PUTS("\n<DT> ");
 	PUTS("Maintainer");
-	START(HTML_DD);
+	PUTS("\n<DD> ");
 	PUTS(me->par_value[PAR_MAINTAINER]);
     }
-    START(HTML_DT);
+    PUTS("\n<DT> ");
     PUTS("Host");
-    START(HTML_DD);
+    PUTS("\n<DD> ");
     PUTS(me->par_value[PAR_IP_NAME]);
 
-    END(HTML_DL);
+    PUTS("\n</DL>\n");
 
     if (me->par_value[PAR_DESCRIPTION]) {
-	START(HTML_PRE);		/* Preformatted description */
+	PUTS("<PRE>");		/* Preformatted description */
 	PUTS(me->par_value[PAR_DESCRIPTION]);
-	END(HTML_PRE);
+	PUTS("</PRE>\n");
     }
     
     (*me->target->isa->end_document)(me->target);

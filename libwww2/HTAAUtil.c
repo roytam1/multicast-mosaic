@@ -1,4 +1,3 @@
-
 /* MODULE							HTAAUtil.c
 **		COMMON PARTS OF ACCESS AUTHORIZATION MODULE
 **			FOR BOTH SERVER AND BROWSER
@@ -36,26 +35,19 @@
 **
 ** HISTORY:
 **
-**
-** BUGS:
-**
-**
 */
-#include "../config.h"
 #include <string.h>
 #include "HTUtils.h"
 #include "tcp.h"	/* NETREAD() etc.	*/
+#include "HTTCP.h"
 #include "HTAAUtil.h"	/* Implemented here	*/
 #include "HTAssoc.h"	/* Assoc list		*/
 
-#ifndef DISABLE_TRACE
 extern int www2Trace;
-#endif
 
 /* PUBLIC						HTAAScheme_enum()
 **		TRANSLATE SCHEME NAME INTO
 **		A SCHEME ENUMERATION
-**
 ** ON ENTRY:
 **	name		is a string representing the scheme name.
 **
@@ -64,34 +56,31 @@ extern int www2Trace;
 */
 PUBLIC HTAAScheme HTAAScheme_enum ARGS1(WWW_CONST char*, name)
 {
-    static char *upcased = NULL;
-    char *cur;
+	static char *upcased = NULL;
+	char *cur;
 
-    if (!name) return HTAA_UNKNOWN;
-
-    StrAllocCopy(upcased, name);
-    cur = upcased;
-    while (*cur) {
-	*cur = TOUPPER(*cur);
-	cur++;
-    }
-    
-    if (!strncmp(upcased, "NONE", 4))
-	return HTAA_NONE;
-    else if (!strncmp(upcased, "BASIC", 5))
-	return HTAA_BASIC;
-    else if (!strncmp(upcased, "PUBKEY", 6))
-	return HTAA_PUBKEY;
-    else if (!strncmp(upcased, "KERBEROSV4", 10))
-	return HTAA_KERBEROS_V4;
-    else if (!strncmp(upcased, "KERBEROSV5", 10))
-	return HTAA_KERBEROS_V5;
-    else if (!strncmp(upcased, "DIGEST", 6))
-	return HTAA_MD5;  /* DXP */
-    else
+	if (!name)
+		return HTAA_UNKNOWN;
+	StrAllocCopy(upcased, name);
+	cur = upcased;
+	while (*cur) {
+		*cur = TOUPPER(*cur);
+		cur++;
+	}
+	if (!strncmp(upcased, "NONE", 4))
+		return HTAA_NONE;
+	if (!strncmp(upcased, "BASIC", 5))
+		return HTAA_BASIC;
+	if (!strncmp(upcased, "PUBKEY", 6))
+		return HTAA_PUBKEY;
+	if (!strncmp(upcased, "KERBEROSV4", 10))
+		return HTAA_KERBEROS_V4;
+	if (!strncmp(upcased, "KERBEROSV5", 10))
+		return HTAA_KERBEROS_V5;
+	if (!strncmp(upcased, "DIGEST", 6))
+		return HTAA_MD5;  /* DXP */
 	return HTAA_UNKNOWN;
 }
-
 
 /* PUBLIC						HTAAScheme_name()
 **			GET THE NAME OF A GIVEN SCHEME
@@ -105,18 +94,17 @@ PUBLIC HTAAScheme HTAAScheme_enum ARGS1(WWW_CONST char*, name)
 */
 PUBLIC char *HTAAScheme_name ARGS1(HTAAScheme, scheme)
 {
-    switch (scheme) {
-      case HTAA_NONE:		return "None";          break;
-      case HTAA_BASIC:		return "Basic";         break;
-      case HTAA_PUBKEY:		return "Pubkey";        break;
-      case HTAA_KERBEROS_V4:	return "KerberosV4";	break;
-      case HTAA_KERBEROS_V5:	return "KerberosV5";	break;
-      case HTAA_MD5:            return "Digest";        break;   
-      case HTAA_UNKNOWN:	return "UNKNOWN";       break;
-      default:			return "THIS-IS-A-BUG";
-    }
+	switch (scheme) {
+	case HTAA_NONE:		return "None";
+	case HTAA_BASIC:		return "Basic";
+	case HTAA_PUBKEY:		return "Pubkey";
+	case HTAA_KERBEROS_V4:	return "KerberosV4";
+	case HTAA_KERBEROS_V5:	return "KerberosV5";
+	case HTAA_MD5:            return "Digest";
+	case HTAA_UNKNOWN:	return "UNKNOWN";
+	default:			return "THIS-IS-A-BUG";
+	}
 }
-
 
 /* PUBLIC						    HTAAMethod_enum()
 **		TRANSLATE METHOD NAME INTO AN ENUMERATED VALUE
@@ -129,29 +117,28 @@ PUBLIC char *HTAAScheme_name ARGS1(HTAAScheme, scheme)
 */
 PUBLIC HTAAMethod HTAAMethod_enum ARGS1(WWW_CONST char *, name)
 {
-    char tmp[MAX_METHODNAME_LEN+1];
-    WWW_CONST char *src = name;
-    char *dest = tmp;
+	char tmp[MAX_METHODNAME_LEN+1];
+	WWW_CONST char *src = name;
+	char *dest = tmp;
 
-    if (!name) return METHOD_UNKNOWN;
+	if (!name)
+		return METHOD_UNKNOWN;
+	while (*src) {
+		*dest = TOUPPER(*src);
+		dest++;
+		src++;
+	}
+	*dest = 0;
 
-    while (*src) {
-	*dest = TOUPPER(*src);
-	dest++;
-	src++;
-    }
-    *dest = 0;
-
-    if (0==strcmp(tmp, "GET"))
-	return METHOD_GET;
-    else if (0==strcmp(tmp, "PUT"))
-	return METHOD_PUT;
-    else if (0==strcmp(tmp, "META"))
-	return METHOD_META;
-    else
-	return METHOD_UNKNOWN;
+	if (0==strcmp(tmp, "GET"))
+		return METHOD_GET;
+	else if (0==strcmp(tmp, "PUT"))
+		return METHOD_PUT;
+    	else if (0==strcmp(tmp, "META"))
+        	return METHOD_META;
+    	else
+		return METHOD_UNKNOWN;
 }
-
 
 /* PUBLIC						HTAAMethod_name()
 **			GET THE NAME OF A GIVEN METHOD
@@ -166,10 +153,10 @@ PUBLIC HTAAMethod HTAAMethod_enum ARGS1(WWW_CONST char *, name)
 PUBLIC char *HTAAMethod_name ARGS1(HTAAMethod, method)
 {
     switch (method) {
-      case METHOD_GET:		return "GET";           break;
-      case METHOD_PUT:		return "PUT";           break;
-      case METHOD_META:		return "META";           break;
-      case METHOD_UNKNOWN:	return "UNKNOWN";       break;
+      case METHOD_GET:		return "GET";
+      case METHOD_PUT:		return "PUT";
+      case METHOD_META:         return "META";
+      case METHOD_UNKNOWN:	return "UNKNOWN";
       default:			return "THIS-IS-A-BUG";
     }
 }
@@ -185,25 +172,20 @@ PUBLIC char *HTAAMethod_name ARGS1(HTAAMethod, method)
 **	returns		YES, if method was found.
 **			NO, if not found.
 */
-PUBLIC BOOL HTAAMethod_inList ARGS2(HTAAMethod,	method,
+PUBLIC HT_BOOL HTAAMethod_inList ARGS2(HTAAMethod,	method,
 				    HTList *,	list)
 {
-    HTList *cur = list;
-    char *item;
+	HTList *cur = list;
+	char *item;
 
-    while (NULL != (item = (char*)HTList_nextObject(cur))) {
-#ifndef DISABLE_TRACE
-	if (www2Trace) fprintf(stderr, " %s", item);
-#endif
-	if (method == HTAAMethod_enum(item))
-	    return YES;
-    }
-
-    return NO;	/* Not found */
+	while (NULL != (item = (char*)HTList_nextObject(cur))) {
+		if (www2Trace)
+			fprintf(stderr, " %s", item);
+		if (method == HTAAMethod_enum(item))
+			return YES;
+	}
+	return NO;	/* Not found */
 }
-
-
-
 /* PUBLIC						HTAA_templateMatch()
 **		STRING COMPARISON FUNCTION FOR FILE NAMES
 **		   WITH ONE WILDCARD * IN THE TEMPLATE
@@ -226,29 +208,31 @@ PUBLIC BOOL HTAAMethod_inList ARGS2(HTAAMethod,	method,
 **	returns		YES, if filename matches the template.
 **			NO, otherwise.
 */
-PUBLIC BOOL HTAA_templateMatch ARGS2(WWW_CONST char *, template, 
+PUBLIC HT_BOOL HTAA_templateMatch ARGS2(WWW_CONST char *, tmplate, 
 				     WWW_CONST char *, filename)
 {
-    WWW_CONST char *p = template;
-    WWW_CONST char *q = filename;
-    int m;
+	WWW_CONST char *p = tmplate;
+	WWW_CONST char *q = filename;
+	int m;
 
-    for( ; *p  &&  *q  &&  *p == *q; p++, q++)	/* Find first mismatch */
-	; /* do nothing else */
+	for( ; *p  &&  *q  &&  *p == *q; p++, q++)	/* Find first mismatch */
+		; /* do nothing else */
     
-    if (!*p && !*q)	return YES;	/* Equally long equal strings */
-    else if ('*' == *p) {		/* Wildcard */
-	p++;				/* Skip wildcard character */
-	m = strlen(q) - strlen(p);	/* Amount to match to wildcard */
-	if (m < 0) return NO;		/* No match, filename too short */
-	else {			/* Skip the matched characters and compare */
-	    if (strcmp(p, q+m))	return NO;	/* Tail mismatch */
-	    else                return YES;	/* Tail match */
-	}
-    }	/* if wildcard */
-    else		return NO;	/* Length or character mismatch */
-}
+	if (!*p && !*q)
+		return YES;	/* Equally long equal strings */
 
+	if ('*' == *p) {		/* Wildcard */
+		p++;			/* Skip wildcard character */
+		m = strlen(q) - strlen(p);	/* Amount to match to wildcard */
+		if (m < 0) 
+			return NO;	/* No match, filename too short */
+				/* Skip the matched characters and compare */
+		if (strcmp(p, q+m))
+			return NO;	/* Tail mismatch */
+	        return YES;	/* Tail match */
+	}				/* if wildcard */
+	return NO;			/* Length or character mismatch */
+}
 
 /* PUBLIC					HTAA_makeProtectionTemplate()
 **		CREATE A PROTECTION TEMPLATE FOR THE FILES
@@ -271,30 +255,25 @@ PUBLIC BOOL HTAA_templateMatch ARGS2(WWW_CONST char *, template,
 */
 PUBLIC char *HTAA_makeProtectionTemplate ARGS1(WWW_CONST char *, docname)
 {
-    char *template = NULL;
-    char *slash = NULL;
+	char *tmplate = NULL;
+	char *slash = NULL;
 
-    if (docname) {
-	StrAllocCopy(template, docname);
-	slash = strrchr(template, '/');
-	if (slash) slash++;
-	else slash = template;
-	*slash = (char)0;
-	StrAllocCat(template, "*");
-    }
-    else StrAllocCopy(template, "*");
-
-#ifndef DISABLE_TRACE
-    if (www2Trace) fprintf(stderr,
-		       "make_template: made template `%s' for file `%s'\n",
-		       template, docname);
-#endif
-
-    return template;
+	if (docname) {
+		StrAllocCopy(tmplate, docname);
+		slash = strrchr(tmplate, '/');
+		if (slash)
+			slash++;
+		else
+			slash = tmplate;
+		*slash = (char)0;
+		StrAllocCat(tmplate, "*");
+	} else 
+		StrAllocCopy(tmplate, "*");
+	if (www2Trace) 
+		fprintf(stderr,"make_template:made template `%s' for file `%s'\n",
+				tmplate, docname);
+	return tmplate;
 }
-
-
-
 
 /*
 ** Skip leading whitespace from *s forward
@@ -365,16 +344,14 @@ PUBLIC HTAssocList *HTAA_parseArgList ARGS1(char *, str)
 		/* else it is lacking terminating quote */
 		SKIPWS(cur);			/* Skip WS leading comma */
 		if (*cur == ',') cur++;		/* Skip separating colon */
-	    }
-	    else {				/* Unquoted value */
+	    } else {				/* Unquoted value */
 		while (*cur  &&  *cur != ',') cur++;
 		KILLWS(cur);			/* Kill trailing whitespace */
 		if (*cur == ',')
 		    *(cur++) = (char)0;
 		/* else *cur already NULL */
 	    }
-	}
-	else {	/* No name, just a value */
+	} else {	/* No name, just a value */
 	    if (*cur == ',') 
 		*(cur++) = (char)0;		/* Terminate value */
 	    /* else last value on line (already terminated by NULL) */
@@ -427,8 +404,7 @@ PUBLIC void HTAA_setupReader ARGS3(char *,	start_of_headers,
 	strncpy(buffer, start_of_headers, length);
 	buffer[length] = (char)0;
 	end_pointer = buffer + length;
-    }
-    else {
+    } else {
 	*start_pointer = (char)0;
 	end_pointer = start_pointer;
     }
@@ -462,7 +438,7 @@ PUBLIC char *HTAA_getUnfoldedLine NOARGS
     char *line = NULL;
     char *cur;
     int count;
-    BOOL peek_for_folding = NO;
+    HT_BOOL peek_for_folding = NO;
 
     if (in_soc < 0) {
 	fprintf(stderr, "%s %s\n",
@@ -471,9 +447,7 @@ PUBLIC char *HTAA_getUnfoldedLine NOARGS
 	return NULL;
     }
 
-    for(;;) {
-
-	/* Reading from socket */
+    for(;;) {			 /* Reading from socket */
 
 	if (start_pointer >= end_pointer) {/*Read the next block and continue*/
 	    count = NETREAD(in_soc, buffer, BUFFER_SIZE);
@@ -494,9 +468,7 @@ PUBLIC char *HTAA_getUnfoldedLine NOARGS
 	}
 	cur = start_pointer;
 
-
 	/* Unfolding */
-	
 	if (peek_for_folding) {
 	    if (*cur != ' '  &&  *cur != '\t')
 		return line;	/* Ok, no continuation line */
@@ -504,15 +476,11 @@ PUBLIC char *HTAA_getUnfoldedLine NOARGS
 		peek_for_folding = NO;
 	}
 
-
 	/* Finding end-of-line */
-
 	while (cur < end_pointer && *cur != '\n') /* Find the end-of-line */
 	    cur++;				  /* (or end-of-buffer).  */
 
-	
 	/* Terminating line */
-
 	if (cur < end_pointer) {	/* So *cur==LF, terminate line */
 	    *cur = (char)0;		/* Overwrite LF */
 	    if (*(cur-1) == '\r')
@@ -520,19 +488,12 @@ PUBLIC char *HTAA_getUnfoldedLine NOARGS
 	    peek_for_folding = YES;	/* Check for a continuation line */
 	}
 
-
 	/* Copying the result */
-
 	if (line)
 	    StrAllocCat(line, start_pointer);	/* Append */
 	else
 	    StrAllocCopy(line, start_pointer);	/* A new line */
 
 	start_pointer = cur+1;	/* Skip the read line */
-
     } /* forever */
 }
-
-
-
-

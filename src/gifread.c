@@ -7,67 +7,12 @@
 /* |   notice appear in supporting documentation.  This software is    | */
 /* |   provided "as is" without express or implied warranty.           | */
 /* +-------------------------------------------------------------------+ */
-/****************************************************************************
- * NCSA Mosaic for the X Window System                                      *
- * Software Development Group                                               *
- * National Center for Supercomputing Applications                          *
- * University of Illinois at Urbana-Champaign                               *
- * 605 E. Springfield, Champaign IL 61820                                   *
- * mosaic@ncsa.uiuc.edu                                                     *
- *                                                                          *
- * Copyright (C) 1993, Board of Trustees of the University of Illinois      *
- *                                                                          *
- * NCSA Mosaic software, both binary and source (hereafter, Software) is    *
- * copyrighted by The Board of Trustees of the University of Illinois       *
- * (UI), and ownership remains with the UI.                                 *
- *                                                                          *
- * The UI grants you (hereafter, Licensee) a license to use the Software    *
- * for academic, research and internal business purposes only, without a    *
- * fee.  Licensee may distribute the binary and source code (if released)   *
- * to third parties provided that the copyright notice and this statement   *
- * appears on all copies and that no charge is associated with such         *
- * copies.                                                                  *
- *                                                                          *
- * Licensee may make derivative works.  However, if Licensee distributes    *
- * any derivative work based on or derived from the Software, then          *
- * Licensee will (1) notify NCSA regarding its distribution of the          *
- * derivative work, and (2) clearly notify users that such derivative       *
- * work is a modified version and not the original NCSA Mosaic              *
- * distributed by the UI.                                                   *
- *                                                                          *
- * Any Licensee wishing to make commercial use of the Software should       *
- * contact the UI, c/o NCSA, to negotiate an appropriate license for such   *
- * commercial use.  Commercial use includes (1) integration of all or       *
- * part of the source code into a product for sale or license by or on      *
- * behalf of Licensee to third parties, or (2) distribution of the binary   *
- * code or source code to third parties that need it to utilize a           *
- * commercial product sold or licensed by or on behalf of Licensee.         *
- *                                                                          *
- * UI MAKES NO REPRESENTATIONS ABOUT THE SUITABILITY OF THIS SOFTWARE FOR   *
- * ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED          *
- * WARRANTY.  THE UI SHALL NOT BE LIABLE FOR ANY DAMAGES SUFFERED BY THE    *
- * USERS OF THIS SOFTWARE.                                                  *
- *                                                                          *
- * By using or copying this Software, Licensee agrees to abide by the       *
- * copyright law and all other applicable laws of the U.S. including, but   *
- * not limited to, export control laws, and the terms of this license.      *
- * UI shall have the right to terminate this license immediately by         *
- * written notice upon Licensee's breach of, or non-compliance with, any    *
- * of its terms.  Licensee may be held legally responsible for any          *
- * copyright infringement that is caused or encouraged by Licensee's        *
- * failure to abide by the terms of this license.                           *
- *                                                                          *
- * Comments and questions are welcome and can be sent to                    *
- * mosaic-x@ncsa.uiuc.edu.                                                  *
- ****************************************************************************/
-#include "../config.h"
+/* Please read copyright.ncsa. Don't remove next line */
+#include "copyright.ncsa"
+
+#include <stdlib.h>
 #include <stdio.h>
 #include <X11/Intrinsic.h>
-#include "gifread.h"
-
-/*
-#define TIMING 1
-*/
 
 #include <sys/time.h>
 static struct timeval Tv;
@@ -101,9 +46,6 @@ static struct {
 	unsigned int	ColorResolution;
 	unsigned int	Background;
 	unsigned int	AspectRatio;
-	/*
-	**
-	*/
 	int             xGrayScale;
 } GifScreen;
 
@@ -146,8 +88,7 @@ static unsigned char *ReadImage();
 extern int srcTrace;
 #endif
 
-unsigned char *
-ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
+unsigned char * ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 {
 	unsigned char	buf[16];
 	unsigned char	c;
@@ -179,49 +120,41 @@ ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 	Gif89.inputFlag = -1;
 	Gif89.disposal = 0;
 
-	if (! ReadOK(fd,buf,6))
-	{
+	if (! ReadOK(fd,buf,6)) {
 #ifndef DISABLE_TRACE
 		if (srcTrace) {
 			fprintf(stderr, "error reading magic number\n");
 		}
 #endif
-
 		return(NULL);
 	}
 
-	if (strncmp((char *)buf,"GIF",3) != 0)
-	{
+	if (strncmp((char *)buf,"GIF",3) != 0) {
 #ifndef DISABLE_TRACE
 		if (srcTrace)
 			fprintf(stderr, "not a GIF file\n");
 #endif
-
 		return(NULL);
 	}
 
 	strncpy(version, (char *)buf + 3, 3);
 	version[3] = '\0';
 
-	if ((strcmp(version, "87a") != 0) && (strcmp(version, "89a") != 0))
-	{
+	if ((strcmp(version, "87a") != 0) && (strcmp(version, "89a") != 0)) {
 #ifndef DISABLE_TRACE
 		if (srcTrace) {
 			fprintf(stderr, "bad version number, not '87a' or '89a'\n");
 		}
 #endif
-
 		return(NULL);
 	}
 
-	if (! ReadOK(fd,buf,7))
-	{
+	if (! ReadOK(fd,buf,7)) {
 #ifndef DISABLE_TRACE
 		if (srcTrace) {
 			fprintf(stderr, "failed to read screen descriptor\n");
 		}
 #endif
-
 		return(NULL);
 	}
 
@@ -236,28 +169,22 @@ ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 		int scale = 65536/MAXCOLORMAPSIZE;
 
 		if (ReadColorMap(fd,GifScreen.BitPixel,GifScreen.ColorMap,
-				&GifScreen.xGrayScale))
-		{
-
+				&GifScreen.xGrayScale)) {
 #ifndef DISABLE_TRACE
 			if (srcTrace) {
 				fprintf(stderr, "error reading global colormap\n");
 			}
 #endif
-
 			return(NULL);
 		}
-		for (i=0; i < GifScreen.BitPixel; i++)
-		{
-
+		for (i=0; i < GifScreen.BitPixel; i++) {
 			colrs[i].red = GifScreen.ColorMap[0][i] * scale;
 			colrs[i].green = GifScreen.ColorMap[1][i] * scale;
 			colrs[i].blue = GifScreen.ColorMap[2][i] * scale;
 			colrs[i].pixel = i;
 			colrs[i].flags = DoRed|DoGreen|DoBlue;
 		}
-		for (i = GifScreen.BitPixel; i<MAXCOLORMAPSIZE; i++)
-		{
+		for (i = GifScreen.BitPixel; i<MAXCOLORMAPSIZE; i++) {
 			colrs[i].red = 0;
 			colrs[i].green = 0;
 			colrs[i].blue = 0;
@@ -277,40 +204,34 @@ ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 	}
 
 	while (image == NULL) {
-		if (! ReadOK(fd,&c,1))
-		{
+		if (! ReadOK(fd,&c,1)) {
 #ifndef DISABLE_TRACE
 			if (srcTrace) {
 				fprintf(stderr, "EOF / read error on image data\n");
 			}
 #endif
-
 			return(NULL);
 		}
 
 		if (c == ';') {		/* GIF terminator */
-			if (imageCount < imageNumber)
-			{
+			if (imageCount < imageNumber) {
 #ifndef DISABLE_TRACE
 				if (srcTrace) {
 					fprintf(stderr, "No images found in file\n");
 				}
 #endif
-
 				return(NULL);
 			}
 			break;
 		}
 
 		if (c == '!') { 	/* Extension */
-			if (! ReadOK(fd,&c,1))
-			{
+			if (! ReadOK(fd,&c,1)) {
 #ifndef DISABLE_TRACE
 				if (srcTrace) {
 					fprintf(stderr, "EOF / read error on extention function code\n");
 				}
 #endif
-
 				return(NULL);
 			}
 			DoExtension(fd, c);
@@ -324,45 +245,36 @@ ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 					(int)c);
 			}
 #endif
-
 			continue;
 		}
 
 		++imageCount;
-
-		if (! ReadOK(fd,buf,9))
-		{
+		if (! ReadOK(fd,buf,9)) {
 #ifndef DISABLE_TRACE
 			if (srcTrace) {
 				fprintf(stderr,"couldn't read left/top/width/height\n");
 			}
 #endif
-
 			return(NULL);
 		}
-
 		useGlobalColormap = ! BitSet(buf[8], LOCALCOLORMAP);
-
 		bitPixel = 1<<((buf[8]&0x07)+1);
 
 		/*
 		 * We only want to set width and height for the imageNumber
 		 * we are requesting.
 		 */
-		if (imageCount == imageNumber)
-		{
+		if (imageCount == imageNumber) {
 			*w = LM_to_uint(buf[4],buf[5]);
 			*h = LM_to_uint(buf[6],buf[7]);
 		}
 		if (! useGlobalColormap) {
-			if (ReadColorMap(fd,bitPixel,localColorMap,&grayScale))
-			{
+			if (ReadColorMap(fd,bitPixel,localColorMap,&grayScale)) {
 #ifndef DISABLE_TRACE
 				if (srcTrace) {
 					fprintf(stderr, "error reading local colormap\n");
 				}
 #endif
-
 				return(NULL);
 			}
 
@@ -370,19 +282,14 @@ ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 			 * We only want to set the data for the
 			 * imageNumber we are requesting.
 			 */
-			if (imageCount == imageNumber)
-			{
+			if (imageCount == imageNumber) {
 			    image = ReadImage(fd, LM_to_uint(buf[4],buf[5]),
 				  LM_to_uint(buf[6],buf[7]), colrs,
 				  bitPixel, localColorMap, grayScale,
 				  BitSet(buf[8], INTERLACE),
 				  imageCount != imageNumber);
-			}
-			else
-			{
-/*			    unsigned char *tdata;
-
-			    tdata =*/ ReadImage(fd, LM_to_uint(buf[4],buf[5]),
+			} else {
+			     ReadImage(fd, LM_to_uint(buf[4],buf[5]),
 				  LM_to_uint(buf[6],buf[7]), colrs,
 				  bitPixel, localColorMap, grayScale,
 				  BitSet(buf[8], INTERLACE),
@@ -393,20 +300,15 @@ ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 			 * We only want to set the data for the
 			 * imageNumber we are requesting.
 			 */
-			if (imageCount == imageNumber)
-			{
+			if (imageCount == imageNumber) {
 			    image = ReadImage(fd, LM_to_uint(buf[4],buf[5]),
 				  LM_to_uint(buf[6],buf[7]), colrs,
 				  GifScreen.BitPixel, GifScreen.ColorMap,
 				  GifScreen.xGrayScale,
 				  BitSet(buf[8], INTERLACE),
 				  imageCount != imageNumber);
-			}
-			else
-			{
-/*			    unsigned char *tdata;
-
-			    tdata =*/ ReadImage(fd, LM_to_uint(buf[4],buf[5]),
+			} else {
+			     ReadImage(fd, LM_to_uint(buf[4],buf[5]),
 				  LM_to_uint(buf[6],buf[7]), colrs,
 				  GifScreen.BitPixel, GifScreen.ColorMap,
 				  GifScreen.xGrayScale,
@@ -424,7 +326,6 @@ ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 		fprintf(stderr, "ReadGIF_DK exit (%d.%d)\n", Tv.tv_sec, Tv.tv_usec);
 	}
 #endif
-
 	return(image);
 }
 
@@ -437,33 +338,26 @@ ReadColorMap(FILE *fd, int number, unsigned char buffer[3][MAXCOLORMAPSIZE],
 	int		flag;
 
 	flag = TRUE;
-
 	for (i = 0; i < number; ++i) {
-		if (! ReadOK(fd, rgb, sizeof(rgb)))
-		{
+		if (! ReadOK(fd, rgb, sizeof(rgb))) {
 #ifndef DISABLE_TRACE
 			if (srcTrace) {
 				fprintf(stderr, "bad colormap\n");
 			}
 #endif
-
 			return(TRUE);
 		}
-
 		buffer[CM_RED][i] = rgb[0] ;
 		buffer[CM_GREEN][i] = rgb[1] ;
 		buffer[CM_BLUE][i] = rgb[2] ;
 
 		flag &= (rgb[0] == rgb[1] && rgb[1] == rgb[2]);
 	}
-
 	*gray = flag;
-
 	return FALSE;
 }
 
-static int
-DoExtension(FILE *fd, int label)
+static int DoExtension(FILE *fd, int label)
 {
 	static char	buf[256];
 	char		str[256];
@@ -502,8 +396,7 @@ DoExtension(FILE *fd, int label)
 	case 0xfe:		/* Comment Extension */
 		strcpy(str,"Comment Extension");
 		while (GetDataBlock(fd, (unsigned char*) buf) > 0) {
-			if (showComment)
-			{
+			if (showComment) {
 #ifndef DISABLE_TRACE
 				if (srcTrace) {
 					fprintf(stderr, "gif comment: %s\n", buf);
@@ -542,8 +435,7 @@ DoExtension(FILE *fd, int label)
 
 static int	ZeroDataBlock = FALSE;
 
-static int
-GetDataBlock(FILE *fd, unsigned char *buf)
+static int GetDataBlock(FILE *fd, unsigned char *buf)
 {
 	unsigned char	count;
 
@@ -554,7 +446,6 @@ GetDataBlock(FILE *fd, unsigned char *buf)
 			fprintf(stderr, "error in getting DataBlock size\n");
 		}
 #endif
-
 		return -1;
 	}
 
@@ -566,22 +457,16 @@ GetDataBlock(FILE *fd, unsigned char *buf)
 			fprintf(stderr, "error in reading DataBlock\n");
 		}
 #endif
-
 		return -1;
 	}
-
 	return((int)count);
 }
 
 
-/*
-**  Pulled out of nextCode
-*/
+/*  Pulled out of nextCode */
 static  int             curbit, lastbit, get_done, last_byte;
 static  int             return_clear;
-/*
-**  Out of nextLWZ
-*/
+/*  Out of nextLWZ */
 static int      stack[(1<<(MAX_LWZ_BITS))*2], *sp;
 static int      code_size, set_code_size;
 static int      max_code, max_code_size;
@@ -589,8 +474,6 @@ static int      clear_code, end_code;
 
 static void initLWZ(int input_code_size)
 {
-/*	static int      inited = FALSE;*/
-
 	set_code_size = input_code_size;
 	code_size     = set_code_size + 1;
 	clear_code    = 1 << set_code_size ;
@@ -629,8 +512,7 @@ static int nextCode(FILE *fd, int code_size)
 		int     count;
 
 		if (get_done) {
-			if (curbit >= lastbit)
-			{
+			if (curbit >= lastbit) {
 #if 0
 				ERROR("ran off the end of my bits" );
 #endif
@@ -649,10 +531,8 @@ static int nextCode(FILE *fd, int code_size)
 
 		end = curbit + code_size;
 	}
-
 	j = end / 8;
 	i = curbit / 8;
-
 	if (i == j)
 		ret = (int)buf[i];
 	else if (i + 1 == j)
@@ -661,9 +541,7 @@ static int nextCode(FILE *fd, int code_size)
 		ret = (int)buf[i] | ((int)buf[i+1] << 8) | ((int)buf[i+2] << 16);
 
 	ret = (ret >> (curbit % 8)) & maskTbl[code_size];
-
 	curbit += code_size;
-
 	return ret;
 }
 
@@ -680,8 +558,7 @@ static int nextLWZ(FILE *fd)
 	       if (code == clear_code) {
 
 			/* corrupt GIFs can make this happen */
-			if (clear_code >= (1<<MAX_LWZ_BITS))
-			{
+			if (clear_code >= (1<<MAX_LWZ_BITS)) {
 				return -2;
 			}
 
@@ -711,8 +588,7 @@ static int nextLWZ(FILE *fd)
 		       while ((count = GetDataBlock(fd, buf)) > 0)
 			       ;
 
-		       if (count != 0)
-			{
+		       if (count != 0) {
 #ifndef DISABLE_TRACE
 				if (srcTrace) {
 					fprintf(stderr,"missing EOD in data stream (common occurence)");
@@ -721,7 +597,6 @@ static int nextLWZ(FILE *fd)
 			}
 		       return -2;
 	       }
-
 	       incode = code;
 
 	       if (code >= max_code) {
@@ -731,15 +606,13 @@ static int nextLWZ(FILE *fd)
 
 	       while (code >= clear_code) {
 		       *sp++ = table[1][code];
-		       if (code == table[0][code])
-			{
+		       if (code == table[0][code]) {
 #if 0
 			       ERROR("circular table entry BIG ERROR");
 #endif
 			       return(code);
 			}
-			if ((int)sp >= ((int)stack + sizeof(stack)))
-			{
+			if ((int)sp >= ((int)stack + sizeof(stack))) {
 #if 0
 			       ERROR("circular table STACK OVERFLOW!");
 #endif
@@ -747,7 +620,6 @@ static int nextLWZ(FILE *fd)
 			}
 		       code = table[0][code];
 	       }
-
 	       *sp++ = firstcode = table[1][code];
 
 	       if ((code = max_code) <(1<<MAX_LWZ_BITS)) {
@@ -760,9 +632,7 @@ static int nextLWZ(FILE *fd)
 			       ++code_size;
 		       }
 	       }
-
 	       oldcode = incode;
-
 	       if (sp > stack)
 		       return *--sp;
 	}
@@ -810,17 +680,14 @@ ReadImage(FILE *fd, int len, int height, XColor *colrs, int cmapSize,
 	}
 
 	image = (unsigned char *)calloc(len * height, sizeof(char));
-	if (image == NULL)
-	{
+	if (image == NULL) {
 #ifndef DISABLE_TRACE
 		if (srcTrace) {
 			fprintf(stderr, "Cannot allocate space for image data\n");
 		}
 #endif
-
 		return(NULL);
 	}
-
 	for (v = 0; v < MAXCOLORMAPSIZE; v++) {
 		colrs[v].red = colrs[v].green = colrs[v].blue = 0;
 		colrs[v].pixel = v;
@@ -831,20 +698,17 @@ ReadImage(FILE *fd, int len, int height, XColor *colrs, int cmapSize,
 		colrs[v].green = cmap[CM_GREEN][v] * 0x101;
 		colrs[v].blue  = cmap[CM_BLUE][v]  * 0x101;
 	}
-
 #ifndef DISABLE_TRACE
 	if (srcTrace)
 		fprintf(stderr, "reading %d by %d%s GIF image\n",
 			len, height, interlace ? " interlaced" : "" );
 #endif
-
 	if (interlace) {
 		int     i;
 		int     pass = 0, step = 8;
 
 		for (i = 0; i < height; i++) {
-			if (ypos < height)
-			{
+			if (ypos < height) {
 				dp = &image[len * ypos];
 				for (xpos = 0; xpos < len; xpos++) {
 					if ((v = readLWZ(fd)) < 0)
@@ -870,17 +734,13 @@ ReadImage(FILE *fd, int len, int height, XColor *colrs, int cmapSize,
 			}
 		}
 	}
-
 fini:
-	if (readLWZ(fd)>=0)
-	{
+	if (readLWZ(fd)>=0) {
 #ifndef DISABLE_TRACE
 		if (srcTrace) {
 			fprintf(stderr,"too much input data, ignoring extra...");
 		}
 #endif
 	}
-
 	return(image);
 }
-

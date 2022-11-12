@@ -1,5 +1,3 @@
-/*  */
-
 /*      Displaying messages and getting input for WWW Library
 **      =====================================================
 **
@@ -39,6 +37,9 @@ extern void HTProgress PARAMS((WWW_CONST char * Msg));
 extern int HTCheckActiveIcon PARAMS((int twirl));
 extern void HTClearActiveIcon NOPARAMS;
 
+extern void HTMeter PARAMS((WWW_CONST int level, WWW_CONST char * text));
+extern void HTDoneWithIcon();
+
 
 /*      Display a message, then wait for 'yes' or 'no'.
 **
@@ -49,7 +50,4 @@ extern void HTClearActiveIcon NOPARAMS;
 **              If the user enters 'YES', returns TRUE, returns FALSE
 **              otherwise.
 */
-extern BOOL HTConfirm PARAMS ((WWW_CONST char * Msg));
-/*
-
-    */
+extern HT_BOOL HTConfirm PARAMS ((WWW_CONST char * Msg));

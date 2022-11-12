@@ -21,3 +21,7 @@ char **buildArgv(char *cmd, int *new_argc);
 int my_copy(char *, char *, char *, int, int);
 int file_exists(char *);
 int get_home(char **);
+int compact_string(char *main_string, char *ellipsis_string,
+                    int num_chars, int mode, int eLength);
+char *strcasechr(char *src, char srch);
+char *strrcasechr(char *src, char srch);

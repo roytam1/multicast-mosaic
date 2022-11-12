@@ -13,12 +13,10 @@
 **
 ** BUGS:
 **
-**
 */
-#include "../config.h"
 
 #include <string.h>
-#include "../libnut/str-tools.h"
+
 #include "HTAAUtil.h"
 #include "HTAssoc.h"
 #include "HTString.h"
@@ -31,7 +29,6 @@ PUBLIC HTAssocList *HTAssocList_new NOARGS
 {
     return HTList_new();
 }
-
 
 PUBLIC void HTAssocList_delete ARGS1(HTAssocList *, alist)
 {
@@ -47,10 +44,9 @@ PUBLIC void HTAssocList_delete ARGS1(HTAssocList *, alist)
     }
 }
 
-
 PUBLIC void HTAssocList_add ARGS3(HTAssocList *,	alist,
-				  WWW_CONST char *,		name,
-				  WWW_CONST char *,		value)
+				  WWW_CONST char *,	name,
+				  WWW_CONST char *,	value)
 {
     HTAssoc *assoc;
 
@@ -65,7 +61,7 @@ PUBLIC void HTAssocList_add ARGS3(HTAssocList *,	alist,
 	HTList_addObject(alist, (void*)assoc);
     }
 #ifndef DISABLE_TRACE
-    else if (www2Trace) fprintf(stderr, "HTAssoc_add: ERROR: assoc list NULL!!\n");
+    else if (www2Trace) fprintf(stderr,"HTAssoc_add: ERROR: assoc list NULL!\n");
 #endif
 }
 
@@ -77,9 +73,8 @@ PUBLIC char *HTAssocList_lookup ARGS2(HTAssocList *,	alist,
     HTAssoc *assoc;
 
     while (NULL != (assoc = (HTAssoc*)HTList_nextObject(cur))) {
-	if (!my_strncasecmp(assoc->name, name, strlen(name)))
+	if (!strncasecomp(assoc->name, name, strlen(name)))
 	    return assoc->value;
     }
     return NULL;
 }
-

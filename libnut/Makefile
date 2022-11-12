@@ -9,8 +9,7 @@ OBJDIR=objs
 LIB=libnut.a
 ####Set in main Mosaic Makefile -- uncomment if not compiled under Mosaic
 #RANLIB=ranlib
-OBJ=$(ODIR)/mm.o \
-$(ODIR)/str-tools.o \
+OBJ=$(ODIR)/str-tools.o \
 $(ODIR)/system.o \
 $(ODIR)/url-utils.o \
 $(ODIR)/ellipsis.o
@@ -21,9 +20,6 @@ $(LIB): $(OBJ)
 	-rm -f $(LIB)
 	ar rv $(LIB) $(OBJ)
 	$(RANLIB) $(LIB)
-
-$(ODIR)/mm.o: mm.c mm.h
-	$(CC) $(CFLAGS) -c mm.c -o $(ODIR)/mm.o
 
 $(ODIR)/str-tools.o: str-tools.c
 	$(CC) $(CFLAGS) -c str-tools.c -o $(ODIR)/str-tools.o
@@ -42,3 +38,4 @@ objs:
 
 clean:
 	rm -f $(LIB) $(OBJ)
+	-rm -rf .sb

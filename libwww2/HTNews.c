@@ -22,14 +22,12 @@
 * - added xhdr patch by MH 
 *
 */
-#include "../config.h"
+
 char *mo_tmpnam(char *url);
 
-
 #include "HTNews.h"
-#include "../src/mosaic.h"
-#include "../src/newsrc.h"
-#include "../src/prefs.h"
+#include "HTAlert.h"
+#include "../libnut/system.h"
 
 #define NEWS_PORT 119		/* See rfc977 */
 #define APPEND			/* Use append methods */
@@ -47,10 +45,15 @@ char *mo_tmpnam(char *url);
 #include <ctype.h>
 #include "HTUtils.h"		/* Coding convention macros */
 #include "tcp.h"
-
+#include "HTTCP.h"
 #include "HTML.h"
 #include "HTParse.h"
 #include "HTFormat.h"
+
+#include "../libhtmlw/HTML.h"
+#include "../src/mosaic.h"
+#include "../src/newsrc.h"
+#include "../src/prefs.h"
 
 #ifndef DISABLE_TRACE
 extern int www2Trace;
@@ -79,7 +82,7 @@ PRIVATE int GroupFirst = 0;
 PRIVATE int GroupLast = 0;
 PRIVATE int ReadLast = 0;
 PRIVATE int ReadFirst = 0;
-PRIVATE newsgroup_t *LastGroup = NULL;
+PRIVATE newsgroup_t *LastGroup = NULL; 
 PRIVATE NewsArt *NextArt = NULL;
 
 PUBLIC char * HTNewsHost;
@@ -100,80 +103,76 @@ int newsShowReadGroups = 0;
 int newsShowAllArticles = 0;
 int newsNoThreadJumping = 0;
 int newsGotList = 0;        
-int newsUseNewsRC = 1;   
-int newsNextIsUnread = 0;
-int newsPrevIsUnread = 0;
-extern int newsNoNewsRC;
-int newsSubjWidth = 38;
+int newsUseNewsRC = 1;                
+int newsNextIsUnread = 0;             
+int newsPrevIsUnread = 0;             
+extern int newsNoNewsRC;              
+int newsSubjWidth = 38;               
 int newsAuthWidth = 30;
-
 
 #define PUTC(c) (*targetClass.put_character)(target, c)
 #define PUTS(s) (*targetClass.put_string)(target, s)
-#define START(e) (*targetClass.start_element)(target, e, 0, 0)
-#define END(e) (*targetClass.end_element)(target, e)
 
-
-/* escapeString ()
-   Expects: str -- String to escape
-            buf -- Buffer to store escaped string
-   Returns: nothing
-
-   Escapes all <'s and >'s and ...
-*/
-void escapeString (char *str, char *buf)
-{
-  
+                          
+/* escapeString ()            
+   Expects: str -- String to escape                   
+            buf -- Buffer to store escaped string      
+   Returns: nothing                                    
+                                                       
+   Escapes all <'s and >'s and ...                     
+*/                                                     
+void escapeString (char *str, char *buf)               
+{                                                      
+                      
   while (str && *str) {
-
-    switch (*str) {
-
-    case '<':
-      *buf = '&'; buf++; *buf = 'l'; buf++; 
+                              
+    switch (*str) {   
+      
+    case '<':                        
+      *buf = '&'; buf++; *buf = 'l'; buf++;
       *buf = 't'; buf++; *buf = ';'; buf++;
-      break;
-
-    case '>':
-      *buf = '&'; buf++; *buf = 'g'; buf++; 
+      break;                         
+                                     
+    case '>':                        
+      *buf = '&'; buf++; *buf = 'g'; buf++;
       *buf = 't'; buf++; *buf = ';'; buf++;
-      break;
-
-    case '&':
-      *buf = '&'; buf++; *buf = 'a'; buf++; 
+      break;                         
+                                     
+    case '&':                        
+      *buf = '&'; buf++; *buf = 'a'; buf++;
       *buf = 'm'; buf++; *buf = 'p'; buf++;
-      *buf = ';'; buf++;
-      break;
-
-    default:
-      *buf = *str;
-      buf++;
-    }
-    str++;
-  }
-  *buf = 0;
-}
-       
-
-
+      *buf = ';'; buf++;             
+      break;                         
+                                     
+    default:                         
+      *buf = *str;                   
+      buf++;                         
+    }                                
+    str++;                           
+  }                                  
+  *buf = 0;                          
+}                                    
+                                     
+                                     
 /* HTSetNewsConfig ()
-   Expects: artView    -- Article View configuration: 0 = Article View, 
-                          1 = Thread View
+   Expects: artView    -- Article View configuration: 0 = Article View,
+                          1 = Thread View  
             artAll     -- Show All Articles? 0 = No, non zero = yes
-	    grpAll     -- Show All Groups? 0 = no, non zero = yes
-	    grpRead    -- Show Read Groups? 0 = no, non zero = yes
-	    noThrJmp   -- Don't jump threads? 0 = no, non zero = yes
-	    newsRC     -- Use the newsrc? 0 = no, non zero = yes
-	    nxtUnread  -- Next thread should be the next unread? 
-	                  0 = no, non zero = yes
-	    prevUnread -- Prev thread should be the prev unread? 
-	                  0 = no, non zero = yes
-    Returns: Nothing
-
+            grpAll     -- Show All Groups? 0 = no, non zero = yes
+            grpRead    -- Show Read Groups? 0 = no, non zero = yes
+            noThrJmp   -- Don't jump threads? 0 = no, non zero = yes
+            newsRC     -- Use the newsrc? 0 = no, non zero = yes
+            nxtUnread  -- Next thread should be the next unread?
+                          0 = no, non zero = yes
+            prevUnread -- Prev thread should be the prev unread?
+                          0 = no, non zero = yes
+    Returns: Nothing                  
+                                      
     Sets the current news config.
 */
 
-void HTSetNewsConfig (int artView, int artAll, int grpAll, int grpRead, 
-		      int noThrJmp, int newsRC, int nxtUnread, int prevUnread)
+void HTSetNewsConfig (int artView, int artAll, int grpAll, int grpRead,
+                      int noThrJmp, int newsRC, int nxtUnread, int prevUnread)
 {
   if (artView != NO_CHANGE) {
     ConfigView = !artView;
@@ -201,20 +200,20 @@ void HTSetNewsConfig (int artView, int artAll, int grpAll, int grpRead,
   }
 
   if (newsRC != NO_CHANGE) {
-    newsUseNewsRC = newsRC;
-    set_pref (eUSENEWSRC, &newsUseNewsRC);
-  }
-
-  if (nxtUnread != NO_CHANGE) {
-    newsNextIsUnread = nxtUnread;
+    newsUseNewsRC = newsRC;           
+    set_pref (eUSENEWSRC, &newsUseNewsRC); 
+  }                                   
+                                      
+  if (nxtUnread != NO_CHANGE) {       
+    newsNextIsUnread = nxtUnread;     
     set_pref (eNEXTISUNREAD, &newsNextIsUnread);
-  }
-
-  if (prevUnread != NO_CHANGE) {
-    newsPrevIsUnread = prevUnread;
+  }                                   
+                                      
+  if (prevUnread != NO_CHANGE) {      
+    newsPrevIsUnread = prevUnread;    
     set_pref (ePREVISUNREAD, &newsPrevIsUnread);
-  }
-
+  }                                   
+  
 }
 
 
@@ -225,12 +224,12 @@ void HTSetNewsConfig (int artView, int artAll, int grpAll, int grpRead,
 **	template must be already un upper case.
 **	unknown may be in upper or lower or mixed case to match.
 */
-PRIVATE BOOL match ARGS2 (WWW_CONST char *,unknown, WWW_CONST char *,template)
+PRIVATE HT_BOOL match ARGS2 (WWW_CONST char *,unknown, WWW_CONST char *,tmplate)
 {
     WWW_CONST char * u = unknown;
-    WWW_CONST char * t = template;
+    WWW_CONST char * t = tmplate;
     for (;*u && *t && (TOUPPER(*u)==*t); u++, t++) /* Find mismatch or end */ ;
-    return (BOOL)(*t==0);		/* OK if end of template */
+    return (HT_BOOL)(*t==0);		/* OK if end of template */
 }
 
 /* parseemail ()
@@ -246,7 +245,6 @@ PRIVATE BOOL match ARGS2 (WWW_CONST char *,unknown, WWW_CONST char *,template)
 */
 char *parseemail (char *str, char *name, char *em)
 {
-  char *c, d;
   char *email, *end;
 
   /* Pull out email address */
@@ -305,9 +303,9 @@ static int strmatch(char *s1, char *s2)
 
 
 /******************* UUDECODE STUFF ********************/
-FILE *startuudecode(char *s)
+FILE *startuudecode(char *ss)
 {
-    return fopen(s,"w");
+    return fopen(ss,"w");
 }
 
 #define DEC(Char) (((Char) - ' ') & 077)
@@ -395,7 +393,7 @@ static char b64_tab[256] = {
 int base64line(FILE *fp, char *buf)
 {
     int last_data = 0;
-    unsigned char *p = (unsigned char *) buf;
+    unsigned char *p = (unsigned char *)buf;
 
     if(!buf || !*buf || isspace(*buf)){
         fclose(fp);
@@ -482,7 +480,7 @@ void freeart(NewsArt *art)
 /* ClearArtList ()
    Walks the global thread information and frees the important stuff.
 */
-PRIVATE void ClearArtList NOARGS
+PRIVATE void ClearArtList ()
 {
     NewsArt *temp,*tnext,*temp2,*tnext2;
     
@@ -529,6 +527,7 @@ PRIVATE NewsArt *NewArt NOARGS
     temp->ID = NULL;
     temp->FROM = NULL;
     temp->SUBJ = NULL;
+
     return temp;
 }
 
@@ -686,8 +685,8 @@ PUBLIC void HTSetNewsHost ARGS1(WWW_CONST char *, value)
 **	3.	Compilation time macro DEFAULT_NEWS_HOST
 **	4.	Default to "news"
 */
-PRIVATE BOOL initialized = NO;
-PRIVATE BOOL initialize NOARGS
+PRIVATE HT_BOOL initialized = NO;
+PRIVATE HT_BOOL initialize NOARGS
 {
   /*   Get name of Host  */
   if (getenv("NNTPSERVER")) {
@@ -755,34 +754,38 @@ PRIVATE int response ARGS1(WWW_CONST char *,command)
 {
   int result;    
   char * p = response_text;
-  if (command) {
-    int status;
-    int length = strlen(command);
+  if (command) 
+    {
+      int status;
+      int length = strlen(command);
 #ifndef DISABLE_TRACE
-    if (www2Trace) 
-      fprintf(stderr, "NNTP command to be sent: %s", command);
+      if (www2Trace) 
+        fprintf(stderr, "NNTP command to be sent: %s", command);
 #endif
-    status = NETWRITE(s, command, length);
-    if (status<0) {
+      status = NETWRITE(s, command, length);
+      if (status<0)
+        {
 #ifndef DISABLE_TRACE
-      if (www2Trace) fprintf(stderr,
+          if (www2Trace) fprintf(stderr,
                              "HTNews: Unable to send command. Disconnecting.\n");
 #endif
-      NETCLOSE(s);
-      s = -1;
-      return status;
-    } /* if bad status */
-  } /* if command to be sent */
+          NETCLOSE(s);
+          s = -1;
+          return status;
+	} /* if bad status */
+    } /* if command to be sent */
   
   for(;;) {  
-    if (((*p++=HTGetCharacter ()) == LF) || (p == &response_text[LINE_LENGTH]))  {
-      *p++=0;				/* Terminate the string */
+    if (((*p++=HTGetCharacter ()) == LF)
+	|| (p == &response_text[LINE_LENGTH])) 
+      {
+	*p++=0;				/* Terminate the string */
 #ifndef DISABLE_TRACE
-      if (www2Trace) fprintf(stderr, "NNTP Response: %s\n", response_text);
+	if (www2Trace) fprintf(stderr, "NNTP Response: %s\n", response_text);
 #endif
-      sscanf(response_text, "%d", &result);
-      return result;	    
-    } /* if end of line */
+	sscanf(response_text, "%d", &result);
+          return result;	    
+      } /* if end of line */
     
     if (*(p-1) < 0) {
 #ifndef DISABLE_TRACE
@@ -859,7 +862,7 @@ static char qline[LINE_LENGTH+1];
 char *NNTPgetquoteline(char *art)
 {
     char *p;
-    int i,f,status ;
+    int i,status ;
 
     if (!initialized)
 	initialized = initialize();
@@ -870,7 +873,6 @@ char *NNTPgetquoteline(char *art)
 	HTProgress ("Could not set up news connection.");
 	return NULL;
     }
-    
     if(s < 0) {
 	HTProgress("Attempting to connect to news server");
 	if(OpenNNTP()){
@@ -881,38 +883,29 @@ char *NNTPgetquoteline(char *art)
 	    return NULL;
 	}
     }
-
-    if(art){
-	/* FLUSH!!! */
+    if(art){ /* FLUSH!!! */
 	HTInitInput(s);
 	sprintf(qline, "BODY <%s>%c%c", art, CR, LF);
 	status = response(qline);
-	
 	if (status != 222) return NULL;
     }
-
     qline[0] = '>';
     qline[1] = ' ';
-
     for(p = &qline[2],i=0;;p++,i++){
 	*p = HTGetCharacter();
-
 	if (*p==(char)EOF) {
 	    abort_socket();	/* End of file, close socket */
 	    return NULL;	/* End of file on response */
 	}
-
 	if(*p == '\n'){
 	    *++p = 0;
 	    break;
 	}
-
 	if(i == LINE_LENGTH-4){
 	    *p = 0;
 	    break;
 	}
     }
-    
     if(qline[2]=='.' && qline[3] < ' ') return NULL;
     return qline;
 }
@@ -960,7 +953,7 @@ int NNTPgetarthdrs(char *art,char **ref, char **grp, char **subj, char **from)
 	    char ch = *p++ = HTGetCharacter ();
 	    if (ch==(char)EOF) {
 		abort_socket();	/* End of file, close socket */
-		return;		/* End of file on response */
+		return HT_LOADED;		/* End of file on response */
 	    }
 	    
 	    if ((ch == LF)
@@ -1077,24 +1070,24 @@ int NNTPpost(char *from, char *subj, char *ref, char *groups, char *msg)
 
 
 /* take a url and return the news article for it if its in the news cache */
-NewsArt *is_news_url(char *s)
+NewsArt *is_news_url(char *ss)
 {
     NewsArt *art, *art2;
 
-    if (!s)
+    if (!ss)
       return NULL;
 
-    if (strchr (s, '*'))
+    if (strchr (ss, '*'))
       return NULL;
-    if((strlen(s) > 5) && !strncmp("news:", s, 5)){
-	s = &s[5];
+    if((strlen(ss) > 5) && !strncmp("news:", ss, 5)){
+	ss = &ss[5];
 	/* check the obvious */
-	if(CurrentArt && strmatch(s,CurrentArt->ID)) return CurrentArt;
+	if(CurrentArt && strmatch(ss,CurrentArt->ID)) return CurrentArt;
 	for(art = FirstArt; art; art = art->nextt){
-	    if(strmatch(s,art->ID)) return art;
+	    if(strmatch(ss,art->ID)) return art;
 	    if(art->next)
 		for(art2 = art->next; art2; art2 = art2->next)
-		    if(strmatch(s,art2->ID)) return art2;
+		    if(strmatch(ss,art2->ID)) return art2;
 	}
     }
     return NULL;
@@ -1104,8 +1097,9 @@ NewsArt *is_news_url(char *s)
 
 /* Beginning in 2.7b4, these now return the next/prev unread article/thread ,
    unless newsShowAllArticles is True.  The previous unread article/thread 
-   is set in the news_next functions.  
-
+   is set in the news_next functions.  Note that because the previous state
+   is saved in the news_next functions, they should only be called when 
+   necessary! 
    news_next will now continue onto the next thread unless newsNoThreadJumping 
    is True.
 */
@@ -1118,21 +1112,21 @@ NewsArt *firstUnread (NewsArt *art)
 {
   NewsArt *a;
   newsgroup_t *tempNewsGroupS = NULL;
-
-  if (!art)
-    return NULL;
-
+                                      
+  if (!art)                           
+    return NULL;                      
+                                      
   if (!newsUseNewsRC || newsShowAllArticles || !newsNextIsUnread ||
       (!(tempNewsGroupS = findgroup (NewsGroup))))
-    return art;
-
-  while (art && art->prev) art = art->prev;
-  a = art;
-  while (a) {
+    return art;                       
+                                      
+  while (art && art->prev) art = art->prev; 
+  a = art;                            
+  while (a) {                         
     if (!isread (tempNewsGroupS, a->num))
-      return a;
-    a = a->next;
-  }
+      return a;                       
+    a = a->next;                      
+  }                                   
   return NULL;
 }
 
@@ -1140,27 +1134,27 @@ NewsArt *firstUnread (NewsArt *art)
 /* return next unread article after art */
 NewsArt *nextUnread (NewsArt *art, int probe) 
 {
-  NewsArt *a;
-  newsgroup_t *tempNewsGroupS = NULL;
-
-  if (!art)
-    return NULL;
-
+  NewsArt *a;                         
+  newsgroup_t *tempNewsGroupS = NULL; 
+                                      
+  if (!art)                           
+    return NULL;                      
+                                      
   if (!newsUseNewsRC || newsShowAllArticles || !newsNextIsUnread ||
       (!(tempNewsGroupS = findgroup (NewsGroup))))
-    return art->next;
-
-  a = art;
-  art = art->next;
-  while (art) {
-    if (!isread (tempNewsGroupS, art->num))
-      break;
-    art = art->next;
-  }
-
+    return art->next;                 
+                                      
+  a = art;                            
+  art = art->next;                    
+  while (art) {                       
+    if (!isread (tempNewsGroupS, art->num)) 
+      break;                          
+    art = art->next;                  
+  }                                   
+                                      
   if (probe && !art && !newsNoThreadJumping)
-    art = nextUnreadThread (a);
-
+    art = nextUnreadThread (a);       
+                                      
   return art;
 }
 
@@ -1209,28 +1203,28 @@ NewsArt *nextUnreadThread (NewsArt *art)
 
 NewsArt *prevUnread (NewsArt *art, int probe)
 {
-  NewsArt *a;
-  newsgroup_t *tempNewsGroupS = NULL;
-
-  if (!art)
-    return NULL;
-
+  NewsArt *a;                         
+  newsgroup_t *tempNewsGroupS = NULL; 
+                                      
+  if (!art)                           
+    return NULL;                      
+                                      
   if (!newsUseNewsRC || newsShowAllArticles || !newsPrevIsUnread ||
       (!(tempNewsGroupS = findgroup (NewsGroup))))
-    return art->prev;
-
-  a = art;
-  art = art->prev;
-  while (art) {
-    if (!isread (tempNewsGroupS, art->num))
-      break;
-    art = art->prev;
-  }
-
+    return art->prev;                 
+                                      
+  a = art;                            
+  art = art->prev;                    
+  while (art) {                       
+    if (!isread (tempNewsGroupS, art->num)) 
+      break;                          
+    art = art->prev;                  
+  }                                   
+                                      
   if (probe && !art && !newsNoThreadJumping)
-    art = prevUnreadThread (a);
-
-  return art;
+    art = prevUnreadThread (a);       
+                                      
+  return art; 
 }
 
 NewsArt *prevUnreadThread (NewsArt *art)
@@ -1258,14 +1252,14 @@ void news_prevt(char *url)
 {	
   NewsArt *art, *p;
   
-  if (art = is_news_url (url)) {
+  if (art = is_news_url (url)) {      
     if ((p = prevUnreadThread (art)) != NULL) {
       sprintf (url, "news:%s", p->ID);
-      return;
-    }
-  } 
-  url[0] = 0;
-  return;
+      return;                         
+    }                                 
+  }                                   
+  url[0] = 0;                         
+  return; 
 }
 
 /* Goto first (unread) article in next (unread) thread */
@@ -1274,12 +1268,12 @@ void news_nextt(char *url)
   NewsArt *art, *p;
   
   if ((art = is_news_url(url)) != NULL) {
-    if ((p=nextUnreadThread (art))) {
+    if ((p=nextUnreadThread (art))) { 
       sprintf (url, "news:%s", p->ID);
-      return;
-    }
-  }
-  url[0] = 0;
+      return;                         
+    }                                 
+  }                                   
+  url[0] = 0;                         
   return;
 }
 
@@ -1287,41 +1281,41 @@ void news_nextt(char *url)
 /* Goto the previous (unread) article */
 void news_prev(char *url)
 {
-    NewsArt *art, *p;
-
+    NewsArt *art, *p;                 
+                                      
     if ((art = is_news_url(url)) == NULL) { 
-      url[0] = 0;
-      return;
-    }
-
-    url[0] = 0;
-    if ((p = prevUnread (art,0)) != NULL) {
+      url[0] = 0;                     
+      return;                         
+    }                                 
+                                      
+    url[0] = 0;                       
+    if ((p = prevUnread (art,0)) != NULL) { 
       sprintf (url, "news:%s", p->ID);
     } else if (!newsNoThreadJumping) {
       if ((p=prevUnreadThread (art))) {
-	sprintf (url, "news:%s", p->ID);
-      }
-    }
-    return;
+        sprintf (url, "news:%s", p->ID);
+      }                               
+    }                                 
+    return;  
 }
 
 /* Goto next (unread) article in this thread */
 void news_next(char *url)
 {
-  NewsArt *art, *p;
-
+  NewsArt *art, *p;                   
+                                      
   if ((art = is_news_url(url)) == NULL) {
-    url[0] = 0;
-    return;
-  }
-  url[0] = 0;
-  if ((p=nextUnread (art, 0))) {
-    sprintf (url, "news:%s", p->ID);
-  } else if (!newsNoThreadJumping) {
+    url[0] = 0;                       
+    return;                           
+  }                                   
+  url[0] = 0;                         
+  if ((p=nextUnread (art, 0))) {      
+    sprintf (url, "news:%s", p->ID);  
+  } else if (!newsNoThreadJumping) {  
     if ((p = nextUnreadThread (art))) {
       sprintf (url, "news:%s", p->ID);
-    }
-  }
+    }                                 
+  }                                   
   return;
 }
 
@@ -1337,7 +1331,7 @@ void news_index(char *url)
 /* Returns the status of the news buttons */
 void news_status(char *url, int *prevt, int *nextt, int *prev, int *next, int *follow)
 {
-    NewsArt *art,*tmp;
+    NewsArt *art;
 
     if( art = is_news_url(url) ) {
       if(prevUnread(art,!newsNoThreadJumping)) 
@@ -1368,45 +1362,41 @@ void news_status(char *url, int *prevt, int *nextt, int *prev, int *next, int *f
       *next=0;
       *prev=0;
     }
-
-    return;
 }
-
 
 /* makespaces ()
    Expects: str -- a string to figure out the number of spaces.
             len -- number of spaces to pad to.
-
+                                      
    Returns: pointer to a static spaces string, each call to make spaces will
-            overwrite this buffer.
-   
+            overwrite this buffer.    
+                                      
    Notes: this takes the string in str and makes a string of spaces that will
           (when concatenated with str) form a string len spaces long.
-*/
-char *makespaces (char *str, int len)
-{
-  static char spaces[300+1];
-  char *p;
-  int l = strlen (str);
-
-  if (l < len) {
-    p = spaces;
-    len -= l;
-    while (len--) {
-      *p = ' ';
-      p++;
-    }
-    *p = 0;
-  } else if (l > len) { 
+*/                                    
+char *makespaces (char *str, int len) 
+{                                     
+  static char spaces[300+1];          
+  char *p;                            
+  int l = strlen (str);               
+                                      
+  if (l < len) {                      
+    p = spaces;                       
+    len -= l;                         
+    while (len--) {                   
+      *p = ' ';                       
+      p++;                            
+    }                                 
+    *p = 0;                           
+  } else if (l > len) {               
     spaces[0] = 0;
-  }
-  return spaces;
-}
+  }                                   
+  return spaces;                      
+}                                     
+  
 
-		
 /*	Read in an Article					read_article
 **	------------------
-**
 **
 **	Note the termination condition of a single dot on a line by itself.
 **	RFC 977 specifies that the line "folding" of RFC850 is not used, so we
@@ -1418,407 +1408,397 @@ char *makespaces (char *str, int len)
 */       
 PRIVATE void read_article ARGS1 (char *, artID)
 {
-    int i;
-    int linecount=0,linenum=1,lineinc=0;
-    char line[LINE_LENGTH+1];
-    char buf[LINE_LENGTH+1], duff[LINE_LENGTH+1];
-    char *references=NULL;			/* Hrefs for other articles */
-    char *newsgroups=NULL;			/* Newsgroups list */
-    char *from=NULL,*subj=NULL,*org=NULL,*date=NULL;
-    char *filename;
-    char *l = line;
-    int f; /* ':' flag */
-    int decode=0; /*uudecoding...*/
-    FILE *fp;
-        
-    char *p = line,*pp,*m;
-    BOOL done = NO;
+	int i;
+	int linecount=0,linenum=1,lineinc=0;
+	char line[LINE_LENGTH+1];
+	char buf[LINE_LENGTH+1], duff[LINE_LENGTH+1];
+	char *references=NULL;			/* Hrefs for other articles */
+	char *newsgroups=NULL;			/* Newsgroups list */
+	char *from=NULL,*subj=NULL,*org=NULL,*date=NULL;
+	char *filename;
+	char *l = line;
+	int f; /* ':' flag */
+	int decode=0; /*uudecoding...*/
+	FILE *fp;
+	char *p = line,*pp,*m;
+	HT_BOOL done = NO;
+    	NewsArt *art,*art2,*art_t, *next; 
+	int ll;
 
-    NewsArt *art,*art2,*art_t, *next;
-    int ll;
-    
-
-    HTMeter(0,NULL);
-    
-    ll= strlen(artID)-3; /* ">\n\r" should be stripped outside !!! */
-    for(art = FirstArt; art; art = art -> nextt){
-      if(!strncmp(art->ID,artID,ll)) break;
-      if(art->next){
-	for(art2 = art->next; art2; art2 = art2->next)
-	  if(!strncmp(art2->ID,artID,ll)) break;
-	if(art2) {
-	  art = art2;
-	  break;
+	HTMeter(0,NULL);
+	ll= strlen(artID)-3; /* ">\n\r" should be stripped outside !!! */
+	for(art = FirstArt; art; art = art -> nextt){
+		if(!strncmp(art->ID,artID,ll)) break;
+		if(art->next){
+			for(art2 = art->next; art2; art2 = art2->next)
+				if(!strncmp(art2->ID,artID,ll)) break;
+				if(art2) {
+					art = art2;
+					break;
+				}
+		}
 	}
-      }
-    }
-    
-    if(art) {
-      CurrentArt = art;
-    } else {
-      CurrentArt = NULL;
-    }
+	if(art) {
+		CurrentArt = art;
+	} else {
+		CurrentArt = NULL;
+	}
     
 /*	Read in the HEADer of the article:
 **
 **	The header fields are either ignored, or formatted 
 **      and put into the text.
 */
-    while(!done){
-      char ch = *p++ = HTGetCharacter ();
-      if (ch==(char)EOF) {
-	abort_socket();	/* End of file, close socket */
-	return;		/* End of file on response */
-      }
-      if ((ch == LF) || (p == &line[LINE_LENGTH])) {            
-	*--p=0;				/* Terminate the string */
-#ifndef DISABLE_TRACE
-	if (www2Trace) fprintf(stderr, "H %s\n", line);
-#endif
-	if(line[0]<' ') {
-	  done = 1;
-	} else {
-	  switch(line[0]) {
-	  case '.':
-	    if (line[1]<' ') 
-	      done = 1;
-	    break;
-	  case 'S':
-	  case 's':
-	    if(match(line, "SUBJECT:")) 
-	      subj = strdup(&line[8]);
-	    break;
-	  case 'D':
-	  case 'd':
-	    if(match(line, "DATE:")) 
-	      date = strdup(&line[5]);
-	    break;
-	  case 'L':
-	  case 'l':
-	    if(match(line,"LINES:"))
-	      linecount = atoi(&line[6]);
-	    break;
-	  case 'F':
-	  case 'f':
-	    if(match(line, "FROM:")) 
-	      from = strdup(&line[5]);
-	    break;
-	  case 'O':
-	  case 'o':
-	    if(match(line, "ORGANIZATION:")) 
-	      org = strdup(&line[13]);
-	    break;
-	  case 'N':
-	  case 'n':
-	    if(match(line, "NEWSGROUPS:")) 
-	      newsgroups = strdup(&line[11]);
-	    break;
-	  case 'R':
-	  case 'r':
-	    if(match(line, "REFERENCES:")) 
-	      references = strdup(&line[11]);
-	    break;
-	  default:
-	    
-	    /* unknown headers ignored */
-	    break;
-	  }
-	}
-	
-	p = line;			/* Restart at beginning */
-      } /* if end of line */
-    } /* Loop over characters */
-    
-    if(subj) {
-      PUTS("<H2>");
-      PUTS(subj);
-      PUTS("</H2>\n");
-      START (HTML_TITLE);
-      sprintf (buf, "Article: %s", subj);
-      PUTS (buf);
-      END (HTML_TITLE);
-      free(subj);
-    }
-    if(date) {
-      PUTS("<I>");
-      PUTS(date);
-      free(date);
-      if(org) {
-	PUTS(", ");
-	PUTS(org);
-	free(org);
-      }       
-      PUTS("</I><BR>\n");
-    }
-    if(from) {
-      PUTS("<B>From:</B> <I>");
-      if (parseemail (from,duff,buf)) {
-	sprintf (line, "<A HREF=\"mailto:%s\"> %s </A>   ", buf, duff);  
-	PUTS (line);
-      } else 
-	PUTS (from);
-      PUTS("</I><BR>");
-      free(from);
-    }
-    if(newsgroups) {
-      PUTS("<B>Newsgroups:</B> <I>");
-      write_anchors(newsgroups);
-      PUTS("</I><BR>\n");
-    }
-    if(references){
-      PUTS("<B>References:</B> <I>");
-      i = 1;
-      for(p = references; *p; p++) {
-	if(*p=='<') {
-	  for(pp = ++p; *p; p++) {
-	    if(*p=='>') {
-	      *p=0;
-                        p++;
-                        if(strlen(pp)<LINE_LENGTH) {
-			  if(i>1)
-			    PUTS(", ");
-			  sprintf(line,"<A HREF=\"news:&lt;%s&gt;\">%d</A>",
-				  pp,i);
-			  PUTS(line);
-			  i++;
-                        }
-                        break;   
-	    }
-	  }
-	  if(!*p) break;
-            }
-      }
-      free(references);
-      PUTS("</I><BR>\n");
-    }
-    
-    if(linecount) {
-      lineinc = linecount/100;
-      if(lineinc < 1) lineinc = 1;
-    }
-    
-    PUTS("<HR>\n");
-    
-    /*	Read in the BODY of the Article:
-     */
-    (*targetClass.start_element)(target, HTML_PRE , 0, 0);
-    
-    p = line;
-    done = 0;
-    while(!done){
-      char ch = *p++ = HTGetCharacter ();
-      if (ch==(char)EOF) {
-	if(decode) {
-	  fclose(fp);
-	}
-	abort_socket();	/* End of file, close socket */
-	return;		/* End of file on response */
-      }
-      if ((ch == LF) || (p == &line[LINE_LENGTH])) {
-	    *p++=0;				/* Terminate the string */
-#ifndef DISABLE_TRACE
-	    if (www2Trace) fprintf(stderr, "B %s", line);
-#endif
-	    if (line[0]=='.') {
-	      if (line[1]<' ') {		/* End of article? */
-		done = YES;
-		switch(decode){
-		case 1:
-		  uudecodeline(fp,NULL);
-		  sprintf(line,"%s\n%s",filename,filename);
-		  ImageResolve(NULL,line,0);
-		  PUTS("<BR><IMG SRC=\"");
-		  PUTS(filename);
-		  PUTS("\"><BR>");
-                        break;
-		case 2:
-		  base64line(fp,NULL);
-		  sprintf(line,"%s\n%s",filename,filename);
-		  ImageResolve(NULL,line,0);
-		  PUTS("<BR><IMG SRC=\"");
-		  PUTS(filename);
-		  PUTS("\"><BR>");
-		  break;
-                    }
-		break;
-	      }
-            }
-            linenum++;
-            if(linecount && !(linenum%lineinc)) {
-	      HTMeter((linenum*100)/(linecount),NULL);            
-            }
-            switch(decode) {
-            case 1:                        
-	      /* uuencoded */
-	      if(uudecodeline(fp,line)){
-		decode=6;
-		sprintf(line,"%s\n%s",filename,filename);
-		ImageResolve(NULL,line,0);
-		PUTS("<BR><IMG SRC=\"");
-		PUTS(filename);
-                    PUTS("\"><BR>");
-	      }
-	      f++;
-	      p = line;
-	      continue;
-            case 2:
-	      /* base64 encoded */
-	      if(base64line(fp,line)){
-		decode=6;
-		sprintf(line,"%s\n%s",filename,filename);
-		ImageResolve(NULL,line,0);
-		PUTS("<BR><IMG SRC=\"");
-		PUTS(filename);
-		PUTS("\"><BR>");
-	      }
-	      p = line;
-	      continue;                       
-            case 3:
-	      /* is mime, looking for encoding... */
-	      if(match(line,"CONTENT-TRANSFER-ENCODING: BASE64")){
-		decode = 4;
-		HTProgress("base64 image decoding");
-	      } else {
-		if(!line[0] || isspace(line[0])) {
-		  decode = 0; /* possible begin */
+	while(!done){
+		char ch = *p++ = HTGetCharacter ();
+		if (ch==(char)EOF) {
+			abort_socket();	/* End of file, close socket */
+			return;		/* End of file on response */
 		}
-	      }
-	      break;
-            case 4:
-	      /* base64, looking for blank start line */
-	      if(!line[0] || isspace(line[0])) {
-		fp = startuudecode(filename = mo_tmpnam(NULL));
-		decode=2;
-		p=line;
-		continue;
-	      }
-	      break;
+		if ((ch == LF) || (p == &line[LINE_LENGTH])) {            
+			*--p=0;			/* Terminate the string */
+#ifndef DISABLE_TRACE
+			if (www2Trace) fprintf(stderr, "H %s\n", line);
+#endif
+			if(line[0]<' ') {
+				done = 1;
+			} else {
+				switch(line[0]) {
+				case '.':
+					if (line[1]<' ') 
+						done = 1;
+					break;
+				case 'S':
+				case 's':
+					if(match(line, "SUBJECT:")) 
+						subj = strdup(&line[8]);
+					break;
+				case 'D':
+				case 'd':
+					if(match(line, "DATE:")) 
+						date = strdup(&line[5]);
+					break;
+				case 'L':
+				case 'l':
+	    				if(match(line,"LINES:"))
+	      					linecount = atoi(&line[6]);
+	    				break;
+	  			case 'F':
+	  			case 'f':
+	    				if(match(line, "FROM:")) 
+	      					from = strdup(&line[5]);
+	    				break;
+	  			case 'O':
+	  			case 'o':
+	    				if(match(line, "ORGANIZATION:")) 
+	      					org = strdup(&line[13]);
+	    				break;
+	  			case 'N':
+	  			case 'n':
+	    				if(match(line, "NEWSGROUPS:")) 
+	      					newsgroups = strdup(&line[11]);
+	    				break;
+	  			case 'R':
+	  			case 'r':
+	    				if(match(line, "REFERENCES:")) 
+	      					references = strdup(&line[11]);
+	    				break;
+	  			default: /* unknown headers ignored */
+	    				break;
+	  			}
+			}
+			p = line;		/* Restart at beginning */
+      		} /* if end of line */
+    	} /* Loop over characters */
+    
+    	if(subj) {
+      		PUTS("<H2>");
+      		PUTS(subj);
+      		PUTS("</H2>\n");
+      		PUTS ("<TITLE>");
+      		sprintf (buf, "Article: %s", subj);
+      		PUTS (buf);
+      		PUTS ("</TITLE>\n");
+      		free(subj);
+    	}
+    	if(date) {
+      		PUTS("<I>");
+      		PUTS(date);
+      		free(date);
+      		if(org) {
+			PUTS(", ");
+			PUTS(org);
+			free(org);
+      		}       
+      		PUTS("</I><BR>\n");
+    	}
+    	if(from) {
+      		PUTS("<B>From:</B> <I>");
+      		if (parseemail (from,duff,buf)) {
+			sprintf (line, "<A HREF=\"mailto:%s\"> %s </A>   ", buf, duff);  
+			PUTS (line);
+      		} else 
+			PUTS (from);
+      		PUTS("</I><BR>");
+      		free(from);
+    	}
+    	if(newsgroups) {
+      		PUTS("<B>Newsgroups:</B> <I>");
+      		write_anchors(newsgroups);
+      		PUTS("</I><BR>\n");
+    	}
+    	if(references){
+      		PUTS("<B>References:</B> <I>");
+      		i = 1;
+      		for(p = references; *p; p++) {
+			if(*p=='<') {
+	  			for(pp = ++p; *p; p++) {
+	    				if(*p=='>') {
+	      					*p=0;
+                        			p++;
+                        			if(strlen(pp)<LINE_LENGTH) {
+			  				if(i>1)
+			    					PUTS(", ");
+			  				sprintf(line,"<A HREF=\"news:&lt;%s&gt;\">%d</A>", pp,i);
+			  				PUTS(line);
+			  				i++;
+                        			}
+                        			break;   
+	    				}
+	  			}
+	  			if(!*p) break;
+            		}
+      		}
+      		free(references);
+      		PUTS("</I><BR>\n");
+    	}
+    	if(linecount) {
+      		lineinc = linecount/100;
+      		if(lineinc < 1) lineinc = 1;
+    	}
+    	PUTS("<HR>\n");
+    
+/* Read in the BODY of the Article: */
+	PUTS("<PRE>");
+    	p = line;
+    	done = 0;
+    	while(!done){
+      		char ch = *p++ = HTGetCharacter ();
+      		if (ch==(char)EOF) {
+			if(decode) {
+	  			fclose(fp);
+			}
+			abort_socket();	/* End of file, close socket */
+			return;		/* End of file on response */
+      		}
+      		if ((ch == LF) || (p == &line[LINE_LENGTH])) {
+	    		*p++=0;			/* Terminate the string */
+#ifndef DISABLE_TRACE
+	    		if (www2Trace) fprintf(stderr, "B %s", line);
+#endif
+	    		if (line[0]=='.') {
+	      			if (line[1]<' ') {	/* End of article? */
+					done = YES;
+					switch(decode){
+					case 1:
+		  				uudecodeline(fp,NULL);
+		  				sprintf(line,"%s\n%s",filename,filename);
+		  				printf("[read_article]Must call ImageResolve with good type\n");
+		  				/*#####ImageResolve(NULL,line,0);#####*/
+		  				PUTS("<BR><IMG SRC=\"");
+		  				PUTS(filename);
+		  				PUTS("\"><BR>");
+                        			break;
+					case 2:
+		  				base64line(fp,NULL);
+		  				sprintf(line,"%s\n%s",filename,filename);
+		  				printf("[read_article]Must call ImageResolve with good type\n");
+		  				/*#####ImageResolve(NULL,line,0);#####*/
+		  				PUTS("<BR><IMG SRC=\"");
+		  				PUTS(filename);
+		  				PUTS("\"><BR>");
+		  				break;
+                    			}
+					break;
+	      			}
+            		}
+            		linenum++;
+            		if(linecount && !(linenum%lineinc)) {
+	      			HTMeter((linenum*100)/(linecount),NULL);            
+            		}
+            		switch(decode) {
+            		case 1:                        
+	      			/* uuencoded */
+	      			if(uudecodeline(fp,line)){
+					decode=6;
+					sprintf(line,"%s\n%s",filename,filename);
+		  			printf("[read_article]Must call ImageResolve with good type\n");
+		  			/*#####ImageResolve(NULL,line,0);#####*/
+					PUTS("<BR><IMG SRC=\"");
+					PUTS(filename);
+                    			PUTS("\"><BR>");
+	      			}
+	      			f++;
+	      			p = line;
+	      			continue;
+            		case 2:
+	      			/* base64 encoded */
+	      			if(base64line(fp,line)){
+					decode=6;
+					sprintf(line,"%s\n%s",filename,filename);
+		  			printf("[read_article]Must call ImageResolve with good type\n");
+		  			/*#####ImageResolve(NULL,line,0);#####*/
+					PUTS("<BR><IMG SRC=\"");
+					PUTS(filename);
+					PUTS("\"><BR>");
+	      			}
+	      			p = line;
+	      			continue;                       
+            		case 3:
+	      			/* is mime, looking for encoding... */
+	      			if(match(line,"CONTENT-TRANSFER-ENCODING: BASE64")){
+					decode = 4;
+					HTProgress("base64 image decoding");
+	      			} else {
+					if(!line[0] || isspace(line[0])) {
+		  				decode = 0; /* possible begin */
+					}
+	      			}
+	      			break;
+            		case 4:
+	      			/* base64, looking for blank start line */
+	      			if(!line[0] || isspace(line[0])) {
+					fp = startuudecode(filename = mo_tmpnam(NULL));
+					decode=2;
+					p=line;
+					continue;
+	      			}
+	      			break;
 	      
-            case 5: /* possible mime encap encoding crud */
-	      if(match(line,"CONTENT-TYPE: IMAGE")) {
-		decode = 3;
-		break;
-	      } else {   
-		decode = 0;
-	      }
-	      break;
-            case 6: /* reg text, don't search */
-	      break;
-            default: /* regular text, look for encoding start tags */
-	      if(match(line,"CONTENT-TYPE: IMAGE")){
-		decode = 3;
-		break;
-	      }
-	      if(!strncmp(line,"begin",5)){    
-		decode=1;
-		fp = startuudecode(filename = mo_tmpnam(NULL));
-		HTProgress("uudecoding image data...");
-		p = line;
-		continue;
-	      }
-            }
+            		case 5: /* possible mime encap encoding crud */
+	      			if(match(line,"CONTENT-TYPE: IMAGE")) {
+					decode = 3;
+					break;
+	      			} else {   
+					decode = 0;
+	      			}
+	      			break;
+            		case 6: /* reg text, don't search */
+	      			break;
+            		default: /* regular text, look for encoding start tags */
+	      			if(match(line,"CONTENT-TYPE: IMAGE")){
+					decode = 3;
+					break;
+	      			}
+	      			if(!strncmp(line,"begin",5)){    
+					decode=1;
+					fp = startuudecode(filename = mo_tmpnam(NULL));
+					HTProgress("uudecoding image data...");
+					p = line;
+					continue;
+	      			}
+            		}
             
-	    /* HTTP, FTP, MAILTO, GOPHER,  */
-            for(f=0, l=pp=line;*pp;pp++) { 
-	      if(f) {
-		if(isspace(*pp) || (*pp=='"') || (*pp=='<') || (*pp=='>')){
-		  ll = *pp;
-		  *pp=0;
-		  PUTS("<A HREF=\"");
-		  PUTS(l);
-		  PUTS("\">");
-		  PUTS(l);
-		  PUTS("</A>");
-		  *pp=ll;
-		  l = pp;
-		  f=0;
-		}
-	      }           
-	      if(*pp=='<') {
-		*pp=0;
-		PUTS(l);
-		PUTS("&lt;");
-		l=pp+1;
-		continue;
-	      }
-	      if(*pp=='>') {
-		*pp=0;
-		PUTS(l);
-		PUTS("&gt;");
-		l=pp+1;
-		continue;
-	      }
-	      if(*pp==':') {
-		m = pp;
-		while(m > l) {
-		  m--;
-		  if(!isalpha(*m)) {
-		    m++;
-		    break;
-		  }
-		}
-		if((pp-m)>2) {
-		  if(match(m,"HTTP:") || match(m,"FTP:") ||
-		     match(m,"MAILTO:") || match(m,"NEWS:") ||
-		     match(m,"GOPHER")) {
-		    ll=*m;
-		    *m=0;
-		    PUTS(l);
-		    f = 1;
-		    *m=ll;
-		    l=m;
-		  }
-		}
-		continue;
-	      }                        
-            }
-            PUTS(l);
+	    		/* HTTP, FTP, MAILTO, GOPHER,  */
+            		for(f=0, l=pp=line;*pp;pp++) { 
+	      			if(f) {
+					if(isspace(*pp) || (*pp=='"') || (*pp=='<') || (*pp=='>')){
+		  				ll = *pp;
+		  				*pp=0;
+		  				PUTS("<A HREF=\"");
+		  				PUTS(l);
+		  				PUTS("\">");
+		  				PUTS(l);
+		  				PUTS("</A>");
+		  				*pp=ll;
+		  				l = pp;
+		  				f=0;
+					}
+	      			}           
+	      			if(*pp=='<') {
+					*pp=0;
+					PUTS(l);
+					PUTS("&lt;");
+					l=pp+1;
+					continue;
+	      			}
+	      			if(*pp=='>') {
+					*pp=0;
+					PUTS(l);
+					PUTS("&gt;");
+					l=pp+1;
+					continue;
+	      			}
+	      			if(*pp==':') {
+					m = pp;
+					while(m > l) {
+		  				m--;
+		  				if(!isalpha(*m)) {
+		    					m++;
+		    					break;
+		  				}
+					}
+					if((pp-m)>2) {
+		  				if(match(m,"HTTP:") || match(m,"FTP:") ||
+		     				match(m,"MAILTO:") || match(m,"NEWS:") ||
+		     				match(m,"GOPHER")) {
+		    					ll=*m;
+		    					*m=0;
+		    					PUTS(l);
+		    					f = 1;
+		    					*m=ll;
+		    					l=m;
+		  				}
+					}
+					continue;
+	      			}                        
+            		}
+            		PUTS(l);
 #ifdef OLD            
-            for(f=1,l=pp=line;*pp;pp++){
-	      if(*pp == '<'){
-		if(strchr(pp,'>')){
-		  f = 0;
-		} else {
-		  *pp = 0;
-		  PUTS(l);
-		  PUTS("&lt;");
-		  l=pp+1; /* step over */
-		}
-	      }
-	      if(*pp == '>'){
-		if(f){
-		  *pp = 0;
-		  PUTS(l);
-		  PUTS("&gt;");
-		  l=pp+1; /* step over */
-		}
-                }
-            }
-            PUTS(l);	/* Last bit of the line */
+            		for(f=1,l=pp=line;*pp;pp++){
+	      			if(*pp == '<'){
+					if(strchr(pp,'>')){
+		  				f = 0;
+					} else {
+		  				*pp = 0;
+		  				PUTS(l);
+		  				PUTS("&lt;");
+		  				l=pp+1; /* step over */
+					}
+	      			}
+	      			if(*pp == '>'){
+					if(f){
+		  				*pp = 0;
+		  				PUTS(l);
+		  				PUTS("&gt;");
+		  				l=pp+1; /* step over */
+					}
+                		}
+            		}
+            		PUTS(l);	/* Last bit of the line */
 #endif
-            p = line;				/* Restart at beginning */
-      }
-      
-    } /* Loop over characters */
+            		p = line;		/* Restart at beginning */
+      		}
+	} /* Loop over characters */
     
-    (*targetClass.end_element)(target, HTML_PRE);
+	PUTS("</PRE>\n");
     
     /* Mark this article read in all the groups we care about 
-       Also figure out the next article to read 
-     */
-   
-    if ((next = nextUnread (CurrentArt,0)) == NULL) {
+       Also figure out the next article to read
+     */                               
+                                      
+    if ((next = nextUnread (CurrentArt,0)) == NULL) { 
       if ((next = nextUnreadThread (CurrentArt)) == NULL) {
-	next = CurrentArt;
-	while (next && next->prev) next=next->prev;
-	while (next && next->prevt) next=next->prevt;
-	next = firstUnread (next);
+        next = CurrentArt;
+        while (next && next->prev) next=next->prev;
+        while (next && next->prevt) next=next->prevt;
+        next = firstUnread (next);    
       }
-    }
-
-    NextArt = next;
+    } 
+      
+    NextArt = next; 
     if (CurrentArt) {
-      char *tok, d, *last;
+      char *tok;
       newsgroup_t *ng;
 
       if (newsgroups) {
@@ -1835,212 +1815,205 @@ PRIVATE void read_article ARGS1 (char *, artID)
 	}
       }
     }
-      
     HTMeter(100,NULL);
 }
 
-
-
-/* read_list ()
-   Expects: Nothing.
-   Returns Nothing.
-
-   Notes:
-   pre 2.7b4: Note the termination condition of a single dot on a line by itself.
-	      RFC 977 specifies that the line "folding" of RFC850 is not used, so we
-	      do not handle it here.
+/* read_list ()                       
+   Expects: Nothing.                  
+   Returns Nothing.                   
+                                      
+   Notes:                             
+   pre 2.7b4: Note the termination condition of a single dot on a line by itself.                                     
+              RFC 977 specifies that the line "folding" of RFC850 is not used, so we                                  
+              do not handle it here.
        2.7b4: Added support for newsrc and subscribed news.
-       2.7b5: Made it faster.
-*/        
+       2.7b5: Made it faster.         
+*/ 
 PRIVATE void read_list NOARGS
 {
-  char line[LINE_LENGTH+1], group[LINE_LENGTH], elgroup[LINE_LENGTH], 
-    postable, *p;
-  int first, last, junk, m=0, next_m=20, done=0, intr, g=0, next_g = 50, l=0, lastg=0,mark=0;  
+  char line[LINE_LENGTH+1], group[LINE_LENGTH], elgroup[LINE_LENGTH],
+    postable, *p;                     
+  int first, last, junk, m=0, next_m=20, done=0, intr, g=0, next_g = 50, l=0, lastg=0,mark=0;                         
   newsgroup_t *n=NULL, *nn=NULL;
-  extern int twirl_increment;
-
-  START (HTML_TITLE);
-  PUTS ("Newsgroup Listing");
-  END (HTML_TITLE);
-    
-  HTMeter (0,NULL);
+  extern int twirl_increment;         
+                                      
+  PUTS ("<TITLE>");                 
+  PUTS ("Newsgroup Listing");         
+  PUTS ("</TITLE>\n");                   
+                                      
+  HTMeter (0,NULL);                   
   HTProgress ("Getting newsgroup information from NNTP server");
-
-  /* Display our list of groups */
-  START (HTML_H1);
-  PUTS ("Newsgroup Listing");
-  END (HTML_H1);
-
-  START (HTML_PRE);
+                                      
+  /* Display our list of groups */    
+  PUTS ("<H1>");                    
+  PUTS ("Newsgroup Listing");         
+  PUTS ("</H1>\n");                      
+                                      
+  PUTS ("<PRE>");                   
   if (newsNoNewsRC || !newsUseNewsRC || newsShowAllGroups) {
-
-    if (response ("LIST\r\n") < 0) {
-      START (HTML_H1);
+                                      
+    if (response ("LIST\r\n") < 0) {  
+      PUTS ("<H1>");                
       PUTS ("Error retrieving newsgroup listing from server");
-      END (HTML_H1);
-      NETCLOSE (s);
-      s = -1;
-      END (HTML_PRE);
-      return;
-    }
-
-    p = line;
-    while(!done){
+      PUTS ("</H1>\n");                  
+      NETCLOSE (s);                   
+      s = -1;                         
+      PUTS ("</PRE>\n");                 
+      return;                         
+    }                                 
+                                      
+    p = line;                         
+    while(!done){                     
       char ch = *p++ = HTGetCharacter ();
-
-      if (ch==(char)EOF) {
-	abort_socket();	/* End of file, close socket */
-	return;		/* End of file on response */
-      }
-
+                                      
+      if (ch==(char)EOF) {            
+        abort_socket(); /* End of file, close socket */
+        return;         /* End of file on response */
+      }                               
+                                      
       if ((ch == LF) || (p == &line[LINE_LENGTH])) {
-	*p++=0;				/* Terminate the string */
-	/* Do globe twirly */
-	if (g++>next_g) {
-	  next_g = g+50;
-	  intr = HTCheckActiveIcon(1);
-	} else {
-	  intr = HTCheckActiveIcon(0);
-	}
-	
-	if (intr) {
-	  HTProgress ("Transfer Interrupted");
-	  return;
-	}
-
-	/* Do progress meter */
-	if (m++ > next_m) {
-	  next_m = m+20;
-	  /* Attempt to estimate where we are at in the big list */
-	  if ((m*100/5000) < 100)
-	    HTMeter (m*100/8000,NULL);
-	  else 
-	    HTMeter (99, "99%");
-	}
-
-	/* Check for end of transfer */
-	if (line[0] == '.') {
-	  if (line[1] < ' ') {		/* End of list */
-	    done = 1;
-	    break;
-	  } else {			/* Line starts with dot */
-	    PUTS (&line[1]);
-	  }
-	} else {
-	  /*  Normal lines are scanned for references to newsgroups. */
-	  if (sscanf(line, "%s %d %d %c", group, &last, &first, &postable) == 4) {
-	    /* Make a short version of the group name */
-	    if (compact_string (group, elgroup, newsSubjWidth, 3, 3))
-	      strcpy (elgroup, group);
-
-	    n = findgroup (group);
-	    if (!LastGroup)
-	      LastGroup = n;
-	    if (n) {   
-	      if (LastGroup == n)
-		lastg = 1;
-
-	      if (!(n->attribs & naSEQUENCED)) {
-		setminmax (n, first, last); /* Update sequencer info */
-		rereadseq (n);
-		n->attribs |= naSHOWME;
-		n->attribs |= naSEQUENCED;
-	      }
-	      if (postable == 'y')
-		n->attribs |= naPOST;
-	      
-      	      if (n->attribs&naSUBSCRIBED && 
-		  (newsShowAllGroups || n->unread>0 
-		   || newsShowReadGroups)) {
-		sprintf(line,"%s % 7d S <A HREF=\"news:%s\">%s</A> \n",
-			(lastg==1)?"<b>&gt;&gt;&gt;</b>":"   ",
-			n->unread, n->name, elgroup);
-		PUTS (line);
-		if (lastg==1)
-		  lastg=2;
-	      } 
-	    } else {
-	      sprintf(line,"    % 7d U <A HREF=\"news:%s\">%s</A> \n",
-		      last<first?0:last-first, group, elgroup);
-	      PUTS(line);
-	    }
-	    l++;
-	  }
-	} /* if not dot */
-	p = line;			/* Restart at beginning */
-      }
-    } /* Loop over characters */
-
+        *p++=0;                         /* Terminate the string */
+        /* Do globe twirly */         
+        if (g++>next_g) {             
+          next_g = g+50;              
+          intr = HTCheckActiveIcon(1);
+        } else {                      
+          intr = HTCheckActiveIcon(0);
+        }
+                                      
+        if (intr) {                   
+          HTProgress ("Transfer Interrupted");
+          return;                     
+        }                             
+                                      
+        /* Do progress meter */       
+        if (m++ > next_m) {           
+          next_m = m+20;              
+          /* Attempt to estimate where we are at in the big list */
+          if ((m*100/5000) < 100)     
+            HTMeter (m*100/8000,NULL);
+          else                        
+            HTMeter (99, "99%");      
+        }                             
+                                      
+        /* Check for end of transfer */
+        if (line[0] == '.') {         
+          if (line[1] < ' ') {          /* End of list */
+            done = 1;                 
+            break;                    
+          } else {                      /* Line starts with dot */
+            PUTS (&line[1]);          
+          }                           
+        } else {                      
+          /*  Normal lines are scanned for references to newsgroups. */
+          if (sscanf(line, "%s %d %d %c", group, &last, &first, &postable) == 4) {                                    
+            /* Make a short version of the group name */
+            if (compact_string (group, elgroup, newsSubjWidth, 3, 3))
+              strcpy (elgroup, group);
+                                      
+            n = findgroup (group);    
+            if (!LastGroup)           
+              LastGroup = n;          
+            if (n) {                  
+              if (LastGroup == n)     
+                lastg = 1;            
+                                      
+              if (!(n->attribs & naSEQUENCED)) {
+                setminmax (n, first, last); /* Update sequencer info */
+                rereadseq (n);        
+                n->attribs |= naSHOWME;
+                n->attribs |= naSEQUENCED;  
+              }                       
+              if (postable == 'y')    
+                n->attribs |= naPOST; 
+                                      
+              if (n->attribs&naSUBSCRIBED &&
+                  (newsShowAllGroups || n->unread>0
+                   || newsShowReadGroups)) {
+                sprintf(line,"%s % 7d S <A HREF=\"news:%s\">%s</A> \n",
+                        (lastg==1)?"<b>&gt;&gt;&gt;</b>":"   ",
+                        n->unread, n->name, elgroup);
+                PUTS (line);          
+                if (lastg==1)         
+                  lastg=2;            
+              }                       
+            } else {                  
+              sprintf(line,"    % 7d U <A HREF=\"news:%s\">%s</A> \n",
+                      last<first?0:last-first, group, elgroup);
+              PUTS(line);             
+            }                         
+            l++;                      
+          }                           
+        } /* if not dot */            
+        p = line;                       /* Restart at beginning */
+      }                               
+    } /* Loop over characters */      
+                                      
   } else { /* Pull down info on our subscribed groups. */
-
-    nn = NULL;
-    n = firstgroup (naSUBSCRIBED);
-    while (n) {
+                                      
+    nn = NULL;                        
+    n = firstgroup (naSUBSCRIBED);    
+    while (n) {                       
       if (n->unread > 0 || newsShowAllGroups)
-	nn = n;
+        nn = n;                       
       n = nextgroup (n);
-    }
-
-    n = firstgroup (naSUBSCRIBED);
-    if (!LastGroup)
-      LastGroup = n;
-    while (n) {
-
+    }                                 
+                                      
+    n = firstgroup (naSUBSCRIBED);    
+    if (!LastGroup)                   
+      LastGroup = n;                  
+    while (n) {                       
+                                      
       /* Make a short version of the group name */
       compact_string(n->name, elgroup, newsSubjWidth, 3, 3);
       /* contact the server about this group */
       sprintf (line, "GROUP %s\r\n", n->name);
       if ((first = response (line)) != 211) {
-	sprintf(line,"??????? ? %s <I>Group not found on server </I>\n", elgroup);
-	PUTS(line);
-	n = nextgroup (n);
-	continue;
-      }
-
+        sprintf(line,"??????? ? %s <I>Group not found on server </I>\n", elgroup);                                    
+        PUTS(line);
+        n = nextgroup (n);            
+        continue;                     
+      }                               
+                                      
       /* Reset the sequencer data and set some flags  for this group */
       sscanf (response_text, "%d %d %d %d", &junk, &junk, &first, &last);
       if (!(n->attribs & naSEQUENCED)) {
-	setminmax (n, first, last); /* Update sequencer info */
-	rereadseq (n);
-	n->attribs |= naSHOWME;
-	n->attribs |= naSEQUENCED;
-      }
-
-      
-      if (LastGroup == n && (n->unread>0 || newsShowAllGroups)) 
-	lastg = 1;
-      else if (LastGroup == n)
-	lastg = 2;
-      else if (nn == n && !mark)
-	lastg = 1;
+        setminmax (n, first, last); /* Update sequencer info */
+        rereadseq (n);                
+        n->attribs |= naSHOWME;       
+        n->attribs |= naSEQUENCED;
+      }                               
+                                      
+                                      
+      if (LastGroup == n && (n->unread>0 || newsShowAllGroups))
+        lastg = 1;                    
+      else if (LastGroup == n)        
+        lastg = 2;                    
+      else if (nn == n && !mark)      
+        lastg = 1;                    
       if (newsShowAllGroups  || n->unread>0 || newsShowReadGroups) {
-	sprintf(line,"%s % 7d %s <A HREF=\"news:%s\">%s</A> \n",
-		(lastg==1)? "<b>&gt;&gt;&gt;</b>":"   ",
-		n->unread, n->attribs&naSUBSCRIBED?"S":"U", 
-		n->name, elgroup);
-	PUTS(line);
-	l++;
-	if (lastg == 1)
-	  mark = 1;
-	lastg--;
-      } 
-      n = nextgroup (n);
-    }
-  }
-
-  if (!l) {
-    sprintf (line, "No %snewsgroups on server\n", newsShowAllGroups?"":"unread ");
+        sprintf(line,"%s % 7d %s <A HREF=\"news:%s\">%s</A> \n",
+                (lastg==1)? "<b>&gt;&gt;&gt;</b>":"   ",
+                n->unread, n->attribs&naSUBSCRIBED?"S":"U",
+                n->name, elgroup);    
+        PUTS(line);                   
+        l++;                          
+        if (lastg == 1)               
+          mark = 1;                   
+        lastg--;                      
+      }                               
+      n = nextgroup (n);              
+    }                                 
+  }              
+                                      
+  if (!l) {                           
+    sprintf (line, "No %snewsgroups on server\n", newsShowAllGroups?"":"unread ");                                    
     PUTS (line);
-  }
-  HTMeter (100,NULL);
-  END (HTML_PRE);
-}
-
-
-
-
-
+  }                                   
+  HTMeter (100,NULL);                 
+  PUTS ("</PRE>\n");                     
+}                                     
+                                      
 int parsexover(char *x, char **num, char **title, char **from,
 	       char **date, char **msgid, char **ref, char **bytes, char **lines)
 {
@@ -2102,16 +2075,12 @@ PRIVATE void XBuildArtList ARGS3(
 {
     NewsArt *art;
     char *p,*aname=NULL, *author=NULL, *aref, abuf[1024+1];
-    BOOL done;
-
     char *num,*title,*date,*msgid,*ref,*bytes,*lines,*from=NULL;
-
     char buf[2048];
-
     char *reference=0;			/* Href for article */
     int status, count, first, last;	/* Response fields */
 					/* count is only an upper limit */
-    int c,i,lineinc;
+    int lineinc;
 
     HTMeter(0,NULL);
     
@@ -2214,6 +2183,7 @@ PRIVATE void XBuildArtList ARGS3(
 	msgid[strlen(msgid)-1]=0;		/* Chop > */
 	StrAllocCopy(art->ID, msgid);
 
+
 	parseemail (from, abuf, NULL);
 	aname = abuf;
 	if (aname && *aname){
@@ -2226,9 +2196,7 @@ PRIVATE void XBuildArtList ARGS3(
 	AddArtTop(art);
 
     }
-
     HTMeter(100,NULL);
-    
     HTProgress("Done Threading Articles");
 }
 
@@ -2236,12 +2204,11 @@ PRIVATE void XBuildArtList ARGS3(
 PRIVATE void BuildArtList ARGS3(
   WWW_CONST char *,groupName,
   int,first_required,
-  int,last_required
-)
+  int,last_required)
 {
     NewsArt *art;
     char *p,*aname, *author, *aref, abuf[1024+1];
-    BOOL done;
+    HT_BOOL done;
 
     char buffer[LINE_LENGTH];
     char line[LINE_LENGTH];
@@ -2461,128 +2428,124 @@ PRIVATE void BuildArtList ARGS3(
 PRIVATE void read_group ARGS3(
   WWW_CONST char *,groupName,
   int,first,
-  int,last
-)
+  int,last)
 {
     NewsArt *art,*art2, *f;
     char *p;
     BOOL done;
     char buffer[LINE_LENGTH], subj[LINE_LENGTH];
-    char line[LINE_LENGTH], from[LINE_LENGTH];
+    char line[LINE_LENGTH], from[LINE_LENGTH];                  
     char efrom[LINE_LENGTH], esubj[LINE_LENGTH];
-    char *reference=0;			
-    int i,artno, mark=0;			
+    char *reference=0;
+    int i,artno, mark=0;
     int tc=0;
-    int status, count;	                 /* Response fields */
-			 /* count is only an upper limit */
+    int status, count;                   /* Response fields */
+                         /* count is only an upper limit */
     char em[255+1];
-    
+      
     if ((NewsGroupS = findgroup (groupName)) == NULL) {
-      /* Add group unsub'd to hash table */
+      /* Add group unsub'd to hash table */ 
       if((NewsGroupS = addgroup (groupName, first, last, 1))==NULL) {
-	sprintf (buffer, "\nMosaic appears to be out of memory.\n");
-	PUTS (buffer);
-	return;
-      }
+        sprintf (buffer, "\nMosaic appears to be out of memory.\n");
+        PUTS (buffer);                
+        return;                       
+      }                               
       NewsGroupS->attribs |= naUPDATE;
-    } 
-
-    if (NewsGroup) {
-      free (NewsGroup);
-      NewsGroup = strdup (groupName);
-    }
-
+    }                                 
+                                      
+    if (NewsGroup) {                  
+      free (NewsGroup);               
+      NewsGroup = strdup (groupName); 
+    }                                 
+                                      
     if ((f = firstUnreadThread (FirstArt)) == NULL) {
-      sprintf (buffer, "\nNo %sarticles in this group.\n", 
-	       newsShowAllArticles?"":"unread ");
+      sprintf (buffer, "\nNo %sarticles in this group.\n",
+               newsShowAllArticles?"":"unread ");
       markrangeread (NewsGroupS, NewsGroupS->minart, NewsGroupS->maxart);
-      PUTS (buffer);
-      return;
-    }
-    
-    /*	Set window title */
-    START (HTML_TITLE);
+      PUTS (buffer);                  
+      return;                         
+    }                                 
+                                      
+    /*  Set window title */           
+    PUTS ("<TITLE>");
     sprintf (buffer, "Newsgroup: %s", groupName);
-    PUTS (buffer);
-    END (HTML_TITLE);
-    
-
+    PUTS (buffer);                    
+    PUTS ("</TITLE>\n");                 
+                                      
+                                      
     /* If !ConfigView then the format is:
-
-	   [THREADCOUNT] <A HREF="news:msgID"> SUBJECT </A>
-
-       otherwise:
-
-	   <A HREF="news:msgID"> SUBJECT </A>        Author One's Name
-	   <A HREF="news:msgID2"> SUBJECT </A>       Author Two's Name
-	   <A HREF="news:msgID2"> SUBJECT </A>       Author Three's Name
-    */
-
+                                      
+           [THREADCOUNT] <A HREF="news:msgID"> SUBJECT </A>
+                                      
+       otherwise:                     
+                                      
+           <A HREF="news:msgID"> SUBJECT </A>        Author One's Name
+           <A HREF="news:msgID2"> SUBJECT </A>       Author Two's Name
+           <A HREF="news:msgID2"> SUBJECT </A>       Author Three's Name
+    */                                
+                                      
     /* nextUnreadThread determines the next thread to go to.
-       it returns the next article in the next thread 
+       it returns the next article in the next thread
        It looks at a whole bunch of globals to see what the next article
-       should be ...
-    */
-
-    if (!CurrentArt)
-      NextArt = f;
-    START(HTML_PRE);
+       should be ...                  
+    */                                
+                                      
+    if (!CurrentArt)                  
+      NextArt = f;                    
+    PUTS("<PRE>");                  
     for(art=f; art; art=nextUnreadThread(art)) {
-
+                                      
       compact_string (art->SUBJ, subj, newsSubjWidth, 3,3);
       compact_string (art->FROM, from, newsAuthWidth, 3,3);
-      escapeString (subj, esubj);
-      escapeString (from, efrom);
-
+      escapeString (subj, esubj);     
+      escapeString (from, efrom);     
+                                      
       if(!ConfigView) { /* Thread view */
-	/* Get article count */
-	for (i=0,art2=art; art2; art2=nextUnread(art2,0)) {
-	  if (NextArt == art2)
-	    mark = 1;
-	  if (!newsShowAllArticles && isread (NewsGroupS,art2->num))
-	    continue;
-	  i++;
-	}
-	if (!i && !newsShowAllArticles) 
-	  continue;
-	/* Write summary */
-	sprintf (buffer, "%s % 4d <A HREF=\"news:%s\">%s</A>%s %s\n", 
-		 (mark==1)?"<b>&gt;&gt;&gt;</b>":"   ", i, art->ID, esubj, 
-		 makespaces(subj,newsSubjWidth), 
-		 efrom);
-	PUTS (buffer);
-	if (mark==1)
-	  mark=2;
-      } else {
-	/* Write out subject info for each article */
-	for(art2=art;art2;art2=nextUnread(art2,0)) {
-	  if (!newsShowAllArticles && isread (NewsGroupS,art2->num))
-	    continue;
-	  if (NextArt == art2)
-	    mark = 1;
-	  compact_string (art2->SUBJ, subj, newsSubjWidth, 3,3);
-	  compact_string (art2->FROM, from, newsAuthWidth, 3,3);
-	  escapeString (subj, esubj);
-	  escapeString (from, efrom);
-	  sprintf (buffer, "%s      <A HREF=\"news:%s\">%s</A>%s %s\n", 
-		   (mark==1)?"<b>&gt;&gt;&gt;</b>":"   ", art2->ID, esubj, 
-		   makespaces(subj,newsSubjWidth), 
-		   efrom);
-	  PUTS (buffer);
-	  if (mark==1)
-	    mark=2;
-	}
-      }
-    }
-    END (HTML_PRE);
+        /* Get article count */       
+        for (i=0,art2=art; art2; art2=nextUnread(art2,0)) {
+          if (NextArt == art2)        
+            mark = 1;                 
+          if (!newsShowAllArticles && isread (NewsGroupS,art2->num))
+            continue;                 
+          i++;                        
+        }                             
+        if (!i && !newsShowAllArticles)
+          continue;                   
+        /* Write summary */           
+        sprintf (buffer, "%s % 4d <A HREF=\"news:%s\">%s</A>%s %s\n",
+                 (mark==1)?"<b>&gt;&gt;&gt;</b>":"   ", i, art->ID, esubj,
+                 makespaces(subj,newsSubjWidth),
+                 efrom);              
+        PUTS (buffer);                
+        if (mark==1)                  
+          mark=2;                     
+      } else { 
+        /* Write out subject info for each article */
+        for(art2=art;art2;art2=nextUnread(art2,0)) {
+          if (!newsShowAllArticles && isread (NewsGroupS,art2->num))
+            continue;                 
+          if (NextArt == art2)        
+            mark = 1;                 
+          compact_string (art2->SUBJ, subj, newsSubjWidth, 3,3);
+          compact_string (art2->FROM, from, newsAuthWidth, 3,3);
+          escapeString (subj, esubj); 
+          escapeString (from, efrom); 
+          sprintf (buffer, "%s      <A HREF=\"news:%s\">%s</A>%s %s\n",
+                   (mark==1)?"<b>&gt;&gt;&gt;</b>":"   ", art2->ID, esubj,
+                   makespaces(subj,newsSubjWidth),
+                   efrom);            
+          PUTS (buffer);              
+          if (mark==1)                
+            mark=2;                   
+        }                             
+      }                               
+    }                                 
+    PUTS ("</PRE>\n");                   
     sprintf (buffer, "Done listing %s", NewsGroup?NewsGroup : "newsgroup");
-    HTProgress (buffer);
-    LastGroup = NewsGroupS;
+    HTProgress (buffer);              
+    LastGroup = NewsGroupS;           
     return;
 }
-
-
-
 
 /*		Load by name					HTLoadNews
 **		============
@@ -2595,11 +2558,11 @@ PUBLIC int HTLoadNews ARGS4(
 {
   char command[257];			/* The whole command */
   char groupName[GROUP_NAME_LENGTH];	/* Just the group name */
-  char buf[LINE_LENGTH+1], *pt, *p1;
+  char buf[LINE_LENGTH+1], *p1;
   int status;				/* tcp return */
   int retries;			        /* A count of how hard we have tried */ 
-  BOOL group_wanted;			/* Flag: group was asked for, not article */
-  BOOL list_wanted;			/* Flag: group was asked for, not article */
+  HT_BOOL group_wanted;			/* Flag: group was asked for, not article */
+  HT_BOOL list_wanted;			/* Flag: group was asked for, not article */
   long first, last;			/* First and last articles asked for */
   
   int has_xover;
@@ -2650,23 +2613,23 @@ PUBLIC int HTLoadNews ARGS4(
      rules. For instance, if the article reference contains a '#',
      the rest of it is lost -- JFG 10/7/92, from a bug report 
   */
-  if (!my_strncasecmp (arg, "news:", 5))
+  if (!strncasecomp (arg, "news:", 5))
     p1 = arg + 5;  /* Skip "news:" prefix */
-  if (group_wanted) {
-    strcpy (command, "GROUP ");
-    first = 0;
-    last = 0;
-    strcpy (groupName, p1);
-    strcat (command, groupName);
-  } else if (!list_wanted) {
-    strcpy (command, "ARTICLE ");
-    if (strchr(p1, '<')==0) 
-      strcat(command,"<");
-    strcat(command, p1);
-    if (strchr(p1, '>')==0) 
-	strcat(command,">");
-  } else {
-	command[0] = 0;
+  if (group_wanted) {                 
+    strcpy (command, "GROUP ");       
+    first = 0;                        
+    last = 0;                         
+    strcpy (groupName, p1);           
+    strcat (command, groupName);      
+  } else if (!list_wanted) {          
+    strcpy (command, "ARTICLE ");     
+    if (strchr(p1, '<')==0)           
+      strcat(command,"<");            
+    strcat(command, p1);              
+    if (strchr(p1, '>')==0)           
+        strcat(command,">");          
+  } else {                            
+        command[0] = 0;               
   }
   
   {
@@ -2696,14 +2659,13 @@ PUBLIC int HTLoadNews ARGS4(
 	  switch(status){
 	  case 1:
 	    /* Couldn't get it. */
-	    START(HTML_TITLE);
+	    PUTS("<TITLE>");
 	    PUTS("Could Not Retrieve Information");
-	    END(HTML_TITLE);
+	    PUTS("</TITLE>\n");
 	    PUTS("Sorry, could not retrieve information.");
 	    (*targetClass.end_document)(target);
 	    (*targetClass.free)(target);
 	    return HT_LOADED;
-
 	  case 2:
 	    if (retries<=1) {
 	      /* Since we reallocate on each retry, free here. */
@@ -2737,18 +2699,18 @@ PUBLIC int HTLoadNews ARGS4(
 
       /* FLUSH!!! */
       HTInitInput(s);
-
+      
       /* read_list () will actually take care of its own command stuff */
-      if (!list_wanted) {
-	status = response(command);
-	strcpy (buf, response_text);
-      } else { 
-	status = 211;
-      }
+      if (!list_wanted) {             
+        status = response(command);   
+        strcpy (buf, response_text);  
+      } else {                        
+        status = 211;                 
+      }                               
 
 #ifndef DISABLE_TRACE
       if (www2Trace)
-	fprintf (stderr, "News: Sent '%s', status %d\n", command, status);
+	  fprintf (stderr, "News: Sent '%s', status %d\n", command, status);
 #endif
       if (status < 0) 
 	break;
@@ -2765,12 +2727,12 @@ PUBLIC int HTLoadNews ARGS4(
       if (list_wanted) {
 	/* Destroy all the article stuff */
 	ClearArtList ();
-	if (NewsGroupS) 
+        if (NewsGroupS)
 	  NewsGroupS = NULL;
 	if (NewsGroup)
 	  free (NewsGroup);
 	NewsGroup = NULL;
-	NextArt = NULL;
+        NextArt = NULL;
 	read_list();
 	HTMeter (100,NULL);
 	HTDoneWithIcon ();
@@ -2803,16 +2765,3 @@ PUBLIC int HTLoadNews ARGS4(
 
 PUBLIC HTProtocol HTNews = { "news", HTLoadNews, NULL };
 PUBLIC HTProtocol HTNNTP = { "nntp", HTLoadNews, NULL };
-
-
-
-
-
-
-
-
-
-
-
-
-

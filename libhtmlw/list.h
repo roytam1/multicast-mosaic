@@ -15,15 +15,15 @@
 typedef struct LISTSTRUCT  *List;
 
 extern List ListCreate();
-extern void ListDestroy();
-extern int  ListAddEntry();
-extern int  ListDeleteEntry();
-extern int  ListMakeEntryCurrent();
-extern int  ListCount();
+extern void ListDestroy(List theList);
+extern int  ListAddEntry(List theList, char *v);
+extern int  ListDeleteEntry(List theList, char *v);
+extern int  ListMakeEntryCurrent(List theList, char *entry);
+extern int  ListCount(List theList);
 
-extern char *ListHead();
-extern char *ListTail();
-extern char *ListCurrent();
-extern char *ListNext();
-extern char *ListPrev();
-extern char *ListGetIndexedEntry();
+extern char *ListHead(List theList);
+extern char *ListTail(List theList);
+extern char *ListCurrent(List theList);
+extern char *ListNext(List theList);
+extern char *ListPrev(List theList);
+extern char *ListGetIndexedEntry(List theList, int number);

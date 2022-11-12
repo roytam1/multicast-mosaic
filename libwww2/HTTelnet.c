@@ -12,9 +12,12 @@
 **	17 Dec 92 Tn3270 added, bug fix. (DD)
 **	 2 Feb 93 Split from HTAccess.c. Registration.(TBL)
 */
-#include "../config.h"
+
 /* Implements:
 */
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "HTTelnet.h"
 
 #include "HTParse.h"
@@ -48,31 +51,23 @@ PRIVATE void make_system_secure ARGS1(char *, str)
 	char *ptr1, *ptr2;
 
 	if ((str == NULL)||(*str == '\0'))
-	{
 		return;
-	}
 
 	/*
 	 * remove leading '-' or '+' by making it into whitespace that
 	 * will be stripped later.
 	 */
 	if ((*str == '-')||(*str == '+'))
-	{
 		*str = ' ';
-	}
 
 	ptr1 = ptr2 = str;
 
-	while (*ptr1 != '\0')
-	{
+	while (*ptr1 != '\0') {
 		if ((!isalpha((int)*ptr1))&&(!isdigit((int)*ptr1))&&
-			(*ptr1 != '.')&&(*ptr1 != '_')&&
-			(*ptr1 != '+')&&(*ptr1 != '-'))
-		{
+		    (*ptr1 != '.')&&(*ptr1 != '_')&&
+		    (*ptr1 != '+')&&(*ptr1 != '-')) {
 			ptr1++;
-		}
-		else
-		{
+		} else {
 			*ptr2 = *ptr1;
 			ptr2++;
 			ptr1++;
@@ -92,28 +87,22 @@ PRIVATE void run_a_command ARGS1(char *, command)
 	alen = 10;
 	argv = (char **)malloc(10 * sizeof(char *));
 	if (argv == NULL)
-	{
 		return;
-	}
 	argc = 0;
 
 	str = strtok(command, " \t\n");
-	while (str != NULL)
-	{
+	while (str != NULL) {
 		argv[argc] = strdup(str);
 		argc++;
-		if (argc >= alen)
-		{
+		if (argc >= alen) {
 			int i;
 			char **tmp_av;
 
 			tmp_av = (char **)malloc((alen + 10) * sizeof(char *));
-			if (tmp_av == NULL)
-			{
+			if (tmp_av == NULL) {
 				return;
 			}
-			for (i=0; i<alen; i++)
-			{
+			for (i=0; i<alen; i++) {
 				tmp_av[i] = argv[i];
 			}
 			alen += 10;
@@ -124,12 +113,9 @@ PRIVATE void run_a_command ARGS1(char *, command)
 	}
 	argv[argc] = NULL;
 
-	if (fork() == 0)
-	{
+	if (fork() == 0) {
 		execvp(argv[0], argv);
-	}
-	else
-	{
+	} else {
 		int i;
 
 		/*
@@ -137,17 +123,14 @@ PRIVATE void run_a_command ARGS1(char *, command)
 		 * up when it exits.
 		 */
 
-		for (i=0; i<argc; i++)
-		{
-			if (argv[i] != NULL)
-			{
+		for (i=0; i<argc; i++) {
+			if (argv[i] != NULL) {
 				free(argv[i]);
 			}
 		}
 		free((char *)argv);
 	}
 }
-
 
 /*	Telnet or "rlogin" access
 **	-------------------------
@@ -161,8 +144,7 @@ PRIVATE int remote_session ARGS2(char *, access, char *, host)
   enum _login_protocol { telnet, rlogin, tn3270 } login_protocol;
   extern char *global_xterm_str;
 
-  if (!access || !host)
-    {
+  if (!access || !host) {
       application_user_feedback 
         ("Cannot open remote session, because\nURL is malformed.\0");
       return HT_NO_DATA;
@@ -174,8 +156,7 @@ PRIVATE int remote_session ARGS2(char *, access, char *, host)
         telnet;
 
   /* Make sure we won't overrun the size of command with a huge host string */
-  if (strlen(host) > 200)
-    {
+  if (strlen(host) > 200) {
 	host[200] = '\0';
     }
   
@@ -183,17 +164,13 @@ PRIVATE int remote_session ARGS2(char *, access, char *, host)
   hostname = strchr(host, '@');
   port = strchr(host, ':');
   
-  if (hostname) 
-    {
+  if (hostname) {
       *hostname++ = 0;	/* Split */
-    } 
-  else 
-    {
+    } else {
       hostname = host;
       user = 0;		/* No user specified */
     }
-  if (port) 
-    {
+  if (port) {
       *port++ = 0;	/* Split */
       portnum = atoi(port);
     }
@@ -207,36 +184,27 @@ PRIVATE int remote_session ARGS2(char *, access, char *, host)
   
   xterm_str = global_xterm_str;
   
-  if (login_protocol == rlogin)
-    {
+  if (login_protocol == rlogin) {
       /* For rlogin, we should use -l user. */
-      if ((port)&&(portnum > 0)&&(portnum < 63336))
-	{
+      if ((port)&&(portnum > 0)&&(portnum < 63336)) {
           sprintf(command, "%s -e %s %s %d %s %s", xterm_str, access,
               hostname,
               portnum,
               user ? "-l" : "",
               user ? user : "");
-	}
-      else
-	{
+	} else {
           sprintf(command, "%s -e %s %s %s %s", xterm_str, access,
               hostname,
               user ? "-l" : "",
               user ? user : "");
 	}
-    }
-  else
-    {
+    } else {
       /* For telnet, -l isn't safe to use at all -- most platforms
          don't understand it. */
-      if ((port)&&(portnum > 0)&&(portnum < 63336))
-	{
+      if ((port)&&(portnum > 0)&&(portnum < 63336)) {
           sprintf(command, "%s -e %s %s %d", xterm_str, access,
               hostname, portnum);
-	}
-      else
-	{
+	} else {
           sprintf(command, "%s -e %s %s", xterm_str, access,
               hostname);
 	}
@@ -249,8 +217,7 @@ PRIVATE int remote_session ARGS2(char *, access, char *, host)
   
   /* No need for application feedback if we're rlogging directly
      in... */
-  if (user && login_protocol != rlogin)
-    {
+  if (user && login_protocol != rlogin) {
       char str[200];
       /* Sleep to let the xterm get up first.
          Otherwise, the popup will get buried. */

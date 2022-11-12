@@ -7,7 +7,6 @@
 **	Bugs:
 **		strings written must be less than buffer size.
 */
-#include "../config.h"
 #include "HTMosaicHTML.h"
 
 #define BUFFER_SIZE 4096;	/* Tradeoff */
@@ -27,16 +26,10 @@ extern int www2Trace;
 
 struct _HTStream {
 	WWW_CONST HTStreamClass *	isa;
-
 	HText * 		text;
         int interrupted;
         int compressed;
 };
-
-/*	Write the buffer out to the socket
-**	----------------------------------
-*/
-
 
 /*_________________________________________________________________________
 **
@@ -49,65 +42,52 @@ struct _HTStream {
 
 PRIVATE void HTMosaicHTML_put_character ARGS2(HTStream *, me, char, c)
 {
-    HText_appendCharacter(me->text, c);
+	HText_appendCharacter(me->text, c);
 }
-
-
 
 /*	String handling
 **	---------------
-**
 */
 PRIVATE void HTMosaicHTML_put_string ARGS2(HTStream *, me, WWW_CONST char*, s)
 {
-    HText_appendText(me->text, s);
+	HText_appendText(me->text, s);
 }
-
 
 PRIVATE void HTMosaicHTML_write ARGS3(HTStream *, me, WWW_CONST char*, s, int, l)
 {
-    HText_appendBlock (me->text, s, l);
+	HText_appendBlock (me->text, s, l);
 }
-
-
 
 /*	Free an HTML object
 **	-------------------
 **
-**	Note that the SGML parsing context is freed, but the created object is not,
-**	as it takes on an existence of its own unless explicitly freed.
+** Note that the SGML parsing context is freed, but the created object is not,
+** as it takes on an existence of its own unless explicitly freed.
 */
 PRIVATE void HTMosaicHTML_free ARGS1(HTStream *, me)
 {
-  if (me->compressed != COMPRESSED_NOT)
-    {
+	if (me->compressed != COMPRESSED_NOT) {
 #ifndef DISABLE_TRACE
-      if (www2Trace)
-        fprintf 
-          (stderr, 
-           "[HTMosaicHTMLFree] OK, we're going to decompress HText\n");
+if (www2Trace) fprintf (stderr, 
+"[HTMosaicHTMLFree] OK, we're going to decompress HText\n");
 #endif
-      HTCompressedHText (me->text, me->compressed, 0);
-    }
-
-  free(me);
+		HTCompressedHText (me->text, me->compressed, 0);
+	}
+	free(me);
 }
 
-/*	End writing
-*/
+/*	End writing */
 
 PRIVATE void HTMosaicHTML_end_document ARGS1(HTStream *, me)
 {
-    HText_endAppend(me->text);
+	HText_endAppend(me->text);
 }
 
 PRIVATE void HTMosaicHTML_handle_interrupt ARGS1(HTStream *, me)
 {
-  me->interrupted = 1;
-  HText_doAbort(me->text);
+	me->interrupted = 1;
+	HText_doAbort(me->text);
 }
-
-
 
 /*		Structured Object Class
 **		-----------------------
@@ -133,19 +113,16 @@ PUBLIC HTStream* HTMosaicHTMLPresent ARGS5(
         HTFormat,               format_in,
         int,                    compressed)
 {
-  HTStream* me = (HTStream*)malloc(sizeof(*me));
+	HTStream* me = (HTStream*)malloc(sizeof(*me));
 
 #ifndef DISABLE_TRACE
-  if (www2Trace)
-    fprintf (stderr, "[HTMosaicHTMLPresent] Hi there!  Compressed is %d\n", 
-             compressed);
+if (www2Trace) fprintf(stderr,"[HTMosaicHTMLPresent] Hi there!Compressed is %d\n",
+compressed);
 #endif
-
-  me->isa = &HTMosaicHTML;       
-  me->text = HText_new();
-  me->interrupted = 0;
-  me->compressed = compressed;
-  HText_beginAppend(me->text);
-  
-  return (HTStream*) me;
+	me->isa = &HTMosaicHTML;       
+	me->text = HText_new();
+	me->interrupted = 0;
+	me->compressed = compressed;
+	HText_beginAppend(me->text);
+	return (HTStream*) me;
 }

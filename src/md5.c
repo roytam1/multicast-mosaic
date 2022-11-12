@@ -1,59 +1,9 @@
-/****************************************************************************
- * NCSA Mosaic for the X Window System                                      *
- * Software Development Group                                               *
- * National Center for Supercomputing Applications                          *
- * University of Illinois at Urbana-Champaign                               *
- * 605 E. Springfield, Champaign IL 61820                                   *
- * mosaic@ncsa.uiuc.edu                                                     *
- *                                                                          *
- * Copyright (C) 1993, Board of Trustees of the University of Illinois      *
- *                                                                          *
- * NCSA Mosaic software, both binary and source (hereafter, Software) is    *
- * copyrighted by The Board of Trustees of the University of Illinois       *
- * (UI), and ownership remains with the UI.                                 *
- *                                                                          *
- * The UI grants you (hereafter, Licensee) a license to use the Software    *
- * for academic, research and internal business purposes only, without a    *
- * fee.  Licensee may distribute the binary and source code (if released)   *
- * to third parties provided that the copyright notice and this statement   *
- * appears on all copies and that no charge is associated with such         *
- * copies.                                                                  *
- *                                                                          *
- * Licensee may make derivative works.  However, if Licensee distributes    *
- * any derivative work based on or derived from the Software, then          *
- * Licensee will (1) notify NCSA regarding its distribution of the          *
- * derivative work, and (2) clearly notify users that such derivative       *
- * work is a modified version and not the original NCSA Mosaic              *
- * distributed by the UI.                                                   *
- *                                                                          *
- * Any Licensee wishing to make commercial use of the Software should       *
- * contact the UI, c/o NCSA, to negotiate an appropriate license for such   *
- * commercial use.  Commercial use includes (1) integration of all or       *
- * part of the source code into a product for sale or license by or on      *
- * behalf of Licensee to third parties, or (2) distribution of the binary   *
- * code or source code to third parties that need it to utilize a           *
- * commercial product sold or licensed by or on behalf of Licensee.         *
- *                                                                          *
- * UI MAKES NO REPRESENTATIONS ABOUT THE SUITABILITY OF THIS SOFTWARE FOR   *
- * ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED          *
- * WARRANTY.  THE UI SHALL NOT BE LIABLE FOR ANY DAMAGES SUFFERED BY THE    *
- * USERS OF THIS SOFTWARE.                                                  *
- *                                                                          *
- * By using or copying this Software, Licensee agrees to abide by the       *
- * copyright law and all other applicable laws of the U.S. including, but   *
- * not limited to, export control laws, and the terms of this license.      *
- * UI shall have the right to terminate this license immediately by         *
- * written notice upon Licensee's breach of, or non-compliance with, any    *
- * of its terms.  Licensee may be held legally responsible for any          *
- * copyright infringement that is caused or encouraged by Licensee's        *
- * failure to abide by the terms of this license.                           *
- *                                                                          *
- * Comments and questions are welcome and can be sent to                    *
- * mosaic-x@ncsa.uiuc.edu.                                                  *
- ****************************************************************************/
+/* Please read copyright.ncsa. Don't remove next line */
+#include "copyright.ncsa"
 
 /* Author: DXP */
-#include "../config.h"
+
+#include "../libhtmlw/HTML.h"
 #include "mosaic.h"
 
 /* MD5C.C - RSA Data Security, Inc., MD5 message-digest algorithm
@@ -151,8 +101,7 @@ Rotation is separate from addition to prevent recomputation.
 
 /* MD5 initialization. Begins an MD5 operation, writing a new context.
  */
-void MD5Init (context)
-MD5_CTX *context;                                        /* context */
+void MD5Init ( MD5_CTX *context)
 {
     context->count[0] = context->count[1] = 0;
 
@@ -167,10 +116,10 @@ MD5_CTX *context;                                        /* context */
   operation, processing another message block, and updating the
   context.
  */
-void MD5Update (context, input, inputLen)
-MD5_CTX *context;                                        /* context */
-unsigned char *input;                                /* input block */
-unsigned int inputLen;                     /* length of input block */
+void MD5Update (
+	MD5_CTX *context,                    /* context */
+	unsigned char *input,                /* input block */
+	unsigned int inputLen)               /* length of input block */
 {
     unsigned int i, index, partLen;
 
@@ -206,9 +155,9 @@ unsigned int inputLen;                     /* length of input block */
 /* MD5 finalization. Ends an MD5 message-digest operation, writing the
   the message digest and zeroizing the context.
  */
-void MD5Final (digest, context)
-unsigned char digest[16];                         /* message digest */
-MD5_CTX *context;                                       /* context */
+void MD5Final (
+	unsigned char digest[16], /* message digest */
+	MD5_CTX *context)
 {
     unsigned char bits[8];
     unsigned int index, padLen;
@@ -234,9 +183,7 @@ MD5_CTX *context;                                       /* context */
 
 /* MD5 basic transformation. Transforms state based on block.
  */
-static void MD5Transform (state, block)
-UINT4 state[4];
-unsigned char block[64];
+static void MD5Transform ( UINT4 state[4], unsigned char block[64])
 {
     UINT4 a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 
@@ -327,10 +274,7 @@ unsigned char block[64];
 /* Encodes input (UINT4) into output (unsigned char). Assumes len is
   a multiple of 4.
  */
-static void Encode (output, input, len)
-unsigned char *output;
-UINT4 *input;
-unsigned int len;
+static void Encode ( unsigned char *output, UINT4 *input, unsigned int len)
 {
     unsigned int i, j;
 
@@ -345,10 +289,7 @@ unsigned int len;
 /* Decodes input (unsigned char) into output (UINT4). Assumes len is
   a multiple of 4.
  */
-static void Decode (output, input, len)
-UINT4 *output;
-unsigned char *input;
-unsigned int len;
+static void Decode ( UINT4 *output, unsigned char *input, unsigned int len)
 {
     unsigned int i, j;
 
@@ -359,10 +300,7 @@ unsigned int len;
 
     /* Note: Replace "for loop" with standard memcpy if possible.*/
 
-static void MD5_memcpy (output, input, len)
-POINTER output;
-POINTER input;
-unsigned int len;
+static void MD5_memcpy ( POINTER output, POINTER input, unsigned int len)
 {
     unsigned int i;
 
@@ -372,10 +310,7 @@ unsigned int len;
 
 /* Note: Replace "for loop" with standard memset if possible.*/
 
-static void MD5_memset (output, value, len)
-POINTER output;
-int value;
-unsigned int len;
+static void MD5_memset ( POINTER output, int value, unsigned int len)
 {
     unsigned int i;
     
@@ -444,12 +379,11 @@ void MD5File(char *filename, unsigned char *result) {
  * Returns:             hex points to the formatted string
  * Notes:               no NULL character is added
  ******************************************************************************/
-void MD5Convert_to_Hex(unsigned char *digest, unsigned char *hex) {
-
+void MD5Convert_to_Hex(unsigned char *digest, unsigned char *hex) 
+{
     int i;
     unsigned char *p = hex;
 
     for(i=0; i<16; i++, p+=2)
 	sprintf((char *)p, "%02x",digest[i]);
-
 }

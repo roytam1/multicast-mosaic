@@ -13,4 +13,4 @@ extern int KCMS_Return_Format;
 #define GIF 2
 
 
-void CheckKCMS(void);
+void CheckKCMS();

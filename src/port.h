@@ -14,7 +14,7 @@ typedef struct {
 	/* callBack(void *callBackData) */
 	void (*callBack) (); /* called when connection dropped*/
 	void *callBackData;
-	} PortDescriptor;
+} PortDescriptor;
 
 #define PORT_DOT_H_BEEN_INCLUDED_BEFORE
 #endif

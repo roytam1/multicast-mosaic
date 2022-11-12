@@ -1,57 +1,6 @@
-/****************************************************************************
- * NCSA Mosaic for the X Window System                                      *
- * Software Development Group                                               *
- * National Center for Supercomputing Applications                          *
- * University of Illinois at Urbana-Champaign                               *
- * 605 E. Springfield, Champaign IL 61820                                   *
- * mosaic@ncsa.uiuc.edu                                                     *
- *                                                                          *
- * Copyright 1993-1995, Board of Trustees of the University of Illinois     *
- *                                                                          *
- * NCSA Mosaic software, both binary and source (hereafter, Software) is    *
- * copyrighted by The Board of Trustees of the University of Illinois       *
- * (UI), and ownership remains with the UI.                                 *
- *                                                                          *
- * The UI grants you (hereafter, Licensee) a license to use the Software    *
- * for academic, research and internal business purposes only, without a    *
- * fee.  Licensee may distribute the binary and source code (if released)   *
- * to third parties provided that the copyright notice and this statement   *
- * appears on all copies and that no charge is associated with such         *
- * copies.                                                                  *
- *                                                                          *
- * Licensee may make derivative works.  However, if Licensee distributes    *
- * any derivative work based on or derived from the Software, then          *
- * Licensee will (1) notify NCSA regarding its distribution of the          *
- * derivative work, and (2) clearly notify users that such derivative       *
- * work is a modified version and not the original NCSA Mosaic              *
- * distributed by the UI.                                                   *
- *                                                                          *
- * Any Licensee wishing to make commercial use of the Software should       *
- * contact the UI, c/o NCSA, to negotiate an appropriate license for such   *
- * commercial use.  Commercial use includes (1) integration of all or       *
- * part of the source code into a product for sale or license by or on      *
- * behalf of Licensee to third parties, or (2) distribution of the binary   *
- * code or source code to third parties that need it to utilize a           *
- * commercial product sold or licensed by or on behalf of Licensee.         *
- *                                                                          *
- * UI MAKES NO REPRESENTATIONS ABOUT THE SUITABILITY OF THIS SOFTWARE FOR   *
- * ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED          *
- * WARRANTY.  THE UI SHALL NOT BE LIABLE FOR ANY DAMAGES SUFFERED BY THE    *
- * USERS OF THIS SOFTWARE.                                                  *
- *                                                                          *
- * By using or copying this Software, Licensee agrees to abide by the       *
- * copyright law and all other applicable laws of the U.S. including, but   *
- * not limited to, export control laws, and the terms of this license.      *
- * UI shall have the right to terminate this license immediately by         *
- * written notice upon Licensee's breach of, or non-compliance with, any    *
- * of its terms.  Licensee may be held legally responsible for any          *
- * copyright infringement that is caused or encouraged by Licensee's        *
- * failure to abide by the terms of this license.                           *
- *                                                                          *
- * Comments and questions are welcome and can be sent to                    *
- * mosaic-x@ncsa.uiuc.edu.                                                  *
- ****************************************************************************/
-#include "../config.h"
+/* Please read copyright.ncsa. Don't remove next line */
+#include "copyright.ncsa"
+
 #include <stdio.h>
 #include <Xm/PanedW.h>
 #include <Xm/PushB.h>
@@ -75,6 +24,7 @@
 #endif
 #include <string.h>
 #include "proxy.h"
+#include "../libhtmlw/HTML.h"
 #include "mosaic.h"
 
 #define EDIT_ERROR "No entry in the proxy list is currently selected.\n\nTo edit an entry in the proxy list, select\nit with a double mouse click."
@@ -84,6 +34,7 @@
 #define SAVED_AOK "%s has been saved."
 
 #define REMOVE_ERROR "No entry in the list is currently selected.\n\nTo remove an entry in the list, select\n it and then click on the remove widget."
+
 #define COMMIT_PROXY_EMPTY_ERROR "A scheme must be specified for this proxy entry."
 #define COMMIT_ADDR_EMPTY_ERROR "An address must be specified for this proxy entry."
 #define COMMIT_PORT_EMPTY_ERROR "A port number must be specified for this proxy entry."
@@ -92,20 +43,6 @@
 
 #define EDIT 0
 #define ADD  1
-
-extern struct Proxy *proxy_list, *noproxy_list;
-static struct ProxyDomain *pdList = NULL;
-
-Widget ProxyDialog, EditProxyDialog, EditNoProxyDialog, EditProxyDomainDialog;
-
-struct InfoFields {
-	Widget proxy_text;
-	Widget addr_text;
-	Widget port_text;
-	Widget alive;
-	Widget domain_text;
-	Widget trans_menu;
-};
 
 struct EditInfo {
 	int fProxy; /* Is this a Proxy List Dialog? */
@@ -120,51 +57,79 @@ struct EditInfo {
 	struct Proxy *proxy_list;
 };
 
+extern struct Proxy *proxy_list, *noproxy_list;
+static struct ProxyDomain *pdList = NULL;
 
-void AddProxyToList(), ShowProxyList(), EditProxyInfo(), CommitProxyInfo(),
-	DismissProxy(), ClearProxyText(), FillProxyText(),  WriteProxies(),
-	RemoveProxyInfo(), EditProxyDomainInfo(), DisplayErrorMessage(), 
-	ShowProxyDomainList(), CommitProxyDomainInfo(),
-	CallEdit(), CallAdd(), CallEditDomain(), CallAddDomain(), 
-	CallRemoveProxy(), DestroyDialog(), PopProxyDialog(), DeleteProxy(),
-	EditNoProxyInfo(), CenterDialog(), ProxyHelpWindow(), HelpWindow(),
-	DisableProxy();
+Widget ProxyDialog, EditProxyDialog, EditNoProxyDialog, EditProxyDomainDialog;
+
+void AppendProxy(struct EditInfo *pEditInfo, struct Proxy *p);
+
+struct InfoFields {
+	Widget proxy_text;
+	Widget addr_text;
+	Widget port_text;
+	Widget alive;
+	Widget domain_text;
+	Widget trans_menu;
+};
+
+
+
+void AddProxyToList(struct EditInfo *pEditInfo, struct Proxy *proxy);
+void ShowProxyList(struct EditInfo *pEditInfo);
+void EditProxyInfo( Widget w, XtPointer client, XtPointer call, int type);
+void CommitProxyInfo( Widget w, XtPointer client, XtPointer call);
+void DismissProxy( Widget w, XtPointer client, XtPointer call);
+void ClearProxyText(struct EditInfo *p);
+void FillProxyText(struct EditInfo *p);
+void WriteProxies(Widget w, XtPointer client, XtPointer call);
+void RemoveProxyInfo(Widget w, XtPointer client, XtPointer call, int type);
+void EditProxyDomainInfo( Widget w, XtPointer client, XtPointer call, int type);
+void ShowProxyDomainList(struct EditInfo *pEditInfo);
+void CommitProxyDomainInfo(Widget w, XtPointer client, XtPointer call);
+void CallEdit(Widget w, XtPointer client, XtPointer call);
+void CallEditDomain(Widget w, XtPointer client, XtPointer call);
+void CallAdd(Widget w, XtPointer client, XtPointer call) ;
+void CallAddDomain(Widget w, XtPointer client, XtPointer call);
+void CallRemoveProxy(Widget w, XtPointer client, XtPointer call);
+void CallRemoveProxyDomain(Widget w, XtPointer client, XtPointer call);
+void DestroyDialog(Widget w, XtPointer client, XtPointer call);
+void PopProxyDialog(mo_window *win, struct Proxy *list, int fProxy);
+void DeleteProxy(struct EditInfo *pEditInfo, struct Proxy *p);
+void EditNoProxyInfo( Widget w, XtPointer client, XtPointer call, int type);
+void CenterDialog(Widget dialog, XtPointer client, XtPointer call);
+void ProxyHelpWindow(Widget w, XtPointer client, XtPointer call);
+void HelpWindow(Widget w, XtPointer client, XtPointer call);
+
 
 #ifdef OTHER_TRANSPORT
 void	SetOptionMenuButtonLabel();
 #endif
 
-struct Proxy *FindProxyEntry();
-struct ProxyDomain *FindProxyDomainEntry();
+struct Proxy * FindProxyEntry(struct EditInfo *pEditInfo, char *txt);
+struct ProxyDomain * FindProxyDomainEntry(struct ProxyDomain *pDomain,char *txt);
 
 static mo_window *mo_main_window;
 
-void
-ShowProxyDialog(mo_window *win)
+void ShowProxyDialog(mo_window *win)
 {
 	PopProxyDialog(win, proxy_list, TRUE);
 }
 
-void
-ShowNoProxyDialog(mo_window *win)
+void ShowNoProxyDialog(mo_window *win)
 {
 	PopProxyDialog(win, noproxy_list, FALSE);
 }
 
-void
-PopProxyDialog(mo_window *win, struct Proxy *list, int fProxy)
+void PopProxyDialog(mo_window *win, struct Proxy *list, int fProxy)
 {
-	Widget main_form, proxy_form, action_area, text_form;
+	Widget main_form, action_area;
 	Widget add, edit, remove, dismiss, help;
 	Widget save;
 	Widget scrolled;
-
-	int size, i, n;
+	int  n;
 	Arg args[20];
-
-	XmStringTable string_list;
-	struct Proxy *pCurrent;
-	static struct EditInfo *pEditInfo, *pAddInfo;
+	static struct EditInfo *pEditInfo;
 
 	XFontStruct *font;
 	XmFontList *fontlist;
@@ -204,7 +169,6 @@ PopProxyDialog(mo_window *win, struct Proxy *list, int fProxy)
 		XmNtitle,	"Proxies",
 		NULL);
 
-
 	fProxyDialog = 1;
 
 	main_form = XtVaCreateWidget("proxy_form",
@@ -222,6 +186,18 @@ PopProxyDialog(mo_window *win, struct Proxy *list, int fProxy)
 		XmNfractionBase, 6,
 		NULL);
 
+	dismiss = XtVaCreateManagedWidget("Dismiss", 
+		xmPushButtonWidgetClass, action_area,
+		XmNtopAttachment,	XmATTACH_FORM,
+		XmNbottomAttachment,	XmATTACH_FORM,
+		XmNleftAttachment,	XmATTACH_POSITION,
+		XmNleftPosition,	0,
+		XmNrightAttachment,	XmATTACH_POSITION,
+		XmNrightPosition,	1,
+		XmNshowAsDefault,	True,
+		XmNdefaultButtonShadowThickness,	1,
+		NULL);
+	
 	save = XtVaCreateManagedWidget("Save", 
 		xmPushButtonWidgetClass, action_area,
 		XmNtopAttachment,	XmATTACH_FORM,
@@ -270,18 +246,6 @@ PopProxyDialog(mo_window *win, struct Proxy *list, int fProxy)
 		XmNdefaultButtonShadowThickness,	1,
 		NULL);
 
-	dismiss = XtVaCreateManagedWidget("Dismiss", 
-		xmPushButtonWidgetClass, action_area,
-		XmNtopAttachment,	XmATTACH_FORM,
-		XmNbottomAttachment,	XmATTACH_FORM,
-		XmNleftAttachment,	XmATTACH_POSITION,
-		XmNleftPosition,	0,
-		XmNrightAttachment,	XmATTACH_POSITION,
-		XmNrightPosition,	1,
-		XmNshowAsDefault,	True,
-		XmNdefaultButtonShadowThickness,	1,
-		NULL);
-	
 	help = XtVaCreateManagedWidget("Help...", 
 		xmPushButtonWidgetClass, action_area,
 		XmNtopAttachment,	XmATTACH_FORM,
@@ -301,7 +265,6 @@ PopProxyDialog(mo_window *win, struct Proxy *list, int fProxy)
 	*/
 
 	n = 0;
-
 	XtSetArg(args[n], XmNwidth,	150); n++;
 	XtSetArg(args[n], XmNvisibleItemCount,	10); n++;
 	XtSetArg(args[n], XmNmargin,		1); n++;
@@ -314,7 +277,6 @@ PopProxyDialog(mo_window *win, struct Proxy *list, int fProxy)
 		XtSetArg(args[n], XmNfontList, fontlist); n++;
 	
 	scrolled = XmCreateScrolledList(main_form, "proxy_info", args, n);
-
 	XtManageChild(scrolled);
 
 	pEditInfo = (struct EditInfo *)calloc(1,sizeof(struct EditInfo));
@@ -329,33 +291,25 @@ PopProxyDialog(mo_window *win, struct Proxy *list, int fProxy)
 
         XtAddCallback(edit, XmNactivateCallback, CallEdit, pEditInfo);
 	XtAddCallback(scrolled, XmNdefaultActionCallback, CallEdit, pEditInfo);
-
 	XtAddCallback(add, XmNactivateCallback, CallAdd, pEditInfo);
-
         XtAddCallback(remove, XmNactivateCallback, CallRemoveProxy, pEditInfo);
         XtAddCallback(dismiss, XmNactivateCallback, DismissProxy, ProxyDialog);
 	XtAddCallback(save, XmNactivateCallback, WriteProxies, pEditInfo);
 	XtAddCallback(ProxyDialog, XmNdestroyCallback, DestroyDialog, &fProxyDialog);
 	XtAddCallback(ProxyDialog, XmNpopupCallback, CenterDialog, NULL);
-
 	XtAddCallback(help, XmNactivateCallback, ProxyHelpWindow, pEditInfo);
-
 	XtManageChild(main_form);
-
 	ShowProxyList(pEditInfo);
-
 	XtPopup(ProxyDialog, XtGrabNone);
 }
 
-void
-ProxyHelpWindow(Widget w, XtPointer client, XtPointer call)
+void ProxyHelpWindow(Widget w, XtPointer client, XtPointer call)
 {
 	char *html_file = ((struct EditInfo *)client)->help_file;
 	HelpWindow(w, html_file, call);
 }
 
-void
-HelpWindow(Widget w, XtPointer client, XtPointer call)
+void HelpWindow(Widget w, XtPointer client, XtPointer call)
 {
 	char *html_file = (char *)client;
 
@@ -363,8 +317,7 @@ HelpWindow(Widget w, XtPointer client, XtPointer call)
 			NULL, NULL);
 }
 
-void
-CenterDialog(Widget dialog, XtPointer client, XtPointer call)
+void CenterDialog(Widget dialog, XtPointer client, XtPointer call)
 {
 	Position x, y;
 	Dimension width, height;
@@ -398,8 +351,7 @@ CenterDialog(Widget dialog, XtPointer client, XtPointer call)
 		NULL);
 }
 
-void
-CallEdit(Widget w, XtPointer client, XtPointer call)
+void CallEdit(Widget w, XtPointer client, XtPointer call)
 {
 	struct EditInfo *pEditInfo;
 
@@ -411,8 +363,7 @@ CallEdit(Widget w, XtPointer client, XtPointer call)
 		EditNoProxyInfo(w, client, call, EDIT);
 }
 
-void
-CallAdd(Widget w, XtPointer client, XtPointer call)
+void CallAdd(Widget w, XtPointer client, XtPointer call)
 {
 	struct EditInfo *pEditInfo;
 	struct ProxyDomain *p, *next;
@@ -435,23 +386,18 @@ CallAdd(Widget w, XtPointer client, XtPointer call)
 		EditNoProxyInfo(w, client, call, ADD);
 }
 
-void
-CallRemoveProxy(Widget w, XtPointer client, XtPointer call)
+void CallRemoveProxy(Widget w, XtPointer client, XtPointer call)
 {
 	RemoveProxyInfo(w, client, call, PROXY);
 }
 
-void
-CallRemoveProxyDomain(Widget w, XtPointer client, XtPointer call)
+void CallRemoveProxyDomain(Widget w, XtPointer client, XtPointer call)
 {
 	RemoveProxyInfo(w, client, call, PROXY_DOMAIN);
 }
 
-
-XmString
-GetStringFromScrolled(Widget w)
+XmString GetStringFromScrolled(Widget w)
 {
-	struct Proxy *p;
 	int selected_count;
 	XmStringTable selected_table;
 
@@ -466,27 +412,15 @@ GetStringFromScrolled(Widget w)
 	return selected_table[0];
 }
 
-void
-EditNoProxyInfo(w, client, call, type)
-Widget w;
-XtPointer client;
-XtPointer call;
-int type;
+void EditNoProxyInfo( Widget w, XtPointer client, XtPointer call, int type)
 {
-	Widget text_form, form, protocol, address, port, trans;
-	Widget trans_rc, label;
-	Widget main_form, rc, rc2, rc3;
+	Widget text_form, form, address, port;
+	Widget main_form, rc, rc2;
 	Widget action_area, sep, dismiss, help;
 	Widget commit;
-
-	static Widget  add, remove, edit;
-
-	XmString trans_string, http_string, cci_string, selected_string;
+	XmString selected_string;
 	char *selected_text;
-
-	struct EditInfo *pEditInfo, *pEditDomainInfo, *pAddDomainInfo;
-	struct InfoFields *IF;
-
+	struct EditInfo *pEditInfo;
 	static int fEditProxyDialog = 0;
 
 	/*
@@ -666,12 +600,8 @@ int type;
 		XmNcolumns, 6,
 		NULL);
 	XtManageChild(form);
-
 	XtManageChild(rc2);
-
 	XtManageChild(text_form);
-
-
 	XtManageChild(rc);
 	XtManageChild(main_form);
 
@@ -689,31 +619,21 @@ int type;
 	XtPopup(EditNoProxyDialog, XtGrabNone);
 }
 
-void
-EditProxyInfo(w, client, call, type)
-Widget w;
-XtPointer client;
-XtPointer call;
-int type;
+void EditProxyInfo( Widget w, XtPointer client, XtPointer call, int type)
 {
-	Widget text_form, form, protocol, address, port, alive, trans;
+	Widget text_form, form, protocol, address, port;
 	Widget trans_rc, label;
 	Widget main_form, rc, rc2, rc3;
 	Widget action_area, sep, dismiss, help;
 	Widget commit;
-
 	static Widget  add, remove, edit;
-
-	XmString trans_string, http_string, cci_string, selected_string;
+	XmString selected_string;
 	char *selected_text;
-
-	struct EditInfo *pEditInfo, *pEditDomainInfo, *pAddDomainInfo;
-	struct InfoFields *IF;
+	struct EditInfo *pEditInfo ;
 
 #ifdef OTHER_TRANSPORT
 	int trans_val;
 #endif
-
 	static int fEditProxyDialog = 0;
 
 	/*
@@ -765,7 +685,6 @@ int type;
 		XtPopup(EditProxyDialog, XtGrabNone);
 		return;
 	}
-
 	EditProxyDialog = XtVaCreatePopupShell("Proxies",
 		xmDialogShellWidgetClass, XtParent(w),
 		XmNdeleteResponse, XmDESTROY,
@@ -994,11 +913,8 @@ int type;
 
 	XtManageChild(pEditInfo->IF->trans_menu);
 #endif
-
 	XtManageChild(rc2);
-
 	XtManageChild(text_form);
-
 
 	trans_rc = XtVaCreateWidget("trans_rc",
 		xmRowColumnWidgetClass, rc,
@@ -1023,7 +939,6 @@ int type;
 		XmNmargin,		1,
 		NULL);
 
-
 	XtManageChild(pEditInfo->translation);
 
 	rc3 = XtVaCreateWidget("rowcolumn3",
@@ -1046,9 +961,7 @@ int type;
 		NULL);
 
 	XtManageChild(rc3);
-		
 	XtManageChild(trans_rc);
-
 	XtManageChild(rc);
 	XtManageChild(main_form);
 
@@ -1073,24 +986,17 @@ int type;
 	XtPopup(EditProxyDialog, XtGrabNone);
 }
 
-void
-CallEditDomain(Widget w, XtPointer client, XtPointer call)
+void CallEditDomain(Widget w, XtPointer client, XtPointer call)
 {
 	EditProxyDomainInfo(w, client, call, EDIT);
 }
 
-void
-CallAddDomain(Widget w, XtPointer client, XtPointer call)
+void CallAddDomain(Widget w, XtPointer client, XtPointer call)
 {
 	EditProxyDomainInfo(w, client, call, ADD);
 }
 
-void
-EditProxyDomainInfo(w, client, call, type)
-Widget w;
-XtPointer client;
-XtPointer call;
-int type;
+void EditProxyDomainInfo( Widget w, XtPointer client, XtPointer call, int type)
 {
 	Widget main_form, action_area, sep, dismiss, commit, help;
 	Widget rc, form, domain;
@@ -1256,8 +1162,7 @@ int type;
 	XtPopup(EditProxyDomainDialog, XtGrabNone);
 }
 
-void
-ShowProxyList(struct EditInfo *pEditInfo)
+void ShowProxyList(struct EditInfo *pEditInfo)
 {
 	Widget scrolled;
 	struct Proxy *proxy;
@@ -1274,8 +1179,7 @@ ShowProxyList(struct EditInfo *pEditInfo)
 	}
 }
 
-void
-AddProxyToList(struct EditInfo *pEditInfo, struct Proxy *proxy)
+void AddProxyToList(struct EditInfo *pEditInfo, struct Proxy *proxy)
 {
 	char *p;
 	XmString string;
@@ -1301,8 +1205,7 @@ AddProxyToList(struct EditInfo *pEditInfo, struct Proxy *proxy)
 
 }
 
-struct Proxy *
-GetNoProxy(char *access, char *site)
+struct Proxy * GetNoProxy(char *access, char *site)
 {
 	struct Proxy *p = noproxy_list;
 	char *port = NULL;
@@ -1352,8 +1255,7 @@ struct Proxy *p = proxy_list;
 }
 
 
-struct Proxy *
-GetProxy(char *proxy, char *access, int fMatchEnd)
+struct Proxy * GetProxy(char *proxy, char *access, int fMatchEnd)
 {
 	struct Proxy *p = proxy_list;
 	struct ProxyDomain *pd;
@@ -1408,11 +1310,10 @@ GetProxy(char *proxy, char *access, int fMatchEnd)
 	return NULL;
 }
 
-struct Proxy *
-FindProxyEntry(struct EditInfo *pEditInfo, char *txt)
+struct Proxy * FindProxyEntry(struct EditInfo *pEditInfo, char *txt)
 {
 	struct Proxy *p;
-	int i, fProxy;
+	int fProxy;
 	char proxy[30], address[50], port[8], *ptr;
 
 	fProxy = pEditInfo->fProxy;
@@ -1424,8 +1325,7 @@ FindProxyEntry(struct EditInfo *pEditInfo, char *txt)
 			*ptr++ = '\0';
 			strcpy(port,ptr);
 		}
-	}
-	else {
+	} else {
 		if ((ptr = strchr(txt,':')) != NULL) {
 			*ptr = ' '; 
 			sscanf(txt,"%s %s", address, port);
@@ -1457,8 +1357,7 @@ FindProxyEntry(struct EditInfo *pEditInfo, char *txt)
 	return p;
 }
 
-struct ProxyDomain *
-FindProxyDomainEntry(struct ProxyDomain *pDomain, char *txt)
+struct ProxyDomain * FindProxyDomainEntry(struct ProxyDomain *pDomain, char *txt)
 {
 	struct ProxyDomain *p;
 
@@ -1470,11 +1369,8 @@ FindProxyDomainEntry(struct ProxyDomain *pDomain, char *txt)
 	}
 }
 
-void
-FillProxyText(struct EditInfo *p)
+void FillProxyText(struct EditInfo *p)
 {
-	XmString string;
-
 	ClearProxyText(p);
 	if (p->IF->proxy_text)
 		XmTextSetString(p->IF->proxy_text, p->editing->scheme);
@@ -1492,16 +1388,13 @@ FillProxyText(struct EditInfo *p)
 
 	if (p->editing->list == NULL) 
 		return;
-
 	ShowProxyDomainList(p);
 }
 
-void
-ShowProxyDomainList(struct EditInfo *pEditInfo)
+void ShowProxyDomainList(struct EditInfo *pEditInfo)
 {
 
 	XmString string;
-
 	struct ProxyDomain *p;
 
 	XmListDeleteAllItems(pEditInfo->translation);
@@ -1527,8 +1420,7 @@ ShowProxyDomainList(struct EditInfo *pEditInfo)
 
 }
 
-void
-ClearProxyText(struct EditInfo *p)
+void ClearProxyText(struct EditInfo *p)
 {
 
 	if (p->IF->proxy_text)
@@ -1537,26 +1429,17 @@ ClearProxyText(struct EditInfo *p)
 		XmTextSetString(p->IF->addr_text, "");
 	if (p->IF->port_text)
 		XmTextSetString(p->IF->port_text, "");
-	if (p->IF->alive!=NULL)
+	if (p->IF->alive)
 		XmToggleButtonSetState(p->IF->alive, True, False);
 	if (p->translation)
 		XmListDeleteAllItems(p->translation);
 } 
 
-void
-CommitProxyInfo(w, client, call)
-Widget w;
-XtPointer client;
-XtPointer call;
+void CommitProxyInfo( Widget w, XtPointer client, XtPointer call)
 {
-	Widget label;
-	XmString label_string;
-
 	struct EditInfo *pEditInfo;
 	struct Proxy *p;
-
-	char *proxy, *addr, *port, *trans;
-
+	char *proxy, *addr, *port;
 	pEditInfo = (struct EditInfo *)client;
 
 	if (pEditInfo->IF->proxy_text) {
@@ -1670,8 +1553,7 @@ XtPointer call;
 		XtPopdown(EditNoProxyDialog);
 }
 
-void
-CommitProxyDomainInfo(Widget w, XtPointer client, XtPointer call)
+void CommitProxyDomainInfo(Widget w, XtPointer client, XtPointer call)
 {
 	char *domain;
 	struct EditInfo *p = (struct EditInfo *)client;
@@ -1723,11 +1605,7 @@ CommitProxyDomainInfo(Widget w, XtPointer client, XtPointer call)
 	return;
 }
 
-void
-DismissProxy(w, client, call)
-Widget w;
-XtPointer client;
-XtPointer call;
+void DismissProxy( Widget w, XtPointer client, XtPointer call)
 {
 	Widget dialog = (Widget)client;
 
@@ -1735,10 +1613,7 @@ XtPointer call;
 }
 
 #ifdef OTHER_TRANSPORT
-void
-SetOptionMenuButtonLabel(w, s)
-Widget w;
-char *s;
+void SetOptionMenuButtonLabel( Widget w, char *s)
 {
 	Widget label;
 	XmString label_string;
@@ -1757,8 +1632,7 @@ char *s;
 }
 #endif
 
-void
-RemoveProxyInfo(Widget w, XtPointer client, XtPointer call, int type)
+void RemoveProxyInfo(Widget w, XtPointer client, XtPointer call, int type)
 {
 	XmString selected_string;
 	char *selected_text;
@@ -1804,9 +1678,7 @@ RemoveProxyInfo(Widget w, XtPointer client, XtPointer call, int type)
 	XtFree(selected_text);
 }
 
-
-void
-WriteProxies(Widget w, XtPointer client, XtPointer call)
+void WriteProxies(Widget w, XtPointer client, XtPointer call)
 {
 	struct Proxy *p;
 	struct ProxyDomain *pd;
@@ -1814,7 +1686,6 @@ WriteProxies(Widget w, XtPointer client, XtPointer call)
 	FILE *fp;
 	int flag;
 	char msgbuf[256];
-	extern XtAppContext app_context;
 
 	pEditInfo = (struct EditInfo *)client;
 
@@ -1847,7 +1718,6 @@ WriteProxies(Widget w, XtPointer client, XtPointer call)
 			fprintf(fp,"%s ",p->transport);
 		
 		pd = p->list;
-
 		if (pd != NULL) {
 			flag = 0;
 			while (pd != NULL) {
@@ -1862,7 +1732,6 @@ WriteProxies(Widget w, XtPointer client, XtPointer call)
 		fprintf(fp,"\n");
 		p = p->next;
 	}
-
 	if (pEditInfo->fProxy)
                 sprintf(msgbuf,SAVED_AOK,get_pref_string(ePROXY_SPECFILE));
 	else
@@ -1873,15 +1742,14 @@ WriteProxies(Widget w, XtPointer client, XtPointer call)
 	fclose(fp);
 }
 
-void
-DestroyDialog(Widget w, XtPointer client, XtPointer call)
+void DestroyDialog(Widget w, XtPointer client, XtPointer call)
 {
 	int *flag = (int *)client;
 
 	*flag = 0;
 }
 
-AppendProxy(struct EditInfo *pEditInfo, struct Proxy *p)
+void AppendProxy(struct EditInfo *pEditInfo, struct Proxy *p)
 {
 	struct Proxy *cur;
 
@@ -1905,15 +1773,12 @@ AppendProxy(struct EditInfo *pEditInfo, struct Proxy *p)
 	}
 }
 
-void
-DeleteProxy(struct EditInfo *pEditInfo, struct Proxy *p)
+void DeleteProxy(struct EditInfo *pEditInfo, struct Proxy *p)
 {
 	struct Proxy *cur;
-	extern struct Proxy *proxy_list, *noproxy_list;
 	struct Proxy *pl;
 
 	cur = p;
-
 
 	if (pEditInfo->fProxy)
 		pl = proxy_list;
@@ -1967,7 +1832,5 @@ DeleteProxy(struct EditInfo *pEditInfo, struct Proxy *p)
 		free(p->transport);
 		p->transport = NULL;
 	}
-
 	free(p);
 }
-

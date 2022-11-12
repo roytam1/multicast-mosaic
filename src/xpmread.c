@@ -1,57 +1,5 @@
-/****************************************************************************
- * NCSA Mosaic for the X Window System                                      *
- * Software Development Group                                               *
- * National Center for Supercomputing Applications                          *
- * University of Illinois at Urbana-Champaign                               *
- * 605 E. Springfield, Champaign IL 61820                                   *
- * mosaic@ncsa.uiuc.edu                                                     *
- *                                                                          *
- * Copyright (C) 1993, Board of Trustees of the University of Illinois      *
- *                                                                          *
- * NCSA Mosaic software, both binary and source (hereafter, Software) is    *
- * copyrighted by The Board of Trustees of the University of Illinois       *
- * (UI), and ownership remains with the UI.                                 *
- *                                                                          *
- * The UI grants you (hereafter, Licensee) a license to use the Software    *
- * for academic, research and internal business purposes only, without a    *
- * fee.  Licensee may distribute the binary and source code (if released)   *
- * to third parties provided that the copyright notice and this statement   *
- * appears on all copies and that no charge is associated with such         *
- * copies.                                                                  *
- *                                                                          *
- * Licensee may make derivative works.  However, if Licensee distributes    *
- * any derivative work based on or derived from the Software, then          *
- * Licensee will (1) notify NCSA regarding its distribution of the          *
- * derivative work, and (2) clearly notify users that such derivative       *
- * work is a modified version and not the original NCSA Mosaic              *
- * distributed by the UI.                                                   *
- *                                                                          *
- * Any Licensee wishing to make commercial use of the Software should       *
- * contact the UI, c/o NCSA, to negotiate an appropriate license for such   *
- * commercial use.  Commercial use includes (1) integration of all or       *
- * part of the source code into a product for sale or license by or on      *
- * behalf of Licensee to third parties, or (2) distribution of the binary   *
- * code or source code to third parties that need it to utilize a           *
- * commercial product sold or licensed by or on behalf of Licensee.         *
- *                                                                          *
- * UI MAKES NO REPRESENTATIONS ABOUT THE SUITABILITY OF THIS SOFTWARE FOR   *
- * ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED          *
- * WARRANTY.  THE UI SHALL NOT BE LIABLE FOR ANY DAMAGES SUFFERED BY THE    *
- * USERS OF THIS SOFTWARE.                                                  *
- *                                                                          *
- * By using or copying this Software, Licensee agrees to abide by the       *
- * copyright law and all other applicable laws of the U.S. including, but   *
- * not limited to, export control laws, and the terms of this license.      *
- * UI shall have the right to terminate this license immediately by         *
- * written notice upon Licensee's breach of, or non-compliance with, any    *
- * of its terms.  Licensee may be held legally responsible for any          *
- * copyright infringement that is caused or encouraged by Licensee's        *
- * failure to abide by the terms of this license.                           *
- *                                                                          *
- * Comments and questions are welcome and can be sent to                    *
- * mosaic-x@ncsa.uiuc.edu.                                                  *
- ****************************************************************************/
-#include "../config.h"
+/* Please read copyright.ncsa. Don't remove next line */
+#include "copyright.ncsa"
 /*
  * The following XPM reading code was based on the libXpm code, which I
  * am free to use as long as I include the following copyright:
@@ -77,18 +25,18 @@
  * whether in an action of contract, negligence or other tortious
  * action, arising out of or in connection with the use 
  * or performance of this software.
- *
  */
 
 #include <sys/time.h>
 struct timeval Tv;
 struct timezone Tz;
 
+#include "../libhtmlw/HTML.h"
 #include "mosaic.h"
-#include "xpmread.h"
 
 #include <X11/Xos.h>
 #include "xpm.h"
+#include "xpmread.h"
 
 /*for memset*/
 #include <memory.h>
@@ -107,11 +55,10 @@ char *xpmColorKeys[] = {
     "m",				/* key #2: mono visual */
     "g4",				/* key #3: 4 grays visual */
     "g",				/* key #4: gray visual */
-    "c",				/* key #5: color visual */
+    "c"					/* key #5: color visual */
 };
 
-xpmDataType xpmDataTypes[] =
-{
+xpmDataType xpmDataTypes[] = {
     "", "!", "\n", '\0', '\n', "", "", "", "",	/* Natural type */
     "C", "/*", "*/", '"', '"', ",\n", "static char *", "[] = {\n", "};\n",
     "Lisp", ";", "\n", '"', '"', "\n", "(setq ", " '(\n", "))\n",
@@ -122,15 +69,10 @@ xpmDataType xpmDataTypes[] =
 #endif
 };
 
-
-
 /*
  * Free the computed color table
  */
-void
-xpmFreeColorTable_(colorTable, ncolors)
-    char ***colorTable;
-    int ncolors;
+void xpmFreeColorTable_( char ***colorTable, int ncolors)
 {
     int a, b;
     char ***ct, **cts;
@@ -152,9 +94,7 @@ xpmFreeColorTable_(colorTable, ncolors)
  * Intialize the xpmInternAttrib pointers to Null to know
  * which ones must be freed later on.
  */
-void
-xpmInitInternAttrib(attrib)
-    xpmInternAttrib *attrib;
+void xpmInitInternAttrib( xpmInternAttrib *attrib)
 {
     attrib->ncolors = 0;
     attrib->colorTable = NULL;
@@ -168,9 +108,7 @@ xpmInitInternAttrib(attrib)
 /*
  * Free the xpmInternAttrib pointers which have been allocated
  */
-void
-xpmFreeInternAttrib(attrib)
-    xpmInternAttrib *attrib;
+void xpmFreeInternAttrib( xpmInternAttrib *attrib)
 {
     unsigned int a, ncolors;
     char **sptr;
@@ -190,20 +128,14 @@ xpmFreeInternAttrib(attrib)
     }
 }
 
-
-
 /*
  * open the given file to be read as an xpmData which is returned.
  */
-int
-xpmReadFile(filename, mdata)
-    char *filename;
-    xpmData *mdata;
+int xpmReadFile( char *filename, xpmData *mdata)
 {
 #ifdef ZPIPE
     char *compressfile, buf[BUFSIZ];
     struct stat status;
-
 #endif
 
     if (!filename) {
@@ -272,9 +204,7 @@ xpmReadFile(filename, mdata)
 /*
  * close the file related to the xpmData if any
  */
-int 
-xpmDataClose(mdata)
-    xpmData *mdata;
+int xpmDataClose( xpmData *mdata)
 {
     switch (mdata->type) {
     case XPMARRAY:
@@ -294,9 +224,7 @@ xpmDataClose(mdata)
 }
 
 
-static int
-ParseComment(mdata)
-    xpmData *mdata;
+static int ParseComment( xpmData *mdata)
 {
     if (mdata->type == XPMBUFFER) {
 	register char c;
@@ -408,9 +336,7 @@ ParseComment(mdata)
 /*
  * skip to the end of the current string and the beginning of the next one
  */
-int 
-xpmNextString(mdata)
-    xpmData *mdata;
+int xpmNextString( xpmData *mdata)
 {
     if (!mdata->type)
 	mdata->cptr = (mdata->stream.data)[++mdata->line];
@@ -460,12 +386,7 @@ xpmNextString(mdata)
     return 0;
 }
 
-
-unsigned int
-atoui(p, l, ui_return)
-    register char *p;
-    unsigned int l;
-    unsigned int *ui_return;
+unsigned int atoui( register char *p, unsigned int l, unsigned int *ui_return)
 {
     register int n, i;
 
@@ -483,14 +404,10 @@ atoui(p, l, ui_return)
 	return 0;
 }
 
-
-static int
-ParseValues(data, width, height, ncolors, cpp,
-	    x_hotspot, y_hotspot, hotspot, extensions)
-    xpmData *data;
-    unsigned int *width, *height, *ncolors, *cpp;
-    unsigned int *x_hotspot, *y_hotspot, *hotspot;
-    unsigned int *extensions;
+static int ParseValues( xpmData *data, unsigned int *width, unsigned int *height,
+	unsigned int *ncolors, unsigned int *cpp, 
+	unsigned int *x_hotspot, unsigned int *y_hotspot, unsigned int *hotspot,
+    	unsigned int *extensions)
 {
     unsigned int l;
     char buf[BUFSIZ];
@@ -520,13 +437,10 @@ ParseValues(data, width, height, ncolors, cpp,
     return (XpmSuccess);
 }
 
-static int
-ParseColors(data, ncolors, cpp, colorTablePtr, hashtable)
-    xpmData *data;
-    unsigned int ncolors;
-    unsigned int cpp;
-    char ****colorTablePtr;		/* Jee, that's something! */
-    xpmHashTable *hashtable;
+static int ParseColors( xpmData *data, unsigned int ncolors,
+    unsigned int cpp,
+    char ****colorTablePtr,		/* Jee, that's something! */
+    xpmHashTable *hashtable)
 {
     unsigned int key, l, a, b;
     unsigned int curkey;		/* current color key */
@@ -622,16 +536,10 @@ ParseColors(data, ncolors, cpp, colorTablePtr, hashtable)
     return (XpmSuccess);
 }
 
-static int
-ParsePixels(data, width, height, ncolors, cpp, colorTable, hashtable, pixels)
-    xpmData *data;
-    unsigned int width;
-    unsigned int height;
-    unsigned int ncolors;
-    unsigned int cpp;
-    char ***colorTable;
-    xpmHashTable *hashtable;
-    unsigned int **pixels;
+static int ParsePixels( xpmData *data, unsigned int width, unsigned int height,
+    unsigned int ncolors, unsigned int cpp,
+    char ***colorTable, xpmHashTable *hashtable,
+    unsigned int **pixels)
 {
     unsigned int *iptr, *iptr2;
     unsigned int a, x, y;
@@ -641,7 +549,6 @@ ParsePixels(data, width, height, ncolors, cpp, colorTable, hashtable, pixels)
 	return (XpmNoMemory);
 
     iptr = iptr2;
-
     switch (cpp) {
 
     case (1):				/* Optimize for single character
@@ -649,7 +556,6 @@ ParsePixels(data, width, height, ncolors, cpp, colorTable, hashtable, pixels)
 	{
 	    unsigned short colidx[256];
 
-/*	    bzero(colidx, 256 * sizeof(short));*/
 	    memset(colidx, 0, 256 * sizeof(short));
 	    for (a = 0; a < ncolors; a++)
 		colidx[colorTable[a][0][0]] = a + 1;
@@ -675,7 +581,6 @@ ParsePixels(data, width, height, ncolors, cpp, colorTable, hashtable, pixels)
 	{
 	    unsigned short cidx[256][256];
 
-/*	    bzero(cidx, 256 * 256 * sizeof(short));*/
 	    memset(cidx, 0, 256 * 256 * sizeof(short));
 	    for (a = 0; a < ncolors; a++)
 		cidx[colorTable[a][0][0]][colorTable[a][0][1]] = a + 1;
@@ -748,10 +653,7 @@ ParsePixels(data, width, height, ncolors, cpp, colorTable, hashtable, pixels)
 /*
  * skip whitespace and return the following word
  */
-unsigned int
-xpmNextWord(mdata, buf)
-    xpmData *mdata;
-    char *buf;
+unsigned int xpmNextWord( xpmData *mdata, char *buf)
 {
     register unsigned int n = 0;
     int c;
@@ -788,10 +690,7 @@ xpmNextWord(mdata, buf)
  * skip whitespace and compute the following unsigned int,
  * returns 1 if one is found and 0 if not
  */
-int
-xpmNextUI(mdata, ui_return)
-    xpmData *mdata;
-    unsigned int *ui_return;
+int xpmNextUI( xpmData *mdata, unsigned int *ui_return)
 {
     char buf[BUFSIZ];
     int l;
@@ -804,9 +703,7 @@ xpmNextUI(mdata, ui_return)
 /*
  * parse xpm header
  */
-int 
-xpmParseHeader(mdata)
-    xpmData *mdata;
+int xpmParseHeader( xpmData *mdata)
 {
     char buf[BUFSIZ];
     int l, n = 0;
@@ -860,10 +757,7 @@ xpmParseHeader(mdata)
 /*
  * get the current comment line
  */
-int 
-xpmGetCmt(mdata, cmt)
-    xpmData *mdata;
-    char **cmt;
+int xpmGetCmt( xpmData *mdata, char **cmt)
 {
     if (!mdata->type)
 	*cmt = NULL;
@@ -891,11 +785,8 @@ xpmGetCmt(mdata, cmt)
  * This function parses an Xpm file or data and store the found informations
  * in an an xpmInternAttrib structure which is returned.
  */
-int
-xpmParseData(data, attrib_return, attributes)
-    xpmData *data;
-    xpmInternAttrib *attrib_return;
-    XpmAttributes *attributes;
+int xpmParseData( xpmData *data, xpmInternAttrib *attrib_return,
+    XpmAttributes *attributes)
 {
     /* variables to return */
     unsigned int width, height, ncolors, cpp;
@@ -1002,10 +893,7 @@ xpmParseData(data, attrib_return, attributes)
 /*
  * open the given array to be read or written as an xpmData which is returned
  */
-void
-xpmOpenArray(data, mdata)
-    char **data;
-    xpmData *mdata;
+void xpmOpenArray( char **data, xpmData *mdata)
 {
     mdata->type = XPMARRAY;
     mdata->stream.data = data;
@@ -1016,9 +904,8 @@ xpmOpenArray(data, mdata)
     mdata->Bos = mdata->Eos = '\0';
 }
 
-
-unsigned char *ReadXpm3Pixmap(FILE *fp, char *datafile, int *w, int *h,
-                              XColor *colrs, int *bg)
+unsigned char *ReadXpm3Pixmap( FILE *fp, char *datafile, int *w, int *h,
+	XColor *colrs, int *bg)
 {
 	xpmData mdata;
 	XpmAttributes attributes;
@@ -1040,22 +927,19 @@ unsigned char *ReadXpm3Pixmap(FILE *fp, char *datafile, int *w, int *h,
 		fprintf(stderr, "ReadXpm3Pixmap enter (%d.%d)\n", Tv.tv_sec, Tv.tv_usec);
 	}
 #endif
-
 	*w = 0;
 	*h = 0;
 
 	attributes.valuemask = XpmReturnPixels;
 
-	if ((ErrorStatus = xpmReadFile(datafile, &mdata)) != XpmSuccess)
-	{
+	if ((ErrorStatus = xpmReadFile(datafile, &mdata)) != XpmSuccess) {
 		return(NULL);
 	}
 
 	xpmInitInternAttrib(&attrib);
 
 	ErrorStatus = xpmParseData(&mdata, &attrib, &attributes);
-	if (ErrorStatus != XpmSuccess)
-	{
+	if (ErrorStatus != XpmSuccess) {
 		xpmFreeInternAttrib(&attrib);
 		xpmDataClose(&mdata);
 		return(NULL);
@@ -1065,12 +949,10 @@ unsigned char *ReadXpm3Pixmap(FILE *fp, char *datafile, int *w, int *h,
 	*h = (int)attrib.height;
 	Colors = (int)attrib.ncolors;
 
-	for (i=0; i<Colors; i++)
-	{
+	for (i=0; i<Colors; i++) {
 		colorStrings = attrib.colorTable[i];
 		colorName = colorStrings[NKEYS];
-		if (strcmp(colorName, TRANSPARENT_COLOR) == 0)
-		{
+		if (strcmp(colorName, TRANSPARENT_COLOR) == 0) {
 			unsigned long bg_pixel;
 
 			/* First, go fetch the pixel. */
@@ -1087,9 +969,7 @@ unsigned char *ReadXpm3Pixmap(FILE *fp, char *datafile, int *w, int *h,
 						  DefaultScreen (XtDisplay (view)))),
 			       &tmpcolr);
 			*bg = i;
-		}
-		else
-		{
+		} else {
 			XParseColor(dsp,
 				(installed_colormap ?
 				 installed_cmap :
@@ -1102,8 +982,7 @@ unsigned char *ReadXpm3Pixmap(FILE *fp, char *datafile, int *w, int *h,
 		colrs[i].pixel = i;
 		colrs[i].flags = DoRed|DoGreen|DoBlue;
 	}
-	for (i=Colors; i<256; i++)
-	{
+	for (i=Colors; i<256; i++) {
 		colrs[i].red = 0;
 		colrs[i].green = 0;
 		colrs[i].blue = 0;
@@ -1113,8 +992,7 @@ unsigned char *ReadXpm3Pixmap(FILE *fp, char *datafile, int *w, int *h,
 
 	pixels = attrib.pixelindex;
 	pix_data = (unsigned char *)malloc((*w) * (*h));
-        if (pix_data == NULL)
-        {
+        if (pix_data == NULL) {
 #ifndef DISABLE_TRACE
 		if (srcTrace) {
 			fprintf(stderr, "Not enough memory for data.\n");
@@ -1126,8 +1004,7 @@ unsigned char *ReadXpm3Pixmap(FILE *fp, char *datafile, int *w, int *h,
                 return((unsigned char *)NULL);
         }
 	bptr = pix_data;
-        for (i=0; i<((*w) * (*h)); i++)
-        {
+        for (i=0; i<((*w) * (*h)); i++) {
 		int pix;
 
 		pix = (int)*pixels;
@@ -1150,9 +1027,8 @@ unsigned char *ReadXpm3Pixmap(FILE *fp, char *datafile, int *w, int *h,
         return(pix_data);
 }
 
-
-unsigned char *ProcessXpm3Data(Widget wid, char **xpmdata, int *w,
-                               int *h, XColor *colrs, int *bg)
+unsigned char *ProcessXpm3Data( Widget wid, char **xpmdata,
+	int *w, int *h, XColor *colrs, int *bg)
 {
 	xpmData mdata;
 	XpmAttributes attributes;
@@ -1170,15 +1046,11 @@ unsigned char *ProcessXpm3Data(Widget wid, char **xpmdata, int *w,
 
 	*w = 0;
 	*h = 0;
-
 	attributes.valuemask = XpmReturnPixels;
-
 	xpmOpenArray(xpmdata, &mdata);
 	xpmInitInternAttrib(&attrib);
-
 	ErrorStatus = xpmParseData(&mdata, &attrib, &attributes);
-	if (ErrorStatus != XpmSuccess)
-	{
+	if (ErrorStatus != XpmSuccess) {
 		xpmFreeInternAttrib(&attrib);
 		xpmDataClose(&mdata);
 		return(NULL);
@@ -1188,12 +1060,10 @@ unsigned char *ProcessXpm3Data(Widget wid, char **xpmdata, int *w,
 	*h = (int)attrib.height;
 	Colors = (int)attrib.ncolors;
 
-	for (i=0; i<Colors; i++)
-	{
+	for (i=0; i<Colors; i++) {
 		colorStrings = attrib.colorTable[i];
 		colorName = colorStrings[NKEYS];
-		if (strcmp(colorName, TRANSPARENT_COLOR) == 0)
-		{
+		if (strcmp(colorName, TRANSPARENT_COLOR) == 0) {
 			unsigned long bg_pixel;
 
 			/* First, go fetch the pixel. */
@@ -1210,9 +1080,7 @@ unsigned char *ProcessXpm3Data(Widget wid, char **xpmdata, int *w,
 						  DefaultScreen (XtDisplay (wid)))),
 			       &tmpcolr);
 			*bg = i;
-		}
-		else
-		{
+		} else {
 			XParseColor(XtDisplay (wid),
 				(installed_colormap ?
 				 installed_cmap :
@@ -1226,8 +1094,7 @@ unsigned char *ProcessXpm3Data(Widget wid, char **xpmdata, int *w,
 		colrs[i].pixel = i;
 		colrs[i].flags = DoRed|DoGreen|DoBlue;
 	}
-	for (i=Colors; i<256; i++)
-	{
+	for (i=Colors; i<256; i++) {
 		colrs[i].red = 0;
 		colrs[i].green = 0;
 		colrs[i].blue = 0;
@@ -1237,8 +1104,7 @@ unsigned char *ProcessXpm3Data(Widget wid, char **xpmdata, int *w,
 
 	pixels = attrib.pixelindex;
 	pix_data = (unsigned char *)malloc((*w) * (*h));
-        if (pix_data == NULL)
-        {
+        if (pix_data == NULL) {
 #ifndef DISABLE_TRACE
 		if (srcTrace) {
 			fprintf(stderr, "Not enough memory for data.\n");
@@ -1250,8 +1116,7 @@ unsigned char *ProcessXpm3Data(Widget wid, char **xpmdata, int *w,
                 return((unsigned char *)NULL);
         }
 	bptr = pix_data;
-        for (i=0; i<((*w) * (*h)); i++)
-        {
+        for (i=0; i<((*w) * (*h)); i++) {
 		int pix;
 
 		pix = (int)*pixels;

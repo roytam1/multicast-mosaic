@@ -1,10 +1,20 @@
-#include "config.h"
 #ifdef HAVE_JPEG
 #include <stdio.h>
 #include <X11/Intrinsic.h>
 
+#include "../libhtmlw/HTML.h"
 #include "mosaic.h"
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #include "jpeglib.h"
+
+#ifdef  __cplusplus
+}
+#endif
+
 #include "readJPEG.h"
 #include <setjmp.h>
 
@@ -13,12 +23,11 @@ extern int srcTrace;
 #endif
 
 struct my_error_mgr {
-  struct jpeg_error_mgr pub;	/* "public" fields */
-  jmp_buf setjmp_buffer;	/* for return to caller */
+	struct jpeg_error_mgr pub;	/* "public" fields */
+	jmp_buf setjmp_buffer;	/* for return to caller */
 };
 
 typedef struct my_error_mgr * my_error_ptr;
-
 
 static void
 my_error_exit (j_common_ptr cinfo)
@@ -33,18 +42,15 @@ my_error_exit (j_common_ptr cinfo)
 	longjmp(myerr->setjmp_buffer, 1);
 }
 
-
-
-unsigned char *
-ReadJPEG(FILE *infile,int *width, int *height, XColor *colrs)
+unsigned char * ReadJPEG(FILE *infile,int *width, int *height, XColor *colrs)
 {
-struct jpeg_decompress_struct cinfo;
-struct my_error_mgr jerr;
-unsigned char *retBuffer=0;	/* Output image buffer */
-unsigned char *r;
-JSAMPROW buffer[1];		/* row pointer array for read_scanlines */
-int row_stride;		/* physical row width in output buffer */
-int i;
+	struct jpeg_decompress_struct cinfo;
+	struct my_error_mgr jerr;
+	unsigned char *retBuffer=0;	/* Output image buffer */
+	unsigned char *r;
+	JSAMPROW buffer[1];		/* row pointer array for read_scanlines */
+	int row_stride;		/* physical row width in output buffer */
+	int i;
 
 #ifndef DISABLE_TRACE
 	if (srcTrace) {
@@ -66,9 +72,9 @@ int i;
 
 		if (retBuffer) {
 			free(retBuffer);
-			}
-		return 0;
 		}
+		return 0;
+	}
 
 	jpeg_create_decompress(&cinfo);
 
@@ -97,9 +103,8 @@ int i;
 			fprintf(stderr,"Couldn't create space for JPEG read\n");
 		}
 #endif
-
 		return(0);
-		}
+	}
 #ifndef DISABLE_TRACE
 	if (srcTrace) {
 		fprintf(stderr,"buffer size is width=%d x height=%d x depth=%d\n",
@@ -114,7 +119,7 @@ int i;
 		buffer[0] = r;
 		(void) jpeg_read_scanlines(&cinfo, buffer, 1);
 		r += row_stride;
-  		}
+  	}
 
 	*width =  cinfo.output_width;
 	*height =  cinfo.output_height;
@@ -137,22 +142,19 @@ int i;
 			colrs[i].blue = cinfo.colormap[2][i] << 8;
 			colrs[i].pixel = i;
 			colrs[i].flags = DoRed|DoGreen|DoBlue;
-			}
 		}
-	else {
+	} else {
 		for (i=0; i < cinfo.actual_number_of_colors; i++) {
 			colrs[i].red = colrs[i].green = 
 				colrs[i].blue = cinfo.colormap[0][i] << 8;
 			colrs[i].pixel = i;
 			colrs[i].flags = DoRed|DoGreen|DoBlue;
-			}
 		}
+	}
 
-
-  (void) jpeg_finish_decompress(&cinfo);
-  jpeg_destroy_decompress(&cinfo);
-
-  return retBuffer;
+	(void) jpeg_finish_decompress(&cinfo);
+	jpeg_destroy_decompress(&cinfo);
+	return retBuffer;
 }
 
 #endif

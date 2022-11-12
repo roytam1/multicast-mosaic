@@ -7,8 +7,9 @@
 **	Bugs:
 **		strings written must be less than buffer size.
 */
-#include "../config.h"
+
 #include <string.h>
+#include <unistd.h>
 
 #include "HTFWriter.h"
 
@@ -18,6 +19,9 @@
 #include "HText.h"
 #include "tcp.h"
 #include "HTCompressed.h"
+
+#include "../libhtmlw/HTML.h"
+#include "../src/mosaic.h"
 
 extern char *currentURL;
 
@@ -43,16 +47,18 @@ struct _HTStream {
 	char *mime_type;
 };
 
-/* MOSAIC: We now pick up some external variables, handled
-   in src/mo-www.c: */
+/* MOSAIC: We now pick up some external variables, handled in src/mo-www.c: */
+
 extern int force_dump_to_file;
 extern char *force_dump_filename;
+
 /* If force_dump_to_file is high, we know we want to dump the
    data into a file already named by force_dump_filename and not
    do anything else. */
 
 /* If this is high, then we just want to dump the thing to a file;
    the file is named by force_dump_filename. */
+
 extern int binary_transfer;
 
 /*_________________________________________________________________________
@@ -66,22 +72,20 @@ extern int binary_transfer;
 
 PRIVATE void HTFWriter_put_character ARGS2(HTStream *, me, char, c)
 {
-  int rv;
+	int rv;
 
-  if (me->write_error)
-    return;
+	if (me->write_error)
+		return;
 
   /* Make sure argument to putc is in range 0-255, to avoid weirdness
      with rv == -1 == EOF when it's not supposed to. */
-  rv = putc ((int)(unsigned char)c, me->fp);
+	rv = putc ((int)(unsigned char)c, me->fp);
 
-  if (rv == EOF)
-    {
-      HTProgress ("Error writing to temporary file.");
-      me->write_error = 1;
-    }
+	if (rv == EOF) {
+	HTProgress ("Error writing to temporary file.");
+	me->write_error = 1;
+	}
 }
-
 
 /*	String handling
 **	---------------
@@ -90,36 +94,31 @@ PRIVATE void HTFWriter_put_character ARGS2(HTStream *, me, char, c)
 */
 PRIVATE void HTFWriter_put_string ARGS2(HTStream *, me, WWW_CONST char*, s)
 {
-  int rv;
+	int rv;
 
-  if (me->write_error)
-    return;
-
-  rv = fputs(s, me->fp);
-  if (rv == EOF)
-    {
-      HTProgress ("Error writing to temporary file.");
-      me->write_error = 1;
-    }
+	if (me->write_error)
+		return;
+	rv = fputs(s, me->fp);
+	if (rv == EOF) {
+		HTProgress ("Error writing to temporary file.");
+		me->write_error = 1;
+	}
 }
-
 
 /*	Buffer write.  Buffers can (and should!) be big.
 **	------------
 */
 PRIVATE void HTFWriter_write ARGS3(HTStream *, me, WWW_CONST char*, s, int, l)
 {
-  int rv;
+	int rv;
 
-  if (me->write_error)
-    return;
-
-  rv = fwrite(s, 1, l, me->fp); 
-  if (rv != l)
-    {
-      HTProgress ("Error writing to temporary file.");
-      me->write_error = 1;
-    }
+	if (me->write_error)
+		return;
+	rv = fwrite(s, 1, l, me->fp); 
+	if (rv != l) {
+		HTProgress ("Error writing to temporary file.");
+		me->write_error = 1;
+	}
 }
 
 char *supportedTypes[]={
@@ -139,23 +138,20 @@ char *supportedTypes[]={
         "\n"
 };
 
-int supportedImageType(char *mt) {
+int supportedImageType(char *mt) 
+{
+	int i;
 
-int i;
-
-	if (!mt || !*mt) {
+	if (!mt || !*mt)
 		return(0);
-	}
 
 	for (i=0; supportedTypes[i][0]!='\n'; i++) {
 		if (!strcmp(supportedTypes[i],mt)) {
 			return(1);
 		}
 	}
-
 	return(0);
 }
-
 
 /*	Free an HTML object
 **	-------------------
@@ -171,87 +167,67 @@ PRIVATE void HTFWriter_free ARGS1(HTStream *, me)
   static char *envbuf2=NULL;
 
   /* I dunno if this is necessary... */
-  if (me->interrupted)
-    {
+  if (me->interrupted) {
       free (me->fnam);
       free (me);
       return;
-    }
-
-  if (me->write_error)
-    {
-/*
-      char *cmd = (char *)malloc ((strlen (me->fnam) + 32));
-      sprintf (cmd, "/bin/rm -f %s &", me->fnam);
-      system (cmd);
-      free (cmd);
-*/
-/*ddt*/unlink(me->fnam);
-      
+  }
+  if (me->write_error) {
+      unlink(me->fnam);
       HTProgress ("Insufficient temporary disk space; could not transfer data.");
-
       free (me->fnam);
       free (me);
       return;
-    }
-
+  }
   fflush (me->fp);
   fclose (me->fp);
 
   /* We do want to be able to handle compressed inlined images,
      but we don't want transparent uncompression to take place
      in binary transfer mode. */
-  if (!binary_transfer && me->compressed != COMPRESSED_NOT)
-    {
+  if (!binary_transfer && me->compressed != COMPRESSED_NOT) {
 #ifndef DISABLE_TRACE
       if (www2Trace)
         fprintf (stderr, "[HTFWriter] Hi there; compressed is %d, fnam is '%s'\n",
                  me->compressed, me->fnam);
 #endif
       HTCompressedFileToFile (me->fnam, me->compressed);
-    }
+  }
 
-  if (force_dump_to_file)
-    {
+  if (force_dump_to_file) {
       if (!binary_transfer)
         goto done;
-    }
+  }
 
   /* Now, me->end_command can either be something starting with
      "<mosaic-internal-reference" or it can be a real command.
      Deal with appropriately. */
-  if (me->end_command)
-    {
+  if (me->end_command) {
 	/* Check for forced dump condition.  The left paren comes
 		from the construction of me->end_command as a compound shell
 		command below. */
 	if (strstr (me->end_command, "mosaic-internal-dump")) {
 		rename_binary_file (me->fnam);
-        }
-	else if (!strstr (me->end_command, "mosaic-internal-reference")) {
+        } else if (!strstr (me->end_command, "mosaic-internal-reference")) {
 		if (imageViewInternal && supportedImageType(me->mime_type)) {
 			char *newHTML="<html>\n<head>\n<title>Mosaic's Internal Image Display</title>\n</head>\n<body>\n<img align=center src=\"%s\">\n</body>\n</html>\n";
 			char *buf;
 
 			buf=(char *)calloc((strlen(currentURL)+strlen(newHTML)+5),sizeof(char));
 			sprintf(buf,newHTML,currentURL);
-
 			text=HText_new();
 			HText_beginAppend(text);
 			HText_appendText(text,buf);
 			HText_endAppend(text);
-
 			free(buf);
-
-			buf=(char *)calloc((strlen(currentURL)+strlen(me->fnam)+5),sizeof(char));
+			buf=(char *)malloc((strlen(currentURL)+
+				strlen(me->fnam)+5));
 			sprintf(buf,"%s\n%s",me->fnam,currentURL);
-			ImageResolve(NULL,buf,0);
-
+			printf("[HTFWriter_free] Must call ImageResolve with good type\n");
+			/*####ImageResolve(NULL,buf,0);####*/
 			free(buf);
-
 			goto done;
 		}
-
 		HTProgress("Spawning external viewer.");
 
 		/*
@@ -267,8 +243,7 @@ PRIVATE void HTFWriter_free ARGS1(HTStream *, me)
 			putenv(envbuf2);
 			free(envbuf1);
 			envbuf1=NULL;
-		}
-		else if (envbuf2) {
+		} else if (envbuf2) {
 			envbuf1=(char *)calloc((strlen(currentURL)+
 						strlen("MOSAIC_CURRENT_URL=")+
 						2),
@@ -277,8 +252,7 @@ PRIVATE void HTFWriter_free ARGS1(HTStream *, me)
 			putenv(envbuf1);
 			free(envbuf2);
 			envbuf2=NULL;
-		}
-		else { /* Likely it is the first time */
+		} else { /* Likely it is the first time */
 			envbuf1=(char *)calloc((strlen(currentURL)+
 						strlen("MOSAIC_CURRENT_URL=")+
 						2),
@@ -286,43 +260,33 @@ PRIVATE void HTFWriter_free ARGS1(HTStream *, me)
 			sprintf(envbuf1,"MOSAIC_CURRENT_URL=%s",currentURL);
 			putenv(envbuf1);
 		}
-
 		system (me->end_command);
-
 		if (envbuf1) {
-			envbuf2=(char *)calloc((strlen("MOSAIC_CURRENT_URL=")+
-						2),
+			envbuf2=(char *)calloc((strlen("MOSAIC_CURRENT_URL=")+ 2),
 					       sizeof(char));
 			sprintf(envbuf2,"MOSAIC_CURRENT_URL=");
 			putenv(envbuf2);
 			free(envbuf1);
 			envbuf1=NULL;
-		}
-		else if (envbuf2) {
-			envbuf1=(char *)calloc((strlen("MOSAIC_CURRENT_URL=")+
-						2),
+		} else if (envbuf2) {
+			envbuf1=(char *)calloc((strlen("MOSAIC_CURRENT_URL=")+ 2),
 					       sizeof(char));
 			sprintf(envbuf1,"MOSAIC_CURRENT_URL=");
 			putenv(envbuf1);
 			free(envbuf2);
 			envbuf2=NULL;
-		}
-		else { /* Likely it is the first time */
-			envbuf1=(char *)calloc((strlen("MOSAIC_CURRENT_URL=")+
-						2),
+		} else { /* Likely it is the first time */
+			envbuf1=(char *)calloc((strlen("MOSAIC_CURRENT_URL=")+ 2),
 					       sizeof(char));
 			sprintf(envbuf1,"MOSAIC_CURRENT_URL=");
 			putenv(envbuf1);
 		}
-	}
-	else {
+	} else {
           /* Internal reference, aka HDF file.  Just close output file. */
 	}
-    }
-  else
-    {
+  } else {
       /* No me->end_command; just close the file. */
-    }
+  }
 
   /* Construct dummy HText thingie so Mosaic knows
      not to try to access this "document". */
@@ -332,72 +296,55 @@ PRIVATE void HTFWriter_free ARGS1(HTStream *, me)
   if (me->end_command) {
 	if (strstr (me->end_command, "mosaic-internal-reference")) {
           HText_appendText (text, me->end_command);
-	}
-	else {
+	} else {
 		HText_appendText (text, "<mosaic-access-override>\n");
 	}
 	free (me->end_command);
-  }
-  else {
+  } else {
       /* No me->end_command; just override the access. */
       HText_appendText (text, "<mosaic-access-override>\n");
   }
   HText_endAppend (text);
 
- done:
+done:
   if (binary_transfer)
     rename_binary_file (me->fnam);
 
- really_done:
   free (me->fnam);
-  if (me->mime_type) {
+  if (me->mime_type)
 	free(me->mime_type);
-  }
   free (me);
-
   return;
 }
 
-/*	End writing
-*/
+/*	End writing */
 
 PRIVATE void HTFWriter_end_document ARGS1(HTStream *, me)
 {
-  if (me->interrupted || me->write_error)
-    return;
-
-  fflush(me->fp);
+	if (me->interrupted || me->write_error)
+		return;
+	fflush(me->fp);
 }
 
 PRIVATE void HTFWriter_handle_interrupt ARGS1(HTStream *, me)
 {
-/*  char *cmd;*/
+	if (me->write_error)
+		goto outtahere;
 
-  if (me->write_error)
-    goto outtahere;
+/* Close the file, then kill it. */
+	fclose (me->fp);
 
-  /* Close the file, then kill it. */
-  fclose (me->fp);
-
-/*
-  cmd = (char *)malloc ((strlen (me->fnam) + 32) * sizeof (char));
-  sprintf (cmd, "/bin/rm -f %s &", me->fnam);
-  system (cmd);
-  free (cmd);
-*/
-/*ddt*/unlink(me->fnam);
+/*ddt*/
+	unlink(me->fnam);
 
 #ifndef DISABLE_TRACE
   if (www2Trace)
     fprintf (stderr, "*** HTFWriter interrupted; killed '%s'\n", me->fnam);
 #endif
   
- outtahere:
-  me->interrupted = 1;
-
-  return;
+outtahere:
+	me->interrupted = 1;
 }
-
 
 /*	Structured Object Class
 **	-----------------------
@@ -445,12 +392,10 @@ PUBLIC HTStream* HTSaveAndExecute ARGS5(
   me->compressed = compressed;
   if (!format_in || !format_in->name || !*(format_in->name)) {
 	me->mime_type=NULL;
-  }
-  else {
+  } else {
 	if (!strncmp(format_in->name,"image",5)) {
 		me->mime_type=strdup(format_in->name);
-	}
-	else {
+	} else {
 		me->mime_type=NULL;
 	}
   }
@@ -463,15 +408,13 @@ PUBLIC HTStream* HTSaveAndExecute ARGS5(
   
   /* Save the file under a suitably suffixed name */
   
-  if (!force_dump_to_file)
-    {
+  if (!force_dump_to_file) {
       extern char *mo_tmpnam (char *);
 
       suffix = HTFileSuffix(pres->rep);
       
       me->fnam = mo_tmpnam(anchor->address);
-      if (suffix) 
-        {
+      if (suffix) {
           char *freeme = me->fnam;
          
           me->fnam = (char *)malloc (strlen (me->fnam) + strlen (suffix) + 8);
@@ -479,25 +422,20 @@ PUBLIC HTStream* HTSaveAndExecute ARGS5(
           strcat(me->fnam, suffix);
           free (freeme);
         }
-    }
-  else
-    {
+    } else {
       me->fnam = strdup (force_dump_filename);
     }
 
   me->fp = fopen (me->fnam, "w");
-  if (!me->fp) 
-    {
+  if (!me->fp) {
       HTProgress("Can't open temporary file -- serious problem.");
       me->write_error = 1;
       return me;
     }
 
   /* If force_dump_to_file is high, we're done here. */
-  if (!force_dump_to_file)
-    {
-      if (!strstr (pres->command, "mosaic-internal-reference"))
-        {
+  if (!force_dump_to_file) {
+      if (!strstr (pres->command, "mosaic-internal-reference")) {
           /* If there's a "%s" in the command, or if the command
              is magic... */
 #ifndef DISABLE_TRACE
@@ -506,8 +444,7 @@ PUBLIC HTStream* HTSaveAndExecute ARGS5(
                      pres->command);
 #endif
           if (strstr (pres->command, "%s") ||
-              strstr (pres->command, "mosaic-internal"))
-            {
+              strstr (pres->command, "mosaic-internal")) {
               /* Make command to process file */
               command = (char *)malloc 
                 ((strlen (pres->command) + 10 + 3*strlen(me->fnam)) * 
@@ -523,9 +460,7 @@ PUBLIC HTStream* HTSaveAndExecute ARGS5(
                        command, me->fnam);
 
               free (command);
-            }
-          else
-            {
+            } else {
               /* Make command to process file -- but we have to cat
                  to the viewer's stdin. */
               me->end_command = (char *)malloc 
@@ -534,9 +469,7 @@ PUBLIC HTStream* HTSaveAndExecute ARGS5(
               sprintf (me->end_command, "((cat %s | %s); /bin/rm -f %s) &",
                        me->fnam, pres->command, me->fnam);
             }
-        }
-      else
-        {
+        } else {
           /* Overload me->end_command to be what we should write out as text
              to communicate back to client code. */
           me->end_command = (char *)malloc

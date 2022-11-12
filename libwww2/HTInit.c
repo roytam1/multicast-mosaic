@@ -1,10 +1,8 @@
-#include "../config.h"
 #include "HTInit.h"
 
 #include "HTML.h"
 #include "HTPlain.h"
 #include "HTMosaicHTML.h"
-#include "HTMLGen.h"
 #include "HTFile.h"
 #include "HTFormat.h"
 #include "HTMIME.h"
@@ -17,37 +15,33 @@
 extern int www2Trace;
 #endif
 
+int HTLoadTypesConfigFile (char *fn);
+
+extern int use_default_type_map;
+extern char *global_type_map;
+extern char *personal_type_map;
+
 /* Reread config files. */
 PUBLIC void HTReInit NOARGS
 {
-  if (HTPresentations)
-    {
-      HTList_delete (HTPresentations);
-      HTPresentations = 0;
-    }
-  HTFormatInit ();
-
-  if (HTSuffixes)
-    {
-      HTList_delete (HTSuffixes);
-      HTSuffixes = 0;
-    }
-  HTFileInit ();
-
-  return;
+	if (HTPresentations) {
+		HTList_delete (HTPresentations);
+		HTPresentations = 0;
+	}
+	HTFormatInit ();
+	if (HTSuffixes) {
+		HTList_delete (HTSuffixes);
+		HTSuffixes = 0;
+	}
+	HTFileInit ();
 }
 
 PUBLIC void HTFormatInit NOARGS
 {
-  extern int use_default_type_map;
-  extern char *global_type_map;
-  extern char *personal_type_map;
-  extern int have_hdf;
-
-  /* Conversions aren't customizable. */
+/* Conversions aren't customizable. */
   HTSetConversion("www/mime",  "*", HTMIMEConvert, 1.0, 0.0, 0.0);
 
-  /* Wonder what HTML will end up as? */
+/* Wonder what HTML will end up as? */
   HTSetConversion("text/html", "www/present", HTMosaicHTMLPresent, 1.0, 0.0, 0.0);
   HTSetConversion("text/x-html", "www/present", HTMosaicHTMLPresent, 1.0, 0.0, 0.0);
   HTSetConversion("application/html", "www/present", HTMosaicHTMLPresent, 1.0, 0.0, 0.0);
@@ -56,29 +50,16 @@ PUBLIC void HTFormatInit NOARGS
   HTSetConversion("text/plain", "www/present", HTPlainPresent,	1.0, 0.0, 0.0);
   HTSetConversion("application/x-wais-source", "*", HTWSRCConvert, 1.0, 0.0, 0.0);
 
-  /* These should override everything else. */
+/* These should override everything else. */
   HTLoadTypesConfigFile (personal_type_map);
 
-  /* These should override the default types as necessary. */
+/* These should override the default types as necessary. */
   HTLoadTypesConfigFile (global_type_map);
 
-  /* These should always be installed if we have internal support;
+/* These should always be installed if we have internal support;
      can be overridden by users. */
-  if (have_hdf)
-    {
-      HTSetPresentation("application/x-hdf",      "mosaic-internal-reference", 
-                        1.0, 3.0, 0.0);
-      HTSetPresentation("application/x-netcdf",   "mosaic-internal-reference", 
-                        1.0, 3.0, 0.0);
-      /* Jumping the gun, but still... */
-      HTSetPresentation("application/hdf",      "mosaic-internal-reference", 
-                        1.0, 3.0, 0.0);
-      HTSetPresentation("application/netcdf",   "mosaic-internal-reference", 
-                        1.0, 3.0, 0.0);
-    }
   
-  if (use_default_type_map)
-    {
+  if (use_default_type_map) {
 #if defined(__sgi)
       HTSetPresentation("audio/basic", "sfplay %s", 1.0, 3.0, 0.0);
       HTSetPresentation("audio/x-aiff", "sfplay %s", 1.0, 3.0, 0.0);
@@ -91,7 +72,6 @@ PUBLIC void HTFormatInit NOARGS
       HTSetPresentation("audio/x-aiff", "showaudio %s", 1.0, 3.0, 0.0);
 #endif /* not ultrix or __alpha */
 #endif /* not __sgi */
-
       HTSetPresentation("image/gif", "xv %s", 1.0, 3.0, 0.0);
       HTSetPresentation("image/jpeg", "xv %s", 1.0, 3.0, 0.0);
       HTSetPresentation("image/png", "xv %s", 1.0, 3.0, 0.0);
@@ -105,23 +85,17 @@ PUBLIC void HTFormatInit NOARGS
       HTSetPresentation("image/rgb", "xv %s", 1.0, 3.0, 0.0);
       HTSetPresentation("image/x-xbitmap", "xv %s", 1.0, 3.0, 0.0);
       HTSetPresentation("image/x-xpixmap", "xv %s", 1.0, 3.0, 0.0); /* ?? */
-
       HTSetPresentation("image/xwd", "xwud -in %s", 1.0, 3.0, 0.0);
       HTSetPresentation("image/x-xwd", "xwud -in %s", 1.0, 3.0, 0.0);
       HTSetPresentation("image/x-xwindowdump", "xwud -in %s", 1.0, 3.0, 0.0);
-
       HTSetPresentation("video/mpeg", "mpeg_play %s", 1.0, 3.0, 0.0);
 #ifdef __sgi
       HTSetPresentation("video/quicktime", "movieplayer -f %s", 1.0, 3.0, 0.0); /* sgi */
       HTSetPresentation("video/x-sgi-movie", "movieplayer -f %s", 1.0, 3.0, 0.0); /* sgi */
 #endif
-
       HTSetPresentation("application/postscript", "ghostview %s", 1.0, 3.0, 0.0);
       HTSetPresentation("application/x-dvi", "xdvi %s", 1.0, 3.0, 0.0);
-
-      HTSetPresentation("message/rfc822", 
-                        "xterm -e metamail %s", 1.0, 3.0, 0.0);
-
+      HTSetPresentation("message/rfc822", "xterm -e metamail %s", 1.0, 3.0, 0.0);
       HTSetPresentation("application/x-latex", "mosaic-internal-present", 1.0, 3.0, 0.0);
       HTSetPresentation("application/x-tex", "mosaic-internal-present", 1.0, 3.0, 0.0);
       HTSetPresentation("application/x-texinfo", "mosaic-internal-present", 1.0, 3.0, 0.0);
@@ -135,10 +109,8 @@ PUBLIC void HTFormatInit NOARGS
     }
 
   /* Fallthrough clauses. */
-
   HTSetPresentation ("*/*", "mosaic-internal-dump", 1.0, 3.0, 0.0);
   HTSetPresentation ("*", "mosaic-internal-dump", 1.0, 3.0, 0.0);
-
 }
 
 
@@ -166,11 +138,6 @@ WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
 
  ******************************************************* */
 
-struct MailcapEntry {
-    char *contenttype;
-    char *command;
-    int needsterminal;
-};
 
 #define LINE_BUF_SIZE       2000
 
@@ -179,7 +146,8 @@ static char *GetCommand(char *s, char **t)
     char *s2;
     int quoted = 0;
     /* marca -- added + 1 for error case -- oct 24, 1993. */
-    s2 = malloc(strlen(s)*2 + 1); /* absolute max, if all % signs */
+
+    s2 = (char*)malloc(strlen(s)*2 + 1); /* absolute max, if all % signs */
     *t = s2;
     while (s && *s) {
 	if (quoted) {
@@ -202,7 +170,7 @@ static char *GetCommand(char *s, char **t)
     }
     *s2 = 0;
     return(NULL);
-}	
+}
 
 static char *Cleanse(char *s) /* no leading or trailing space, all lower case */
 {
@@ -220,13 +188,16 @@ static char *Cleanse(char *s) /* no leading or trailing space, all lower case */
     return(news);
 }
 
-static ProcessMailcapEntry(FILE *fp, struct MailcapEntry *mc)
+static ProcessMailcapEntry(FILE *fp)
 {
     int rawentryalloc = 2000, len;
     char *rawentry, *s, *t, *LineBuf;
+	int needsterminal ;
+    	char * contenttype ;
+    	char * command;
 
-    LineBuf = malloc(LINE_BUF_SIZE);
-    rawentry = malloc(1 + rawentryalloc);
+    LineBuf = (char*)malloc(LINE_BUF_SIZE);
+    rawentry = (char*)malloc(1 + rawentryalloc);
     *rawentry = 0;
     while (fgets(LineBuf, LINE_BUF_SIZE, fp)) {
 	if (LineBuf[0] == '#') continue;
@@ -234,7 +205,7 @@ static ProcessMailcapEntry(FILE *fp, struct MailcapEntry *mc)
         if (LineBuf[len-1] == '\n') LineBuf[--len] = 0;
 	if ((len + strlen(rawentry)) > rawentryalloc) {
 	    rawentryalloc += 2000;
-	    rawentry = realloc(rawentry, rawentryalloc+1);
+	    rawentry = (char*)realloc(rawentry, rawentryalloc+1);
 	}
 	if (len > 0 && LineBuf[len-1] == '\\') {
             LineBuf[len-1] = 0;
@@ -261,11 +232,11 @@ static ProcessMailcapEntry(FILE *fp, struct MailcapEntry *mc)
       return(0);
     }
     *s++ = 0;
-    mc->needsterminal = 0;
-    mc->contenttype = malloc(1+strlen(rawentry));
-    strcpy(mc->contenttype, rawentry);
+    needsterminal = 0;
+    contenttype = (char*)malloc(1+strlen(rawentry));
+    strcpy(contenttype, rawentry);
 
-    t = GetCommand(s, &mc->command);
+    t = GetCommand(s, &command);
     if (!t) {
         free(rawentry);
         goto do_presentation;
@@ -282,21 +253,22 @@ static ProcessMailcapEntry(FILE *fp, struct MailcapEntry *mc)
         if (arg && *arg)
           arg = Cleanse(arg);
 	if (!strcmp(arg, "needsterminal")) {
-	    mc->needsterminal = 1;
+	    needsterminal = 1;
 	}
 	s = t;
     }
 
     free(rawentry);
   do_presentation:
-    HTSetPresentation(mc->contenttype, mc->command, 1.0, 3.0, 0.0);
+    HTSetPresentation(contenttype, command, 1.0, 3.0, 0.0);
+	free(contenttype);
+	free(command);
     return(1);
 }
 
 
 static ProcessMailcapFile(char *file)
 {
-    struct MailcapEntry mc;
     FILE *fp;
 
 #ifndef DISABLE_TRACE
@@ -308,26 +280,19 @@ static ProcessMailcapFile(char *file)
     fp = fopen(file, "r");
 
     while (fp && !feof(fp)) {
-        ProcessMailcapEntry(fp, &mc);
+        ProcessMailcapEntry(fp);
     }
     if (fp) fclose(fp);
     return(-1);
 }
-
-
 
 int HTLoadTypesConfigFile (char *fn)
 {
   return ProcessMailcapFile (fn);
 }
 
-
-
-
 /* ------------------------------------------------------------------------ */
 /* ------------------------------------------------------------------------ */
-/* ------------------------------------------------------------------------ */
-
 /*	Define a basic set of suffixes
 **	------------------------------
 **
@@ -345,8 +310,7 @@ PUBLIC void HTFileInit NOARGS
   extern char *global_extension_map;
   extern char *personal_extension_map;
 
-  if (use_default_extension_map)
-    {
+  if (use_default_extension_map) {
 #ifndef DISABLE_TRACE
       if (www2Trace)
         fprintf (stderr, "@@@ Using default extension map\n");
@@ -491,106 +455,84 @@ PUBLIC void HTFileInit NOARGS
 
 static int getline(char *s, int n, FILE *f) 
 {
-  register int i=0;
+	register int i=0;
   
-  while(1) 
-    {
-      s[i] = (char)fgetc(f);
-      
-      if(s[i] == CR)
-        s[i] = fgetc(f);
-    
-      if((s[i] == EOF) || (s[i] == LF) || (i == (n-1)))
-        {
-          s[i] = '\0';
-          return (feof(f) ? 1 : 0);
-        }
-      ++i;
-    }
-
-  /* NOTREACHED */
+	while(1) {
+		s[i] = (char)fgetc(f);
+		if(s[i] == CR)
+			s[i] = fgetc(f);
+		if((s[i] == EOF) || (s[i] == LF) || (i == (n-1))) {
+			s[i] = '\0';
+			return (feof(f) ? 1 : 0);
+		}
+		++i;
+	}
+	/* NOTREACHED */
 }
 
 static void getword(char *word, char *line, char stop, char stop2) 
 {
-  int x = 0, y;
-
-  for (x = 0; line[x] && line[x] != stop && line[x] != stop2; x++)
-    {
-      word[x] = line[x];
-    }
+	int x = 0, y;
   
-  word[x] = '\0';
-  if (line[x]) 
-    ++x;
-  y=0;
-
-  while (line[y++] = line[x++])
-    ;
-
-  return;
+	for (x = 0; line[x] && line[x] != stop && line[x] != stop2; x++) {
+		word[x] = line[x];
+	}
+	word[x] = '\0';
+	if (line[x]) 
+		++x;
+	y=0;
+	while (line[y++] = line[x++])
+		;
 }
 
 int HTLoadExtensionsConfigFile (char *fn)
 {
-  char l[MAX_STRING_LEN],w[MAX_STRING_LEN],*ct,*ptr;
-  FILE *f;
-  int x, count = 0;
+	char l[MAX_STRING_LEN],w[MAX_STRING_LEN],*ct,*ptr;
+	FILE *f;
+	int x, count = 0;
 
 #ifndef DISABLE_TRACE
-  if (www2Trace)
-    fprintf (stderr, "Loading extensions config file '%s'\n",
-             fn);
+	if (www2Trace)
+		fprintf (stderr, "Loading extensions config file '%s'\n", fn);
 #endif
   
-  if(!(f = fopen(fn,"r"))) 
-    {
+	if(!(f = fopen(fn,"r"))) {
 #ifndef DISABLE_TRACE
-      if (www2Trace)
-        fprintf (stderr, "Could not open extensions config file '%s'\n",fn);
+		if (www2Trace)
+		fprintf(stderr,"Could not open extensions config file '%s'\n",fn);
 #endif
+		return -1;
+	}
 
-      return -1;
-    }
+	while(!(getline(l,MAX_STRING_LEN,f))) {
+/* always get rid of leading white space for "line" -- SWP */
+		for (ptr=l; *ptr && isspace(*ptr); ptr++);
 
-  while(!(getline(l,MAX_STRING_LEN,f))) 
-    {
-      /* always get rid of leading white space for "line" -- SWP */
-      for (ptr=l; *ptr && isspace(*ptr); ptr++);
-
-      getword(w,ptr,' ','\t');
-      if(ptr[0] == '\0' || w[0] == '#')
-        continue;
-      ct = (char *)malloc(sizeof(char) * (strlen(w) + 1));
-      strcpy(ct,w);
+		getword(w,l,' ','\t');
+		if(l[0] == '\0' || w[0] == '#')
+			continue;
+		ct = (char *)malloc(sizeof(char) * (strlen(w) + 1));
+		strcpy(ct,w);
       
-      while(ptr[0]) 
-        {
-          getword(w,ptr,' ','\t');
-          if(w[0] && (w[0] != ' ')) 
-            {
-              char *ext = (char *)malloc(sizeof(char) * (strlen(w)+1+1));
+		while(ptr[0]) {
+			getword(w,ptr,' ','\t');
+			if(w[0] && (w[0] != ' ')) {
+				char *ext = (char *)malloc(sizeof(char) * (strlen(w)+1+1));
 
-              for(x=0; w[x]; x++)
-                ext[x+1] = TOLOWER(w[x]);
-              ext[0] = '.';
-              ext[strlen(w)+1] = 0;
-
+				for(x=0; w[x]; x++)
+					ext[x+1] = TOLOWER(w[x]);
+				ext[0] = '.';
+				ext[strlen(w)+1] = 0;
 #ifndef DISABLE_TRACE
-              if (www2Trace)
-                fprintf (stderr, "SETTING SUFFIX '%s' to '%s'\n", ext, ct);
+if (www2Trace) fprintf (stderr, "SETTING SUFFIX '%s' to '%s'\n", ext, ct);
 #endif
-
-              HTSetSuffix (ext, ct, "binary", 1.0);
-              count++;
-              
-              free (ext);
-            }
-        }
-      free(ct);
-    }
-  
-  fclose(f);
-
-  return count;
+				HTSetSuffix (ext, ct, "binary", 1.0);
+				count++;
+				free (ext);
+			}
+		}
+		free(ct);
+	}
+	fclose(f);
+	return count;
 }

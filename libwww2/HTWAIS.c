@@ -42,7 +42,7 @@
 
    Brewster@think.com
 */
-#include "../config.h"
+
 #ifdef DIRECT_WAIS
 
 #define BIG 10000
@@ -96,8 +96,6 @@ PRIVATE char	line[2048];	/* For building strings to display */
 #define PUTC(c) (*target->isa->put_character)(target, c)
 #define PUTBLOCK(c, len) (*target->isa->put_block)(target, c, len)
 #define PUTS(s) (*target->isa->put_string)(target, s)
-#define START(e) (*target->isa->start_element)(target, e, 0, 0)
-#define END(e) (*target->isa->end_element)(target, e)
 #define END_TARGET (*target->isa->end_document)(target)
 #define FREE_TARGET (*target->isa->free)(target)
 
@@ -137,8 +135,8 @@ void showDiags ARGS2(
 **	-----------------------------------------
 */
 
-PRIVATE BOOL acceptable[256];
-PRIVATE BOOL acceptable_inited = NO;
+PRIVATE HT_BOOL acceptable[256];
+PRIVATE HT_BOOL acceptable_inited = NO;
 
 PRIVATE void init_acceptable NOARGS
 {
@@ -426,7 +424,7 @@ display_search_response ARGS4(
 {
   WAISSearchResponse  *info;
   long i, k;
-  BOOL archie;
+  HT_BOOL archie;
 
   if (!response)
     {
@@ -459,7 +457,7 @@ display_search_response ARGS4(
   PUTS(line);
   PUTS("The first figure for each entry is its relative score, ");
   PUTS("the second the number of lines in the item.");
-  START(HTML_MENU);
+  PUTS("\n<MENU>\n");
 
   if ( response->DatabaseDiagnosticRecords != 0 ) {
     info = (WAISSearchResponse *)response->DatabaseDiagnosticRecords;
@@ -486,7 +484,7 @@ display_search_response ARGS4(
 	       (long int)(info->DocHeaders[k]->Lines),
 	       headline);
 #endif
-	START(HTML_LI);
+	PUTS("\n<LI> ");
 	sprintf(line, "%4ld  %4ld  ",
 	    head->Score,
 	    head->Lines);
@@ -614,7 +612,7 @@ display_search_response ARGS4(
       }
     }
   }				/* Loop: display user info */
-  END(HTML_MENU);
+  PUTS("\n</MENU>\n");
   PUTC('\n'); ;
 }
 
@@ -716,7 +714,7 @@ PUBLIC int HTLoadWAIS ARGS4(
   char *docname;
   FILE *connection = 0;
   char *names;		/* Copy of arg to be hacked up */
-  BOOL ok = NO;
+  HT_BOOL ok = NO;
   WAISSearchResponse *response;
   diagnosticRecord **diag;
   
@@ -784,13 +782,13 @@ PUBLIC int HTLoadWAIS ARGS4(
                         }
 #endif
 
-                      START(HTML_TITLE);
+                      PUTS("<TITLE>");
                       PUTS("Multiple Format Opportunity");
-                      END(HTML_TITLE);
+                      PUTS("</TITLE>\n");
                       
-                      START(HTML_H1);
+                      PUTS("<H1>");
                       PUTS("Multiple Format Opportunity");
-                      END(HTML_H1);
+                      PUTS("</H1>\n");
 
                       PUTS("This is a multiformat WAIS response.  You may pick the format of your choice from the list that follows: <p>\n\n<ul>\n");
 
@@ -920,26 +918,24 @@ PUBLIC int HTLoadWAIS ARGS4(
     {				/* I N D E X */
       HTStructured * target = HTML_new(anAnchor, format_out, sink);
       
-      START(HTML_TITLE);
+      PUTS("<TITLE>");
       PUTS(wais_database);
       PUTS(" index");
-      END(HTML_TITLE);
+      PUTS("</TITLE>\n");
       
-      START(HTML_H1);
+      PUTS("<H1>");
       PUTS(wais_database);
-      END(HTML_H1);
+      PUTS("</H1>\n");
 
-      START(HTML_ISINDEX);
+      PUTS("<ISINDEX>\n");
       
-      START(HTML_P);
+      PUTS("<P>\n");
       
       END_TARGET;
       if (connection) 
         FW_close_connection(connection);
       FREE_TARGET;
-    } 
-  else if (key) 
-    {					/* S E A R C H */
+    } else if (key) {					/* S E A R C H */
       char *p;
       HTStructured * target;
       
@@ -951,18 +947,18 @@ PUBLIC int HTLoadWAIS ARGS4(
       
       target = HTML_new(anAnchor, format_out, sink);
       
-      START(HTML_TITLE);
+      PUTS("<TITLE>");
       PUTS(keywords);
       PUTS(" (in ");
       PUTS(wais_database);
       PUTS(")");
-      END(HTML_TITLE);
+      PUTS("</TITLE>\n");
       
-      START(HTML_H1);
+      PUTS("<H1>");
       PUTS(keywords);
-      END(HTML_H1);
+      PUTS("</H1>\n");
       
-      START(HTML_ISINDEX);
+      PUTS("<ISINDEX>\n");
       
       request_buffer_length = MAX_MESSAGE_LEN; /* Amount left */
 #ifndef DISABLE_TRACE
@@ -1224,3 +1220,11 @@ PUBLIC int HTLoadWAIS ARGS4(
 PUBLIC HTProtocol HTWAIS = { "wais", HTLoadWAIS, NULL };
 
 #endif /* DIRECT_WAIS */
+ 
+/* The DEC C compiler does not support empty module grrr... */ 
+ 
+#ifdef DECOSF1
+static dummy()
+{
+}
+#endif 

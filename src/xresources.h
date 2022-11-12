@@ -1,56 +1,5 @@
-/****************************************************************************
- * NCSA Mosaic for the X Window System                                      *
- * Software Development Group                                               *
- * National Center for Supercomputing Applications                          *
- * University of Illinois at Urbana-Champaign                               *
- * 605 E. Springfield, Champaign IL 61820                                   *
- * mosaic@ncsa.uiuc.edu                                                     *
- *                                                                          *
- * Copyright (C) 1993, Board of Trustees of the University of Illinois      *
- *                                                                          *
- * NCSA Mosaic software, both binary and source (hereafter, Software) is    *
- * copyrighted by The Board of Trustees of the University of Illinois       *
- * (UI), and ownership remains with the UI.                                 *
- *                                                                          *
- * The UI grants you (hereafter, Licensee) a license to use the Software    *
- * for academic, research and internal business purposes only, without a    *
- * fee.  Licensee may distribute the binary and source code (if released)   *
- * to third parties provided that the copyright notice and this statement   *
- * appears on all copies and that no charge is associated with such         *
- * copies.                                                                  *
- *                                                                          *
- * Licensee may make derivative works.  However, if Licensee distributes    *
- * any derivative work based on or derived from the Software, then          *
- * Licensee will (1) notify NCSA regarding its distribution of the          *
- * derivative work, and (2) clearly notify users that such derivative       *
- * work is a modified version and not the original NCSA Mosaic              *
- * distributed by the UI.                                                   *
- *                                                                          *
- * Any Licensee wishing to make commercial use of the Software should       *
- * contact the UI, c/o NCSA, to negotiate an appropriate license for such   *
- * commercial use.  Commercial use includes (1) integration of all or       *
- * part of the source code into a product for sale or license by or on      *
- * behalf of Licensee to third parties, or (2) distribution of the binary   *
- * code or source code to third parties that need it to utilize a           *
- * commercial product sold or licensed by or on behalf of Licensee.         *
- *                                                                          *
- * UI MAKES NO REPRESENTATIONS ABOUT THE SUITABILITY OF THIS SOFTWARE FOR   *
- * ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED          *
- * WARRANTY.  THE UI SHALL NOT BE LIABLE FOR ANY DAMAGES SUFFERED BY THE    *
- * USERS OF THIS SOFTWARE.                                                  *
- *                                                                          *
- * By using or copying this Software, Licensee agrees to abide by the       *
- * copyright law and all other applicable laws of the U.S. including, but   *
- * not limited to, export control laws, and the terms of this license.      *
- * UI shall have the right to terminate this license immediately by         *
- * written notice upon Licensee's breach of, or non-compliance with, any    *
- * of its terms.  Licensee may be held legally responsible for any          *
- * copyright infringement that is caused or encouraged by Licensee's        *
- * failure to abide by the terms of this license.                           *
- *                                                                          *
- * Comments and questions are welcome and can be sent to                    *
- * mosaic-x@ncsa.uiuc.edu.                                                  *
- ****************************************************************************/
+/* Please read copyright.ncsa. Don't remove next line */
+#include "copyright.ncsa"
 
 /* This document should be included in whatever source document
    sets up the Intrinsics.  It is in a separate file so it doesn't
@@ -59,43 +8,42 @@
 #ifndef __MOSAIC_XRESOURCES_H__
 
 /* ----------------------------- X Resources ------------------------------ */
+
 #define offset(x) XtOffset (AppDataPtr, x)
+
+static Boolean false = False;
+static int Izero = 0;
+static int ttl192 = 192;
 
 static XtResource resources[] = {
 
-  /* default font choice from Options menu choices */
+/* default font choice from Options menu choices */
   { "defaultFontChoice", "DefaultFontChoice", XtRString, sizeof (char *),
     offset (default_font_choice), XtRString, "TimesRegular" },
-  { "kiosk", "Kiosk", XtRBoolean, sizeof (Boolean), 
-      offset (kiosk), XtRString, "False" },
-  { "kioskPrint", "KioskPrint", XtRBoolean, sizeof (Boolean), 
-      offset (kioskPrint), XtRString, "False" },
-  { "kioskNoExit", "KioskNoExit", XtRBoolean, sizeof (Boolean),
-      offset (kioskNoExit), XtRString, "False" },
-  /* Whether Mosaic reads and writes global history from 
-     ~/.mosaic-global-history
-     and thus provides persistent history tracking. */
+/* Whether Mosaic reads and writes global history from 
+ * ~/.mosaic-global-history
+ * and thus provides persistent history tracking. */
   { "useGlobalHistory", "UseGlobalHistory", XtRBoolean, sizeof (Boolean),
     offset (use_global_history), XtRString, "True" },
-  /* Whether titles will be displayed wherever URL\'s are normally
-     displayed. */
+/* Whether titles will be displayed wherever URL\'s are normally
+ *   displayed. */
   { "displayURLsNotTitles", "DisplayURLsNotTitles", XtRBoolean, 
     sizeof (Boolean),
     offset (display_urls_not_titles), XtRString, "False" },
-  /* Default width for a Document View window.  This will change as windows
-     are cloned. */
+/* Default width for a Document View window.  This will change as windows
+ *   are cloned. */
   { "defaultWidth", "DefaultWidth", XtRInt, sizeof (int),
       offset (default_width), XtRString, "640" },
-  /* Default height for a Document View window. */
+/* Default height for a Document View window. */
   { "defaultHeight", "DefaultHeight", XtRInt, sizeof (int),
       offset (default_height), XtRString, "700" },
-  /* Startup document. */
+/* Startup document. */
   { "homeDocument", "HomeDocument", XtRString, sizeof (char *),
       offset (home_document), XtRString, 
       HOME_PAGE_DEFAULT },
   { "confirmExit", "ConfirmExit", XtRBoolean, sizeof (Boolean),
       offset (confirm_exit), XtRString, "True" },
-  /* THIS USED TO BE mailCommand BUT IS NOW sendmailCommand. */
+/* THIS USED TO BE mailCommand BUT IS NOW sendmailCommand. */
 #ifdef __bsdi__
   { "sendmailCommand", "SendmailCommand", XtRString, sizeof (char *),
       offset (sendmail_command), XtRString, "/usr/sbin/sendmail -t" },
@@ -103,7 +51,7 @@ static XtResource resources[] = {
   { "sendmailCommand", "SendmailCommand", XtRString, sizeof (char *),
       offset (sendmail_command), XtRString, "/usr/lib/sendmail -t" },
 #endif
-  /* Ignore this.  Stealth feature. */
+/* Ignore this.  Stealth feature. */
   { "mailFilterCommand", "MailFilterCommand", XtRString, sizeof (char *),
       offset (mail_filter_command), XtRString, NULL },
   { "printCommand", "PrintCommand", XtRString, sizeof (char *),
@@ -138,7 +86,7 @@ static XtResource resources[] = {
   { "defaultHotlistFile", "DefaultHotlistFile", XtRString, 
       sizeof (char *),
       offset (default_hotlist_file), XtRString, ".mosaic-hotlist-default" },
-  { "defaultHotFile", "DefaultHotFile", XtRString, 
+  { "defaultHotFile", "DefaultHotFile", XtRString,
       sizeof (char *),
       offset (default_hot_file), XtRString, ".mosaic-hot.html" },
   { "addHotlistAddsRBM", "AddHotlistAddsRBM", XtRBoolean, sizeof (Boolean),
@@ -149,7 +97,7 @@ static XtResource resources[] = {
       sizeof (char *),
       offset (private_annotation_directory), XtRString, 
       ".mosaic-personal-annotations" },
-  /* Whether selections should be fancy, by default. */
+/* Whether selections should be fancy, by default. */
   { "fancySelections", "FancySelections", XtRBoolean,
       sizeof (Boolean), offset (default_fancy_selections), 
       XtRString, "False" },
@@ -241,8 +189,6 @@ static XtResource resources[] = {
   { "tweakGopherTypes", "TweakGopherTypes", XtRBoolean, sizeof (Boolean),
       offset (tweak_gopher_types), XtRString, "True" },
 
-  { "guiLayout", "GuiLayout", XtRString, sizeof (char *),
-    offset(gui_layout), XtRString, NULL},
   /* --- new in 2.0 --- */
   { "trackPointerMotion", "TrackPointerMotion", XtRBoolean, sizeof (Boolean),
       offset (track_pointer_motion), XtRString, "True" },
@@ -261,10 +207,6 @@ static XtResource resources[] = {
   { "docsDirectory", "DocsDirectory", XtRString, sizeof (char *),
       offset (docs_directory), XtRString, NULL },
 
-  { "documentsMenuSpecfile", "DocumentsMenuSpecfile", XtRString, sizeof (char *),
-      offset (documents_menu_specfile), XtRString, 
-      "/usr/local/lib/mosaic/documents.menu" },
-
   { "reloadReloadsImages", "ReloadReloadsImages", XtRBoolean, sizeof (Boolean),
       offset (reload_reloads_images), XtRString, "False" },
   { "reloadPragmaNoCache", "ReloadPragmaNoCache", XtRBoolean, sizeof (Boolean),
@@ -276,11 +218,6 @@ static XtResource resources[] = {
       offset (max_wais_responses), XtRString, "200" },
   { "delayImageLoads", "DelayImageLoads", XtRBoolean, sizeof (Boolean),
       offset (delay_image_loads), XtRString, "False" },
-/*SWP*/
-  { "enableTables", "EnableTables", XtRBoolean, sizeof(Boolean),
-      offset(enable_tables), XtRString, "False"},
-  { "disableMiddleButton", "DisableMiddleButton", XtRBoolean, sizeof(Boolean),
-      offset(disableMiddleButton), XtRString, "False"},
 
   { "useDefaultExtensionMap", "UseDefaultExtensionMap", 
       XtRBoolean, sizeof (Boolean),
@@ -344,18 +281,13 @@ static XtResource resources[] = {
       XtRBoolean, sizeof(Boolean),
       offset(useAFSKlog), XtRString,"False" },
 
-#ifdef __sgi
-  { "debuggingMalloc", "DebuggingMalloc", XtRBoolean, sizeof (Boolean),
-      offset (debugging_malloc), XtRString, "False" },
-#endif
-
           /* new in 2.7 */
   { "clipping", "Clipping", XtRBoolean, sizeof (Boolean),
       offset (clipping), XtRString, "True" },
-
+      
   { "maxClippingSizeX", "MaxClippingSizeX", XtRInt, sizeof (int),
       offset (max_clip_x), XtRString, "-1" },
-
+      
   { "maxClippingSizeY", "MaxClippingSizeY", XtRInt, sizeof (int),
       offset (max_clip_y), XtRString, "-1" },
 
@@ -367,9 +299,6 @@ static XtResource resources[] = {
 
   { "installColormap", "InstallColormap", XtRBoolean, sizeof (Boolean),
       offset (instamap), XtRString, "False" },
-
-  { "splashScreen", "SplashScreen", XtRBoolean, sizeof (Boolean),
-      offset (splashScreen), XtRString, "True" },
 
   { "imageViewInternal", "ImageViewInternal", XtRBoolean, sizeof (Boolean),
       offset (imageViewInternal), XtRString, "False" },
@@ -477,11 +406,11 @@ static XtResource resources[] = {
 
   { "proxySpecfile", "ProxySpecfile", XtRString, sizeof (char *),
       offset (proxy_specfile), XtRString, 
-      "/usr/local/lib/mosaic/proxy" },
+      "/usr/local/lib/mMosaic/proxy" },
 
   { "noproxySpecfile", "NoproxySpecfile", XtRString, sizeof (char *),
       offset (noproxy_specfile), XtRString, 
-      "/usr/local/lib/mosaic/no_proxy" },
+      "/usr/local/lib/mMosaic/no_proxy" },
   
   { "useScreenGamma", "UseScreenGamma", XtRBoolean, sizeof (Boolean),
       offset (useScreenGamma), XtRString, "False" },
@@ -495,7 +424,7 @@ static XtResource resources[] = {
   { "frameHack", "FrameHack", XtRBoolean, sizeof (Boolean),
     offset (frame_hack), XtRString, "False" },
   
-  /* New news stuff in B4 */
+/* New news stuff in B4 */
   { "newsUseThreadView", "NewsUseThreadView", XtRBoolean,
     sizeof(Boolean), offset(newsConfigView), XtRString, "True" },
   
@@ -516,40 +445,58 @@ static XtResource resources[] = {
 
   { "newsBackgroundFlushTime", "NewsBackgroundFlushTime", XtRInt,
     sizeof(int), offset(newsBackgroundFlushTime), XtRString, "300" },
-
+#ifdef MULTICAST
+    {"debug", "Debug", XtRBoolean, sizeof(Boolean),
+    offset(mc_debug), XtRBoolean, (caddr_t) & false},
+    {"sessionName", "sessionName", XtRString, sizeof(char *),
+    offset(mc_sess_name), XtRString, (caddr_t) "Mosaic Multicast Session"},
+    {"mediaName", "mediaName", XtRString, sizeof(char *),
+    offset(mc_media_name), XtRString, (caddr_t) "mMosaic"},
+    {"lifeTime", "lifeTime", XtRInt, sizeof(int),
+    offset(mc_life_time), XtRInt, (caddr_t) & Izero},
+    {"ttl", "ttl", XtRInt, sizeof(int),
+    offset(mc_ttl), XtRInt, (caddr_t) & ttl192},
+    {"relay", "relay", XtRBoolean, sizeof(Boolean),
+    offset(mc_relay), XtRBoolean, (caddr_t) & false},
+    {"aliasName", "aliasName", XtRString, sizeof(char *),
+    offset(mc_alias_name), XtRString, (caddr_t) NULL},
+    {"multiCastAddr", "multiCastAddr", XtRString, sizeof(char *),
+    offset(mc_dest), XtRString, (caddr_t) NULL},
+#endif
   /* New in 2.7b5 */
   { "newsPrevIsPrevUnread", "NewsPrevIsPrevUnread", XtRBoolean,
     sizeof(Boolean), offset(newsPrevIsUnread), XtRString, "False" },
-
+                                      
   { "newsNextIsNextUnread", "NewsNextIsNextUnread", XtRBoolean,
     sizeof(Boolean), offset(newsNextIsUnread), XtRString, "True" },
-
+                                      
   { "newsNewsrcPrefix", "NewsNewsrcPrefix", XtRString,
     sizeof(char *), offset(newsNewsrcPrefix), XtRString, ".newsrc" },
-
+                                      
   { "newsUseNewsrc", "NewsUseNewsrc", XtRBoolean,
     sizeof(Boolean), offset(newsUseNewsrc), XtRString, "True" },
-
+                                      
   { "newsSubjectWidth", "NewsSubjectWidth", XtRInt,
     sizeof(int), offset(newsSubjectWidth), XtRString, "38" },
-
+                                      
   { "newsAuthorWidth", "NewsAuthorWidth", XtRInt,
     sizeof(int), offset(newsAuthorWidth), XtRString, "30" },
-
+                                      
   { "focusFollowsMouse", "FocusFollowsMouse", XtRBoolean,
     sizeof(Boolean), offset(focusFollowsMouse), XtRString, "False" },
-
+                                      
   { "sessionHistoryOnRBM", "SessionHistoryOnRBM", XtRBoolean,
     sizeof(Boolean), offset(sessionHistoryOnRBM), XtRString, "True" },
-  
+                                      
   { "numberOfItemsInRBMHistory", "NumberOfItemsInRBMHistory", XtRInt,
     sizeof(int), offset(numberOfItemsInRBMHistory), XtRString, "12" },
-
+                                      
   { "hotlistOnRBM", "HotlistOnRBM", XtRBoolean,
     sizeof(Boolean), offset(hotlistOnRBM), XtRString, "True" },
-
+                                      
   { "newsUseShortNewsrc", "NewsUseShortNewsrc", XtRBoolean,
     sizeof(Boolean), offset(newsUseShortNewsrc), XtRString, "False" },
+
 };
 
 #undef offset
@@ -579,12 +526,26 @@ static XrmOptionDescRec options[] = {
 #ifdef __sgi
   {"-dm",     "*debuggingMalloc",     XrmoptionNoArg,  "True"},
 #endif
-  {"-kiosk",  "*kiosk",               XrmoptionNoArg,  "True"},
-  {"-kioskPrint",  "*kioskPrint",     XrmoptionNoArg,  "True"},
-  {"-kioskNoExit",  "*kioskNoExit",   XrmoptionNoArg,  "True"},
   {"-cciPort",  "*cciPort",   	      XrmoptionSepArg,  "0"},
   {"-maxNumCCIConnect",  "*maxNumCCIConnect",  XrmoptionSepArg,  "0"},
   {"-install",  "*nothingUseful",     XrmoptionNoArg,  "True"},
+#ifdef MULTICAST
+    {"-v", ".debug", XrmoptionNoArg, "True"},
+    {"-verbose", ".debug", XrmoptionNoArg, "True"},
+    {"-debug", ".debug", XrmoptionNoArg, "True"},
+    {"-S", ".sessionName", XrmoptionSepArg, 0},
+    {"-sessionName", ".sessionName", XrmoptionSepArg, 0},
+    {"-M", ".mediaName", XrmoptionSepArg, 0},
+    {"-mediaName", ".mediaName", XrmoptionSepArg, 0},
+    {"-l", ".lifetime", XrmoptionSepArg, 0},
+    {"-lifeTime", ".lifetime", XrmoptionSepArg, 0},
+    {"-t", ".ttl", XrmoptionSepArg, 0},
+    {"-ttl", ".ttl", XrmoptionSepArg, 0},
+    {"-relay", ".relay", XrmoptionNoArg, "False"},
+    {"-a", ".aliasName", XrmoptionSepArg, 0},
+    {"-aliasName", ".aliasName", XrmoptionSepArg, 0},
+    {"-mcDest", ".multiCastAddr", XrmoptionSepArg, 0},
+#endif
 };
 
 static String color_resources[] = {
@@ -653,7 +614,7 @@ static String color_resources[] = {
   "*XmScrollBar*highlightThickness:     0",
   "*highlightThickness:	                0",
   /* "*geometry:                           +400+200", */
-  /*  "*keyboardFocusPolicy:                pointer",*/
+  /*"*keyboardFocusPolicy:                pointer",*/
   
   "*TitleFont: -adobe-times-bold-r-normal-*-24-*-*-*-*-*-iso8859-1",
   "*Font: -adobe-times-medium-r-normal-*-17-*-*-*-*-*-iso8859-1",
@@ -811,7 +772,7 @@ static String mono_resources[] = {
   "*XmScrollBar*highlightThickness:     0",
   "*highlightThickness:	                0",
   /* "*geometry:                           +400+200", */
-  /*   "*keyboardFocusPolicy:                pointer", */
+  /*"*keyboardFocusPolicy:                pointer",*/
 
   "*TitleFont: -adobe-times-bold-r-normal-*-24-*-*-*-*-*-iso8859-1",
   "*Font: -adobe-times-medium-r-normal-*-17-*-*-*-*-*-iso8859-1",

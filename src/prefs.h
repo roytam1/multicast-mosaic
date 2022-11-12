@@ -1,61 +1,8 @@
-/****************************************************************************
- * NCSA Mosaic for the X Window System                                      *
- * Software Development Group                                               *
- * National Center for Supercomputing Applications                          *
- * University of Illinois at Urbana-Champaign                               *
- * 605 E. Springfield, Champaign IL 61820                                   *
- * mosaic@ncsa.uiuc.edu                                                     *
- *                                                                          *
- * Copyright (C) 1993, Board of Trustees of the University of Illinois      *
- *                                                                          *
- * NCSA Mosaic software, both binary and source (hereafter, Software) is    *
- * copyrighted by The Board of Trustees of the University of Illinois       *
- * (UI), and ownership remains with the UI.                                 *
- *                                                                          *
- * The UI grants you (hereafter, Licensee) a license to use the Software    *
- * for academic, research and internal business purposes only, without a    *
- * fee.  Licensee may distribute the binary and source code (if released)   *
- * to third parties provided that the copyright notice and this statement   *
- * appears on all copies and that no charge is associated with such         *
- * copies.                                                                  *
- *                                                                          *
- * Licensee may make derivative works.  However, if Licensee distributes    *
- * any derivative work based on or derived from the Software, then          *
- * Licensee will (1) notify NCSA regarding its distribution of the          *
- * derivative work, and (2) clearly notify users that such derivative       *
- * work is a modified version and not the original NCSA Mosaic              *
- * distributed by the UI.                                                   *
- *                                                                          *
- * Any Licensee wishing to make commercial use of the Software should       *
- * contact the UI, c/o NCSA, to negotiate an appropriate license for such   *
- * commercial use.  Commercial use includes (1) integration of all or       *
- * part of the source code into a product for sale or license by or on      *
- * behalf of Licensee to third parties, or (2) distribution of the binary   *
- * code or source code to third parties that need it to utilize a           *
- * commercial product sold or licensed by or on behalf of Licensee.         *
- *                                                                          *
- * UI MAKES NO REPRESENTATIONS ABOUT THE SUITABILITY OF THIS SOFTWARE FOR   *
- * ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED          *
- * WARRANTY.  THE UI SHALL NOT BE LIABLE FOR ANY DAMAGES SUFFERED BY THE    *
- * USERS OF THIS SOFTWARE.                                                  *
- *                                                                          *
- * By using or copying this Software, Licensee agrees to abide by the       *
- * copyright law and all other applicable laws of the U.S. including, but   *
- * not limited to, export control laws, and the terms of this license.      *
- * UI shall have the right to terminate this license immediately by         *
- * written notice upon Licensee's breach of, or non-compliance with, any    *
- * of its terms.  Licensee may be held legally responsible for any          *
- * copyright infringement that is caused or encouraged by Licensee's        *
- * failure to abide by the terms of this license.                           *
- *                                                                          *
- * Comments and questions are welcome and can be sent to                    *
- * mosaic-x@ncsa.uiuc.edu.                                                  *
- ****************************************************************************/
+/* Please read copyright.ncsa. Don't remove next line */
+#include "copyright.ncsa"
 
-/* 
- * Created: Wed Dec 20 11:08:12 CDT 1995
+/* Created: Wed Dec 20 11:08:12 CDT 1995
  * Author: Dan Pape
- *
  */
 
 #ifndef PREFS
@@ -67,8 +14,7 @@
 #include <X11/Intrinsic.h>
 #include "prefs_defs.h"
 
-typedef struct
-{
+typedef struct {
 
 /* anchors */
 
@@ -123,7 +69,6 @@ typedef struct
     
     char *default_hotlist_file;
     char *default_hot_file;
-    char *documents_menu_specfile;
     Boolean addHotlistAddsRBM;
     Boolean addRBMAddsRBM;
     
@@ -155,9 +100,6 @@ typedef struct
     char *personal_type_map;
     Boolean tweak_gopher_types;
 
-/* layout info form main gui */
-    char *gui_layout;
-    
 /* news */
     
 /* printing */
@@ -182,10 +124,6 @@ typedef struct
     Boolean kioskNoExit;
     Boolean keepAlive;
     int ftp_timeout_val;
-    
-/* tables */
-    
-    Boolean enable_tables;
     
 /* window */
     
@@ -231,9 +169,9 @@ typedef struct
 
     /* new in 2.7 */
 
-	Boolean clipping;
-	int max_clip_x;
-	int max_clip_y;
+        Boolean clipping;
+        int max_clip_x;
+        int max_clip_y;
 	Boolean long_text_names;
 	char *toolbar_layout;
 	Boolean sendReferer;
@@ -257,7 +195,6 @@ typedef struct
 	int ftpEllipsisMode;
 	Boolean useScreenGamma;
 	float screen_gamma;
-    Boolean disableMiddleButton;
 
         /* newer in 2.7 */
 
@@ -270,7 +207,6 @@ typedef struct
     Boolean nutTrace;
     Boolean animateBusyIcon;
 
-    Boolean splashScreen;
     Boolean instamap;
     Boolean imageViewInternal;
     int urlExpired;
@@ -285,7 +221,18 @@ typedef struct
     Boolean newsConfigView;
     Boolean newsUseBackgroundFlush;
     int newsBackgroundFlushTime;
-
+  
+#ifdef MULTICAST
+    Boolean         mc_debug;              /* debug or verbose */
+    char           *mc_sess_name;
+    char           *mc_media_name;
+    int             mc_life_time;
+    int             mc_ttl;
+    Boolean         mc_relay;
+    char           *mc_alias_name;
+    char	   *mc_dest;		/* multicast dest addr/port */
+#endif
+     
   /* newest in 2.7b5 double haha; */
     Boolean newsPrevIsUnread;
     Boolean newsNextIsUnread;
@@ -293,14 +240,13 @@ typedef struct
     Boolean newsUseNewsrc;
     int newsSubjectWidth;
     int newsAuthorWidth;
-
+  
     Boolean focusFollowsMouse;
     Boolean sessionHistoryOnRBM;
     int numberOfItemsInRBMHistory;
     Boolean hotlistOnRBM;
-
+ 
     Boolean newsUseShortNewsrc;
-
 } AppData, *AppDataPtr;
 
 
@@ -316,8 +262,6 @@ typedef struct prefs {
 Boolean preferences_genesis(void);
 Boolean preferences_armegeddon(void);
 
-Boolean read_preferences_file(prefsStructP inPrefsStruct);
-
 prefsStructP get_ptr_to_preferences(void);
 
 void *get_pref(long pref_id);
@@ -328,9 +272,7 @@ float get_pref_float(long pref_id);
 
 void set_pref_boolean(long pref_id, int value);
 void set_pref(long pref_id, void *incoming);
-
-void mo_preferences_dialog(mo_window *win);
-
+void set_pref_int(long pref_id, int value);
 
 #endif
 

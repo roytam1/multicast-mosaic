@@ -1,7 +1,8 @@
 /*	HyperText Tranfer Protocol	- Client implementation		HTTP.c
 **	==========================
 */
-#include "../config.h"
+
+#include <unistd.h>
 #include "HTTP.h"
 
 #define HTTP_VERSION	"HTTP/1.0"
@@ -23,6 +24,7 @@
 #include "HTInit.h"
 #include "HTAABrow.h"
 
+extern void application_error(char *str, char *title);
 
 int useKeepAlive=1;
 extern int securityType;
@@ -43,9 +45,8 @@ char **extra_headers=NULL;
 #define _LIBWWW2
 #include "../src/kcms.h"
 
-struct _HTStream 
-{
-  HTStreamClass * isa;
+struct _HTStream {
+	HTStreamClass * isa;
 };
 
 /* for browser to call -- BJS */
@@ -70,10 +71,10 @@ int put_file_size=0;
 FILE *put_fp;
 char *post_content_type = NULL;
 char *post_data = NULL;
-extern BOOL using_gateway;    /* are we using an HTTP gateway? */
+extern HT_BOOL using_gateway;    /* are we using an HTTP gateway? */
 extern char *proxy_host_fix;  /* for the Host: header */
-extern BOOL using_proxy;      /* are we using an HTTP proxy gateway? */
-PUBLIC BOOL reloading = NO;   /* did someone say, "RELOAD!?!?!" swp */
+extern HT_BOOL using_proxy;      /* are we using an HTTP proxy gateway? */
+PUBLIC HT_BOOL reloading = NO;   /* did someone say, "RELOAD!?!?!" swp */
 
 /*		Load Document from HTTP Server			HTLoadHTTP()
 **		==============================
@@ -113,10 +114,10 @@ PUBLIC int HTLoadHTTP ARGS4 (
   HTStream *target;		/* Unconverted data */
   HTFormat format_in;			/* Format arriving in the message */
   
-  BOOL had_header;		/* Have we had at least one header? */
+  HT_BOOL had_header;		/* Have we had at least one header? */
   char *line_buffer;
   char *line_kept_clean;
-  BOOL extensions;		/* Assume good HTTP server */
+  HT_BOOL extensions;		/* Assume good HTTP server */
   int compressed;
   char line[2048];	/* bumped up to cover Kerb huge headers */
   
@@ -135,18 +136,16 @@ PUBLIC int HTLoadHTTP ARGS4 (
   char *begin_ptr,*tmp_ptr;
   int env_length;
 
-  if (!arg)
-    {
+  if (!arg) {
       status = -3;
       HTProgress ("Bad request.");
       goto done;
-    }
-  if (!*arg) 
-    {
+  }
+  if (!*arg) {
       status = -2;
       HTProgress ("Bad request.");
       goto done;
-    }
+  }
   
   sprintf(crlf, "%c%c", CR, LF);
 
@@ -196,7 +195,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
 	} else {
 		if(addr) free(addr);
 		/* save the address for next time around */
-		addr = malloc(i+1);
+		addr = (char*) malloc(i+1);
 		strncpy(addr,arg,i);
 		*(addr+i)=0;
 
@@ -246,7 +245,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
    */        
   {
     char * p1 = HTParse(arg, "", PARSE_PATH|PARSE_PUNCTUATION);
-    command = malloc(5 + strlen(p1)+ 2 + 31);
+    command = (char*) malloc(5 + strlen(p1)+ 2 + 31);
 
     if (do_post && !do_put)
       strcpy(command, "POST ");
@@ -263,23 +262,20 @@ PUBLIC int HTLoadHTTP ARGS4 (
      * For a gateway, the beginning '/' on the request must
      * be stripped before appending to the gateway address.
      */
-    if ((using_gateway)||(using_proxy)) {
+    if ((using_gateway)||(using_proxy))
         strcat(command, p1+1);
-    }
     else
         strcat(command, p1);
     free(p1);
   }
-  if (extensions) 
-    {
+  if (extensions) {
       strcat(command, " ");
       strcat(command, HTTP_VERSION);
     }
   
   strcat(command, crlf);	/* CR LF, as in rfc 977 */
 
-  if (extensions) 
-    {
+  if (extensions) {
       int n, i;
       
       if (!HTPresentations) HTFormatInit();
@@ -287,60 +283,67 @@ PUBLIC int HTLoadHTTP ARGS4 (
 
       begin_ptr=command+strlen(command);
       env_length=0;
-
+    
       sprintf(line, "Accept:");
       env_length+=strlen(line);
       StrAllocCat(command, line);
 
 	/* KCMS Accept Header - swp */
 	if (KCMS_Return_Format==JPEG) {
-		sprintf(line," image/x-pcd-jpeg,");
+                sprintf(line," image/x-pcd-jpeg,");
 		StrAllocCat(command, line);
-		env_length+=strlen(line);
-	}
-	else if (KCMS_Return_Format==JYCC) {
-		sprintf(line," image/x-pcd-jycc,");
+                env_length+=strlen(line);
+	} else if (KCMS_Return_Format==JYCC) {
+                sprintf(line," image/x-pcd-jycc,");
 		StrAllocCat(command, line);
-		env_length+=strlen(line);
-	}
-	else if (KCMS_Return_Format==GIF) {
-		sprintf(line," image/x-pcd-gif,");
+                env_length+=strlen(line);
+	} else if (KCMS_Return_Format==GIF) {
+                sprintf(line," image/x-pcd-gif,");
 		StrAllocCat(command, line);
-		env_length+=strlen(line);
+                env_length+=strlen(line);
 	}
 
-      for(i=0; i<n; i++) 
-        {
-          HTPresentation * pres = HTList_objectAt(HTPresentations, i);
-          if (pres->rep_out == WWW_PRESENT) 
-            {
-		sprintf(line, " %s,",HTAtom_name(pres->rep));
-		env_length+=strlen(line);
-		StrAllocCat(command, line);
-		if (env_length>200) {
-			if ((tmp_ptr=strrchr(command,','))!=NULL) {
-				*tmp_ptr='\0';
-			}
-			sprintf(line, "%c%c",CR,LF);
-			StrAllocCat(command, line);
+/* Instead of sending a massive list of Accept: headers, we are going to
+   just send one now, saying that we accept everything - amb */
 
-			begin_ptr=command+strlen(command);
-			sprintf(line, "Accept:");
-			env_length=strlen(line);
-			StrAllocCat(command, line);
-		}
+/* changed back to sending the massive list of accept headers because it
+   is the "right" way (and we are catching hell for it!) - swp */
+
+      for(i=0; i<n; i++) {
+          HTPresentation * pres = (HTPresentation *)HTList_objectAt(HTPresentations, i);
+          if (pres->rep_out == WWW_PRESENT) {
+                sprintf(line, " %s,",HTAtom_name(pres->rep));
+                env_length+=strlen(line);
+                StrAllocCat(command, line);
+                if (env_length>200) {
+                        if ((tmp_ptr=strrchr(command,','))!=NULL) {
+                                *tmp_ptr='\0';
+                        }
+                        sprintf(line, "%c%c",CR,LF);
+                        StrAllocCat(command, line);
+        
+                        begin_ptr=command+strlen(command);
+                        sprintf(line, "Accept:");
+                        env_length=strlen(line);
+                        StrAllocCat(command, line);
+                }
             }
         }
-
+    
       /* This gets rid of the last comma. */
       if ((tmp_ptr=strrchr(command,','))!=NULL) {
-	*tmp_ptr='\0';
-	sprintf(line, "%c%c",CR,LF);
-	StrAllocCat(command, line);
-      }
-      else { /* No accept stuff...get rid of "Accept:" */
-	begin_ptr='\0';
-      }
+        *tmp_ptr='\0';
+        sprintf(line, "%c%c",CR,LF);
+        StrAllocCat(command, line);
+      } else { /* No accept stuff...get rid of "Accept:" */
+        begin_ptr='\0';
+      } 
+
+/*
+      sprintf(line, "Accept: *%c*%c%c",'/', CR, LF);
+      StrAllocCat(command, line);
+*/
+
 
       /* if reloading, send no-cache pragma to proxy servers. --swp */
       /* original patch from Ari L. <luotonen@dxcern.cern.ch> */
@@ -392,8 +395,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
 					if (endPtr && *endPtr) {
 						*endPtr='\0';
 					}
-				}
-				else {
+				} else {
 					*endPtr='\0';
 				}
 
@@ -404,8 +406,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
 				tmp=startPtr=endPtr=NULL;
 			}
 		}
-	}
-	else if (using_proxy || using_gateway) {
+	} else if (using_proxy || using_gateway) {
 		sprintf(line, "Host: %s%c%c", proxy_host_fix, CR, LF);
 		StrAllocCat(command, line);
 	}
@@ -443,14 +444,12 @@ PUBLIC int HTLoadHTTP ARGS4 (
           }
         else portnumber = 80;
         
-        if (NULL!=(auth=HTAA_composeAuth(hostname, portnumber, docname))) 
-          {
+        if (NULL!=(auth=HTAA_composeAuth(hostname, portnumber, docname))) {
             sprintf(line, "%s%c%c", auth, CR, LF);
             StrAllocCat(command, line);
           }
 #ifndef DISABLE_TRACE
-        if (www2Trace) 
-          {
+        if (www2Trace) {
             if (auth)
               fprintf(stderr, "HTTP: Sending authorization: %s\n", auth);
             else
@@ -462,8 +461,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
       }
     }
 
-  if (do_post && !do_put)
-    {
+  if (do_post && !do_put) {
 #ifndef DISABLE_TRACE
       if (www2Trace)
         fprintf (stderr, "HTTP: Doing post, content-type '%s'\n",
@@ -489,16 +487,13 @@ PUBLIC int HTLoadHTTP ARGS4 (
         StrAllocCat(command, post_data);
       else
         StrAllocCat(command, "lose");
-    }
-  else if (do_post && do_put)
-    {
+    } else if (do_post && do_put) {
       sprintf (line, "Content-length: %d%c%c",
-	       put_file_size, CR, LF);
+               put_file_size, CR, LF);
       StrAllocCat(command, line);
-      StrAllocCat(command, crlf);	/* Blank line means "end" */
-    }
-  else {
-      StrAllocCat(command, crlf);	/* Blank line means "end" */
+      StrAllocCat(command, crlf);       /* Blank line means "end" */
+    } else {
+      StrAllocCat(command, crlf);       /* Blank line means "end" */
   }
 
 #ifndef DISABLE_TRACE
@@ -515,32 +510,32 @@ PUBLIC int HTLoadHTTP ARGS4 (
   if (do_post && do_put) {
       char buf[BUFSIZ];
       int upcnt=0,n;
-
+  
       while (status>0) {
-	n=fread(buf,1,BUFSIZ-1,put_fp);
-
-	upcnt+= status = NETWRITE(s, buf, n);
+        n=fread(buf,1,BUFSIZ-1,put_fp);
+  
+        upcnt+= status = NETWRITE(s, buf, n);
 #ifndef DISABLE_TRACE
-	if (www2Trace) {
-		fprintf(stderr,"[%d](%d) %s",status,n,buf);
-	}
-#endif
-	if (feof(put_fp)) {
-		break;
-	}
-      }
+        if (www2Trace) {
+                fprintf(stderr,"[%d](%d) %s",status,n,buf);
+        }
+#endif  
+        if (feof(put_fp)) {
+                break;
+        }
+      } 
 
       if (status<0 || !feof(put_fp) || upcnt!=put_file_size) {
-	char tmpbuf[BUFSIZ];
-
-	sprintf(tmpbuf,"Status: %d  --  EOF: %d  --  UpCnt/FileSize: %d/%d\n\nThe server you connected to either does not support\nthe PUT method, or an error occurred.\n\nYour upload was corrupted! Please try again!",status,(feof(put_fp)?1:0),upcnt,put_file_size);
-	application_error(tmpbuf,"Upload Error!");
-      }
+        char tmpbuf[BUFSIZ];
+        
+        sprintf(tmpbuf,"Status: %d  --  EOF: %d  --  UpCnt/FileSize: %d/%d\n\nThe server you connected to either does not support\nthe PUT method, or an error occurred.\n\nYour upload was corrupted! Please try again!",status,(feof(put_fp)?1:0),upcnt,put_file_size);
+        application_error(tmpbuf,"Upload Error!");
+      } 
   }
 
   /* Twirl on each request to make things look nicer -- SWP */
   HTCheckActiveIcon(1);
-
+  
 #ifndef DISABLE_TRACE
   if (httpTrace) {
 	fprintf(stderr,"%s",command);
@@ -548,21 +543,16 @@ PUBLIC int HTLoadHTTP ARGS4 (
 #endif
 
   free (command);
-  if (status <= 0) 
-    {
-      if (status == 0)
-        {
+  if (status <= 0) {
+      if (status == 0) {
 #ifndef DISABLE_TRACE
           if (www2Trace)
             fprintf (stderr, "HTTP: Got status 0 in initial write\n");
 #endif
           /* Do nothing. */
-        }
-      else if 
-        ((errno == ENOTCONN || errno == ECONNRESET || errno == EPIPE) &&
-         !already_retrying &&
-         /* Don't retry if we're posting. */ !do_post)
-          {
+        } else if ((errno == ENOTCONN || errno == ECONNRESET || errno == EPIPE) &&
+                   !already_retrying &&
+                  /* Don't retry if we're posting. */ !do_post) {
             /* Arrrrgh, HTTP 0/1 compability problem, maybe. */
 #ifndef DISABLE_TRACE
             if (www2Trace)
@@ -577,9 +567,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
             extensions = NO;
             already_retrying = 1;
             goto try_again;
-          }
-      else
-        {
+          } else {
 		if(keepingalive){
 #ifndef DISABLE_TRACE
 			if (www2Trace)
@@ -611,7 +599,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
 
   {
       /* Get numeric status etc */
-      BOOL end_of_file = NO;
+      HT_BOOL end_of_file = NO;
       HTAtom * encoding = HTAtom_for("8bit");
       int buffer_length = INIT_LINE_SIZE;
     
@@ -630,7 +618,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
 	      fprintf (stderr, "HTTP: Trying to read %d\n",
 		       buffer_length - length - 1);
 #endif
-	  status = NETREAD(s, line_buffer + length,
+	  status = HTDoRead(s, line_buffer + length,
 			   buffer_length - length - 1);
 #ifndef DISABLE_TRACE
 	  if (www2Trace)
@@ -648,12 +636,10 @@ PUBLIC int HTLoadHTTP ARGS4 (
 		  status = HT_INTERRUPTED;
 		  NETCLOSE (s);
 		  goto clean_up;
-              } else 
-		  if 
+              } else if 
 		  (status < 0 &&
 		   (errno == ENOTCONN || errno == ECONNRESET || errno == EPIPE)
-		   && !already_retrying && !do_post)
-		      {
+		   && !already_retrying && !do_post) {
 			  /* Arrrrgh, HTTP 0/1 compability problem, maybe. */
 #ifndef DISABLE_TRACE
 			  if (www2Trace)
@@ -708,9 +694,6 @@ PUBLIC int HTLoadHTTP ARGS4 (
 	      if (line_kept_clean)
 		  free (line_kept_clean);
 	      line_kept_clean = (char *)malloc (buffer_length * sizeof (char));
-/*
-	      bcopy (line_buffer, line_kept_clean, buffer_length);
-*/
 	      memcpy (line_kept_clean, line_buffer, buffer_length);
           }
         
@@ -768,8 +751,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
     if (fields < 2 || !server_version[0] || server_version[0] != 'H' ||
         server_version[1] != 'T' || server_version[2] != 'T' ||
         server_version[3] != 'P' || server_version[4] != '/' ||
-        server_version[6] != '.') 
-      {	
+        server_version[6] != '.') {	
         /* HTTP0 reply */
         HTAtom * encoding;
 
@@ -780,9 +762,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
         
         format_in = HTFileFormat(arg, &encoding, WWW_HTML, &compressed);
         start_of_data = line_kept_clean;
-      } 
-    else 
-      {
+      } else {
         /* Decode full HTTP response */
         format_in = HTAtom_for("www/mime");
         /* We set start_of_data to "" when !eol here because there
@@ -797,16 +777,14 @@ PUBLIC int HTLoadHTTP ARGS4 (
           fprintf (stderr, "--- Talking HTTP1.\n");
 #endif
 
-        switch (server_status / 100) 
-          {
+        switch (server_status / 100) {
           case 3:		/* Various forms of redirection */
             /* We now support this in the parser, at least. */
             doing_redirect = 1;
             break;
             
           case 4:		/* "I think I goofed" */
-            switch (server_status) 
-              {
+            switch (server_status) {
               case 403:
 		statusError=1;
                 /* 403 is "forbidden"; display returned text. */
@@ -814,8 +792,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
 
               case 401:
                 /* length -= start_of_data - text_buffer; */
-                if (HTAA_shouldRetryWithAuth(start_of_data, length, s)) 
-                  {
+                if (HTAA_shouldRetryWithAuth(start_of_data, length, s)) {
                     (void)NETCLOSE(s);
 			lsocket = -1;
                     if (line_buffer) 
@@ -832,10 +809,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
                     
                     HTProgress ("Retrying with access authorization information.");
                     goto try_again;
-                    break;
-                  }
-                else 
-                  {
+                  } else {
 		    statusError=1;
                     /* Fall through. */
                   }
@@ -851,8 +825,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
             break;
             
           case 2:		/* Good: Got MIME object */
-            switch (server_status)
-              {
+            switch (server_status) {
               case 204:
                 return_nothing = 1;
                 format_in = HTAtom_for("text/html");
@@ -861,8 +834,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
 		if (do_head) {
 			if (!start_of_data || !*start_of_data) {
 				headData=NULL;
-			}
-			else {
+			} else {
 				char *ptr;
 
 				headData=strdup(start_of_data);
@@ -886,13 +858,10 @@ PUBLIC int HTLoadHTTP ARGS4 (
   } /* scope of fields */
 
   /* Set up the stream stack to handle the body of the message */
-  target = HTStreamStack(format_in,
-                         format_out,
-                         compressed,
-                         sink, anAnchor);
+  target = HTStreamStack(format_in, format_out,
+                         compressed, sink, anAnchor);
   
-  if (!target) 
-    {
+  if (!target) {
       char buffer[1024];	/* @@@@@@@@ */
       sprintf(buffer, "Sorry, no known way of converting %s to %s.",
               HTAtom_name(format_in), HTAtom_name(format_out));
@@ -903,8 +872,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
       goto clean_up;
     }
 
-  if (!return_nothing)
-    {
+  if (!return_nothing) {
 #ifndef DISABLE_TRACE
       if (www2Trace)
         fprintf (stderr, "HTTP: Doing put_block, '%s'\n", start_of_data);
@@ -954,8 +922,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
 		lsocket = -1;
           goto clean_up;
         }
-      if (rv == -2 && !already_retrying && !do_post)
-        {
+      if (rv == -2 && !already_retrying && !do_post) {
           /* Aw hell. */
 #ifndef DISABLE_TRACE
           if (www2Trace)
@@ -974,9 +941,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
           HTProgress ("Retrying as HTTP0 request.");
           goto try_again;
         }
-    }
-  else
-    {
+    } else {
       /* return_nothing is high. */
       (*target->isa->put_string) (target, "<mosaic-access-override>\n");
       HTProgress ("And silence filled the night.");
@@ -1010,16 +975,13 @@ PUBLIC int HTLoadHTTP ARGS4 (
 
   (*target->isa->free)(target);
 
-  if (doing_redirect)
-    {
+  if (doing_redirect) {
       /* OK, now we've got the redirection URL temporarily stored
          in external variable redirecting_url, exported from HTMIME.c,
          since there's no straightforward way to do this in the library
          currently.  Do the right thing. */
       status = HT_REDIRECTING;
-    }
-  else
-    {
+    } else {
       status = HT_LOADED;
     }
 
@@ -1047,22 +1009,7 @@ PUBLIC int HTLoadHTTP ARGS4 (
   return status;
 }
 
-
-/*	Protocol descriptor
-*/
+/*	Protocol descriptor */
 
 PUBLIC HTProtocol HTTP = { "http", HTLoadHTTP, 0 };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
