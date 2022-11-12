@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <assert.h>
 
 #if defined(SVR4) && !defined(SCO) && !defined(linux)
 #include <sys/filio.h>
@@ -57,6 +58,7 @@ void read_file_local(PafDocDataStruct * pafd)
 	memset(&mhs,0,sizeof(MimeHeaderStruct));
 	local_name = HTLocalName(pafd->aurl);
 	if (!local_name){
+		assert(pafd->www_con_type);
 		free(pafd->www_con_type);
 		pafd->www_con_type = NULL;
 		(*pafd->call_me_on_error)(pafd,"Can't open local file");
@@ -65,6 +67,7 @@ void read_file_local(PafDocDataStruct * pafd)
 /* stat the file */
 	if (stat(local_name,&s) == -1) {
 		free(local_name);
+		assert(pafd->www_con_type);
 		free(pafd->www_con_type);
 		pafd->www_con_type = NULL;
 		(*pafd->call_me_on_error)(pafd,"Can't open local file");
@@ -83,6 +86,7 @@ void read_file_local(PafDocDataStruct * pafd)
 		if (!dfp) {
 			free(local_name);
 			perror("read_file_local:");
+			assert(pafd->www_con_type);
 			free(pafd->www_con_type);
 			pafd->www_con_type = NULL;
 			(*pafd->call_me_on_error)(pafd,"Can't open local file");
@@ -172,6 +176,8 @@ void read_file_local(PafDocDataStruct * pafd)
 /* End of list, clean up and we are done */ 
 		fprintf (fp, "</DL>\n");
 		fclose(fp);
+
+		assert(pafd->www_con_type);
 		free(pafd->www_con_type);
 		pafd->www_con_type = NULL;
 		free(local_name);
@@ -179,6 +185,7 @@ void read_file_local(PafDocDataStruct * pafd)
 		mhs.content_type = strdup("text/html");
 		stat(pafd->fname, &statbuf);
 		mhs.content_length = statbuf.st_size;
+/*### FreeMimeStructData(pafd->mhs); ### */
 		*(pafd->mhs) = mhs;
 		(*pafd->call_me_on_succes)(pafd);
 		return;
@@ -189,6 +196,7 @@ void read_file_local(PafDocDataStruct * pafd)
 	if ( soc < 0 ) {
 		free(local_name);
 		perror("read_file_local:");
+		assert(pafd->www_con_type);
 		free(pafd->www_con_type);
 		pafd->www_con_type = NULL;
 		(*pafd->call_me_on_error)(pafd,"Can't open local file");
@@ -199,6 +207,7 @@ void read_file_local(PafDocDataStruct * pafd)
 	while( (i = read(soc,buf,LBUF)) >0)
 		write(pafd->fd,buf,i);
 	close(soc);
+	assert(pafd->www_con_type);
 	free(pafd->www_con_type);
 	pafd->www_con_type = NULL;
 
@@ -209,6 +218,7 @@ void read_file_local(PafDocDataStruct * pafd)
 	mhs.content_length = s.st_size;
 	mhs.content_type = ct;
 	free(local_name);
+/* #### FreeMimeStructData(pafd->mhs); ### */
 	*(pafd->mhs) = mhs;
 	(*pafd->call_me_on_succes)(pafd);
 	return;

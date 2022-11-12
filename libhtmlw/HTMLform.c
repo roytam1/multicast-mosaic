@@ -88,7 +88,7 @@ void BeginForm(HTMLWidget hw, struct mark_up ** mptr,
 }
 
 
-/* Just insert the widget. Can only inside a FORM tag.
+/* Just insert the widget. Can only be inside a FORM tag.
  * Special case the type=image stuff to become a special IMG tag.
  */
 void FormInputField(HTMLWidget hw, struct mark_up ** mptr,

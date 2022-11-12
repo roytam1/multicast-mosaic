@@ -191,7 +191,9 @@ void MMCancelHTTPReadDocOnError(PafDocDataStruct * pafd, char * msg)
 	pafd->iobs.size_iobuf = 0;
 	pafd->iobs.len_iobuf = 0;
 	pafd->read_stat =0;
-/*	FreeMimeStruct(pafd->mhs); */
+/*#####	FreeMimeStruct(pafd->mhs); #####*/
+/*#####	pafd->mhs=NULL; 	don't do this because use by multiple pafc */
+/*### one mhs for multiple embedded object */
 /*	XmxMakeErrorDialog(pafd->win->base, msg, "Net Error"); */
 
 	XtRemoveInput(pafd->www_prim_fd_read_id);
@@ -234,9 +236,7 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 	len_read = read(pafd->www_con_type->prim_fd, ibuf, sizeof(ibuf));
 	syserror = errno;
 #ifdef DEBUG_HTTP
-	if (mMosaicAppData.wwwTrace)
-		fprintf (stderr, "Read = %d syserror = %d\n",
-			len_read, syserror);
+	fprintf (stderr, "Read = %d syserror = %d\n", len_read, syserror);
 #endif
 
 /* on peut gerer un buffer d'entree/sortie reserver au I/O */
@@ -250,10 +250,10 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
  * beginning. Read the status line. Get numeric status etc */
 		memset(&mhs,0,sizeof(MimeHeaderStruct));
 		ParseMimeHeader("", &mhs);  /* get a default mime header*/
+/* ### 		FreeMimeStructData(pafd->mhs); ### */
 		*(pafd->mhs) = mhs;
 #ifdef DEBUG_HTTP
-		if (mMosaicAppData.wwwTrace)
-			fprintf (stderr, "Readind Status Line\n");
+		fprintf (stderr, "Readind Status Line\n");
 #endif
 		if (len_read < 0) {
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
@@ -397,39 +397,39 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 			return;
 		case 405:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Method Not Allowed");
+				"Code 405:\nMethod Not Allowed");
 			return;
 		case 406:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Not Acceptable");
+				"Code 406:\nNot Acceptable");
 			return;
 		case 407:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Proxy Authentification Require");
+				"Code 407:\nProxy Authentification Require");
 			return;
 		case 408:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Request Time Out");
+				"Code 408:\nRequest Time Out");
 			return;
 		case 409:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Conflict");
+				"Code 409:\nConflict");
 			return;
 		case 410:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Gone");
+				"Code 410:\nGone");
 			return;
 		case 411:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Length required");
+				"Code 411:\nLength required");
 			return;
 		case 412:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Precondition Failed");
+				"Code 412:\nPrecondition Failed");
 			return;
 		case 413:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Request Entity Too Large");
+				"Code 413:\nRequest Entity Too Large");
 			return;
 		case 414:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
@@ -529,6 +529,7 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		while(deb_from <= end_from) 
                         *deb_to++ = *deb_from++;
 		pafd->iobs.len_iobuf = pafd->iobs.len_iobuf - lcut;
+/*###		FreeMimeStructData(pafd->mhs); ### */
 		*(pafd->mhs) = mhs;	/* it's a copy !!! */
 /* remarque: pafd->iobuf pointe sur le 1er caractere des datas */
 		pafd->read_stat |= HAVE_READ_HEADER;

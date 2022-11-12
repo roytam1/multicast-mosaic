@@ -1083,7 +1083,7 @@ static void _XmxMenuAddEntryToRecord (XmxMenuRecord *rec, Widget w,
 {
 	XmxMenuEntry *_ent;
 
-	_ent = (XmxMenuEntry *)malloc (sizeof (XmxMenuEntry));
+	_ent = (XmxMenuEntry *)calloc (1, sizeof (XmxMenuEntry));
 	_ent->w = w;
 	_ent->token = token;
 	_ent->next = rec->first_entry; /*Add rest of list to tail of this entry.*/
@@ -1133,7 +1133,7 @@ XmxMenuRecord * _XmxMenuCreateRecord (Widget base)
   XmxMenuRecord *_rec;
 
   /* Create the new XmxMenuRecord. */
-  _rec = (XmxMenuRecord *)malloc (sizeof (XmxMenuRecord));
+  _rec = (XmxMenuRecord *)calloc (1, sizeof (XmxMenuRecord));
   _rec->base = base;
   _rec->first_entry = NULL;
   return _rec;

@@ -6,6 +6,7 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <malloc.h>
+#include <assert.h>
 
 #include <Xm/XmAll.h>
 
@@ -255,14 +256,14 @@ static int UpdChkBuf(ChunkedBufStruct *cbs, char *d, unsigned int offset,
 	if ( cbs->data) {
 		if(offset + d_len > cbs->size_data) { /* bug??? */
 			fprintf(stderr, "Complexe BUG in UpdChkBuf offset+d_len > coe->size_data\007\n");
-			abort();
+			assert(0);
 			return CHUNKED_BUFFER;
 		}
 	}
 
 	plmr = cbs->lmr;
 	if (!plmr) {
-		abort(); /* impossible */
+		assert(0); /* impossible */
 		return COMPLETE_BUFFER;
 	}
 	while( plmr ) {

@@ -58,7 +58,7 @@ static void run_a_command (char *command)
 	int alen;
 
 	alen = 10;
-	argv = (char **)malloc(10 * sizeof(char *));
+	argv = (char **)calloc(10 , sizeof(char *));
 	if (argv == NULL)
 		return;
 	argc = 0;
@@ -71,7 +71,7 @@ static void run_a_command (char *command)
 			int i;
 			char **tmp_av;
 
-			tmp_av = (char **)malloc((alen + 10) * sizeof(char *));
+			tmp_av = (char **)calloc((alen + 10) , sizeof(char *));
 			if (tmp_av == NULL) {
 				return;
 			}

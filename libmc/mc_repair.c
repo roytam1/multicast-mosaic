@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <assert.h>
 
 #include <Xm/XmAll.h>
 #include "../libnut/mipcf.h"
@@ -70,7 +71,7 @@ static void McScheduleQueryRepairStates(Source *s, int from, int to)
 				0, 0xffffffff);	/* request all */
 			break;
 		default:
-			abort();	/*le me know */
+			assert(0);
 		}
 	}
 }
@@ -114,7 +115,7 @@ static void McScheduleQueryRepairObjects(Source *s, int from, int to)
 				0, 0xffffffff);	/* request all */
 			break;
 		default:
-			abort();	/*le me know */
+			assert(0);
 		}
 	}
 }
@@ -178,18 +179,18 @@ void McQueryRepairFromStatr(Source *s, RtcpPacket* rcs)
         status = McRcvrSrcAllocObject(s, oid);
         if( !status) {                
                 fprintf(stderr,"Out of mem\n");
-                abort();
+                assert(0);
         }
 
 /* check and alloc for enought state */
 	if( !McRcvrSrcAllocState(s, sid)) {
 		fprintf(stderr,"Out of mem\n");
-		abort();
+		assert(0);
 	}
 	if (c_sid > sid){
 		if( !McRcvrSrcAllocState(s, c_sid)) {
 			fprintf(stderr,"Out of mem\n");
-			abort();
+			assert(0);
 		}
 		return;
 	}
@@ -371,7 +372,7 @@ static void McSendStateRepairAnswerCb(XtPointer clid, XtIntervalId * id)
 		query_offset = p->offset;
 		query_len = p->len;
 		if (query_offset >= data_size) { /*request an impossible offset */
-			abort();
+			assert(0);
 		}
 		if (query_len < 0 ) {
 			query_len = data_size - query_offset;
@@ -383,7 +384,7 @@ static void McSendStateRepairAnswerCb(XtPointer clid, XtIntervalId * id)
 			query_len = data_size - query_offset;
 		}
 		if (query_len <= 0 ) {
-			abort();	/* bug let me know */
+			assert(0);
 		}
         	s_dchunk = DATA_CHUNK_SIZE;     /* size of data chunck ~512 */
 	        odata = &sdata[query_offset];       /*  don't free this  */
@@ -630,7 +631,7 @@ static void McSendObjectRepairAnswerCb(XtPointer clid, XtIntervalId * id)
 		data_size = ob->file_len;
 		fdr = open(obfname, O_RDONLY);
                 if (query_offset >= data_size) { /*request an impossible offset */
-                        abort();
+                        assert(0);
                 }
                 if (query_len < 0 ) {
                         query_len = data_size - query_offset;
@@ -642,7 +643,7 @@ static void McSendObjectRepairAnswerCb(XtPointer clid, XtIntervalId * id)
                         query_len = data_size - query_offset;
                 }
                 if (query_len <= 0 ) {
-                        abort();        /* bug let me know */
+                        assert(0);
                 }
 
                 obdata = (char*) malloc(query_len+1);
@@ -869,7 +870,7 @@ void McStoreQueryRepair(Source *s , RtcpPacket* rcs)
 		break;
 	default:
 		fprintf(stderr,"McStoreQueryRepair: invlaid repair type\n");
-		abort();	/* let me know */
+		assert(0);
 		return;
 	}
 #ifdef DEBUG_MULTICAST

@@ -1,6 +1,8 @@
 /* Please read copyright.ncsa. Don't remove next line */
 #include "../Copyrights/copyright.ncsa"
 
+#include <assert.h>
+
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
 #include "picread.h"              
@@ -122,7 +124,7 @@ unsigned char *_MMReadXpmPixmap( FILE *fp, char *datafile,
 	pixels = (unsigned char *)malloc((*w) * (*h));
 	if (pixels == NULL) {
 		fprintf(stderr, "Out of memory\n");
-		abort();
+		assert(0);
 	}
 
 	line[0] = '\0';

@@ -5,6 +5,7 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <assert.h>
 #include <sys/wait.h>
 #include <sys/utsname.h>
 #include <sys/types.h>
@@ -126,6 +127,9 @@ void mo_exit (void)
 	mo_write_default_hotlist ();
 	MMWriteHistory();
 	newsrc_kill ();
+#ifdef CHECK_MEMORY_LEAK
+	MIME_Postlude();
+#endif
 	exit (0);
 }
 
@@ -170,7 +174,7 @@ static void RealFatal (void)
 	signal (SIGBUS, 0);
 	signal (SIGSEGV, 0);
 	signal (SIGILL, 0);
-	abort ();
+	assert(0);
 }
 
 static void FatalProblem (int sig)
@@ -263,6 +267,7 @@ int main (int argc, char **argv, char **envp)
 /* Since we're doing lots of TCP, just ignore SIGPIPE altogether. */
 	signal (SIGPIPE, SIG_IGN);
 
+	memset(&mMosaicAppData,0,sizeof(AppData));
 	userPath=getenv("PATH");	/* used in libnut/system.c */
 
 /* Initialize stuff in ~/.mMosaic directory */

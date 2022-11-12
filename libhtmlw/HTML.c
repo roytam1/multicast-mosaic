@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include <Xm/DrawingA.h>
 #include <Xm/ScrollBar.h>
@@ -1979,7 +1980,7 @@ static void ExtendEnd( Widget w, XEvent *event,
 		atoms = (Atom *)malloc(*num_params * sizeof(Atom));
 		if (atoms == NULL) {
 			fprintf(stderr, "Out of memory\n");
-			abort();
+			assert(0);
 		}
 		XmuInternStrings(XtDisplay((Widget)hw),params, *num_params,atoms);
 		hw->html.selection_time = BuEvent->time;
@@ -2920,7 +2921,7 @@ void HTMLSetSelection(Widget w, ElementRef *start, ElementRef *end)
 	atoms = (Atom *)malloc(2 * sizeof(Atom));
 	if (atoms == NULL) {
 		fprintf(stderr, "Out of memory\n");
-		abort();
+		assert(0);
 	}
 	XmuInternStrings(XtDisplay((Widget)hw), params, 2, atoms);
 	hw->html.selection_time = CurrentTime;
@@ -3008,7 +3009,7 @@ char * HTMLGetTextAndSelection(Widget w,char **startp,char **endp,char **insertp
 	text = (char *)malloc(length + 1);
 	if (text == NULL) {
 		fprintf(stderr, "Out of memory\n");
-		abort();
+		assert(0);
 	}
 	strcpy(text, "");
 	tptr = text;

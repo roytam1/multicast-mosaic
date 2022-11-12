@@ -1121,7 +1121,7 @@ struct Proxy * GetProxy(char *acc)
 	if (!strcmp(acc,"http")) {
 		if (http_proxy_env)
 			return http_proxy_env;
-		http_proxy_env = (struct Proxy *) malloc(sizeof(struct Proxy ));
+		http_proxy_env = (struct Proxy *) calloc(1,sizeof(struct Proxy ));
 		hap = URLParse(renv, "", PARSE_HOST);
 		if (port=strchr(hap, ':')) {
 			*port++ = 0;
@@ -1136,7 +1136,7 @@ struct Proxy * GetProxy(char *acc)
 	if (!strcmp(acc,"gopher")) {
 		if (gopher_proxy_env)
 			return gopher_proxy_env;
-		gopher_proxy_env = (struct Proxy *) malloc(sizeof(struct Proxy ));
+		gopher_proxy_env = (struct Proxy *) calloc(1,sizeof(struct Proxy ));
 		hap = URLParse(renv, "", PARSE_HOST);
 		if (port=strchr(hap, ':')) {
 			*port++ = 0;
@@ -1150,7 +1150,7 @@ struct Proxy * GetProxy(char *acc)
 	if (!strcmp(acc,"ftp")) { 
 		if (ftp_proxy_env)
 			return gopher_proxy_env;
-		ftp_proxy_env = (struct Proxy *) malloc(sizeof(struct Proxy ));
+		ftp_proxy_env = (struct Proxy *) calloc(1,sizeof(struct Proxy ));
 		hap = URLParse(renv, "", PARSE_HOST);
 		if (port=strchr(hap, ':')) {
 			*port++ = 0;
@@ -1164,7 +1164,7 @@ struct Proxy * GetProxy(char *acc)
 	if (!strcmp(acc,"wais")) {
 		if (wais_proxy_env)
 			return wais_proxy_env;
-		wais_proxy_env = (struct Proxy *) malloc(sizeof(struct Proxy ));
+		wais_proxy_env = (struct Proxy *) calloc(1,sizeof(struct Proxy ));
 		hap = URLParse(renv, "", PARSE_HOST);
 		if (port=strchr(hap, ':')) {
 			*port++ = 0;

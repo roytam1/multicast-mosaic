@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <assert.h>
 #include <Xm/XmAll.h>
 
 #include "../libnut/mipcf.h"
@@ -358,6 +359,7 @@ static void McSendNewState(mo_window * win, int moid_ref, DependObjectTab dot, i
 	MimeHeaderStruct mhs;
 	int stateid =0;
 
+	memset(&mhs,0,sizeof(MimeHeaderStruct));
 	mc_local_state_id++;
 	stateid = mc_local_state_id;
 /* complete la partie mhs et creer un nouvelle etat */
@@ -481,7 +483,7 @@ static void UcRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
                         rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
 		break;
 	default:
-		abort();        /* let me know !!! */
+		assert(0);        /* let me know !!! */
 	}
 #ifdef DEBUG_MULTICAST
 	fprintf(stderr,"UcRtpReadCb: return\n");
@@ -543,7 +545,7 @@ static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
                         rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
 		break;
 	default:
-		abort();	/* let me know !!! */
+		assert(0);	/* let me know !!! */
 	}
 #ifdef DEBUG_MULTICAST
 	fprintf(stderr, "McRtpReadCb: returning\n");

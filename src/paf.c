@@ -30,6 +30,26 @@ extern mo_window * mc_send_win;
 
 static void MMPafLoadEmbeddedObjInDoc(PafDocDataStruct * paf_child);
 
+/* Winfried */
+static void FreePafDocDataStruct(PafDocDataStruct * pafd)
+{
+	if(pafd->aurl) 		free(pafd->aurl);
+	if(pafd->aurl_wa) 	free(pafd->aurl_wa);
+	if(pafd->goto_anchor) 	free(pafd->goto_anchor);
+	if(pafd->post_ct) 	free(pafd->post_ct);
+	if(pafd->post_data) 	free(pafd->post_data);
+	if(pafd->html_text) 	free(pafd->html_text);
+	if(pafd->embedded_object_tab) free(pafd->embedded_object_tab);
+	if(pafd->twirl_struct) 	free(pafd->twirl_struct);
+	if(pafd->format_in) 	free(pafd->format_in);
+	if(pafd->www_con_type) 	free(pafd->www_con_type);
+	if(pafd->sps.accept) 	free(pafd->sps.accept);
+	if(pafd->proxent) 	free(pafd->proxent);
+	if(pafd->iobs.iobuf) 	free(pafd->iobs.iobuf);
+	memset(pafd,0,sizeof(PafDocDataStruct));     /* sanity */
+	free(pafd);
+}
+
 #ifdef MULTICAST
 static void McAddDepend( mo_window * win, int moid)
 {
@@ -47,7 +67,7 @@ static void McAddDepend( mo_window * win, int moid)
 static void McChangeDepend(mo_window *parent, mo_window *win, int index, int moid)
 {
 	if ( index < 0 || index >= parent->n_do)
-		abort();	/* Let me know */
+		assert(0);	/* Let me know */
 
 	parent->dot[index] = moid;
 }
@@ -88,9 +108,10 @@ void MMFinishPafSaveData(PafDocDataStruct * pafd)
 
 /* stop the twirl */                  
 	XtRemoveTimeOut(pafd->twirl_struct->time_id);
-	free(pafd->twirl_struct);
-	free(pafd->sps.accept);
-	free(pafd);
+/*	free(pafd->twirl_struct);	*/
+/*	free(pafd->sps.accept);		*/
+	FreePafDocDataStruct(pafd);
+/*	free(pafd);			*/
 	win->pafd = NULL;
 	XtPopdown(win->base);
 	XtDestroyWidget(win->base);
@@ -108,10 +129,11 @@ void MMErrorPafSaveData(PafDocDataStruct * pafd, char * reason)
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
-	free(pafd->fname);
-	free(pafd->aurl);
+/*	free(pafd->fname);	*/
+/*	free(pafd->aurl);	*/
 
-	free(pafd);
+	FreePafDocDataStruct(pafd);
+/*	free(pafd);		*/
 	XtPopdown(win->base);
 	XtDestroyWidget(win->base);
 	free(win);
@@ -122,28 +144,30 @@ void MMStopPafSaveData(PafDocDataStruct * pafd)
 	mo_window * win = pafd->win;
 
 	XtRemoveTimeOut(pafd->twirl_struct->time_id);
-	free(pafd->twirl_struct);
 
 	if (pafd->www_con_type && pafd->www_con_type->call_me_on_stop_cb ) {
                 (*pafd->www_con_type->call_me_on_stop_cb)(pafd);
         }
 	
-        pafd->www_con_type = NULL;
-
-	free(pafd->sps.accept);
-	free(pafd->aurl);
-	free(pafd->aurl_wa);
+/*        pafd->www_con_type = NULL;	*/
+/*	free(pafd->twirl_struct);	*/
+/*	free(pafd->sps.accept);	*/
+/*	free(pafd->aurl);	*/
+/*	free(pafd->aurl_wa);	*/
 
 	assert(pafd->fd >= 0); 	/* let me know */
 
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
-	free(pafd->fname);
-	/* free(pafd->mhs);	### FIXME */
+/*	free(pafd->fname);	*/
+/* free(pafd->mhs);	### FIXME */
 	FreeMimeStruct(pafd->mhs);
 	pafd->mhs = NULL;	/* sanity */
-	free(pafd);
+
+	FreePafDocDataStruct(pafd);
+/*	free(pafd); */
+	win->pafd = NULL;
 	XtPopdown(win->base);
 	XtDestroyWidget(win->base);
 	free(win);
@@ -189,8 +213,10 @@ void MMPafSaveData(Widget top, char * aurl, char * fname)
 	Xmx_n = 0;
 	XmxSetArg (XmNiconName, (long)"mMosaic Loading");
 	XmxSetArg (XmNallowShellResize, False);
-	XmxSetArg (XmNheight,207);
-	XmxSetArg (XmNwidth,400);
+
+/*	XmxSetArg (XmNheight,207); */
+/*	XmxSetArg (XmNwidth,400); */
+
 	win->base = XtCreatePopupShell("mMosaic: Load to disk",
 		topLevelShellWidgetClass, top, Xmx_wargs, Xmx_n);
 	Xmx_n = 0;
@@ -287,7 +313,7 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 				pafd->http_status, &moid_ret ); /* set to Not Found */
                        win->moid_ref = moid_ret; /* info for state */
                 } else {        /* a top frameset can't be in error */
-                       abort(); /* impossible */
+                       assert(0); /* impossible */
                 }
 		switch(pafd->gui_action) {
 		case HTML_LOAD_CALLBACK:
@@ -305,7 +331,7 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 					(*mc_send_win->mc_callme_on_new_state)(
 						win, win->moid_ref, NULL, 0);
 			} else {	/* impossible */
-				abort();
+				assert(0);
                         } 
 			break;
 		case FRAME_CALLBACK:
@@ -327,47 +353,50 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 					win, win->moid_ref, win->dot, win->n_do);
 					/* stop the twirl */
 				XtRemoveTimeOut(pafd->twirl_struct->time_id);                                     
-				free(pafd->twirl_struct);
-				free(pafd->sps.accept);
+/*				free(pafd->twirl_struct);		*/
+/*				free(pafd->sps.accept);			*/
 				assert(pafd->fd == -1 ); /* let me know */
 				unlink(pafd->fname);
-				free(pafd->fname);
+/*				free(pafd->fname);			*/
+				FreePafDocDataStruct(pafd);
 				free(pafd);
 				win->pafd = NULL;
 					/* securityType=HTAA_UNKNOWN; */
 			}
 			break;
 		default:      
-			abort();        /* let me know */
+			assert(0);
 		}
 	}
 #endif
 	XmxMakeErrorDialog(win->base, reason , "Net Error");
 /* stop the twirl */
 	XtRemoveTimeOut(pafd->twirl_struct->time_id);
-	free(pafd->twirl_struct);
 
-	if (pafd->post_ct && pafd->post_data){
-		free(pafd->post_data);
-		free(pafd->post_ct);
-		pafd->post_ct = NULL;		/* sanity */
-		pafd->post_data = NULL;		/* sanity */
-	}
-	free(pafd->sps.accept);
-	free(pafd->aurl);
-	free(pafd->aurl_wa);
-	if (pafd->goto_anchor)
-		free(pafd->goto_anchor);
+/*	free(pafd->twirl_struct);			*/
+/*	if (pafd->post_ct && pafd->post_data){		*/
+/*		free(pafd->post_data);		*/
+/*		free(pafd->post_ct);		*/
+/*		pafd->post_ct = NULL;		/* sanity */
+/*		pafd->post_data = NULL;		/* sanity */
+/*	}					*/
+/*	free(pafd->sps.accept);			*/
+/*	free(pafd->aurl);			*/
+/*	free(pafd->aurl_wa);			*/
+/*	if (pafd->goto_anchor)			*/
+/*		free(pafd->goto_anchor);	*/
 	if (pafd->fd < 0)
-		abort();		/* le me know */
+		assert(0);
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
-	free(pafd->fname);
-	FreeMimeStruct(pafd->mhs);
+/*	free(pafd->fname);			*/
+/*	FreeMimeStruct(pafd->mhs);		*/
 	pafd->mhs = NULL;	/* sanity */
 
-	free(pafd);
+	FreePafDocDataStruct(pafd);
+
+/*	free(pafd);				*/
 	win->pafd = NULL;
 /* securityType=HTAA_UNKNOWN; */
 }
@@ -379,7 +408,7 @@ void MMStopPafDocData(PafDocDataStruct * pafd)
 
 /* stop the twirl */
 	XtRemoveTimeOut(pafd->twirl_struct->time_id);
-	free(pafd->twirl_struct);
+/*	free(pafd->twirl_struct); 		*/
 
 	if (pafd->paf_child) { /* a embedded object in progress */
 		(*pafd->paf_child->call_me_on_stop)(pafd->paf_child);
@@ -397,25 +426,27 @@ void MMStopPafDocData(PafDocDataStruct * pafd)
 		free(pafd->fname);
 		pafd->fname = NULL;	/*sanity */
 	}
-	pafd->www_con_type = NULL;
-
-	if (pafd->post_ct && pafd->post_data){
-		free(pafd->post_data);
-		free(pafd->post_ct);
-		pafd->post_ct = NULL;
-		pafd->post_data = NULL;
-	}
-	free(pafd->sps.accept);
-	free(pafd->aurl_wa);
-	free(pafd->aurl);
-	if (pafd->goto_anchor)
-		free(pafd->goto_anchor);
+/*	pafd->www_con_type = NULL;		*/
+/*						*/
+/*	if (pafd->post_ct && pafd->post_data){	*/
+/*		free(pafd->post_data);		*/
+/*		free(pafd->post_ct);		*/
+/*		pafd->post_ct = NULL;		*/
+/*		pafd->post_data = NULL;		*/
+/*	}					*/
+/*	free(pafd->sps.accept);			*/
+/*	free(pafd->aurl_wa);			*/
+/*	free(pafd->aurl);			*/
+/*	if (pafd->goto_anchor)			*/
+/*		free(pafd->goto_anchor);	*/
 
 	assert( pafd->fd == -1 ) ;	/* finnish doc : fd is closed*/
 
-	FreeMimeStruct(pafd->mhs);
+/*	FreeMimeStruct(pafd->mhs); ########## */
 	pafd->mhs = NULL;	/* sanity */
-	free(pafd);
+
+	FreePafDocDataStruct(pafd);
+/*	free(pafd);				*/
 	win->pafd = NULL;
 /* securityType=HTAA_UNKNOWN; */
 }
@@ -475,7 +506,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 			pafd->mhs=(MimeHeaderStruct*) calloc(1,sizeof(MimeHeaderStruct));
 
 			pafd->pragma_no_cache = True;
-/* And redo a reuqest for redirect */
+/* And redo a request for redirect */
 			PostRequestAndGetTypedData(pafd->aurl,pafd);
 			return;
 		default:
@@ -549,7 +580,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		fprintf(stderr, "This a Bug. Please report\n");
 		fprintf(stderr, "MMFinishPafDocData, presentation = NULL, content_type = '%s'\n", pafd->mhs->content_type);
 		fprintf(stderr, "Aborting ...\n");
-		abort();
+		assert(0);
 		/* envoyer un message d'erreur */
 	}
 	if ( strcmp(presentation, MMOSAIC_PRESENT) ){
@@ -575,14 +606,15 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		win = pafd->win;
 /* stop the twirl */                   
 		XtRemoveTimeOut(pafd->twirl_struct->time_id);
-		free(pafd->twirl_struct);
-		free(pafd->sps.accept);
+/*		free(pafd->twirl_struct);	*/
+/*		free(pafd->sps.accept);		*/
 		assert(pafd->fd == -1);
-		free(pafd->fname);     
-		free(pafd);            
+/*		free(pafd->fname);     
+		FreePafDocDataStruct(pafd);
+/*		free(pafd)			*/
 		win->pafd = NULL;      
 /* securityType=HTAA_UNKNOWN; */       
-		return; /* it is finish!!! */
+		return; /* it is finished!!! */
 	} 
 
 /* La presentation est pour mMosaic */
@@ -594,14 +626,14 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		fprintf(stderr, "This a Bug. Please report\n");
 		fprintf(stderr, "MMFinishPafDocData, Out of fd\n");
 		fprintf(stderr, "Aborting ...\n");
-		abort();
+		assert(0);
 	}
 	lread = read(fd, data, pafd->mhs->content_length);
 	if (lread != pafd->mhs->content_length) {
 		fprintf(stderr, "This a Bug. Please report\n");
 		fprintf(stderr, "MMFinishPafDocData, Bug in reading data, lread = %d, content_length = %d\n", lread, pafd->mhs->content_length);
 		fprintf(stderr, "Aborting ...\n");
-		abort();
+		assert(0);
 	}
 	data[pafd->mhs->content_length] = '\0';
 	close(fd);
@@ -822,24 +854,26 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 						win->n_do, &moid_ret);
                                		win->moid_ref = moid_ret; /* info for state */
                                		free(pafd->mc_fname_save);
+					pafd->mc_fname_save = NULL; /* sanity */
 					(*mc_send_win->mc_callme_on_new_state)(
 						win, win->moid_ref, win->dot, win->n_do);
 						/* stop the twirl */
 					XtRemoveTimeOut(pafd->twirl_struct->time_id);
-					free(pafd->twirl_struct);
-					free(pafd->sps.accept);
+/*					free(pafd->twirl_struct);		*/
+/*					free(pafd->sps.accept);			*/
 
 					assert(pafd->fd == -1);
 
 					unlink(pafd->fname); 
-					free(pafd->fname);
-					free(pafd);
+/*					free(pafd->fname);			*/
+					FreePafDocDataStruct(pafd);
+/*					free(pafd);			*/
 					win->pafd = NULL;
 						/* securityType=HTAA_UNKNOWN; */
 				}
 				break;
 			default:
-				abort();	/* let me know */
+				assert(0);
 			}
 		}
 #endif
@@ -854,15 +888,16 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
  
 /* stop the twirl */
 		XtRemoveTimeOut(pafd->twirl_struct->time_id);
-		free(pafd->twirl_struct);
-		free(pafd->sps.accept);
+/*		free(pafd->twirl_struct);		*/
+/*		free(pafd->sps.accept);		*/
 		assert( pafd->fd == -1 ) ;	/* finnish doc : fd is closed*/
 		unlink(pafd->fname); 
-		free(pafd->fname);
-		free(pafd);
+/*		free(pafd->fname);		*/
+/*		free(pafd);			*/
+		FreePafDocDataStruct(pafd);
 		win->pafd = NULL;
 /* securityType=HTAA_UNKNOWN; */
-		return; /* it is finish!!! */
+		return; /* it is finished!!! */
 	}
 /* sinon c'est pas fini... recuprer les embedded objects */
 /* the next step is to process embedded object */
@@ -1046,19 +1081,21 @@ void MMStopPafEmbeddedObject(PafDocDataStruct * pafc)
 		(*pafc->www_con_type->call_me_on_stop_cb)(pafc);
 	}
 	pafc->www_con_type = NULL;
-
+	pafc->twirl_struct = NULL;	/* stop father */
 	assert(pafc->fd >0 );		/* let me know */
 
 	close(pafc->fd);
 	pafc->fd = -1;
 	unlink(pafc->fname);
-	free(pafc->sps.accept);
-	free(pafc->aurl);
-	free(pafc->aurl_wa);
-	free(pafc->fname);
+/*	free(pafc->sps.accept);		*/
+/*	free(pafc->aurl);		*/
+/*	free(pafc->aurl_wa);		*/
+/*	free(pafc->fname);		*/
 	/*free(pafc->mhs);	### FIXME */
 	FreeMimeStruct(pafc->mhs);
-	free(pafc);
+	pafc->mhs=NULL;		/* sanity */
+/*	free(pafc);			*/
+	FreePafDocDataStruct(pafc);
 	ppaf->paf_child = NULL;
 }
 
@@ -1077,6 +1114,9 @@ void MMErrorPafEmbeddedObject (PafDocDataStruct * pafc, char *reason)
 		delayed = False;
 	}
 /* XmxMakeErrorDialog(pafc->win->base, reason, "Net Error"); */
+
+	assert(pafc->fd >=0);
+
 	close(pafc->fd);
 	pafc->fd = -1;
 	unlink(pafc->fname);
@@ -1107,7 +1147,7 @@ void MMErrorPafEmbeddedObject (PafDocDataStruct * pafc, char *reason)
 		fprintf(stderr, "This a Bug. Please report\n");
 		fprintf(stderr, "MMErrorPafEmbeddedObject, Unknow EmbeddedObject type %d\n", mptr->type);
 		fprintf(stderr, "Aborting ...\n");
-		abort();
+		assert(0);
 	}
 
 	ppaf->cur_processing_eo++;
@@ -1136,7 +1176,7 @@ void MMErrorPafEmbeddedObject (PafDocDataStruct * pafc, char *reason)
 for state */
                                         free(ppaf->mc_fname_save);
                                 } else {
-                                        abort(); /* nothing . make it later */
+                                        assert(0);
                                 }
                         }
 			switch(ppaf->gui_action) {
@@ -1159,7 +1199,7 @@ for state */
 						(*mc_send_win->mc_callme_on_new_state)(
 							ppaf->win, ppaf->win->moid_ref, ppaf->win->dot, ppaf->win->n_do);
 					else
-						abort(); /* break; */
+						assert(0);
 				}    
 				break;
 			case FRAME_CALLBACK:
@@ -1167,7 +1207,7 @@ for state */
                                 ppaf->win->frame_parent->number_of_frame_loaded++;
 				if (ppaf->win->frame_parent->frame_sons_nbre == ppaf->win->frame_parent->number_of_frame_loaded) {
 					int lfs_moid_ret;
-					abort();
+					assert(0);
 /*	(*mc_send_win->mc_callme_on_new_object)(
 /*		ppaf->win->frame_parent->lfs_mc_fname_save,
 /*		ppaf->win->frame_parent->lfs_aurl,
@@ -1188,7 +1228,7 @@ for state */
 				}
 				break;
 			default:     
-				abort();        /* let me know */
+				assert(0);
 			}
 		}
 #endif
@@ -1196,18 +1236,19 @@ for state */
 /* get the current id  #### */
 		elem_id = 0;
 		HTMLSetHTMLmark (ppaf->win->scrolled_win, ppaf->mlist, elem_id, ppaf->goto_anchor, ppaf->aurl);
-        	free(ppaf->embedded_object_tab);
 		free(ppaf->paf_child); /*### et le reste de paf_child*/
 /* en finir avec la requete de pafd. */
         	win = ppaf->win;
 /* stop the twirl */
         	XtRemoveTimeOut(ppaf->twirl_struct->time_id);
-        	free(ppaf->twirl_struct);
-        	free(ppaf->sps.accept);
+/*        	free(ppaf->embedded_object_tab);	*/
+/*       	free(ppaf->twirl_struct);		*/
+/*        	free(ppaf->sps.accept);			*/
 		assert(ppaf->fd == -1); /* parent is close */
         	unlink(ppaf->fname);
-        	free(ppaf->fname);
-        	free(ppaf);
+/*       	free(ppaf->fname);			*/
+/*        	free(ppaf);				*/
+		FreePafDocDataStruct(ppaf);
         	win->pafd = NULL;
 /* securityType=HTAA_UNKNOWN; */
 		return;	/* it is really the end !!! */
@@ -1227,8 +1268,8 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 	int elem_id;
 	int moid_ret = -1;
 
-	if (pafc->fd <0 )
-		abort();
+	assert( pafc->fd >=0 );
+
 	close(pafc->fd);
 	pafc->fd = -1;
 	ppaf = pafc->parent_paf;
@@ -1293,7 +1334,7 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 		fprintf(stderr, "This a Bug. Please report\n");
 		fprintf(stderr, "MMFinishPafEmbeddedObject, Unknow EmbeddedObject type %d\n", mptr->type);
 		fprintf(stderr, "Aborting ...\n");
-		abort();
+		assert(0);
 	}
 
 	unlink(pafc->fname);
@@ -1318,7 +1359,7 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
                                 free(ppaf->mc_fname_save);
                         } else {        /* a top frameset */
 				/* a top frameset never have embedded obj*/
-                              abort();
+                              assert(0);
                         }
 			switch(ppaf->gui_action) {
                         case HTML_LOAD_CALLBACK:
@@ -1355,20 +1396,21 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 						win, win->moid_ref, win->dot, win->n_do);
 						/* stop the twirl */
 					XtRemoveTimeOut(pafd->twirl_struct->time_id);
-					free(pafd->twirl_struct);
-					free(pafd->sps.accept);
+/*					free(pafd->twirl_struct);	*/
+/*					free(pafd->sps.accept);	*/
 
 					assert( pafd->fd == -1);
 
 					unlink(pafd->fname); 
-					free(pafd->fname);
-					free(pafd);
+/*					free(pafd->fname);	*/
+/*					free(pafd);	*/
+					FreePafDocDataStruct(pafd);
 					win->pafd = NULL;
 						/* securityType=HTAA_UNKNOWN; */
 				}
                                 break;
                         default:      
-                                abort();        /* let me know */
+                                assert(0);
                         }
 		}
 #endif
@@ -1376,21 +1418,22 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 /* get the current id  #### */
 		elem_id = 0;
 		HTMLSetHTMLmark (ppaf->win->scrolled_win, ppaf->mlist, elem_id, ppaf->goto_anchor, ppaf->aurl);
-        	free(ppaf->embedded_object_tab);
 		free(ppaf->paf_child); /*### et le reste de paf_child*/
 /* en finir avec la requete de pafd. */
         	win = ppaf->win;
 /* stop the twirl */
         	XtRemoveTimeOut(ppaf->twirl_struct->time_id);
-        	free(ppaf->twirl_struct);
-        	free(ppaf->sps.accept);
+/*        	free(ppaf->twirl_struct);			*/
+/*        	free(ppaf->sps.accept);				*/
+/*        	free(ppaf->embedded_object_tab);		*/
 
 /* parent paf is closed when load is complete */
 		assert(ppaf->fd == -1);
 
         	unlink(ppaf->fname);
-        	free(ppaf->fname);
-        	free(ppaf);
+/*        	free(ppaf->fname);				*/
+/*        	free(ppaf);					*/
+		FreePafDocDataStruct(ppaf);
         	win->pafd = NULL;
 /* securityType=HTAA_UNKNOWN; */
 		return;	/* it is really the end !!! */
@@ -1452,6 +1495,44 @@ static void MMPafLoadEmbeddedObjInDoc(PafDocDataStruct * pafc)
 	PostRequestAndGetTypedData(new_canon_url,pafd->paf_child);
 	return;
 }
+
+/* utility by Winfried */
+#ifdef DEBUG_PAFD
+void PrintPafStruct(char *file,int line,PafDocDataStruct *pafd)
+{
+	char Buf[64];                    
+
+	fprintf(stderr,"%s:%d:----- PafDocDataStruct -----\n",file,line);
+	fprintf(stderr,"pafd->fname               '%s'\n",pafd->fname);
+	fprintf(stderr,"pafd->fd                  '%d'\n",pafd->fd);
+	fprintf(stderr,"pafd->aurl                '%s'\n",pafd->aurl);
+	fprintf(stderr,"pafd->aurl_wa             '%s'\n",pafd->aurl_wa);
+	fprintf(stderr,"pafd->goto_anchor         '%s'\n",pafd->goto_anchor);
+	Buf[0] = 0;
+	if(pafd->post_ct)strncpy(Buf,pafd->post_ct,20);
+	fprintf(stderr,"pafd->post_ct             '%s'\n",Buf);
+	Buf[0] = 0;
+	if(pafd->post_data)strncpy(Buf,pafd->post_data,20);
+	fprintf(stderr,"pafd->post_data           '%s'\n",Buf);
+	fprintf(stderr,"pafd->mhs                 '%p'\n",pafd->mhs);
+	Buf[0] = 0;
+	if(pafd->html_text)strncpy(Buf,pafd->html_text,20);
+	fprintf(stderr,"pafd->html_text           '%s'\n",Buf);
+	fprintf(stderr,"pafd->mlist               '%p'\n",pafd->mlist);
+	fprintf(stderr,"pafd->embedded_object_tab '%p'\n",pafd->embedded_object_tab);
+	fprintf(stderr,"pafd->parent_paf          '%p'\n",pafd->parent_paf);
+	fprintf(stderr,"pafd->paf_child           '%p'\n",pafd->paf_child);
+	fprintf(stderr,"pafd->twirl_struct        '%p'\n",pafd->twirl_struct);
+	fprintf(stderr,"pafd->lfcrlf_type         '%s'\n",pafd->lfcrlf_type);
+	fprintf(stderr,"pafd->format_in           '%s'\n",pafd->format_in);
+	fprintf(stderr,"pafd->www_con_type        '%p'\n",pafd->www_con_type);
+	fprintf(stderr,"pafd->proxent             '%p'\n",pafd->proxent);
+	fprintf(stderr,"pafd->mc_fname_save       '%s'\n",pafd->mc_fname_save);
+	fprintf(stderr,"pafd->sps.accept          '%s'\n",pafd->sps.accept);
+	fprintf(stderr,"pafd->iobs.iobuf          '%p'\n",pafd->iobs.iobuf);
+	fputc('\n',stderr);              
+} 
+#endif
 
 
 /* qques lignes de code pour les news ##### 

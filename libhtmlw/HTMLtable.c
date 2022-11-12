@@ -68,7 +68,7 @@ void _FreeTableStruct(TableInfo * t)
    if tr parse until (td or th)
    if td or th then FormatChunk ()
 */
-void UpateColList( ColumnList ** col_list, int td_count,
+void UpdateColList( ColumnList ** col_list, int td_count,
 		MarkType m_cell_type,
 		struct mark_up * td_start_mark, struct mark_up * td_end_mark,
 		int colspan,int rowspan, int have_bgcolor, Pixel bgcolor)
@@ -436,7 +436,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	TableInfo lt;
 	struct mark_up * sm;
 	struct mark_up * tb_start_mark;		/* save the marker <TABLE> */
-	struct mark_up * tb_end_mark=NULL;	/* save the marker <TABLE> */
+	struct mark_up * tb_end_mark=NULL;	/* save the marker </TABLE> */
 	struct mark_up * start_other_mark; /* is mark up between TABLE and TR */
 					/* or CAPTION ?			   */
 	struct mark_up * end_other_mark; /* is mark up between TABLE and TR */
@@ -633,7 +633,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			if ( td_start_found) { /* this is the end of previous */
 				td_count++;
 				td_end_mark = psm;
-				UpateColList(&col_list,td_count,m_cell_type,
+				UpdateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
 					colspan,rowspan,
 					thtd_have_bgcolor, thtd_bgcolor);
@@ -702,7 +702,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
                         }
 			td_count++;
 			td_end_mark = sm;
-			UpateColList(&col_list,td_count,m_cell_type,
+			UpdateColList(&col_list,td_count,m_cell_type,
 				td_start_mark,td_end_mark,
 				colspan,rowspan,
 				thtd_have_bgcolor, thtd_bgcolor);
@@ -718,7 +718,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			if (td_start_found){
 				td_count++;
 				td_end_mark = psm;
-				UpateColList(&col_list,td_count,m_cell_type,
+				UpdateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
 					colspan,rowspan,
 					thtd_have_bgcolor, thtd_bgcolor);
@@ -757,7 +757,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			if (td_start_found){
 				td_count++;
 				td_end_mark = psm;
-				UpateColList(&col_list,td_count,m_cell_type,
+				UpdateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
 					colspan,rowspan,
 					thtd_have_bgcolor, thtd_bgcolor);
@@ -788,7 +788,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			if (td_start_found){
 				td_count++;
 				td_end_mark = psm;
-				UpateColList(&col_list,td_count,m_cell_type,
+				UpdateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
 					colspan,rowspan,
 					thtd_have_bgcolor, thtd_bgcolor);
@@ -804,7 +804,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 					td_count =0;
 				} else {
 #ifdef HTMLTRACE
-					printf("<TR> without<TD> and </TABLE> see!: Buggy TABLE !!!\n");
+					printf("<TR> without<TD> and </TABLE> seen!: Buggy TABLE !!!\n");
 #endif
 					break;
 				}

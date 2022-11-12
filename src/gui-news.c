@@ -45,7 +45,7 @@ NewsArt *CurrentArt = NULL;
 /* Goto the previous (unread) thread */
 void news_prevt(char *url)
 {
-	abort();
+	assert(0);
 /*
   NewsArt *art, *p;
 
@@ -62,7 +62,7 @@ void news_prevt(char *url)
 /* Goto next (unread) article in this thread */ 
 void news_next(char *url)  
 {  
-	abort();
+	assert(0);
 /*
   NewsArt *art, *p;                   
       
@@ -85,7 +85,7 @@ void news_next(char *url)
 /* Goto first (unread) article in next (unread) thread */
 void news_nextt(char *url)            
 {  
-	abort();
+	assert(0);
 /*
   NewsArt *art, *p;
                                       
@@ -102,7 +102,7 @@ void news_nextt(char *url)
 /* Goto the previous (unread) article */
 void news_prev(char *url)
 {                                     
-	abort();
+	assert(0);
 /*
     NewsArt *art, *p;
                                       
@@ -124,7 +124,7 @@ void news_prev(char *url)
 
 void news_index(char *url)            
 {
-	abort();
+	assert(0);
 /*
     if(NewsGroup && is_news_url(url))
         sprintf(url,"news:%s",NewsGroup);
@@ -136,7 +136,7 @@ void news_index(char *url)
 /* Returns the status of the news buttons */
 void news_status(char *url, int *prevt, int *nextt, int *prev, int *next, int *follow)
 { 
-	abort();
+	assert(0);
 /*
     NewsArt *art;
   
@@ -172,7 +172,7 @@ void news_status(char *url, int *prevt, int *nextt, int *prev, int *next, int *f
 int NNTPgetarthdrs(char *art,char **ref, char **grp, char **subj, char **from,
         caddr_t appd)
 {   
-	abort();
+	assert(0);
 /*
     int status, done;                 
     char *aname,*p;                   
@@ -293,7 +293,7 @@ int NNTPgetarthdrs(char *art,char **ref, char **grp, char **subj, char **from,
 int NNTPpost(char *from, char *subj, char *ref, char *groups, char *msg,
         caddr_t appd)
 {
-	abort();
+	assert(0);
 /*
     char buf[1024];
                                       
@@ -350,7 +350,7 @@ int NNTPpost(char *from, char *subj, char *ref, char *groups, char *msg,
 /* static char qline[LINE_LENGTH+1]; */
 char *NNTPgetquoteline(char *art, caddr_t appd)
 {       
-	abort();
+	assert(0);
 /*
     char *p;
     int i,status ;
@@ -424,7 +424,7 @@ char *NNTPgetquoteline(char *art, caddr_t appd)
 void HTSetNewsConfig (int artView, int artAll, int grpAll, int grpRead,
                       int noThrJmp, int newsRC, int nxtUnread, int prevUnread)
 {  
-	abort();
+	assert(0);
 /*
   if (artView != NO_CHANGE) {
     ConfigView = !artView;

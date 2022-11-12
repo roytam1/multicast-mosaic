@@ -353,13 +353,13 @@ void HTMLPixelToXColor(XColor * c)
 	case StaticColor:
 	case StaticGray:
 /*		if (Localmap[c->pixel].allocated){
-/*			*c = Localmap[c->pixel].xcolor;
-/*			return;
-/*		}
-/*		XQueryColor(Dpy, Cmap, c);
-/*		localmap[c->pixel].allocated = 1;
-/*		localmap[c->pixel].xcolor = *c;
-/*		return;
+ *			*c = Localmap[c->pixel].xcolor;
+ *			return;
+ *		}
+ *		XQueryColor(Dpy, Cmap, c);
+ *		localmap[c->pixel].allocated = 1;
+ *		localmap[c->pixel].xcolor = *c;
+ *		return;
 */
 	case TrueColor:
 	case DirectColor:

@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <assert.h>
 
 #include <Xm/XmAll.h>
 
@@ -216,7 +217,7 @@ static int McRcvrParseStatesData(char *buf_in, int len_buf_in,
 	beg_m = buf_in;
 	lflf_ptr = strstr(beg_m, "\012\012");
 	if (!lflf_ptr) {
-		abort();	/* let me know */
+		assert(0);
 	}
 	lflf_ptr[1] = '\0';	/* set the last LF to '\0' */
 	ParseMimeHeader(beg_m, &tmp_mhs);	/* parse mime */
@@ -235,7 +236,7 @@ int McRcvrSrcCheckBufferStateWithData(Source *s, int is_end, int state_id,
 	if ( s->states[state_id].buffer_status == PARSED_BUFFER)
 		return PARSED_BUFFER;
 	if ( s->states[state_id].buffer_status == COMPLETE_BUFFER) {
-		abort(); 	/* parse it */
+		assert(0);
 		return PARSED_BUFFER;
 	}
 
@@ -265,7 +266,7 @@ int McRcvrSrcCheckBufferStateWithData(Source *s, int is_end, int state_id,
 
 		if (status == PARSED_BUFFER) 
                         return PARSED_BUFFER;
-		abort();		/* let me know */
+		assert(0);
         }          
 
 	if ( s->states[state_id].buffer_status == CHUNKED_BUFFER) {
@@ -274,13 +275,13 @@ int McRcvrSrcCheckBufferStateWithData(Source *s, int is_end, int state_id,
 		return CHUNKED_BUFFER;
 	}
 	if ( s->states[state_id].buffer_status == EMPTY_BUFFER ) {
-		abort();	/* update the buffer with 'd' */
+		assert(0); 	/* update the buffer with 'd' */
 				/* status = ??? */
 				/* envoyer une demande de repair ? */
 				/* oui mais sous quelle condition? */
 		return EMPTY_BUFFER ;	/* return apropriate status */
 	}
-	abort();	/* let me know */
+	assert(0);
 	return status;
 }
 
@@ -303,7 +304,7 @@ int McRcvrSrcCheckBufferObject(Source *s, int moid)
 		status = McRcvrSrcAllocObject(s, s->objects[moid].dot[i]);
                 if( !status) {
                         fprintf(stderr,"Out of mem\n");
-                        abort();
+                        assert(0);
                 }
 		status = McRcvrSrcCheckBufferObject(s, s->objects[moid].dot[i]);
 		if (status != PARSED_ALL_DEPEND_BUFFER)
@@ -351,7 +352,7 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
  */
 	if( !McRcvrSrcAllocState(s, state_id)) {
 		fprintf(stderr,"Out of mem\n");
-		abort();
+		assert(0);
 	}
 
 /* update and check: si toutes les donnees sont la pour le state_id */
@@ -371,7 +372,7 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 	status = McRcvrSrcAllocObject(s, st.start_moid);
 	if( !status) {
 		fprintf(stderr,"Out of mem\n");
-		abort();
+		assert(0);
 	}
 	status = McRcvrSrcCheckBufferObject(s, st.start_moid);
 	if (status != PARSED_ALL_DEPEND_BUFFER)
@@ -385,7 +386,7 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 		status = McRcvrSrcAllocObject(s, st.dot[i]);
 		if( !status) {
 			fprintf(stderr,"Out of mem\n");
-			abort();
+			assert(0);
 		}
 		status = McRcvrSrcCheckBufferObject(s, st.dot[i]);
 		if (status != PARSED_ALL_DEPEND_BUFFER)
@@ -416,7 +417,7 @@ static int McRcvrParseObjectData(char *buf_in, int len_buf_in, int *code_ret,
 
 	lf_ptr = strchr(buf_in, '\012'); /* GET http message */
 	if (lf_ptr == NULL) {
-		abort();	/* Bug letme know */
+		assert(0);
 	}
 	beg_m = lf_ptr+1;
 /* http message is :
@@ -427,7 +428,7 @@ static int McRcvrParseObjectData(char *buf_in, int len_buf_in, int *code_ret,
 		ParseMimeHeader("", &tmp_mhs);  /* get a default mime header*/
 		nfields = sscanf(buf_in, "%*s %d %s %8s", code_ret, aurl, server_status);
 		if (nfields != 3) {
-			abort(); /* let me know */
+			assert(0);
 		}
 		*aurl_ret = strdup(aurl);
 		/* *code_ret = 404; */
@@ -437,12 +438,12 @@ static int McRcvrParseObjectData(char *buf_in, int len_buf_in, int *code_ret,
 		return PARSED_BUFFER;
 	}
 	if (strncmp(buf_in, "GET", 3)) {
-		abort(); 	/* bug letme know */
+		assert(0);
 	}
 /* GET message */
 	nfields = sscanf(buf_in, "%*s %s %8s", aurl, server_status);
 	if (nfields != 2) {
-		abort(); /* let me know */
+		assert(0);
 	}
 /*char *buf_in, int len_buf_in */
 	*aurl_ret = strdup(aurl);
@@ -450,7 +451,7 @@ static int McRcvrParseObjectData(char *buf_in, int len_buf_in, int *code_ret,
 
 	lflf_ptr = strstr(beg_m, "\012\012");
 	if (!lflf_ptr) {
-		abort();	/* let me know */
+		assert(0);
 	}
 	lflf_ptr[1] = '\0';	/* set the last LF to '\0' */
 	ParseMimeHeader(beg_m, &tmp_mhs);	/* parse mime */
@@ -475,7 +476,7 @@ static int McRcvrSrcCheckBufferObjectWithData(Source *s, int is_end, int moid,
 	char *fname_ret;
 
 	if (s->objects[moid].buffer_status == COMPLETE_BUFFER) {
-		abort();
+		assert(0);
 		return COMPLETE_BUFFER;
 	}
 	if (s->objects[moid].buffer_status == PARSED_BUFFER)
@@ -513,7 +514,7 @@ static int McRcvrSrcCheckBufferObjectWithData(Source *s, int is_end, int moid,
 			abort(); /* do something with code aurl mhs & body */
 		/* code is 200 when GET, or the error number(404 notfound */
 		default:
-			abort();	/* let me know */
+			assert(0);
 		}
 		/* transition de COMPLETE_BUFFER a PARSED_BUFFER */
 		/* cache it . mettre tout ca dans un cache... */
@@ -524,7 +525,7 @@ static int McRcvrSrcCheckBufferObjectWithData(Source *s, int is_end, int moid,
 		s->objects[moid].buffer = NULL;	/* clean up */
 		if (status == PARSED_BUFFER)
 			return PARSED_BUFFER;
-		abort();	/* let me know */
+		assert(0);
 	}
 	if (status == CHUNKED_BUFFER){
 			/* schedule somethings. Verifier plus tard */
@@ -540,14 +541,14 @@ static int McRcvrSrcCheckBufferObjectWithData(Source *s, int is_end, int moid,
 		return CHUNKED_BUFFER;
 	}
 	if (status == EMPTY_BUFFER)
-		abort();	/* let me know */
-	abort();		/* let me know */
+		assert(0);
+	assert(0);
 	return status;
 }
 
 static void McRcvSrcMakeStateFromObject( Source *s, McObjectStruct *obs, int state_id)
 {
-	abort();
+	assert(0);
 }
 
 /* because some asynchronous event we need to check the last state at later time*/
@@ -587,7 +588,7 @@ static void McSrcCheckStateCb(XtPointer clid, XtIntervalId * id)
 	status = McRcvrSrcAllocObject(s, s->states[sid].start_moid);
         if( !status) {
                 fprintf(stderr,"Out of mem\n");
-                abort();
+                assert(0);
         }
 	status = McRcvrSrcCheckBufferObject(s, s->states[sid].start_moid);
 	if (status != PARSED_ALL_DEPEND_BUFFER) {
@@ -602,7 +603,7 @@ static void McSrcCheckStateCb(XtPointer clid, XtIntervalId * id)
 		status = McRcvrSrcAllocObject(s, s->states[sid].dot[i]);  
                 if( !status) {
                         fprintf(stderr,"Out of mem\n");  
-                        abort();
+                        assert(0);
                 }
 		status = McRcvrSrcCheckBufferObject(s, s->states[sid].dot[i]);
                 if (status != PARSED_ALL_DEPEND_BUFFER) {
@@ -666,7 +667,7 @@ void McUpdateDataSourceWithObject(Source *s, int is_end, u_int16_t seqn,
 	status = McRcvrSrcAllocObject(s, moid);
 	if( !status) {
 		fprintf(stderr,"Out of mem\n");
-		abort();
+		assert(0);
 	}
 
 	ostatus = s->objects[moid].buffer_status;

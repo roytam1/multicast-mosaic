@@ -242,7 +242,7 @@ PopupItem popup_items[] = {		 /* Permanent stuff */
    {0, NULL, NULL}, NULL, 0, NULL, NULL, NULL, NULL, 1}, 
 
   {PushButton, E_IMAGE, TIGHT, moMODE_ALL, LOOSE, "Save", 
-   {I_Save, NULL, NULL}, image_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {(XtCallbackProc)I_Save, NULL, NULL}, image_cb, 0, NULL, NULL, NULL, NULL, 1},
 
   {PushButton, E_IMAGE, TIGHT, moMODE_ALL, LOOSE, "Reload", 
    { (XtCallbackProc)I_Reload, NULL, NULL},

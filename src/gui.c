@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include <pwd.h>
+#include <assert.h>
+
 #include <X11/keysym.h>
 #include <Xm/XmAll.h>
 #include <X11/Xmu/Editres.h>
@@ -493,7 +495,7 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 
 /* check if w is equal to win->scrolled_win */
 	if ( w != win->scrolled_win)
-		abort();
+		assert(0);
 	
 	if (wacd->href)
 		href = strdup (wacd->href);
@@ -547,7 +549,7 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 	if (!strncmp (href, "telnet:", 7) || !strncmp (href, "rlogin:", 7)) {
 		fprintf(stderr,"anchor_cb: Bug with telnet/rlogin anchor\n");
 		fprintf(stderr,"Please report\n");
-		abort();
+		assert(0);
 /*		MMPafLoadHTMLDocInWin (win, href); */
 		return;
 	}
@@ -859,7 +861,7 @@ XmxCallback (frame_callback)
 			(parent->frame_sons_nbre) * sizeof(mo_window *));
 		break;
 	default:
-		abort();
+		assert(0);
 #ifdef DEBUG_FRAME
 		fprintf(stderr, "frame_callback: reason: Unknowed...\n");
 #endif
@@ -1919,9 +1921,9 @@ static mo_status mo_fill_window (mo_window *win)
  *   This can be called, among other places, from the WM_DELETE_WINDOW
  *   handler.  By the time we get here, we must assume the window is already
  *   in the middle of being shut down.
- *   We must explicitly close every dialog that be open as a child of
- *   the window, because window managers too stupid to do that themselves
- *   will otherwise allow them to stay up.
+ *   We must explicitly close every dialog that might be open as a child of
+ *   the window, because window managers are too stupid to do that themselves:
+ *   they will otherwise allow them to stay up.
  */
 #define POPDOWN(x) 	if (win->x) XtUnmanageChild (win->x)
 
@@ -2362,8 +2364,7 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 /* take care of session history for rbm */
       	win->session_menu = NULL;       
       	win->num_session_items = 0;     
-    	win->session_items = (Widget*) malloc(sizeof(Widget) *
-                   mMosaicAppData.numberOfItemsInRBMHistory);
+    	win->session_items = (Widget*) calloc(mMosaicAppData.numberOfItemsInRBMHistory, sizeof(Widget) );
 	XtPopup (win->base, XtGrabNone);
 	XFlush (mMosaicDisplay);
 	XSync (mMosaicDisplay, False);
@@ -2574,7 +2575,7 @@ void mo_flush_passwd_cache (mo_window *win)
 {
 	fprintf(stderr,"mo_flush_passwd_cache: Bug \n");
 	fprintf(stderr,"Please report\n");
-	abort();
+	assert(0);
 /*	HTFTPClearCache (); */
 /*	HTAAServer_clear (); */
 	mo_gui_notify_progress ("Password cache flushed",win);

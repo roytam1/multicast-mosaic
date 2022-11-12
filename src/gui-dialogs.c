@@ -13,6 +13,7 @@
 #include "navigate.h"
 #include "mailto.h"
 
+#include <assert.h>
 #include <Xm/XmAll.h>
 
 #include <pwd.h>
@@ -315,7 +316,7 @@ void mo_save_document (Widget w, XtPointer clid, XtPointer calld)
 	if (!XmStringGetLtoR(fbfn,XmSTRING_DEFAULT_CHARSET,&fileBoxFileName)) {
 		fprintf(stderr,
 			"Internal Error In Save As... PLEASE REPORT THIS!\n");
-		abort();
+		assert(0);
 	}
 	if (*fileBoxFileName && win && win->current_node && 
 	    win->current_node->aurl ) {
@@ -1800,7 +1801,7 @@ mo_status mo_edit_source(mo_window *win)
 	}
 
 /* need to save file name and pid for later reading of source*/
-	if (!(e = (EditFile *) malloc(sizeof(EditFile)))) {
+	if (!(e = (EditFile *) calloc(1,sizeof(EditFile)))) {
 		fprintf(stderr,"%s:%d:Out of Memory!\n",__FILE__,__LINE__);
 		return mo_fail;
 	}

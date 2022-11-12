@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <assert.h>
 
 #include <Xm/XmAll.h>
 
@@ -216,6 +217,7 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
 	HtmlTextInfo * htinfo;
 	int moid;
 
+	memset(&topinfo,0,sizeof(McHtmlTopInfoWindow));
 	object = s->objects[start_moid];
 	mhs = object.mhs;
 	aurl = s->objects[start_moid].aurl;
@@ -242,6 +244,7 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
 		title = htinfo->title;
 	else
 		title = strdup(aurl);
+	free(htinfo);
 
 /* ### scan the mlist and bind href or frame to depend-moid... #### */
 /* ### we can do that because parsing on both side is the same #### */
@@ -273,9 +276,8 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
 /*fectch this object in cache. load it in mptr...*/
                 	MMPreloadImage(win, mptr, mhs, s->objects[moid].fname);
                 	if ( !mptr->s_picd->fetched ){
-				abort();
-                       		 free(mptr->s_picd); 
-                        	mptr->s_picd = NULL;
+				assert(0);
+                       		/* free(mptr->s_picd); mptr->s_picd = NULL; */
                 	} 
 			num_of_eo++;
                 	break;
@@ -296,13 +298,13 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
 			MMPreParseInputTagImage(win, picd, mptr);
 			mptr->s_picd = picd; /* in all case display something*/
 			if (picd->internal && !picd->fetched && !picd->delayed){
-				abort();
+				assert(0);
 				break; /* error in image tag */
 				/* don't try to find it */
 			}             
 			mptr->s_picd = picd; /* in all case display something*/
 			if ( picd->fetched) {
-				abort();
+				assert(0);
 				break; /* we have it */
 			}
                 	mptr->s_picd->src = picd->src;	/*object.aurl;*/
@@ -323,7 +325,7 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
  */                                   
 			mptr->s_picd = picd; /* in all case display something*/
 			if (picd->internal && !picd->fetched && !picd->delayed){
-				abort();
+				assert(0);
 				break; /* error in image tag */
 					/* don't try to find it */
 			}             
@@ -335,7 +337,7 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
  to get the image is not a succes. or SRC tag is not present.
 */                                    
 			if ( picd->fetched) { /* internal image found */
-				abort();
+				assert(0);
 				break; /* we have it */
 			}             
                 	mptr->s_picd->src = picd->src;	/*object.aurl;*/
@@ -371,10 +373,6 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
 	topinfo.docid = 0;	/* ### just now FIXE ME */
 
 	*top_ret = topinfo;
-
-/*abort();/* where to free the text ???? */
-/*abort(); /* where to free mlist ??? */
-/*abort(); /* where to free htinfo and htinfo.mlist ??? */
 }
 
 XmxCallback (mc_frame_callback) 
@@ -405,6 +403,7 @@ XmxCallback (mc_frame_callback)
 #endif
                 return;
         }
+	memset(&topinfo,0,sizeof(McHtmlTopInfoWindow));
         switch (cbs->reason) {
         case XmCR_HTML_FRAMEDONE:
 #ifdef DEBUG_FRAME                    
@@ -450,7 +449,7 @@ XmxCallback (mc_frame_callback)
                 break; 
         default:                      
                 fprintf(stderr, "mc_frame_callback: reason: Unknowed...\n");
-		abort();
+		assert(0);
                 break;                
         }                             
         if (cbs->reason != XmCR_HTML_FRAMEDONE ){
@@ -494,13 +493,24 @@ XmxCallback (mc_frame_callback)
 /* on met a jour immediatement la partie navigation. Car on doit avoir un
 /* current_node qui memorise tout la requete */
 /* title is alway allocated. */        
+
         MMUpdNavigationOnNewURL(sub_win, aurl, aurl, goto_anchor, base_url,
                 base_target, title, html_text, mhs, docid, mlist);
-/* Remarque: la requete (partie HTML) est termine et on a change de current_node*//* mlist mhs html_text title aurl_wa aurl  must be free in navigation stuff */
+
+/* Remarque: la requete (partie HTML) est termine et on a change de current_node*/
+/* mlist mhs html_text title aurl_wa aurl  must be free in navigation stuff */
 /* afficher le texte. le mettre dans la Widget. id come from back and forward */
                                        
         HTMLSetHTMLmark (sub_win->scrolled_win, mlist, docid, goto_anchor, aurl);
         XFlush(XtDisplay(sub_win->scrolled_win));
+
+/* use in MMUpdNavigationOnNewURL */
+/* ###if(info.aurl) free(info->aurl);	#### */
+/* ###if(info.base_url) free(info->base_url);	#### */
+/* ### if(info.base_target) free(info->base_target);	#### */
+/* ### if(info.title) free(info->title);	#### */
+/* ### if(info.html_text) free(info->html_text);	#### */
+
 }
 
 /* we can do that only if depend object is in multicast cache */
@@ -557,4 +567,10 @@ void McDoWindowText(Source *s, unsigned int state_id)
 	s->current_state_id_in_window = state_id;
 /* MAJ de l'history etc... */
 /*### faire un record history pour le multicast  MMUpdateGlobalHistory(aurl);*/
+/* use in MMUpdNavigationOnNewURL */
+/* ###if(info.aurl) free(info->aurl);	#### */
+/* ###if(info.base_url) free(info->base_url);	#### */
+/* ### if(info.base_target) free(info->base_target);	#### */
+/* ### if(info.title) free(info->title);	#### */
+/* ### if(info.html_text) free(info->html_text);	#### */
 }

@@ -9,6 +9,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "HTMLmiscdefs.h"
 #include "HTMLparse.h"
@@ -431,13 +432,11 @@ static struct mark_up * get_mark(char *start, char **endp)
 		mark->is_end = 1;
 		mark->type = ParseMarkType((char *)(text + 1));
 		mark->start = NULL;
-		mark->text = NULL;
 		mark->end = text;
 	} else {
 		mark->is_end = 0;
 		mark->type = ParseMarkType(text);
 		mark->start = text;
-		mark->text = NULL;
 		mark->end = NULL;
 	}
 	mark->text = NULL;
@@ -464,7 +463,7 @@ static struct mark_up * AddObj( struct mark_up **listp, struct mark_up *current,
 		current = *listp;
 	} else {
 		current->next = mark;
-		current = current->next;
+		current = mark;
 	}
 	current->next = NULL;
 	return(current);
@@ -522,7 +521,7 @@ struct mark_up * HTMLLexem( const char *str_in)
 			break;		/* end html string, parse is done */
 
 /* Get the next mark if any, and if it is valid, add it to the linked list. */
-/* star is on '<' */
+/* start is on '<' */
 		mark = get_mark(start, &end);
 		if (mark == NULL) {
 #ifdef HTMLTRACE
@@ -590,6 +589,7 @@ typedef struct _ParserContext {
 	char * title_text;			/* TITLE text */
 	struct mark_up * title_mark;		/* TITLE text */
 	int has_body;				/* body seen */
+	int has_base;				/* base seen */
 	int has_frameset;			/* frameset seen */
 	int frameset_depth;			/* nested frameset */
 } ParserContext;
@@ -599,6 +599,7 @@ static  ParserContext Pcxt = {
 	NULL,		/* top_stk */
 	0,		/* has_head */
 	0,		/* has_body */
+	0,		/* has_base */
 	0,		/* has_frameset */
 	0		/* frameset_depth */
 };
@@ -793,7 +794,11 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		case M_LINK:
 		case M_ISINDEX:
 		case M_BASE:
-			return GOOD_TAG;
+			if (pc->has_base == 0) {
+				pc->has_base = 1;
+				return GOOD_TAG;
+			}
+			return REMOVE_TAG;
 		case M_HEAD:
 			if (!mptr->is_end)
 				return REMOVE_TAG;      /* deja dans M_HEAD */
@@ -889,8 +894,13 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		break;
 	case M_BODY:
 		switch (mptr->type) {
+		case M_BASE:			/* to be sympatico */
+			if (pc->has_base == 0) {
+				pc->has_base = 1;
+				return GOOD_TAG;
+			}
+			return REMOVE_TAG;
 		case M_HTML:		/* some TAG is not in this block */
-		case M_BASE:
 		case M_HEAD:
 		case M_FRAME:
 		case M_FRAMESET:
@@ -1237,7 +1247,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		break;
 	}
 	
-	abort(); /* that is a unknow state!!!! */
+	assert(0); /* that is a unknow state!!!! */
 	return REMOVE_TAG ;
 }
 
@@ -1273,8 +1283,7 @@ static void ParserEndStack(ParserContext *pc)
 		PopParserStack(pc);
 
 	/* check the stateStack */
-	if (pc->top_stk->mtype != M_INIT_STATE)
-		abort();		/* something goes wrong */
+	assert(pc->top_stk->mtype == M_INIT_STATE); /* something goes wrong */
 }
 
 /* pc : Parser context.
@@ -1381,6 +1390,7 @@ HtmlTextInfo * HTMLParseRepair( char *str)
 	Pcxt.title_text =NULL;
 	Pcxt.title_mark =NULL;
 	Pcxt.has_body =0;
+	Pcxt.has_base = 0;
 	Pcxt.has_frameset = 0;
 	Pcxt.frameset_depth = 0;
 	RecurHTMLParseRepair(&Pcxt, pmptr, mptr, M_INIT_STATE);

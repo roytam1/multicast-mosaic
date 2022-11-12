@@ -61,11 +61,11 @@ unsigned char * ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 	rewind(infile);
 
         /* allocate the structures */
-	png_ptr = (png_struct *)malloc(sizeof(png_struct));
+	png_ptr = (png_struct *)calloc(1,sizeof(png_struct));
 	if(!png_ptr)
 		return 0;
 
-	info_ptr = (png_info *)malloc(sizeof(png_info));
+	info_ptr = (png_info *)calloc(1,sizeof(png_info));
 	if(!info_ptr) {
 		free(png_ptr);
 		return 0;
@@ -217,7 +217,7 @@ then dither the image to 256 colors, and make up a palette */
 	png_pixels = (png_byte *)malloc(info_ptr->rowbytes * 
 			(*height) * sizeof(png_byte));
     
-	row_pointers = (png_byte **) malloc((*height) * sizeof(png_byte *));
+	row_pointers = (png_byte **) calloc((*height) , sizeof(png_byte *));
 	for (i=0; i < *height; i++)
 		row_pointers[i]=png_pixels+(info_ptr->rowbytes*i);
 

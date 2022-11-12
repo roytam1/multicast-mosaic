@@ -8,6 +8,7 @@
 #include <sys/param.h>		/* MAXPATHLEN is defined here */
 #include <unistd.h>
 #include <dirent.h>
+#include <assert.h>
 
 #include "../libhtmlw/HTMLparse.h"
 #include "../libhtmlw/HTML.h"
@@ -76,14 +77,9 @@ static void add_url_to_bucket (int buck, char *url, int cid)
  
         l = (HashEntry *)calloc (1, sizeof (HashEntry));
         l->url = strdup (url);
-        l->cid=cid;
-        l->next = NULL;
-        if (bkt->head == NULL)
-                bkt->head = l;
-        else {
-                l->next = bkt->head;     
-                bkt->head = l;           
-        }                                
+	l->cid = cid;
+	l->next = bkt->head;
+	bkt->head = l;
         bkt->count++ ;                   
 }
 
@@ -94,13 +90,13 @@ static void remove_url_from_bucket(int buck, char * url)
         Bucket *bkt = &(hash_tab[buck]);
 	HashEntry *prev, *deb, *next;
 
-	deb = hash_tab[buck].head;
+	deb = bkt->head;
 	prev = NULL;
 	while (deb != NULL){
 		if (strcmp(url,deb->url) == 0) { /* remove the entry */
 			next = deb->next;
 			if (prev == NULL){
-				hash_tab[buck].head = next;
+				bkt->head = next;
 			} else {
 				prev->next = next;
 			}
@@ -177,12 +173,7 @@ void MMCacheInit( char * root_dirname)
 
 /* create a hash-code table and a reverse cid table */
 	hash_tab = (Bucket *) calloc( MAX_N_FILE_CACHE , sizeof(Bucket));
-	for( i=0 ; i<MAX_N_FILE_CACHE; i++){
-		cid_cache[i].exist = 0;
-		cid_cache[i].url = NULL;
-		hash_tab[i].head = NULL;
-		hash_tab[i].count = 0;
-	}
+
 	while (mptr != NULL) {
 		char * fname;
 		char * content_type;
@@ -423,6 +414,7 @@ void MMCachePutDataInCache(char *fname_r, char *aurl_wa, char *aurl,
 				/* cid_cache[cid].url = strdup(url); */
 			cid_cache[cid].size = mhs->content_length;
 			cid_cache[cid].last_modify = t;
+/* ###	if( cid_cache[cid].content_type) free( cid_cache[cid].content_type); ### */
 			cid_cache[cid].content_type = strdup(mhs->content_type);
 			cid_cache[cid].content_encoding = mhs->content_encoding;
 			cid_cache[cid].exist = 1;
@@ -441,7 +433,7 @@ void MMCachePutDataInCache(char *fname_r, char *aurl_wa, char *aurl,
 	fprintf(stderr, "This a Bug. Please report\n");
 	fprintf(stderr, "MMCachePutDataInCache :Problem in cache\n");
 	fprintf(stderr, "Aborting ...\n");
-	abort();
+	assert(0);
 	return ;
 }
 

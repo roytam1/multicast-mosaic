@@ -44,7 +44,7 @@ void GetUrlData(Widget w, XtPointer clid, XtPointer calld)
 	/* We have to load the data. */
 	fnam = tempnam (mMosaicTmpDir,"mMo");
 	fprintf(stderr, "GetUrlData: implement... Abort... Please report\n");
-	abort();
+	assert(0);
 #ifdef MULTICAST
 	/* if this is a sender widget, save the original data for futur send*/
 	if ((wtype == MC_MO_TYPE_MAIN) && mc_send_enable){

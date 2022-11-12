@@ -197,7 +197,7 @@ void mo_reload_document (Widget w, XtPointer clid, XtPointer calld)
 	rds.gui_action = HTML_LOAD_CALLBACK;
 	win->navigation_action = NAVIGATE_OVERWRITE;
 	MMPafLoadHTMLDocInWin(win, &rds);
-	win->navigation_action = NAVIGATE_NEW;
+/*###	win->navigation_action = NAVIGATE_NEW; ### */
 }
 
 /* purpose: Reload the current window's text without pulling it over the net.

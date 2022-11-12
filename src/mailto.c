@@ -3,6 +3,8 @@
 
 /* Interface for mailto: URLs, stolen from techsupport.c */
 
+#include <assert.h>
+
 #include "../libnut/url-utils.h"
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
@@ -218,7 +220,7 @@ mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject)
 	if (win->post_data) {
 		fprintf(stderr, "Bug, please report...\n");
 		fprintf(stderr,"mo_post_mailto_win: win with post_data\n");
-		abort();
+		assert(0);
 		if (!subject || !*subject) {
 			char str[BUFSIZ];
 

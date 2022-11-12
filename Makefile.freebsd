@@ -3,9 +3,8 @@
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
-#	- FreeBSD3.1 ,FreeBSD5.0
+#	- FreeBSD3.1
 #	- Mandrake6.1
-#	- NetWinder (StrongArm based machine)
 
 MCVER=3.5.0
 
@@ -14,12 +13,13 @@ MCVER=3.5.0
 #### your compiler (ANSI required). And options
 #### Gnu C, C++, local C.
 #CC = gcc
-#CC = cc
-CC = CC
+CC = cc
+#CC = CC
 
 # for building a shared lib
 #ldflags = -G
-# FreeBSD3.4
+#
+# for FreeBSD3.4
 #ldflags = -static
 
 #### Linux Intel optimised (does not work well)
@@ -27,7 +27,7 @@ CC = CC
 #### Standard gcc Linux FreeBSD NetBSD compiler flags (recommanded )
 #prereleaseflags = -Wall -g -fno-builtin -fwritable-strings -Wwrite-strings
 #prereleaseflags = -Wall -g -fwritable-strings  -O0
-#prereleaseflags = -Wall -g
+prereleaseflags = -Wall -g
 # for building a shared lib
 # prereleaseflags = $prereleaseflags -fPIC
 #### Qnx
@@ -35,15 +35,15 @@ CC = CC
 #### Sun Workshop C Compiler
 #prereleaseflags = -v -g -xstrconst
 #### Sun Workshop C++ Compiler
-prereleaseflags = +w -g
+#prereleaseflags = +w -g
 
 # for building a shared lib
 # prereleaseflags = $prereleaseflags -fPIC
 
 #### On NetBSD, FreeBSD, BSDI, OSF1, IBM , SunOS4this should be ranlib.
-#RANLIB = ranlib
+RANLIB = ranlib
 #### ranlib for SVR4, indy , linux Qnx, Solaris2.x
-RANLIB = /bin/true
+#RANLIB = /bin/true
 
 
 #### Random system configuration flags.
@@ -57,11 +57,11 @@ RANLIB = /bin/true
 #### For OSF1 -std1 -DDECOSF1
 #### For Qnx  -DQNX
 #### for FreeBSD
-#sysconfigflags = -DFreeBSD -DMOTIF1_2
+sysconfigflags = -DFreeBSD -DMOTIF1_2
 #### for NetBSD
 #sysconfigflags = -DNETBSD -DMOTIF1_2
 #### For Solaris2.5 & 2.5.1, do
-sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
+#sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
 
 #### Add some debug option for developper
 #### -DHTMLTRACE for verbose about html tag
@@ -77,7 +77,7 @@ sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
 #### For most other Motif platforms:
 # syslibs = -lPW
 #### For Sun's Ultrix HP BSD/386 FreeBSD and Linux:
-# syslibs =
+syslibs =
 #### For SCO ODT:
 # syslibs = -lPW -lsocket -lmalloc
 #### For Dell SVR4:
@@ -87,7 +87,7 @@ sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
 #### For QNX 4.XX
 #syslibs = -lsocket
 #### For Solaris (2.x) and Motorola SVR4  .
-syslibs = -lsocket -lnsl
+#syslibs = -lsocket -lnsl
 
 #### X include file locations -- if your platform puts the X include
 #### files in a strange place, set this variable appropriately.  Else
@@ -96,9 +96,9 @@ syslibs = -lsocket -lnsl
 # xinc = -I/usr/include/X11
 # xinc = -I/usr/X11/include
 #### Linux Debian and FreeBSD
-#xinc = -I/usr/X11R6/include
+xinc = -I/usr/X11R6/include
 #### Solaris 2.x (Patched X11R5 and Motif libs)
-xinc = -I/usr/openwin/include -I/usr/dt/include
+#xinc = -I/usr/openwin/include -I/usr/dt/include
 
 #### X library locations.
 #### For nearly everyone:
@@ -114,24 +114,25 @@ xinc = -I/usr/openwin/include -I/usr/dt/include
 #### QNX
 #xlibs =  -L/usr/X11/lib -lXm_s -lXt_s -lX11_s -lXqnx_s  -lXt -lXmu -lXext
 #### Linux Debian, FreeBSD, NetBSD with Lesstif
-#xlibs = -L/usr/X11R6/lib -lXm -lXmu -lXt -lXext -lX11 -lm 
+xlibs = -L/usr/X11R6/lib -lXm -lXmu -lXt -lXext -lX11 -lm 
+#xlibs = -L/usr/X11R6/lib -lXm -lXmu -lXt -lXext -lX11 -lSM -lICE -lm 
 #### For Solaris (2.x) (Use static to go from machine to machine)
-xlibs = -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/dt/lib -R/usr/dt/lib
-xlibs += -lXm -lXmu -lXt -lXext -lX11 -lm
+#xlibs = -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/dt/lib -R/usr/dt/lib
+#xlibs += -lXm -lXmu -lXt -lXext -lX11 -lm
 
 #### PNG SUPPORT
 #### For inline PNG support, the following should be defined:
 #### The libraries currently used are PNGLIB 0.99d and ZLIB 1.0.9
 
 # linux Mandrake
-#zlibdir = /usr/lib
-#pngdir = /usr
-#jpegdir = /usr
-
-# Solaris
-zlibdir = /usr/local/lib
+zlibdir = /usr/lib
 pngdir = /usr/local
 jpegdir = /usr/local
+
+# Solaris
+#zlibdir = /usr/local/lib
+#pngdir = /usr/local
+#jpegdir = /usr/local
 
 pnglibdir = $(pngdir)/lib
 pngincludedir = /$(pngdir)/include
@@ -167,10 +168,10 @@ jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
 krbflags  = $(krb4flags) $(krb5flags)
 krblibs   = $(krb4libs) $(krb5libs) 
 
-#### MULTICAST support
-mcdir = $(PWD)/libmc
-mcflag = -I$(mcdir) -DMULTICAST
-mclib = $(mcdir)/libmc.a
+#### MULTICAST support	(incompatible with IPV6)
+#mcdir = $(PWD)/libmc
+#mcflag = -I$(mcdir) -DMULTICAST
+#mclib = $(mcdir)/libmc.a
 
 #### APROG support (obsolete)
 #adir = $(PWD)/libaprog
@@ -187,6 +188,7 @@ mclib = $(mcdir)/libmc.a
 #### . Other things you can define are spelled out in src/mosaic.h.
 ####
 #### . If you run on IPV6 native kernel set -DIPV6
+####	IPV6 is incompatible with MULTICAST. (just now)
 #### . For NEWS support -DNEWS (obsolete)
 #### . For APPLET support -DAPPLET (don't use)
 #### . -DLOOSE_PACKET for testing multicast packet lost.
@@ -195,7 +197,7 @@ mclib = $(mcdir)/libmc.a
 
 #### customflags = -DLOOSE_PACKET -DDEBUG_MULTICAST -DDEBUG_FRAME
 
-customflags = 
+customflags = -DIPV6
 
 
 # ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------

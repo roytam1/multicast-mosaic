@@ -59,17 +59,20 @@ const char * MMOSAIC_PRESENT = "mmosaic_presentation" ;
 void FreeMimeStruct( MimeHeaderStruct *mhs)
 {
 /* ### FIXME don't know where to free mhs (because MULTICAST need it)...*/
-/* ###	if( mhs->content_type ) free(mhs->content_type); ###*/
-/*###	if( mhs->expires ) free(mhs->expires ); ###*/
-/*###	if( mhs->last_modified ) free(mhs->last_modified);###*/
-/*###	if( mhs->location ) free(mhs->location);###*/
+	free(mhs->content_type);	/* always have one */
+	free(mhs->expires );  /* always have one */
+	free(mhs->last_modified);
+	free(mhs->location);	/* always have one */
+	if( mhs->dot) free(mhs->dot); 
 
 	mhs->content_type = NULL; /*sanity */
 	mhs->expires = NULL;	/* sanity */
 	mhs->last_modified = NULL;	/* sanity */
 	mhs->location = NULL;	/* sanity */
+	mhs->dot = NULL;	/* sanity */
 
-/*###	free(mhs); ###*/
+	memset(mhs,0,sizeof(MimeHeaderStruct)); /* sanity */
+	free(mhs);
 }
 
 static void SetMimeToken(MimeHeaderStruct *mhs, char *token, char *value)
@@ -94,10 +97,6 @@ static void SetMimeToken(MimeHeaderStruct *mhs, char *token, char *value)
 		}
 		if ( !strncasecmp(token,"Content-Length",14)) {
 			mhs->content_length = atoi(value);
-			return;
-		}
-		if ( !strncasecmp(token,"Status-Code",11)) {
-			mhs->status_code = atoi(value);
 			return;
 		}
 		if ( !strncasecmp(token,"Content-Type", 12)) {
@@ -125,7 +124,7 @@ static void SetMimeToken(MimeHeaderStruct *mhs, char *token, char *value)
 			int i;
 
 			mhs->n_do = atoi(value);
-			mhs->dot = (int*) malloc(mhs->n_do* sizeof(int));
+			mhs->dot = (int*) calloc(mhs->n_do, sizeof(int));
 			while (*value && *value != ' ')
 				value++;
 			for(i = 0; i < mhs->n_do; i++){
@@ -161,6 +160,10 @@ static void SetMimeToken(MimeHeaderStruct *mhs, char *token, char *value)
 		}
 		if ( !strncasecmp(token,"Start-ObjectID", 14) ) {
 			mhs->start_object_id = atoi(value);
+			return;
+		}
+		if ( !strncasecmp(token,"Status-Code",11)) {
+			mhs->status_code = atoi(value);
 			return;
 		}
 	default:
@@ -614,7 +617,7 @@ static HTPresentation* default_presentation = 0;
 static void HTSetPresentation( char *content_type, const char *command,
 	float quality, float secs, float secs_per_byte)
 {
-	HTPresentation * pres = (HTPresentation *)malloc(sizeof(HTPresentation));
+	HTPresentation * pres = (HTPresentation *)calloc(1,sizeof(HTPresentation));
 
 	pres->rep = strdup(content_type);
 	pres->command = strdup(command);
@@ -626,8 +629,12 @@ static void HTSetPresentation( char *content_type, const char *command,
 		HTPresentations = HTList_new();
 
 	if (strcmp(content_type, "*")==0) {
-		if (default_presentation)
+		if (default_presentation) {
+			free(default_presentation->rep);	/* Winfried */
+			free(default_presentation->command);	/* Winfried */
 			free(default_presentation);
+			
+		}
 		default_presentation = pres;
 	} else {
 		HTList_addObjectAtEnd(HTPresentations, pres);
@@ -1059,3 +1066,57 @@ int supportedImageType(char *mt)
 	return(0);
 }
 */
+
+/* winfried proposal */
+#ifdef CHECK_MEMORY_LEAK
+static void FreeHTSuffixes(void)
+{
+	HTList *Cur,*Suc; HTSuffix *S;
+
+	Cur=HTSuffixes;
+	while(Cur) {
+		Suc=Cur->next;
+		S=(HTSuffix*)Cur->object;
+		if(S) {
+			if(S->suffix)
+				free(S->suffix);
+			if(S->content_type)
+				free(S->content_type);
+			free(S);
+		}
+		free(Cur);
+		Cur=Suc;
+	}
+}
+
+static void FreeHTPresentations(void)
+{
+	HTList *Cur,*Suc;
+
+	Cur= HTPresentations;
+	while(Cur) {
+		Suc=Cur->next;
+		free(Cur->object->rep);
+		free(Cur->object->command);
+		free(Cur->object);
+		free(Cur);
+		Cur=Suc;
+	}
+}
+
+void MIME_Postlude(void)
+{
+	if(unknown_suffix.content_type)
+		free(unknown_suffix.content_type);
+	if(no_suffix.content_type)
+		free(no_suffix.content_type);
+	FreeHTSuffixes();
+
+	free(default_presentation->rep);
+	free(default_presentation->command);
+	free(default_presentation);
+
+	FreeHTPresentations();
+}
+
+#endif

@@ -10,6 +10,7 @@
 #include <sys/param.h>		/* MAXPATHLEN is defined here */
 #include <unistd.h>
 #include <dirent.h>
+#include <assert.h>
 
 
 #include "../libhtmlw/HTMLparse.h"
@@ -64,41 +65,36 @@ static void add_url_to_bucket (McBucket * hash_tab, int buck, char *url, int moi
         l = (McHashEntry *)malloc (sizeof (McHashEntry));
         l->aurl = strdup (url);
         l->moid=moid;
-        l->next = NULL;
-        if (bkt->head == NULL)
-                bkt->head = l;
-        else {
-                l->next = bkt->head;     
-                bkt->head = l;           
-        }                                
+        l->next = bkt->head;     
+        bkt->head = l;           
         bkt->count++ ;                   
 }
 
 /*##############
 /* assume the url exist in the list */
 /*static void remove_url_to_bucket(McBucket * hash_tab, int buck, char * url)
-/*{
-/*        Bucket *bkt = &(hash_tab[buck]);
-/*	HashEntry *prev, *deb, *next;
-/*
-/*	deb = hash_tab[buck].head;
-/*	prev = NULL;
-/*	while (deb != NULL){
-/*		if (strcmp(url,deb->url) == 0) { /* remove the entry */
+ *{
+ *        Bucket *bkt = &(hash_tab[buck]);
+ *	HashEntry *prev, *deb, *next;
+ *
+ *	deb = hash_tab[buck].head;
+ *	prev = NULL;
+ *	while (deb != NULL){
+ *		if (strcmp(url,deb->url) == 0) {  */ /* remove the entry */
 /*			next = deb->next;
-/*			if (prev == NULL){
-/*				hash_tab[buck].head = next;
-/*			}
-/*			prev->next = next;
-/*			free (deb->url);
-/*			free (deb);
-/*			bkt->count--;
-/*			return;
-/*		}
-/*		prev = deb;
-/*		deb = deb->next;
-/*	}
-/*}
+ *			if (prev == NULL){
+ *				hash_tab[buck].head = next;
+ *			}
+ *			prev->next = next;
+ *			free (deb->url);
+ *			free (deb);
+ *			bkt->count--;
+ *			return;
+ *		}
+ *		prev = deb;
+ *		deb = deb->next;
+ *	}
+ *}
 */
 	
 /* initialize the cache in ~/.mMosaic */
@@ -131,8 +127,7 @@ void McSenderCacheInit( char * root_name)
 		fprintf (stderr, "This is mandatory in Multicast context. Aborting...\n");
 		free(mc_root_dirname);
 		mc_root_dirname = NULL;
-		abort();
-		exit(1);
+		assert(0);
 	}
 
 /* read the cache or make one */
@@ -144,24 +139,14 @@ void McSenderCacheInit( char * root_name)
 	}
 
 /* alloc an initiale moid_cache */
-	moid_sender_cache = (McObjectStruct *)malloc(INIT_N_FILE_CACHE * sizeof(McObjectStruct));
+	moid_sender_cache = (McObjectStruct *)calloc(INIT_N_FILE_CACHE, sizeof(McObjectStruct));
 	moid_sender_cache_size = INIT_N_FILE_CACHE;
 
 /* create a hash-code table and a reverse moid table */
 	for( i=0 ; i<moid_sender_cache_size; i++){
-		moid_sender_cache[i].exist = 0;
-		moid_sender_cache[i].aurl = NULL;
-		moid_sender_cache[i].fname = NULL;
-		moid_sender_cache[i].file_len = 0;
-		moid_sender_cache[i].mhs = NULL;
 		moid_sender_cache[i].moid = -1;
-		moid_sender_cache[i].last_modify = 0;
 	}
-	sender_hash_tab = (McBucket *) malloc(HASH_TABLE_SIZE * sizeof(McBucket));
-	for( i=0 ; i<HASH_TABLE_SIZE; i++){
-		sender_hash_tab[i].head = NULL;
-		sender_hash_tab[i].count = 0;
-	}
+	sender_hash_tab = (McBucket *) calloc(HASH_TABLE_SIZE, sizeof(McBucket));
 
 	/* read the dir cache remove files */
 
@@ -176,40 +161,36 @@ void McSenderCacheInit( char * root_name)
 	free(ocwd);
 
 	mc_sender_state_tab_size = INIT_N_STATE_CACHE;
-	mc_sender_state_tab = (McStateStruct *)malloc(mc_sender_state_tab_size *
+	mc_sender_state_tab = (McStateStruct *)calloc(mc_sender_state_tab_size,
 					sizeof(McStateStruct));
 	for(i = 0; i<mc_sender_state_tab_size; i++) {
 		mc_sender_state_tab[i].statid = -1;
 		mc_sender_state_tab[i].start_moid = -1;
-		mc_sender_state_tab[i].n_do = 0;
-		mc_sender_state_tab[i].dot = NULL;
-		mc_sender_state_tab[i].sdata = NULL;
-		mc_sender_state_tab[i].sdata_len = 0;
 	}
 }
 
 /* all url send in multicast is cachable for now */
 /* A suggest from mjr@pc29.dfg.de*/
 /*static int IsCacheableUrl( char * aurl_wa)
-/*{
-/*	int len;
-/*
+ *{
+ *	int len;
+ *
 /* URL with '?' */
 /*	if( (char *)strchr(aurl_wa, '?' ) != NULL ) {
-/*		return 0;
-/*	}
+ *		return 0;
+ *	}
 /* minimum len for url : 
  * 	proto : 3
  * 	://h/ : 5
  * total : 8
  */
 /*	len = strlen(aurl_wa);
-/*	if (len < 8)
-/*		return 0;
-/*	if ( !strcasecmp( aurl_wa + len - 4, ".cgi") )
-/*		return 0;
-/*	return 1;
-/*}
+ *	if (len < 8)
+ *		return 0;
+ *	if ( !strcasecmp( aurl_wa + len - 4, ".cgi") )
+ *		return 0;
+ *	return 1;
+ *}
 */
 
 /* 
@@ -226,7 +207,7 @@ int McSenderCacheFindData(char *aurl, char **fname_ret, MimeHeaderStruct *mhs_re
 	int moid;
 	char * fname;
 
-/*	if (! IsCacheableUrl(aurl_wa))	/* dont't find uncacheable url */
+/*	if (! IsCacheableUrl(aurl_wa))	*/ /* dont't find uncacheable url */
 /*		return 0;	*/
 	
 	h = hash_url(aurl);
@@ -271,9 +252,7 @@ void McSenderCachePutErrorInCache( char *aurl, int status_code, int moid,
 	deb = sender_hash_tab[h].head;
 	while (deb != NULL){
 		if (strcmp(aurl,deb->aurl) == 0) {
-			exist = 1;
-			abort();	/* incoherence */
-			break;
+			assert(0);	/* incoherence */
 		}
 		deb = deb->next;
 	}
@@ -294,9 +273,8 @@ void McSenderCachePutErrorInCache( char *aurl, int status_code, int moid,
 			moid_sender_cache[i].last_modify = 0;
 		}
 	}
-	if (moid_sender_cache[moid].aurl) {
-			abort();	/* incoherence */
-	}
+	assert(! moid_sender_cache[moid].aurl); 	/* incoherence */
+
 	add_url_to_bucket(sender_hash_tab, h, aurl, moid);
 	sprintf(smoid,"%ld",moid); 
 	fname_w = (char *) malloc(mc_sender_len_cachedir_name +
@@ -308,7 +286,7 @@ void McSenderCachePutErrorInCache( char *aurl, int status_code, int moid,
 	moid_sender_cache[moid].last_modify = time(NULL);
 	moid_sender_cache[moid].exist = 1;
 
-	moid_sender_cache[moid].mhs = (MimeHeaderStruct *) malloc(
+	moid_sender_cache[moid].mhs = (MimeHeaderStruct *) calloc(1,
 				sizeof(MimeHeaderStruct));
 	moid_sender_cache[moid].mhs->content_encoding = 0;
 	moid_sender_cache[moid].mhs->content_length = 0;
@@ -378,9 +356,7 @@ void McSenderCachePutDataInCache(char *fname_r, char *aurl, MimeHeaderStruct *mh
 	deb = sender_hash_tab[h].head;
 	while (deb != NULL){
 		if (strcmp(aurl,deb->aurl) == 0) {
-			exist = 1;
-			abort();	/* incoherence */
-			break;
+			assert(0);	/* incoherence */
 		}
 		deb = deb->next;
 	}
@@ -403,7 +379,7 @@ void McSenderCachePutDataInCache(char *fname_r, char *aurl, MimeHeaderStruct *mh
 	}
 
 	if (moid_sender_cache[moid].aurl) {
-			abort();	/* incoherence */
+		assert(0);	/* incoherence */
 	}
 	add_url_to_bucket(sender_hash_tab, h, aurl, moid);
 	sprintf(smoid,"%ld",moid); 
@@ -416,7 +392,7 @@ void McSenderCachePutDataInCache(char *fname_r, char *aurl, MimeHeaderStruct *mh
 	moid_sender_cache[moid].last_modify = time(NULL);
 	moid_sender_cache[moid].exist = 1;
 
-	moid_sender_cache[moid].mhs = (MimeHeaderStruct *) malloc(
+	moid_sender_cache[moid].mhs = (MimeHeaderStruct *) calloc(1,
 				sizeof(MimeHeaderStruct));
 	moid_sender_cache[moid].mhs->content_encoding = mhs->content_encoding;
 	moid_sender_cache[moid].mhs->content_length = mhs->content_length;
@@ -512,30 +488,30 @@ Last-Modified: %s\n",
 /* ############# */
 /* there is still data in cache: force the remplacment */
 /*	h = hash_url(aurl);     
-/*	deb = hash_tab[h].head;
-/*	while (deb != NULL){               
-/*		if (strcmp(aurl,deb->url) == 0) {
-/*			moid = deb->moid;
-/*			sprintf(smoid,"%ld",moid); 
-/*			fname_w = (char *) malloc(llen_cachedir_name +
-/*				strlen(smoid)+ 2);
+ *	deb = hash_tab[h].head;
+ *	while (deb != NULL){               
+ *		if (strcmp(aurl,deb->url) == 0) {
+ *			moid = deb->moid;
+ *			sprintf(smoid,"%ld",moid); 
+ *			fname_w = (char *) malloc(llen_cachedir_name +
+ *				strlen(smoid)+ 2);
 /*			sprintf(fname_w, "%s/%s", lcachedir_name, smoid); /* the filename */
 /*				/* cid_cache[cid].url = strdup(url); */
 /*			cid_cache[cid].size = mhs->content_length;
-/*			cid_cache[cid].last_modify = t;
-/*			cid_cache[cid].content_type = strdup(mhs->content_type);
-/*			cid_cache[cid].content_encoding = mhs->content_encoding;
-/*			cid_cache[cid].exist = 1;
-/*			fdr = open(fname_r,O_RDONLY);
-/*			fdw = open(fname_w,O_WRONLY | O_CREAT | O_TRUNC,0744);
-/*			while ( (i = read(fdr,iobuf,CACHE_BUFSIZ)) >0)
-/*				write(fdw, iobuf, i);
-/*			close (fdw);
-/*			close (fdr);
-/*			free(fname_w);
-/*			return ;
-/*		}
-/*		deb = deb->next;
+ *			cid_cache[cid].last_modify = t;
+ *			cid_cache[cid].content_type = strdup(mhs->content_type);
+ *			cid_cache[cid].content_encoding = mhs->content_encoding;
+ *			cid_cache[cid].exist = 1;
+ *			fdr = open(fname_r,O_RDONLY);
+ *			fdw = open(fname_w,O_WRONLY | O_CREAT | O_TRUNC,0744);
+ *			while ( (i = read(fdr,iobuf,CACHE_BUFSIZ)) >0)
+ *				write(fdw, iobuf, i);
+ *			close (fdw);
+ *			close (fdr);
+ *			free(fname_w);
+ *			return ;
+ *		}
+ *		deb = deb->next;
 /*	}
 /* NEVER GOES HERE !!! */
 /*	fprintf(stderr, "MMCachePutDataInCache :Problem in cache\n");
@@ -558,43 +534,43 @@ int McCheckObjectQuery(int moid, int offset, int len)
 
 /* Reset the cache. Delete all cached data */
 /*void MMCacheClearCache(void)
-/*{
-/*	char * ocwd;
-/*	int i;
-/*	HashEntry * deb, *next;
-/*	DIR *dirp;
-/*	struct dirent *direntp;
-/*
-/*       ocwd = getcwd(NULL,MAXPATHLEN);        
-/*      chdir(lcachedir_name); 
-/*     dirp = opendir( lcachedir_name );
-/*    while ( (direntp = readdir( dirp )) != NULL ) {
-/*           unlink(direntp->d_name);
-/*  }
-/* (void)closedir( dirp );
-/*        chdir(ocwd);
-/*       free(ocwd);
-/*	lnext_cid =1;
-/*
-/*	for( i=0 ; i<MAX_N_FILE_CACHE; i++){
-/*		cid_cache[i].exist = 0;
-/*		if (cid_cache[i].url)
-/*			free(cid_cache[i].url);
-/*		cid_cache[i].url = NULL;
-/*		cid_cache[i].size = 0;
-/*		cid_cache[i].last_modify = 0;
-/*		deb = hash_tab[i].head;
-/*		hash_tab[i].count = 0;
-/*		hash_tab[i].head = NULL;
-/*		while ( deb != NULL) {
-/*			next = deb->next;
-/*			free (deb->url);
- /*                       free (deb);
-/*			deb = next;
-/*		}
-/*	}
-/*	MMCacheWriteCache();
-/*}
+ *{
+ *	char * ocwd;
+ *	int i;
+ *	HashEntry * deb, *next;
+ *	DIR *dirp;
+ *	struct dirent *direntp;
+ *
+ *       ocwd = getcwd(NULL,MAXPATHLEN);        
+ *      chdir(lcachedir_name); 
+ *     dirp = opendir( lcachedir_name );
+ *    while ( (direntp = readdir( dirp )) != NULL ) {
+ *           unlink(direntp->d_name);
+ *  }
+ * (void)closedir( dirp );
+ *        chdir(ocwd);
+ *       free(ocwd);
+ *	lnext_cid =1;
+ *
+ *	for( i=0 ; i<MAX_N_FILE_CACHE; i++){
+ *		cid_cache[i].exist = 0;
+ *		if (cid_cache[i].url)
+ *			free(cid_cache[i].url);
+ *		cid_cache[i].url = NULL;
+ *		cid_cache[i].size = 0;
+ *		cid_cache[i].last_modify = 0;
+ *		deb = hash_tab[i].head;
+ *		hash_tab[i].count = 0;
+ *		hash_tab[i].head = NULL;
+ *		while ( deb != NULL) {
+ *			next = deb->next;
+ *			free (deb->url);
+ *                      free (deb);
+ *			deb = next;
+ *		}
+ *	}
+ *	MMCacheWriteCache();
+ *}
 */
 
 /* mhs: describe objet realazing this state */
@@ -710,8 +686,7 @@ void McSourceCacheInit( Source *src, char * root_name)
 		fprintf (stderr, "This is mandatory in Multicast context. Aborting...\n");
 		free(src_root_dirname);
 		src_root_dirname = NULL;
-		abort();
-		exit(1);
+		assert(0);
 	}
 
 /* read the cache or make one */
@@ -791,9 +766,7 @@ void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
 	deb = s->hash_tab[h].head;
 	while (deb != NULL){
 		if (strcmp(aurl,deb->aurl) == 0) {
-			exist = 1;
-			abort();	/* incoherence */
-			break;
+			assert(0);	/* incoherence */
 		}
 		deb = deb->next;
 	}
@@ -801,7 +774,7 @@ void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
 	McRcvrSrcAllocObject(s, moid);
 
 	if (s->objects[moid].aurl) {
-			abort();	/* incoherence (we still have it) */
+		assert(0);	/* incoherence (we still have it) */
 	}
 	add_url_to_bucket(s->hash_tab, h, aurl, moid);
 	sprintf(smoid,"%ld",moid); 
@@ -815,7 +788,7 @@ void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
 	s->objects[moid].last_modify = time(NULL);
 	s->objects[moid].exist = 1;
 
-	s->objects[moid].mhs = (MimeHeaderStruct *) malloc(
+	s->objects[moid].mhs = (MimeHeaderStruct *) calloc(1,
 				sizeof(MimeHeaderStruct));
 	s->objects[moid].mhs->content_encoding = mhs->content_encoding;
 	s->objects[moid].mhs->content_length = mhs->content_length;
@@ -838,9 +811,9 @@ void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
 
 /* FIXME : y a un pb ici : ceci n'est pas cachable ######## */
 /*        if (mhs->is_stateless){        
-/*                sprintf(state_buf,"Stateless-Stateid: %d\n", mhs->state_id);
-/*                len_state_buf = strlen(state_buf);
-/*        }                              
+ *                sprintf(state_buf,"Stateless-Stateid: %d\n", mhs->state_id);
+ *                len_state_buf = strlen(state_buf);
+ *        }                              
 */
 
         data_size = body_len;
@@ -855,24 +828,24 @@ void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
 /* ############# */
 /* there is still data in cache: force the remplacment */
 /*	h = hash_url(aurl);     
-/*	deb = hash_tab[h].head;
-/*	while (deb != NULL){               
-/*		if (strcmp(aurl,deb->url) == 0) {
-/*			moid = deb->moid;
-/*				strlen(smoid)+ 2);
-/*			fdr = open(fname_r,O_RDONLY);
-/*			fdw = open(fname_w,O_WRONLY | O_CREAT | O_TRUNC,0744);
-/*			while ( (i = read(fdr,iobuf,CACHE_BUFSIZ)) >0)
-/*				write(fdw, iobuf, i);
-/*			close (fdw);
-/*			close (fdr);
-/*			free(fname_w);
-/*			return ;
-/*		}
-/*		deb = deb->next;
-/*	}
+ *	deb = hash_tab[h].head;
+ *	while (deb != NULL){               
+ *		if (strcmp(aurl,deb->url) == 0) {
+ *			moid = deb->moid;
+ *				strlen(smoid)+ 2);
+ *			fdr = open(fname_r,O_RDONLY);
+ *			fdw = open(fname_w,O_WRONLY | O_CREAT | O_TRUNC,0744);
+ *			while ( (i = read(fdr,iobuf,CACHE_BUFSIZ)) >0)
+ *				write(fdw, iobuf, i);
+ *			close (fdw);
+ *			close (fdr);
+ *			free(fname_w);
+ *			return ;
+ *		}
+ *		deb = deb->next;
+ *	}
 /* NEVER GOES HERE !!! */
 /*	fprintf(stderr, "MMCachePutDataInCache :Problem in cache\n");
-/*	abort();
+ *	abort();
 */
 }

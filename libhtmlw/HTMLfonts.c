@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>		/* isspace */
+#include <assert.h>
 
 #include "HTMLmiscdefs.h"
 #include "HTMLP.h"
@@ -84,7 +85,7 @@ static FontCacheEntry* CacheFontStore(FontCacheEntry *top, FontCacheEntry *ent)
 /* evguenii@ess.co.at */
 		/* due to an algoritm of font choosing it's normal
 		   that program can come in this point */
-/*		abort();   */
+/*		assert(0);   */
 /*		return(top); */
 	}
 	if(ret_val < 0)
@@ -362,9 +363,7 @@ static FontRec* _LoadFont(HTMLWidget hw, char *fndry, char *family,
 		font = loadAndCacheFont(hw, ofptr->cache_name,
 			ofptr->cache_name, cache_fontname, frbuf);
 			/*font = ofptr->font; */
-		if (! font) { /* somethings goes wrongs... */
-			abort();
-		}
+		assert(font);  /* somethings goes wrongs... */
 	}
 
 	return(font);

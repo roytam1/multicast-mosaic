@@ -2,6 +2,7 @@
 #include "../Copyrights/copyright.ncsa"
 
 #include <time.h>
+#include <assert.h>
 #include <sys/types.h>
 #include <memory.h>
 
@@ -70,31 +71,19 @@ void mo_free_node_data (mo_node *node)
 	free (node->aurl);
 	free (node->base_url);
 	free (node->text);
+	if(node->goto_anchor)
+		free (node->goto_anchor);
 	node->title = NULL; 			/* sanity */
 	node->aurl_wa = NULL; 			/* sanity */
 	node->aurl = NULL; 			/* sanity */
 	node->base_url = NULL; 			/* sanity */
 	node->text = NULL; 			/* sanity */
-/* ### here is the code by Winfried. He are right, */
-/* but I need to review all mMosaic code */
-/* when process anchor in URL */
-/*{      char *href=strchr(node->aurl_wa,'#');
-/*       if(node->aurl_wa) free (node->aurl_wa);
-/*       if(node->aurl) free (node->aurl);
-/*       if(node->base_url) free (node->base_url);
-/*       if(node->goto_anchor) free (node->goto_anchor);
-/*       if(!href)                     
-/*   {                                 
-/*       if(node->text) free (node->text);  
-/*       if(node->title) free (node->title); 
-/*       if(node->m_list) FreeMarkUpList(node->m_list);
-/*       if(node->mhs) FreeMimeStruct(node->mhs);
-/*   }
-*/
+	node->goto_anchor = NULL;		/* sanity */
 	FreeMarkUpList(node->m_list);
 	node->m_list = NULL;		/* sanity */
 	FreeMimeStruct(node->mhs);
 	node->mhs = NULL;		/* sanity */
+	memset(node,0,sizeof(mo_node)); /* sanity */
 }
 
 /* Iterate through all descendents of an mo_node, but not the given
@@ -124,7 +113,7 @@ static void mo_kill_node_descendents (mo_window *win, mo_node *node)
 
 /* ################## */
 
-/* Add a new node to the navigation's histoy */
+/* Add a new node to the navigation's history */
 
 void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 	char *goto_anchor, char * base_url, char * base_target,
@@ -137,7 +126,6 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 	node = (mo_node *)calloc (1, sizeof (mo_node));
 	node->aurl_wa = strdup(aurl_wa); /* aurl with anchor */
 	node->aurl = strdup(aurl);	/* THE absolute url of doc. */
-	node->goto_anchor = NULL;
 	if(goto_anchor)
 		node->goto_anchor = strdup(goto_anchor);
 	if (base_url) {
@@ -145,14 +133,15 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 	} else {
 		node->base_url = strdup(aurl);
 	}
-	node->text = text;
 	node->m_list = mlist;
-	node->title = title;
 	node->docid = 1;
+	if(text)
+		node->text = strdup(text);	/* ### where to free ? ### */
+	if(title)
+		node->title = strdup(title);
+	if(base_target)	
+		node->base_target = strdup(base_target);
 	node->mhs = mhs;
-	node->last_modified = NULL;
-	node->expires = NULL;
-	node->base_target = base_target;
 
 	/* If there is no current node, this is our first time through. */
 	if (win->first_node == NULL) {
@@ -160,7 +149,7 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 		node->previous = NULL;
 		node->next = NULL;
 		node->position = 1;
-/* if we are here then win->current_node = NULL */
+/* if we are here then win->current_node is NULL */
 		win->current_node = node;
 		if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) */
 				/* try to enable navigation in frame..*/
@@ -168,17 +157,18 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 		}
 		mo_back_impossible (win);
 	} else {
+		mo_node *Cur = win->current_node;
 		switch (nt) {
 		case NAVIGATE_NEW: /* Node becomes end of history list. */
 			node->previous = win->current_node; /* Point back at current node. */
 			node->next = NULL; /* Point forward to nothing. */
-/* position in the history list widget */
-			node->position = node->previous->position + 1;
 				/*Kill descendents of current node,since we'll 
 				 *never be able to go forward to them again. */
-			mo_kill_node_descendents (win, win->current_node);
+			mo_kill_node_descendents (win, Cur);
 				/* Current node points forward to this. */
-			win->current_node->next = node;
+			Cur->next = node;
+/* position in the history list widget */
+			node->position = Cur->position + 1;
 				/* Current node now becomes new node. */
 			win->current_node = node;
 			if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) try to enable navigation in frame..*/
@@ -188,39 +178,65 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 			mo_back_possible (win);
 			break;
 		case NAVIGATE_OVERWRITE:
-			node->previous = win->current_node->previous;
-			node->next = win->current_node->next;
-			node->position = win->current_node->position;
+			node->previous = Cur->previous;
+			node->next = Cur->next;
+			node->position = Cur->position;
 			win->current_node = node;
+			if(Cur->previous)
+				Cur->previous->next = node;
+			else
+				win->first_node = node;
+			if(Cur->next)
+				Cur->next->previous = node;
+			mo_free_node_data(Cur);
+			free(Cur);
 			return;
 		case NAVIGATE_BACK:
-			node->previous = win->current_node->previous->previous;
-			node->next = win->current_node;
-			node->position = win->current_node->previous->position;
-			win->current_node->previous = node;
-			win->current_node = node;
-			if ( win->menubar == NULL) { /* FIXME (win is a frame)*/
+			{
+				mo_node *Old = Cur->previous;
+
+				node->previous = Old->previous;
+				node->next = Cur;
+				node->position = Old->position;
+				Cur->previous  = node;
+				if(Old->previous)
+					Old->previous->next = node;
+				else
+					win->first_node = node;
+				win->current_node = node;
+				mo_free_node_data(Old);
+				free(Old);
+				if (win->menubar == NULL) { /* FIXME (win is a frame)*/
+					return;
+				}
+				if (node->previous == NULL)
+					mo_back_impossible (win);
+				mo_forward_possible(win);
 				return;
 			}
-			if (node->previous == NULL)
-				mo_back_impossible (win);
-			mo_forward_possible(win);
-			return;
 		case NAVIGATE_FORWARD:
-			node->previous = win->current_node;
-			node->next = win->current_node->next->next;
-			node->position = win->current_node->next->position;
-			win->current_node->next = node;
-			win->current_node = node;
-			if ( win->menubar == NULL) { /* FIXME (win is a frame)*/
+			{
+				mo_node *Old = Cur->next;
+				node->previous = Cur;
+				node->next = Old->next;
+				node->position = Old->position;
+				Cur->next = node;
+				if(Old->next)
+					Old->next->previous = node;
+                        	win->current_node = node;
+				mo_free_node_data(Old);
+				free(Old);
+
+				if (win->menubar == NULL) { /* FIXME (win is a frame)*/
+					return;
+				}
+				if (node->next == NULL)
+					mo_forward_impossible (win);
+				mo_back_possible (win);
 				return;
 			}
-			if (node->next == NULL)
-				mo_forward_impossible (win);
-			mo_back_possible (win);
-			return;
 		default:
-			abort();
+			assert(0);
 		}
 	}
 	if (win->history_list) {
@@ -386,7 +402,7 @@ void mo_back (Widget w, XtPointer clid, XtPointer calld)
 		fprintf(stderr,"Severe Bug , Please report...\n");
 		fprintf(stderr,"mo_back: current_node->previous == NULL\n");
 		fprintf(stderr,"Aborting...\n");
-		abort();
+		assert(0);
 	}
 
         rds.req_url = win->current_node->previous->aurl_wa;
@@ -414,7 +430,7 @@ void mo_forward (Widget w, XtPointer clid, XtPointer calld)
 		fprintf(stderr,"Severe Bug , Please report...\n");
 		fprintf(stderr,"mo_forward: current_node->previous == NULL\n");
 		fprintf(stderr,"Aborting...\n");
-		abort();
+		assert(0);
 	}
 
         rds.req_url = win->current_node->next->aurl_wa;

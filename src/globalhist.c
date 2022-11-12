@@ -71,7 +71,7 @@ static void add_url_to_bucket (int buck, char *url, int lastdate)
 	bucket *bkt = &(hhash_table[buck]);
 	entry *l;
 
-	l = (entry *)malloc (sizeof (entry));
+	l = (entry *)calloc (1,sizeof (entry));
 	l->url = strdup (url);
 	l->last_visited=lastdate;
 	l->next = NULL;

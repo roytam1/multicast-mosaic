@@ -81,7 +81,7 @@ static int NCells;
 #define IMGINFO_FROM_BITMAP(hw, x) \
 { \
         if (!x) { \
-                x = (ImageInfo *)malloc (sizeof (ImageInfo)); \
+                x = (ImageInfo *)calloc (1,sizeof (ImageInfo)); \
                 x->width = x##_width; \
                 x->height = x##_height; \
                 x->internal = 1; \
@@ -109,7 +109,7 @@ static int NCells;
 ImageInfo * DelayedImageData( HTMLWidget hw)
 {                       
         if (delayed_image == NULL) {
-                delayed_image = (ImageInfo *)malloc (sizeof (ImageInfo));
+                delayed_image = (ImageInfo *)calloc (1,sizeof (ImageInfo));
                 delayed_image->internal = 1;
                 delayed_image->delayed = 1;
                 delayed_image->fetched = 0;
@@ -128,7 +128,7 @@ ImageInfo * DelayedImageData( HTMLWidget hw)
 ImageInfo * NoImageData( HTMLWidget hw)
 {                                      
         if (no_image == NULL) {        
-                no_image = (ImageInfo *)malloc (sizeof (ImageInfo));
+                no_image = (ImageInfo *)calloc (1,sizeof (ImageInfo));
                 no_image->internal = 1;
                 no_image->delayed = 0;
                 no_image->fetched = 0;
@@ -478,7 +478,7 @@ static void RescalePic(HTMLWidget hw, ImageInfo * picd, int nw, int nh)
                                       
 /* create a new pic of the appropriate size */
 	epic = (unsigned char *) malloc((size_t) (nw * nh * bperpix));
-	cxarr = (int *) malloc(nw * sizeof(int));
+	cxarr = (int *) calloc(nw , sizeof(int));
 	if (!epic || !cxarr) {
 		fprintf(stderr,"memory overflow\n");
 		exit(1);
@@ -740,7 +740,7 @@ static Pixmap InfoToImage( HTMLWidget hw, ImageInfo *img_info, int clip)
 			need_to_dither = False;
 		}
 	XFree((char *)vptr);
-	Mapping = (int *)malloc(img_info->num_colors * sizeof(int));
+	Mapping = (int *)calloc(img_info->num_colors , sizeof(int));
 	if (!clip) {
 		for (i=0; i < img_info->num_colors; i++) {
 			tmpcolr.red = img_info->colrs[i].red;
@@ -1268,7 +1268,7 @@ static unsigned char nums[]={ 1, 2, 4, 8, 16, 32, 64, 128 };
  *	clip_data = NULL; transparent=0;
  *	image = None; clip = None;
  *	internal_numeo = -1; cw_only = -1;
- * We are call because we have data from some www protocol.
+ * Called because we have data from some www protocol.
  * we try to make an image we the data in fname. 
  */
 

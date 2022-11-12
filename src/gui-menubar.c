@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <assert.h>
 
 #include "libhtmlw/HTML.h"
 #include "mosaic.h"
@@ -93,6 +94,9 @@ mo_status mo_set_fonts (mo_window *win, int size)
   switch (size) {
     case mo_large_fonts_tkn:
       XmxSetArg (XtNfont, wrapFont(win, "-adobe-times-medium-r-normal-*-20-*-*-*-*-*-*-*"));
+	break;
+    default:
+	break;
 /*##################
       XmxSetArg (WbNitalicFont, wrapFont(win, "-adobe-times-medium-i-normal-*-20-*-*-*-*-*-*-*"));
       XmxSetArg (WbNboldFont, wrapFont(win, "-adobe-times-bold-r-normal-*-20-*-*-*-*-*-*-*"));
@@ -553,8 +557,8 @@ void mo_news_mread_anchor(Widget w, XtPointer clid, XtPointer calld)
 */
 /* Return to newsgroup list */
 /*
-	sprintf (buf, "news:*");
-	MMPafLoadHTMLDocInWin (win, buf);
+ *	sprintf (buf, "news:*");
+ *	MMPafLoadHTMLDocInWin (win, buf);
 */
 }
 void mo_news_fmt0(Widget w, XtPointer clid, XtPointer calld)
@@ -1116,7 +1120,8 @@ void mo_delay_object_loads(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	win->delay_object_loads = (win->delay_object_loads ? 0 : 1);
+	/* win->delay_object_loads = (win->delay_object_loads ? 0 : 1); */
+	win->delay_object_loads ^= 1;
 	XmxRSetSensitive (win->menubar, (XtPointer)mo_expand_object_current,
 		win->delay_object_loads ? XmxSensitive : XmxNotSensitive);
 }
@@ -1149,7 +1154,7 @@ void mo_multicast_send_tog(Widget w, XtPointer clid, XtPointer calld)
 
 	if(win->mc_type != MC_MO_TYPE_MAIN) {
 		fprintf(stderr, "mo_multicast_send_tog: Bug, Please report...\n");
-		abort();	/* something goes wrong */
+		assert(0);	/* something goes wrong */
 	}
 	if(mc_send_win){ /* j'emets. Faut que j'arrete */
 		XmxRSetToggleState(mc_send_win->menubar, (XtPointer)mo_multicast_send_tog,
@@ -1441,7 +1446,7 @@ XmxMenuRecord *mo_make_document_view_menubar (Widget form, mo_window * win)
                 	XmxNotSensitive);
 #endif
 	win->agent_state_pulldown = NULL;
-	win->agspd_cbd = (AgentSpoofCBStruct*)malloc(numAgents * sizeof(AgentSpoofCBStruct));
+	win->agspd_cbd = (AgentSpoofCBStruct*)calloc(numAgents , sizeof(AgentSpoofCBStruct));
 	for(i=0; i<numAgents; i++){
 		win->agspd_cbd[i].w= NULL; /*widget is create in the first callback */
 		win->agspd_cbd[i].d= 0;

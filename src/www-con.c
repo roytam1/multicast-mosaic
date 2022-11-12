@@ -149,7 +149,7 @@ static enum InIpV HTParseInet (SockA4 *sin4, const char *str)
 #endif
 {
 	char *port;
-	char host[256];
+	char host[512];
 	struct hostent  *phost;	/* Pointer to host - See netdb.h */
 	int numeric_addr;
 	char *tmp;
@@ -159,6 +159,7 @@ static enum InIpV HTParseInet (SockA4 *sin4, const char *str)
 	static char *cached6_host = NULL;
 	static char *cached6_phost_h_addr = NULL;
 	static int cached6_phost_h_length = 0;
+	char * ph6addr, *ph6cl;
 #endif
 	static char *cached4_host = NULL;
 	static char *cached4_phost_h_addr = NULL;
@@ -168,6 +169,33 @@ static enum InIpV HTParseInet (SockA4 *sin4, const char *str)
 
 	cip_v = IN_IPV_UNKNOWN;
   
+#ifdef IPV6
+	ph6addr = host;
+	if (host[0] == '[' ) {	/* numeric addr ipv6 RFC2732 */
+		int status;
+
+		ph6addr++;
+		ph6cl = strchr(ph6addr, ']');
+		if (!ph6cl) {
+			return IN_IPV_UNKNOWN;
+		}
+		*ph6cl = '\0';
+		ph6cl++;		/* point on optional :port */
+		if (*ph6cl == ':') {		/* ':' is here */
+			ph6cl++;	/* point to number */
+			if (*ph6cl>='0' && *ph6cl<='9') {
+                        	sin6->sin6_port = (u_int16_t)htons(atol(ph6cl));
+                	}
+		}
+		status = inet_pton(AF_INET6, ph6addr, &sin6->sin6_addr);
+		if (status == 1) {
+			cached6_host = NULL;
+			cached6_phost_h_addr = NULL;
+			return IN_IPV_6;
+		}
+		return IN_IPV_UNKNOWN;
+        }
+#endif
 /* Parse port number if present */    
 	port = strchr(host, ':');
 	if (port) {

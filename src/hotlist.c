@@ -215,7 +215,7 @@ static mo_hotlist *mo_copy_hot_hier (mo_hotlist *list)
 {
 	mo_hot_item *item;
 	mo_hotnode *hot;
-	mo_hotlist *hotlist = (mo_hotlist *)malloc(sizeof(mo_hotlist));
+	mo_hotlist *hotlist = (mo_hotlist *)calloc(1, sizeof(mo_hotlist));
 
 	hotlist->title = strdup(list->title);
 	hotlist->desc = list->desc? strdup(list->desc) : (char*) NULL;
@@ -223,7 +223,7 @@ static mo_hotlist *mo_copy_hot_hier (mo_hotlist *list)
 	hotlist->nodelist = hotlist->nodelist_last = 0;
 	for (item = list->nodelist; item; item = item->any.next)
 		if (item->type == mo_t_url) {
-			hot = (mo_hotnode *)malloc(sizeof(mo_hotnode));
+			hot = (mo_hotnode *)calloc(1,sizeof(mo_hotnode));
 			hot->type = mo_t_url;
 			hot->title = strdup(item->hot.title);
 			hot->url = strdup(item->hot.url);
@@ -305,7 +305,7 @@ mo_status mo_add_item_to_hotlist (mo_hotlist *list, mo_item_type type,
 	if (desc == NULL || *desc == '\0')
 		desc = NULL;
 	if (type == mo_t_url) {
-		mo_hotnode *hotnode = (mo_hotnode *)malloc (sizeof (mo_hotnode));
+		mo_hotnode *hotnode = (mo_hotnode*)calloc(1,sizeof(mo_hotnode));
 		time_t foo = time (NULL);
 		char *ts = ctime (&foo);
 
@@ -323,7 +323,7 @@ mo_status mo_add_item_to_hotlist (mo_hotlist *list, mo_item_type type,
 		mo_convert_newlines_to_spaces (hotnode->url);
 		hotnode->lastdate = strdup (ts);
 	} else {
-		mo_hotlist *hotlist = (mo_hotlist *)malloc(sizeof(mo_hotlist));
+		mo_hotlist *hotlist =(mo_hotlist *)calloc(1,sizeof(mo_hotlist));
 
 		item = (mo_hot_item *)hotlist;
 		hotlist->type = mo_t_list;
@@ -376,7 +376,7 @@ static void mo_extract_anchors(mo_hotlist *list, struct mark_up *mptr)
 			url = ParseMarkTag(mptr->start, MT_ANCHOR, AT_HREF);
 			title = ParseMarkTag(mptr->start, MT_ANCHOR, "title");
 		} else {			/* end anchor tag */
-			node = (mo_hotnode *)malloc (sizeof (mo_hotnode));
+			node = (mo_hotnode *)calloc (1,sizeof (mo_hotnode));
 			node->type = mo_t_url;
 			node->url = url;
 /* if there is a title attribute in the anchor, take it,
@@ -418,7 +418,7 @@ static void mo_parse_hotlist_list(mo_hotlist *list, struct mark_up  **current)
 	case M_DESC_TITLE:		/* dt tag */
 /* a DT tag ends a previous anchor entry */
 		if (entry_type == mo_t_url) {	/* add an url entry */
-			node = (mo_hotnode *)malloc (sizeof (mo_hotnode));
+			node = (mo_hotnode *)calloc (1,sizeof (mo_hotnode));
 			node->type = mo_t_url;
 			node->url = url;
 /* if there is a title attribute in the anchor, take it,
@@ -480,7 +480,7 @@ static void mo_parse_hotlist_list(mo_hotlist *list, struct mark_up  **current)
 		break;
 	case M_DESC_LIST:
 		if (!mptr->is_end) {			/* start dl tag */
-			hotlist = (mo_hotlist *)malloc(sizeof(mo_hotlist));
+			hotlist = (mo_hotlist *)calloc(1,sizeof(mo_hotlist));
 			hotlist->type = mo_t_list;
 			hotlist->nodelist = hotlist->nodelist_last = 0;
 			hotlist->parent = list;
@@ -495,7 +495,7 @@ static void mo_parse_hotlist_list(mo_hotlist *list, struct mark_up  **current)
 		} else{			/* end dl tag */
 /* a /DL tag ends a previous anchor entry */
 			if (entry_type == mo_t_url) {	/* add an url entry */
-				node = (mo_hotnode *)malloc (sizeof (mo_hotnode));
+				node=(mo_hotnode*)calloc(1,sizeof (mo_hotnode));
 				node->type = mo_t_url;
 				node->url = url;
 /* if there is a title attribute in the anchor, take it,
@@ -937,7 +937,7 @@ static mo_status mo_create_ed_or_ins_hot_win (mo_window *win, int isInsert)
 	edit_or_insert_hot_info *eht_info;
 	Widget togm, togm2, insert_tog, append_tog;
 
-	eht_info = (edit_or_insert_hot_info *) malloc(
+	eht_info = (edit_or_insert_hot_info *) calloc(1,
 				sizeof(edit_or_insert_hot_info));
 	XmxSetArg (XmNuserData, (XtArgVal)eht_info);
 /*	XmxSetArg (XmNresizePolicy, XmRESIZE_GROW); */
@@ -1210,7 +1210,7 @@ void MMHotlistInit (char * mmosaic_root_dir)
 		fprintf(stderr,"Fail to read Hotlist %s\n",lhot_file_name);
 		return ;
 	}
-	mMosaicHotList = (mo_hotlist *)malloc (sizeof (mo_hotlist));
+	mMosaicHotList = (mo_hotlist *)calloc (1,sizeof (mo_hotlist));
 	mMosaicHotList->type = mo_t_list;
 	mMosaicHotList->title = NULL;
 	mMosaicHotList->desc = NULL;
@@ -1318,7 +1318,7 @@ static XmxCallback (load_hot_cb)
 		XtGetValues (win->load_hotlist_win, Xmx_wargs, Xmx_n);
 		Xmx_n = 0;
 		if (XmToggleButtonGadgetGetState (tb)) {
-			mo_hotlist *list = (mo_hotlist *)malloc (sizeof(mo_hotlist));
+			mo_hotlist *list = (mo_hotlist *)calloc(1,sizeof(mo_hotlist));
 
 			list->type = mo_t_list;
 			list->nodelist = list->nodelist_last = 0;
