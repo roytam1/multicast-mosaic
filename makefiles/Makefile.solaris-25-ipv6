@@ -45,7 +45,7 @@ knrflag =
 #### For Convex whatever, do -DCONVEX
 #### For SCO ODT 3.0, do -DSCO -DSVR4 -DMOTIF1_2
 #### For Motorola SVR4, do -DSVR4 -DMOTOROLA -DMOTIF1_2
-sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
+sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25 -DIPV6
 
 #### System libraries.
 # syslibs = -lPW -lsun -lmalloc
@@ -119,11 +119,12 @@ xlibs += -lm
 #pngincludedir = $(pngdir)/include
 #pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/libz.a -lm
 #pngflags =  -I$(pngincludedir) -DHAVE_PNG
-pngdir = $(HOME)/mbone-dev/mMosaic/libpng-0.89c
-pnglibdir = $(pngdir)
-pngincludedir = $(pngdir)
-pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/../zlib-1.0.4/libz.a -lm
-pngflags =  -I$(pngincludedir) -I$(pngincludedir)/../zlib-1.0.4 -DHAVE_PNG
+
+#pngdir = $(HOME)/mbone-dev/mMosaic/libpng-0.89c
+#pnglibdir = $(pngdir)
+#pngincludedir = $(pngdir)
+#pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/../zlib-1.0.4/libz.a -lm
+#pngflags =  -I$(pngincludedir) -I$(pngincludedir)/../zlib-1.0.4 -DHAVE_PNG
 
 #### JPEG SUPPORT
 #### For inline JPEG support, the following should be defined:
@@ -132,9 +133,11 @@ pngflags =  -I$(pngincludedir) -I$(pngincludedir)/../zlib-1.0.4 -DHAVE_PNG
 #jpegdir = /xdev/mosaic/libjpeg/solaris-24
 #jpeglibs = $(jpegdir)/lib/libjpeg.a
 #jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
-jpegdir = $(HOME)/mbone-dev/mMosaic/jpeg-6a
-jpeglibs = $(jpegdir)/libjpeg.a
-jpegflags = -I$(jpegdir) -DHAVE_JPEG
+
+
+#jpegdir = $(HOME)/mbone-dev/mMosaic/jpeg-6a
+#jpeglibs = $(jpegdir)/libjpeg.a
+#jpegflags = -I$(jpegdir) -DHAVE_JPEG
 
 
 
@@ -193,10 +196,8 @@ krblibs   = $(krb4libs) $(krb5libs)
 #### . Other things you can define are spelled out in src/mosaic.h.
 ####
 #### . If you want multicast set -DMULTICAST
-#### . If you run on IPV6 native kernel set -DIPV6
-
-customflags = -DMULTICAST
-#customflags = 
+#### . If you want IPV6 set -DIPV6
+customflags = -DMULTICAST -DIPV6
 
 
 # ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------

@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <Xm/XmAll.h>
 
+#include "../libnut/mipcf.h"
 #include "../libhtmlw/HTML.h"
 #include "mc_rtp.h"
 #include "mc_defs.h"

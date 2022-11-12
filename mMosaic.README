@@ -1,10 +1,22 @@
+mMosaic 3.1, Kaffe 0.8.3, Biss 0.87 : just married!
+
+Change since last release:
+	- mMosaic resize images.
+	- Background image was broken. Now it is repair.
+	- Source patch and Makefile for QNX.
+	- Bug when FORM is in TABLE.
+	- Kaffe0.83/Biss0.87/mMosaic3.1 just married. 
+	  Experimental piece of software.
+
+
+---------------------------------------------------------------------------
 mMosaic is a derivative work of NCSA XMosaic 2.7b5. You can use it as a simple
 browser. Now it supports TABLE and other supplementary TAG (like CENTER).
 
 mMosaic become a free browser, because since the 3.0.10 it is build
 over Lesstif-0.77 (GNU licence). 
 
-But, two major (from my point of vue) features have been added. The first is
+But, three major (from my point of vue) features have been added. The first is
 the multicast capability of mMosaic. It multicast any embedded object 
 (XPM, JPEG, PNG..., image, MIDI data, Music score (Rosegarden data), 
 figure (Xfig data)).
@@ -15,13 +27,16 @@ feature for who want to multicast slide in an interactive maner. (the cursor
 is the pencil and scrollbar move the slide if the window is too short 
 - or slide too long ;-) ).
 
-Maybe, it's possible to give to mMosaic, the status of a new multicast media. 
-A pluggin for 'sdr' exists. 
-
 The second is the Application Program called APROG. APROG is a new experimental
 HTML marker. It's enable programs written over the Xt (like Motif and Athena 
 application) to run *inside* mMosaic. If you like APPLET, maybe you'll love
 APROG.
+
+If you don't, the third major feature is <APPLET>.
+mMosaic is now able to run a JAVA (tm) APPLET. APPLET can be multicasted.
+The Java VM is Kaffe, a free Java interpretor; the AWT is Biss a free toolkit.
+This is an *experimental* feature. If you try it, don't be afraid by
+lot of debug messages on your console.
 
 More information is at :
 	http://sig.enst.fr/~dauphin/mMosaic/index.html

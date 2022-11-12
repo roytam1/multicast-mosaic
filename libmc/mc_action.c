@@ -9,6 +9,8 @@
  * Bug report :  dauphin@sig.enst.fr dax@inf.enst.fr
  */
 
+#ifdef MULTICAST
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -20,6 +22,7 @@
 #include <Xm/XmAll.h>
 #include <signal.h>
 
+#include "../libnut/mipcf.h"
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
 #include "../src/mosaic.h"
@@ -37,7 +40,7 @@
   if (url[strlen (url) - 1] == '\n') \
     url[strlen (url) - 1] = '\0';
 
-unsigned int 	mc_addr_ip_group;
+IPAddr  	mc_addr_ip_group;
 unsigned short 	mc_port;
 unsigned short 	mc_rtcp_port;
 int 		mc_debug;
@@ -71,7 +74,7 @@ McWULst * mc_wulst;
 int mc_wulst_cnt = 0;
 
 
-static McUser * SolveUser(unsigned int uip_addr, unsigned short upid);
+static McUser * SolveUser(IPAddr uip_addr, unsigned short upid);
 
 /*########### remove the user too #########*/
 
@@ -140,14 +143,14 @@ void McActionRtcpByeData(McRtcpByeDataStruct * rbye)
 	/* Process a directive that we received by multicast. */
 	mo_window *win;
         unsigned int ugmts;
-        unsigned int uip_addr;
+        IPAddr uip_addr;
         unsigned short upid;
 	char * tmp;
 	time_t t;
 	int u_is_upd = 0;
 
 
-        if((rbye->ipaddr == mc_local_ip_addr) && (rbye->pid==mc_my_pid)){
+        if(ADDRCMP(rbye->ipaddr, mc_local_ip_addr) && (rbye->pid==mc_my_pid)){
 #ifdef MDEBUG
 		printf("McActionBye: It's Me\n");
 #endif
@@ -413,7 +416,7 @@ void McInitUser( McUser * u)
 	u->prev = NULL;
 }
 
-static McUser * SolveUser(unsigned int uip_addr, unsigned short upid)
+static McUser * SolveUser(IPAddr uip_addr, unsigned short upid)
 {
 	McUser * user;
 	McUser * puser;
@@ -430,7 +433,7 @@ static McUser * SolveUser(unsigned int uip_addr, unsigned short upid)
 	}
 	user = mc_ulist;
 	while(user != NULL){
-		if( (user->ip_addr == uip_addr) && (user->pid == upid) )
+		if( ADDRCMP(user->ip_addr, uip_addr) && (user->pid == upid) )
 			return user;
 		puser = user;
 		user = user->next;
@@ -442,9 +445,13 @@ static McUser * SolveUser(unsigned int uip_addr, unsigned short upid)
 	user->prev = puser;
 	user->ip_addr = uip_addr;
 	user->pid = upid;
+#ifdef IPV6
+	sprintf(user->alias,"Unknow@ipv6.domain");
+#else
 	sprintf(user->alias,"Unknow@%d.%d.%d.%d",
 		(uip_addr >> 24) & 0xFF, (uip_addr >> 16) & 0xFF,
 		(uip_addr >> 8 ) & 0xFF, uip_addr & 0xFF);
+#endif
 	user->len_alias = strlen(user->alias);
 	McUpdMcList(user);	/* MAJ de la mc_liste dans le cas d'un*/
 				/* petit nouveau */
@@ -509,14 +516,14 @@ void McActionHearBeatData(Mcs_alldata* alldata)
 	mo_window *win;
         unsigned int ugmts;
         unsigned int uurl_id;
-        unsigned int uip_addr;
+        IPAddr  uip_addr;
         unsigned short upid;
 	unsigned int ussrc;
 	char * tmp;
 	time_t t;
 	int u_is_upd = 0;
 
-        if((alldata->ipaddr == mc_local_ip_addr) && (alldata->pid==mc_my_pid))
+        if(ADDRCMP(alldata->ipaddr, mc_local_ip_addr) && (alldata->pid==mc_my_pid))
                  return;                        /* It's Me */
 #ifdef MDEBUG
 	printf("RTP have a hearbeat\n");
@@ -611,14 +618,14 @@ void McActionAllData(Mcs_alldata* alldata)
 	mo_window *win;
         unsigned int ugmts;
         unsigned int uurl_id;
-        unsigned int uip_addr;
+        IPAddr  uip_addr;
         unsigned short upid;
 	char * tmp;
 	time_t t;
 	int u_is_upd = 0;
 
 /* Process a directive that we received by multicast. */
-        if((alldata->ipaddr == mc_local_ip_addr) && (alldata->pid==mc_my_pid))
+        if(ADDRCMP(alldata->ipaddr, mc_local_ip_addr) && (alldata->pid==mc_my_pid))
                  return;			/* It's Me */
 	ugmts = alldata->gmt_send_time;
 	uurl_id = alldata->url_id;
@@ -789,14 +796,14 @@ void McActionCursorPosData(McRtpCursorPosDataStruct * cp)
 	/* Process a directive that we received by multicast. */
 	mo_window *win;
         unsigned int ugmts;
-        unsigned int uip_addr;
+        IPAddr uip_addr;
         unsigned short upid;
 	char * tmp;
 	time_t t;
 	int u_is_upd = 0;
 
 
-        if((cp->ipaddr == mc_local_ip_addr) && (cp->pid==mc_my_pid)){
+        if(ADDRCMP(cp->ipaddr, mc_local_ip_addr) && (cp->pid==mc_my_pid)){
 #ifdef MDEBUG
 		printf("McActionCursorPosData: It's Me\n");
 #endif
@@ -841,14 +848,14 @@ void McActionGotoIdData(McRtpGotoIdDataStruct * hgid)
 	/* Process a directive that we received by multicast. */
 	mo_window *win;
         unsigned int ugmts;
-        unsigned int uip_addr;
+        IPAddr uip_addr;
         unsigned short upid;
 	char * tmp;
 	time_t t;
 	int u_is_upd = 0;
 
 
-        if((hgid->ipaddr == mc_local_ip_addr) && (hgid->pid==mc_my_pid)){
+        if(ADDRCMP(hgid->ipaddr, mc_local_ip_addr) && (hgid->pid==mc_my_pid)){
 #ifdef MDEBUG
 		printf("McActionGotoIdData: It's Me\n");
 #endif
@@ -891,7 +898,7 @@ void McActionRtcpSdesCnameData(McRtcpSdesCnameDataStruct * rscd)
 	/* Process a directive that we received by multicast. */
 	mo_window *win;
         unsigned int ugmts;
-        unsigned int uip_addr;
+        IPAddr uip_addr;
         unsigned short upid;
 	char * tmp;
 	char b[MC_MAX_ALIAS_SIZE+1];
@@ -899,7 +906,7 @@ void McActionRtcpSdesCnameData(McRtcpSdesCnameDataStruct * rscd)
 	int u_is_upd = 0;
 
 
-        if((rscd->ipaddr == mc_local_ip_addr) && (rscd->pid==mc_my_pid)){
+        if(ADDRCMP(rscd->ipaddr, mc_local_ip_addr) && (rscd->pid==mc_my_pid)){
 #ifdef MDEBUG
 		printf("McActionRtcpSdesCnameData: It's Me\n");
 #endif
@@ -943,27 +950,32 @@ void McActionRtcpSdesCnameData(McRtcpSdesCnameDataStruct * rscd)
 
 void McActionRtcpLrmpNackAllData(McRtcpLrmpNackAllDataStruct * rlnad)
 {
+        IPAddr  uip_addr;
+	IPAddr6 s_uip_addr;
 	unsigned int i;
 	char * data;
 	McUser * user;
         int mask, omask;
-
-	/* Process a directive that we received by multicast. */
 	mo_window *win;
         unsigned int ugmts;
-        unsigned int uip_addr;
         unsigned short upid;
 	char * tmp;
 	time_t t;
 	unsigned int r_url_id,r_num_eo;
-	unsigned int s_uip_addr,s_upid;
+	unsigned int s_upid;
 
-        if((rlnad->ipaddr == mc_local_ip_addr) && (rlnad->pid==mc_my_pid)){
+        if(ADDRCMP(rlnad->ipaddr, mc_local_ip_addr) && (rlnad->pid==mc_my_pid)){
                 return;			/* It's Me */
 	}
-	if( !((rlnad->s_ipaddr == mc_local_ip_addr) && ( rlnad->s_pid == mc_my_pid)) ){ /* this NACK is not for me */
+#ifdef IPV6
+	if( !(ADDRCMP(rlnad->s_ipaddr, mc_local_ip_addr) && ( rlnad->s_pid == mc_my_pid)) ){ /* this NACK is not for me */
 		return;
 	}
+#else
+	if( !(ADDRCMP64(rlnad->s_ipaddr, mc_local_ip_addr) && ( rlnad->s_pid == mc_my_pid)) ){ /* this NACK is not for me */
+		return;
+	}
+#endif
 	uip_addr = rlnad->ipaddr;
 	upid =  rlnad->pid;
 	s_uip_addr = rlnad->s_ipaddr;
@@ -1016,6 +1028,8 @@ void McActionRtcpLrmpNackAllData(McRtcpLrmpNackAllDataStruct * rlnad)
 }
 void McActionRtcpLrmpNackData(McRtcpLrmpNackDataStruct * rlnd)
 {
+        IPAddr uip_addr;
+	IPAddr6 s_uip_addr;
 	unsigned int i;
 	char * data;
 	McUser * user;
@@ -1024,20 +1038,25 @@ void McActionRtcpLrmpNackData(McRtcpLrmpNackDataStruct * rlnd)
 	/* Process a directive that we received by multicast. */
 	mo_window *win;
         unsigned int ugmts;
-        unsigned int uip_addr;
         unsigned short upid;
 	char * tmp;
 	time_t t;
 	unsigned int r_url_id,r_num_eo,r_fpno;
-	unsigned int s_uip_addr,s_upid;
+	unsigned int s_upid;
 	unsigned int r_blp;
 
-        if((rlnd->ipaddr == mc_local_ip_addr) && (rlnd->pid==mc_my_pid)){
+        if(ADDRCMP(rlnd->ipaddr, mc_local_ip_addr) && (rlnd->pid==mc_my_pid)){
                 return;			/* It's Me */
 	}
-	if( !((rlnd->s_ipaddr == mc_local_ip_addr) && ( rlnd->s_pid == mc_my_pid)) ){ /* this NACK is not for me */
+#ifdef IPV6
+	if( !(ADDRCMP(rlnd->s_ipaddr, mc_local_ip_addr) && ( rlnd->s_pid == mc_my_pid)) ){ /* this NACK is not for me */
 		return;
 	}
+#else
+	if( !(ADDRCMP64(rlnd->s_ipaddr, mc_local_ip_addr) && ( rlnd->s_pid == mc_my_pid)) ){ /* this NACK is not for me */
+		return;
+	}
+#endif
 	uip_addr = rlnd->ipaddr;
 	upid =  rlnd->pid;
 	s_uip_addr = rlnd->s_ipaddr;
@@ -1097,3 +1116,5 @@ void McActionRtcpLrmpNackData(McRtcpLrmpNackDataStruct * rlnd)
         sigsetmask(omask);      
 #endif 
 }
+
+#endif /* MULTICAST */

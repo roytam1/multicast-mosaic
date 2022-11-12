@@ -151,5 +151,7 @@ extern void 		AppletRefresh(HTMLWidget hw, struct ele_rec *eptr);
 
 extern void 		ViewClearAndRefresh( HTMLWidget hw);
 extern void		ScrollWidgets(HTMLWidget hw);
+#ifdef MULTICAST
 extern char * McGetEOFileData(Widget w, char * buf, int len_buf, McUser *u,int num_eo);
+#endif
 #endif

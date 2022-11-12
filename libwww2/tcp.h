@@ -52,7 +52,11 @@ Default values
 #define GOT_PIPE
 #endif
 
+#ifdef IPV6
+typedef struct sockaddr_in6 SockA;  /* See netinet/in.h */
+#else
 typedef struct sockaddr_in SockA;  /* See netinet/in.h */
+#endif
 
 
 #ifndef STDIO_H

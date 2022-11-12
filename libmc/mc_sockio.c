@@ -1,18 +1,16 @@
-/*
- * sockio.c
+/* sockio.c
  * Author: Gilles Dauphin
- * Version 2.7b4m1 [May96]
+ * Version 3.1.1 [May97]
  *
- * Copyright (C) 1996 - G.Dauphin, P.Dax
+ * Copyright (C) 1997 - G.Dauphin, P.Dax
  *
  * See the file "license.mMosaic" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES. 
  *
- * Bug report :
- * 
- * dauphin@sig.enst.fr
- * dax@inf.enst.fr
+ * Bug report : dauphin@sig.enst.fr dax@inf.enst.fr
  */
+
+#ifdef MULTICAST
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,16 +25,18 @@
 #include <sys/param.h>
 #include <Xm/XmAll.h>
 
-#ifdef __QNX__
-/*From frank@ctcqnx4.ctc.cummins.com Mon Apr 28 02:33:01 1997
-/*QNX tcp/ip is not as complete, and I have to modify "libmc/mc_sockio.c"
-/*to make it compile. I am wondering IP multicast is supported, I will
-/*check with QNX to see ..  
-/*I will let you know, maybe we will have to disable this for QNX.
-*/
+
+
+#if defined(__QNX__) || defined(ultrix)
+/* From frank@ctcqnx4.ctc.cummins.com Mon Apr 28 02:33:01 1997
+/* QNX tcp/ip is not as complete, and I have to modify "libmc/mc_sockio.c"
+/* to make it compile. I am wondering IP multicast is supported, I will
+/* check with QNX to see ..  
+/* I will let you know, maybe we will have to disable this for QNX.  */
 
 /*those are borrowed from Linux */
 /*QNX's <netinet/in.h> is far from complete, some stuffs are not supported */
+
 #define IP_MULTICAST_TTL        0x11    /* set/get IP multicast timetolive */
 #define IP_ADD_MEMBERSHIP       0x13    /* add  an IP group membership     */
 /*
@@ -46,8 +46,9 @@ struct ip_mreq {
         struct in_addr  imr_multiaddr;  /* IP multicast address of group */
         struct in_addr  imr_interface;  /* local IP address of interface */
 };
-#endif
+#endif /* __QNX__ */
 
+#include "../libnut/mipcf.h"
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
 #include "../src/mo-www.h"
@@ -59,14 +60,28 @@ struct ip_mreq {
 #include "mc_sockio.h"
 #include "mc_dispatch.h"
 
-unsigned int mc_local_ip_addr;
+IPAddr		mc_local_ip_addr;
+
+#ifdef IPV6 
+static const IPAddr anyaddr = IPV6ADDR_ANY_INIT;
+#endif  
+ 
+#ifdef IPV6
+
+static struct sockaddr_in6 addr_r;
+static struct sockaddr_in6 rtcp_addr_r;
+static struct sockaddr_in6 addr_w;
+static struct sockaddr_in6 rtcp_addr_w;
+#else
 
 static struct sockaddr_in addr_r;
 static struct sockaddr_in rtcp_addr_r;
-static int addr_r_len;
-static int rtcp_addr_r_len;
 static struct sockaddr_in addr_w;
 static struct sockaddr_in rtcp_addr_w;
+#endif
+
+static int addr_r_len;
+static int rtcp_addr_r_len;
 static unsigned char emit_buf[MC_MAX_BUF_SIZE];
 static unsigned char recv_buf[MC_MAX_BUF_SIZE];
 static unsigned int mc_send_cnt = 0;
@@ -84,18 +99,28 @@ int gethostname(char *name, int namelen); /* because solaris 2.5 include bug */
 #endif
 #endif
 
-int McOpenRead (unsigned long ip,unsigned short port,unsigned char ttl)
+int McOpenRead (IPAddr ip,unsigned short port,unsigned char ttl)
 {
+#ifdef IPV6
+        struct ipv6_mreq mreq;
+	struct sockaddr_in6 fakesockaddr;
+#else
         struct ip_mreq mreq;
+	struct sockaddr_in fakesockaddr;
+#endif
+
         int one = 1;
 	int fd=-1;
 	char hostname[MAXHOSTNAMELEN];
 	struct hostent *hp;
-	struct sockaddr_in fakesockaddr;
 	int sd_len;
 	int fakesock;
 
+#ifdef IPV6
+        if ((fd = socket(AF_INET6, SOCK_DGRAM, 0)) <0 ) {
+#else
         if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) <0 ) {
+#endif
                 perror ("McOpenRead: socket");
                 exit(1);
         }
@@ -107,24 +132,60 @@ int McOpenRead (unsigned long ip,unsigned short port,unsigned char ttl)
 	}
 	addr_r_len = sizeof(addr_r);
         memset(&addr_r,0,sizeof(addr_r));
+#ifdef IPV6
+        addr_r.sin6_family = AF_INET6;
+        addr_r.sin6_port = port;
+        addr_r.sin6_addr = anyaddr;
+#else
         addr_r.sin_family = AF_INET;
         /*addr_r.sin_port = htons(port);*/
         addr_r.sin_port = port;
         addr_r.sin_addr.s_addr = htonl(INADDR_ANY);
+#endif
         if(bind(fd, (struct sockaddr *)&addr_r, sizeof(addr_r)) <0) {
                 perror ("McOpenRead: bind:");
                 exit(1);
         }
+#ifdef IPV6
+        mreq.ipv6mr_multiaddr = ip;
+        mreq.ipv6mr_interface = anyaddr;
+        if (setsockopt(fd, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP,
+#else
         /*mreq.imr_multiaddr.s_addr = htonl(ip);*/
         mreq.imr_multiaddr.s_addr = ip;
         mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-
         if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+#endif
+
             (char *)&mreq, sizeof(mreq)) < 0) {
                 perror ("McOpenRead: setsockopt IP_ADD_MEMBERSHIP:");
                 exit(1);
         }
 
+#ifdef IPV6
+        /* This bogosity is to find the IP address of the local host! */
+        if ((fakesock = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
+                perror("socket");
+                exit(1);
+        }
+        if ( gethostname(hostname, MAXHOSTNAMELEN) != 0) {
+                perror("McOpenRead: gethostname " );
+                exit(1);
+        }
+/*        hp = gethostbyname2(hostname,AF_INET6); */
+        hp = hostname2addr(hostname,AF_INET6);
+	if (!hp) {
+                fprintf(stderr,"IPV6 gasp no hosts \n");
+                exit(1) ;
+        }
+        memcpy((char *)&fakesockaddr.sin6_addr, hp->h_addr, hp->h_length);
+        fakesockaddr.sin6_port = 0;
+        bind(fakesock, (struct sockaddr *) &fakesockaddr, sizeof(fakesockaddr));
+        sd_len = sizeof(fakesockaddr);
+        getsockname(fakesock, (struct sockaddr *)&fakesockaddr, &sd_len);
+        mc_local_ip_addr = fakesockaddr.sin6_addr;
+        close(fakesock);
+#else
         /* This bogosity is to find the IP address of the local host! */
         if ((fakesock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
                 perror("socket");
@@ -142,22 +203,32 @@ int McOpenRead (unsigned long ip,unsigned short port,unsigned char ttl)
         getsockname(fakesock, (struct sockaddr *)&fakesockaddr, &sd_len);
         mc_local_ip_addr = ntohl(fakesockaddr.sin_addr.s_addr);
         close(fakesock);
+#endif
 
 	return fd;
 }
 
-int McOpenRtcpRead (unsigned long ip,unsigned short port,unsigned char ttl)
+int McOpenRtcpRead (IPAddr ip,unsigned short port,unsigned char ttl)
 {
+#ifdef IPV6     
+        struct ipv6_mreq mreq;
+        struct sockaddr_in6 fakesockaddr;
+#else
         struct ip_mreq mreq;
+        struct sockaddr_in fakesockaddr;
+#endif 
         int one = 1;
 	int fd=-1;
 	char hostname[MAXHOSTNAMELEN];
 	struct hostent *hp;
-	struct sockaddr_in fakesockaddr;
 	int sd_len;
 	int fakesock;
 
+#ifdef IPV6
+        if ((fd = socket(AF_INET6, SOCK_DGRAM, 0)) <0 ) {
+#else                                 
         if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) <0 ) {
+#endif
                 perror ("McOpenRtcpRead: socket");
                 exit(1);
         }
@@ -169,24 +240,59 @@ int McOpenRtcpRead (unsigned long ip,unsigned short port,unsigned char ttl)
 	}
 	rtcp_addr_r_len = sizeof(rtcp_addr_r);
         memset(&rtcp_addr_r,0,sizeof(rtcp_addr_r));
+#ifdef IPV6                           
+        rtcp_addr_r.sin6_family = AF_INET6;
+        rtcp_addr_r.sin6_port = port;      
+        rtcp_addr_r.sin6_addr = anyaddr;   
+#else                                 
         rtcp_addr_r.sin_family = AF_INET;
         /*addr_r.sin_port = htons(port);*/
         rtcp_addr_r.sin_port = port;
         rtcp_addr_r.sin_addr.s_addr = htonl(INADDR_ANY);
+#endif
         if(bind(fd, (struct sockaddr *)&rtcp_addr_r, sizeof(rtcp_addr_r)) <0) {
                 perror ("McOpenrtcp_Read: bind:");
                 exit(1);
         }
+#ifdef IPV6                           
+        mreq.ipv6mr_multiaddr = ip;   
+        mreq.ipv6mr_interface = anyaddr;
+        if (setsockopt(fd, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP,
+#else                                 
         /*mreq.imr_multiaddr.s_addr = htonl(ip);*/
         mreq.imr_multiaddr.s_addr = ip;
         mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-
         if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+#endif
             (char *)&mreq, sizeof(mreq)) < 0) {
                 perror ("McOpenrtcp_Read: setsockopt IP_ADD_MEMBERSHIP:");
                 exit(1);
         }
 
+#ifdef IPV6                           
+        /* This bogosity is to find the IP address of the local host! */
+        if ((fakesock = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
+                perror("socket");     
+                exit(1);              
+        }                             
+        if ( gethostname(hostname, MAXHOSTNAMELEN) != 0) {
+                perror("McOpenRead: gethostname " );
+                exit(1);              
+        }                             
+/*        hp = gethostbyname2(hostname,AF_INET6); */
+        hp = hostname2addr(hostname,AF_INET6);
+        if (!hp) {                    
+                fprintf(stderr,"IPV6 gasp no hosts \n");
+                exit(1) ;             
+        }                             
+        memcpy((char *)&fakesockaddr.sin6_addr, hp->h_addr, hp->h_length);
+        fakesockaddr.sin6_port = 0;  
+        bind(fakesock, (struct sockaddr *) &fakesockaddr, sizeof(fakesockaddr));
+        sd_len = sizeof(fakesockaddr);
+        getsockname(fakesock, (struct sockaddr *)&fakesockaddr, &sd_len);
+        mc_local_ip_addr = fakesockaddr.sin6_addr;
+        close(fakesock);              
+#else
         /* This bogosity is to find the IP address of the local host! */
         if ((fakesock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
                 perror("socket");
@@ -204,20 +310,36 @@ int McOpenRtcpRead (unsigned long ip,unsigned short port,unsigned char ttl)
         getsockname(fakesock, (struct sockaddr *)&fakesockaddr, &sd_len);
         mc_local_ip_addr = ntohl(fakesockaddr.sin_addr.s_addr);
         close(fakesock);
+#endif
 
 	return fd;
 }
 
-int McOpenWrite(unsigned long ip,unsigned short port,unsigned char ttl)
+int McOpenWrite(IPAddr ip,unsigned short port,unsigned char ttl)
 {
 	int fd;
+	unsigned int t6 = ttl;
  
-	fd = socket(PF_INET, SOCK_DGRAM, 0);
+#ifdef IPV6
+	fd = socket(AF_INET6, SOCK_DGRAM, 0);
+#else
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+#endif
 	if(fd<0) {
 		perror("McOpenWrite: socket");
 		exit(1);
 	}  
-  
+#ifdef IPV6
+	if (setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS,
+		       (char*)&(t6), sizeof(t6)) < 0) {
+		perror("McOpenWrite:setsockopt IP_MULTICAST_HOPS:");
+		exit(1);
+	}
+	memset(&addr_w,0,sizeof(addr_w));
+	addr_w.sin6_family = AF_INET6;
+	addr_w.sin6_port = port;
+	addr_w.sin6_addr = ip;
+#else
 	if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_TTL,
 		       (char*)&(ttl), sizeof(ttl)) < 0) {
 		perror("McOpenWrite:setsockopt IP_MULTICAST_TTL:");
@@ -227,19 +349,34 @@ int McOpenWrite(unsigned long ip,unsigned short port,unsigned char ttl)
 	addr_w.sin_family = AF_INET;
 	addr_w.sin_port = port;
 	addr_w.sin_addr.s_addr = ip;
+#endif
 	return fd;
 }
 
-int McOpenRtcpWrite(unsigned long ip,unsigned short port,unsigned char ttl)
+int McOpenRtcpWrite(IPAddr ip,unsigned short port,unsigned char ttl)
 {
 	int fd;
- 
+	unsigned int t6 = ttl; 
+#ifdef IPV6
+	fd = socket(AF_INET6, SOCK_DGRAM, 0);
+#else
 	fd = socket(PF_INET, SOCK_DGRAM, 0);
+#endif
 	if(fd<0) {
 		perror("McOpenRtcpWrite: socket");
 		exit(1);
 	}  
-  
+#ifdef IPV6
+	if (setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS,
+		       (char*)&(t6), sizeof(t6)) < 0) {
+		perror("McOpenRtcpWrite:setsockopt IP_MULTICAST_HOPS:");
+		exit(1);
+	}
+	memset(&rtcp_addr_w,0,sizeof(rtcp_addr_w));
+	rtcp_addr_w.sin6_family = AF_INET6;
+	rtcp_addr_w.sin6_port = port;
+	rtcp_addr_w.sin6_addr = ip;
+#else
 	if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_TTL,
 		       (char*)&(ttl), sizeof(ttl)) < 0) {
 		perror("McOpenRtcpWrite:setsockopt IP_MULTICAST_TTL:");
@@ -249,13 +386,14 @@ int McOpenRtcpWrite(unsigned long ip,unsigned short port,unsigned char ttl)
 	rtcp_addr_w.sin_family = AF_INET;
 	rtcp_addr_w.sin_port = port;
 	rtcp_addr_w.sin_addr.s_addr = ip;
+#endif
 	return fd;
 }
 
 /*
  * return number of byte read and the static recv_buf 
  */
-int McGetRecvBuf(unsigned char ** buf, u_int32_t * ipfrom)
+int McGetRecvBuf(unsigned char ** buf, IPAddr * ipfrom)
 {
 	int cnt;
   
@@ -267,7 +405,11 @@ int McGetRecvBuf(unsigned char ** buf, u_int32_t * ipfrom)
 		/* exit(1); */
 	}
 	*buf = recv_buf;
+#ifdef IPV6
+	*ipfrom = addr_r.sin6_addr;
+#else
 	*ipfrom = addr_r.sin_addr.s_addr;
+#endif
 #ifdef MDEBUG
 	printf("McGetRecvBuf: cnt=%d, recv_buf[12]=%ud\n",cnt,recv_buf[12]);
 #endif
@@ -276,8 +418,7 @@ int McGetRecvBuf(unsigned char ** buf, u_int32_t * ipfrom)
 
 /* return the number of byte read or 0 if probleme */
 
-int McCheckCursorPos( unsigned char *buf, int len_buf, McRtpCursorPosDataStruct *cp,
-		u_int32_t ipfrom)
+int McCheckCursorPos( unsigned char *buf, int len_buf, McRtpCursorPosDataStruct *cp, IPAddr ipfrom)
 {
 	unsigned int i;
 	unsigned char * p = buf;
@@ -287,7 +428,7 @@ int McCheckCursorPos( unsigned char *buf, int len_buf, McRtpCursorPosDataStruct 
 		fprintf(stderr,"Error receiving CURSOR_POS: n = %d\n", len_buf);
 		return 0;
 	}
-	
+
 			/* T:2 P:1 X:1 CC:4 M:1 PT:7 */
 	cp->rh_flags = (u_int16_t) (	((unsigned long) p[0] << 8 ) |
                                                 ((unsigned long) p[1]      ) );
@@ -303,7 +444,7 @@ int McCheckCursorPos( unsigned char *buf, int len_buf, McRtpCursorPosDataStruct 
 					        ((unsigned long) p[5] << 16) |
 					        ((unsigned long) p[6] << 8 ) |
 					        ((unsigned long) p[7]      ) );
-	cp->ipaddr = (u_int32_t)	ipfrom;
+	cp->ipaddr = 	ipfrom;
 
 	cp->ssrc = (u_int8_t)	p[8];
 	cp->pid =  (u_int16_t)(            ((unsigned long) p[10] << 8 ) |
@@ -322,7 +463,7 @@ int McCheckCursorPos( unsigned char *buf, int len_buf, McRtpCursorPosDataStruct 
 /* return the number of byte read or 0 if probleme */
 
 int McCheckGotoId( unsigned char *buf, int len_buf, McRtpGotoIdDataStruct *hgid,
-		u_int32_t ipfrom)
+		IPAddr ipfrom)
 {
 	unsigned int i;
 	unsigned char * p = buf;
@@ -348,7 +489,7 @@ int McCheckGotoId( unsigned char *buf, int len_buf, McRtpGotoIdDataStruct *hgid,
 					        ((unsigned long) p[5] << 16) |
 					        ((unsigned long) p[6] << 8 ) |
 					        ((unsigned long) p[7]      ) );
-	hgid->ipaddr = (u_int32_t)	ipfrom;
+	hgid->ipaddr = ipfrom;
 
 	hgid->ssrc = (u_int8_t)	p[8];
 	hgid->pid =  (u_int16_t)(            ((unsigned long) p[10] << 8 ) |
@@ -365,7 +506,7 @@ int McCheckGotoId( unsigned char *buf, int len_buf, McRtpGotoIdDataStruct *hgid,
 /* return the number of byte read or 0 if probleme */
 
 int McCheckAllData( unsigned char *buf, int len_buf, Mcs_alldata *alldata,
-		u_int32_t ipfrom)
+		IPAddr ipfrom)
 {
 	unsigned int i;
 	unsigned char * p = buf;
@@ -390,7 +531,7 @@ int McCheckAllData( unsigned char *buf, int len_buf, Mcs_alldata *alldata,
 					        ((unsigned long) p[5] << 16) |
 					        ((unsigned long) p[6] << 8 ) |
 					        ((unsigned long) p[7]      ) );
-	alldata->ipaddr = (u_int32_t)	ipfrom;
+	alldata->ipaddr = ipfrom;
 
 	alldata->ssrc = (u_int8_t)	p[8];
 	alldata->pid =  (u_int16_t)(            ((unsigned long) p[10] << 8 ) |
@@ -510,7 +651,7 @@ void McSendRtpGotoId( unsigned char code, unsigned short pid,
         McSendData(emit_buf, len_buf);
 }
 
-void McSendPacket( unsigned char code, unsigned int ipaddr,
+void McSendPacket( unsigned char code,
 	unsigned short pid, unsigned int url_id, unsigned int gmt_send_time,
 	unsigned int nombre_eo,
 	unsigned int num_eo , unsigned int seo , unsigned int nombre_packet ,
@@ -552,7 +693,6 @@ void McSendPacket( unsigned char code, unsigned int ipaddr,
 
 	emit_buf[22] = (num_packet >> 8) & 0xff; 
 	emit_buf[23] = num_packet & 0xff;
-
 
 	len_buf = 24 + len;
 	memcpy(&emit_buf[24], data, len);
@@ -609,18 +749,26 @@ void McSendRtcpData( unsigned char * buf, int len)
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |  ssrc         |    0          |       pid                     |
  * |===============================================================|
- * |                        first sender ipaddr                    |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * | sender ssrc   |        hurlid |  sender pid                   |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |              lurl_id          |           num_eo              |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                        first sender ipaddr [0]                |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                        first sender ipaddr [1]                |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                        first sender ipaddr [2]                |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                        first sender ipaddr [3] (IPv4)         |
  * |===============================================================|
  * |                         (next SSRC ...)                       |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * Il manque tout l'objet num_eo
+ * ipaddr is 128 bits wide for IPv6 
+ * ipaddr[0..2] = 0 if IPv4 
  */
 
-void McSendRtcpNackAll( unsigned int uip_addr, unsigned short upid, 
+void McSendRtcpNackAll( IPAddr uip_addr, unsigned short upid, 
 			unsigned int uurl_id, unsigned short num_eo,
 			unsigned int ussrc)
 {
@@ -635,35 +783,68 @@ void McSendRtcpNackAll( unsigned int uip_addr, unsigned short upid,
 	emit_buf[6] = (mc_my_pid >> 8) & 0xff; 
 	emit_buf[7] = mc_my_pid & 0xff;		/* LSB my_pid */
 
-	emit_buf[8] = (uip_addr >> 24) & 0xff;	/* MSB ip_addr */
-	emit_buf[9] = (uip_addr >> 16) & 0xff; 
-	emit_buf[10] = (uip_addr >> 8) & 0xff; 
-	emit_buf[11] = uip_addr & 0xff;		/* LSB  */
+	emit_buf[8] = (u_int8_t)ussrc;
 
-	emit_buf[12] = (u_int8_t)ussrc;
+	emit_buf[10] = (upid >> 8) & 0xff; 
+	emit_buf[11] = upid & 0xff;		/* LSB pid */
 
-	emit_buf[14] = (upid >> 8) & 0xff; 
-	emit_buf[15] = upid & 0xff;		/* LSB pid */
+	emit_buf[9] = (uurl_id >> 16) & 0xff; 
+	emit_buf[12] = (uurl_id >> 8) & 0xff; 
+	emit_buf[13] = uurl_id & 0xff;		/* LSB  */
 
-	emit_buf[13] = (uurl_id >> 16) & 0xff; 
-	emit_buf[16] = (uurl_id >> 8) & 0xff; 
-	emit_buf[17] = uurl_id & 0xff;		/* LSB  */
+	emit_buf[14] = (num_eo >> 8) & 0xff; 
+	emit_buf[15] = num_eo & 0xff;		/* LSB  */
 
-	emit_buf[18] = (num_eo >> 8) & 0xff; 
-	emit_buf[19] = num_eo & 0xff;		/* LSB  */
+#ifdef IPV6
+	emit_buf[16] = uip_addr.s6_addr[0];
+	emit_buf[17] = uip_addr.s6_addr[1];
+	emit_buf[18] = uip_addr.s6_addr[2];
+	emit_buf[19] = uip_addr.s6_addr[3];
+	emit_buf[20] = uip_addr.s6_addr[4];
+	emit_buf[21] = uip_addr.s6_addr[5];
+	emit_buf[22] = uip_addr.s6_addr[6];
+	emit_buf[23] = uip_addr.s6_addr[7];
+	emit_buf[24] = uip_addr.s6_addr[8];
+	emit_buf[25] = uip_addr.s6_addr[9];
+	emit_buf[26] = uip_addr.s6_addr[10];
+	emit_buf[27] = uip_addr.s6_addr[11];
 
-        len_buf = 20 ;
+	emit_buf[28] = uip_addr.s6_addr[12];
+	emit_buf[29] = uip_addr.s6_addr[13];
+	emit_buf[30] = uip_addr.s6_addr[14];
+	emit_buf[31] = uip_addr.s6_addr[15];
+#else
+	emit_buf[16] = 0;
+	emit_buf[17] = 0;
+	emit_buf[18] = 0;
+	emit_buf[19] = 0;
+	emit_buf[20] = 0;
+	emit_buf[21] = 0;
+	emit_buf[22] = 0;
+	emit_buf[23] = 0;
+	emit_buf[24] = 0;
+	emit_buf[25] = 0;
+	emit_buf[26] = 0;
+	emit_buf[27] = 0;
+
+	emit_buf[28] = (uip_addr >> 24) & 0xff;	/* MSB ip_addr */
+	emit_buf[29] = (uip_addr >> 16) & 0xff; 
+	emit_buf[30] = (uip_addr >> 8) & 0xff; 
+	emit_buf[31] = uip_addr & 0xff;		/* LSB  */
+
+#endif
+        len_buf = 32 ;
         McSendRtcpData(emit_buf, len_buf);
 }
 
 /* return the number of byte read or 0 if probleme */
 
 int McCheckRtcpLrmpNackAll( unsigned char *buf, int len_buf,
-	McRtcpLrmpNackAllDataStruct *rlnad, u_int32_t ipfrom)
+	McRtcpLrmpNackAllDataStruct *rlnad, IPAddr ipfrom)
 {
 	unsigned char * p = buf;
 
-	if ( len_buf < 20 ){ 
+	if ( len_buf < 32 ){ 
 		fprintf(stderr,"Error McCheckRtcpLrmpNackAll: n = %d\n", len_buf);
 		return 0;
 	}
@@ -674,26 +855,45 @@ int McCheckRtcpLrmpNackAll( unsigned char *buf, int len_buf,
 		fprintf(stderr,"Error receiving rlnad: proto error\n");
 		return 0;
 	}
-	rlnad->ipaddr = (u_int32_t) ipfrom;
+	rlnad->ipaddr = ipfrom;
 	rlnad->pid =  (u_int16_t)(              ((unsigned long) p[6] << 8 ) |
 					        ((unsigned long) p[7]      ) );
+	rlnad->s_ssrc = p[8];
+	rlnad->s_pid = (u_int16_t)(            ((unsigned long) p[10] << 8 ) |
+					        ((unsigned long) p[11]     ) );
+	rlnad->url_id = (u_int32_t)	(       ((unsigned long) p[9] << 16) |
+					        ((unsigned long) p[12] << 8 ) |
+					        ((unsigned long) p[13]      ) );
+	rlnad->num_eo = (u_int16_t)(            ((unsigned long) p[14] << 8 ) |
+					        ((unsigned long) p[15]     ) );
+	rlnad->s_ipaddr.s6_addr[0] = p[16];
+	rlnad->s_ipaddr.s6_addr[1] = p[17];
+	rlnad->s_ipaddr.s6_addr[2] = p[18];
+	rlnad->s_ipaddr.s6_addr[3] = p[19];
+	rlnad->s_ipaddr.s6_addr[4] = p[20];
+	rlnad->s_ipaddr.s6_addr[5] = p[21];
+	rlnad->s_ipaddr.s6_addr[6] = p[22];
+	rlnad->s_ipaddr.s6_addr[7] = p[23];
+	rlnad->s_ipaddr.s6_addr[8] = p[24];
+	rlnad->s_ipaddr.s6_addr[9] = p[25];
+	rlnad->s_ipaddr.s6_addr[10] = p[26];
+	rlnad->s_ipaddr.s6_addr[11] = p[27];
+	rlnad->s_ipaddr.s6_addr[12] = p[28];
+	rlnad->s_ipaddr.s6_addr[13] = p[29];
+	rlnad->s_ipaddr.s6_addr[14] = p[30];
+	rlnad->s_ipaddr.s6_addr[15] = p[31];
+
+/*
 	rlnad->s_ipaddr = (u_int32_t)	(       ((unsigned long) p[8] << 24) |
 					        ((unsigned long) p[9] << 16) |
 					        ((unsigned long) p[10] << 8 ) |
 					        ((unsigned long) p[11]      ) );
-	rlnad->s_ssrc = p[12];
-	rlnad->s_pid = (u_int16_t)(            ((unsigned long) p[14] << 8 ) |
-					        ((unsigned long) p[15]     ) );
-	rlnad->url_id = (u_int32_t)	(       ((unsigned long) p[13] << 16) |
-					        ((unsigned long) p[16] << 8 ) |
-					        ((unsigned long) p[17]      ) );
-	rlnad->num_eo = (u_int16_t)(            ((unsigned long) p[18] << 8 ) |
-					        ((unsigned long) p[19]     ) );
-	p = &buf[20];
+*/
+	p = &buf[32];
 	return p-buf;
 }
 
-static unsigned int current_nack_uip_addr;
+static IPAddr current_nack_uip_addr;
 static unsigned int current_nack_upid;
 static unsigned int current_nack_uurl_id;
 static unsigned int current_nack_num_eo;
@@ -701,7 +901,7 @@ static unsigned int current_nack_ussrc;
 static int packet_tab[17];
 static int nombre_packet=0;
 
-void McInitNackPacketData(unsigned int uip_addr, unsigned short upid,
+void McInitNackPacketData(IPAddr uip_addr, unsigned short upid,
 			unsigned int uurl_id, unsigned short num_eo,
 			unsigned int ussrc)
 {
@@ -717,7 +917,7 @@ void McInitNackPacketData(unsigned int uip_addr, unsigned short upid,
 		packet_tab[i] = -1;
 }
 
-void McPushNackPacketData(unsigned int uip_addr, unsigned short upid,
+void McPushNackPacketData(IPAddr  uip_addr, unsigned short upid,
 			unsigned int uurl_id, unsigned short num_eo,
 			unsigned short num_pkt, unsigned int ussrc)
 {
@@ -793,7 +993,7 @@ void McFlushNackPacketData(void)
  * BLP: bitmask of the following lost packets.
  */
 
-void McSendRtcpNack( unsigned int uip_addr, unsigned short upid, 
+void McSendRtcpNack( IPAddr  uip_addr, unsigned short upid, 
 			unsigned int uurl_id, unsigned short num_eo,
 			unsigned short num_pkt, unsigned short blp,
 			unsigned int ussrc)
@@ -808,41 +1008,73 @@ void McSendRtcpNack( unsigned int uip_addr, unsigned short upid,
 	emit_buf[6] = (mc_my_pid >> 8) & 0xff; 
 	emit_buf[7] = mc_my_pid & 0xff;		/* LSB my_pid */
 
-	emit_buf[8] = (uip_addr >> 24) & 0xff;	/* MSB ip_addr */
-	emit_buf[9] = (uip_addr >> 16) & 0xff; 
-	emit_buf[10] = (uip_addr >> 8) & 0xff; 
-	emit_buf[11] = uip_addr & 0xff;		/* LSB  */
+	emit_buf[8] = (u_int8_t) ussrc;
 
-	emit_buf[12] = (u_int8_t) ussrc;
+	emit_buf[10] = (upid >> 8) & 0xff; 
+	emit_buf[11] = upid & 0xff;		/* LSB pid */
 
-	emit_buf[14] = (upid >> 8) & 0xff; 
-	emit_buf[15] = upid & 0xff;		/* LSB pid */
+	emit_buf[9] = (uurl_id >> 16) & 0xff; 
+	emit_buf[12] = (uurl_id >> 8) & 0xff; 
+	emit_buf[13] = uurl_id & 0xff;		/* LSB  */
 
-	emit_buf[13] = (uurl_id >> 16) & 0xff; 
-	emit_buf[16] = (uurl_id >> 8) & 0xff; 
-	emit_buf[17] = uurl_id & 0xff;		/* LSB  */
+	emit_buf[14] = (num_eo >> 8) & 0xff; 
+	emit_buf[15] = num_eo & 0xff;		/* LSB  */
 
-	emit_buf[18] = (num_eo >> 8) & 0xff; 
-	emit_buf[19] = num_eo & 0xff;		/* LSB  */
+	emit_buf[16] = (num_pkt >> 8) & 0xff; 
+	emit_buf[17] = num_pkt & 0xff;		/* LSB  */
 
-	emit_buf[20] = (num_pkt >> 8) & 0xff; 
-	emit_buf[21] = num_pkt & 0xff;		/* LSB  */
+	emit_buf[18] = (blp >> 8) & 0xff; 	/* bitwise */
+	emit_buf[19] = blp & 0xff;		/* LSB  */
 
-	emit_buf[22] = (blp >> 8) & 0xff; 	/* bitwise */
-	emit_buf[23] = blp & 0xff;		/* LSB  */
+#ifdef IPV6
+        emit_buf[20] = uip_addr.s6_addr[0];
+        emit_buf[21] = uip_addr.s6_addr[1];
+        emit_buf[22] = uip_addr.s6_addr[2];
+        emit_buf[23] = uip_addr.s6_addr[3];
+        emit_buf[24] = uip_addr.s6_addr[4];
+        emit_buf[25] = uip_addr.s6_addr[5];
+        emit_buf[26] = uip_addr.s6_addr[6];
+        emit_buf[27] = uip_addr.s6_addr[7];
+        emit_buf[28] = uip_addr.s6_addr[8];
+        emit_buf[29] = uip_addr.s6_addr[9]; 
+        emit_buf[30] = uip_addr.s6_addr[10];
+        emit_buf[31] = uip_addr.s6_addr[11];
+                                      
+        emit_buf[32] = uip_addr.s6_addr[12];
+        emit_buf[33] = uip_addr.s6_addr[13];
+        emit_buf[34] = uip_addr.s6_addr[14];
+        emit_buf[35] = uip_addr.s6_addr[15];
+#else
+        emit_buf[20] = 0;
+        emit_buf[21] = 0;
+        emit_buf[22] = 0;
+        emit_buf[23] = 0;
+        emit_buf[24] = 0;
+        emit_buf[25] = 0;
+        emit_buf[26] = 0;
+        emit_buf[27] = 0;
+        emit_buf[28] = 0;
+        emit_buf[29] = 0;
+        emit_buf[30] = 0;
+        emit_buf[31] = 0;
+	emit_buf[32] = (uip_addr >> 24) & 0xff;	/* MSB ip_addr */
+	emit_buf[33] = (uip_addr >> 16) & 0xff; 
+	emit_buf[34] = (uip_addr >> 8) & 0xff; 
+	emit_buf[35] = uip_addr & 0xff;		/* LSB  */
 
-        len_buf = 24 ;
+#endif
+        len_buf = 36 ;
         McSendRtcpData(emit_buf, len_buf);
 }
 
 /* return the number of byte read or 0 if probleme */
 
 int McCheckRtcpLrmpNack( unsigned char *buf, int len_buf,
-	McRtcpLrmpNackDataStruct *rlnd, u_int32_t ipfrom)
+	McRtcpLrmpNackDataStruct *rlnd, IPAddr ipfrom)
 {
 	unsigned char * p = buf;
 
-	if ( len_buf < 24 ){ 
+	if ( len_buf < 36 ){ 
 		fprintf(stderr,"Error McCheckRtcpLrmpNack: n = %d\n", len_buf);
 		return 0;
 	}
@@ -853,28 +1085,45 @@ int McCheckRtcpLrmpNack( unsigned char *buf, int len_buf,
 		fprintf(stderr,"Error receiving rlnd: proto error\n");
 		return 0;
 	}
-	rlnd->ipaddr = (u_int32_t) ipfrom;
+	rlnd->ipaddr = ipfrom;
 	rlnd->pid =  (u_int16_t)(              ((unsigned long) p[6] << 8 ) |
 					        ((unsigned long) p[7]      ) );
+        rlnd->s_ssrc = p[8];
+        rlnd->s_pid = (u_int16_t)(            ((unsigned long) p[10] << 8 ) |
+                                              ((unsigned long) p[11]     ) );
+        rlnd->url_id = (u_int32_t)     (      ((unsigned long) p[9] << 16) |
+                                              ((unsigned long) p[12] << 8 ) |
+                                              ((unsigned long) p[13]      ) );
+        rlnd->num_eo = (u_int16_t)(           ((unsigned long) p[14] << 8 ) |
+                                              ((unsigned long) p[15]     ) );
+	rlnd->fpno = (u_int16_t)(            ((unsigned long) p[16] << 8 ) |
+					        ((unsigned long) p[17]     ) );
+
+	rlnd->blp = (u_int16_t)(            ((unsigned long) p[18] << 8 ) |
+					        ((unsigned long) p[19]     ) );
+	rlnd->s_ipaddr.s6_addr[0] = p[20];
+	rlnd->s_ipaddr.s6_addr[1] = p[21];
+	rlnd->s_ipaddr.s6_addr[2] = p[22];
+	rlnd->s_ipaddr.s6_addr[3] = p[23];
+	rlnd->s_ipaddr.s6_addr[4] = p[24];
+	rlnd->s_ipaddr.s6_addr[5] = p[25];
+	rlnd->s_ipaddr.s6_addr[6] = p[26];
+	rlnd->s_ipaddr.s6_addr[7] = p[27];
+	rlnd->s_ipaddr.s6_addr[8] = p[28];
+	rlnd->s_ipaddr.s6_addr[9] = p[29];
+	rlnd->s_ipaddr.s6_addr[10] = p[30];
+	rlnd->s_ipaddr.s6_addr[11] = p[31];
+	rlnd->s_ipaddr.s6_addr[12] = p[32];
+	rlnd->s_ipaddr.s6_addr[13] = p[33];
+	rlnd->s_ipaddr.s6_addr[14] = p[34];
+	rlnd->s_ipaddr.s6_addr[15] = p[35];
+/*
 	rlnd->s_ipaddr = (u_int32_t)	(       ((unsigned long) p[8] << 24) |
 					        ((unsigned long) p[9] << 16) |
 					        ((unsigned long) p[10] << 8 ) |
 					        ((unsigned long) p[11]      ) );
-	rlnd->s_ssrc = p[12];
-	rlnd->s_pid = (u_int16_t)(            ((unsigned long) p[14] << 8 ) |
-					        ((unsigned long) p[15]     ) );
-	rlnd->url_id = (u_int32_t)	(       ((unsigned long) p[13] << 16) |
-					        ((unsigned long) p[16] << 8 ) |
-					        ((unsigned long) p[17]      ) );
-	rlnd->num_eo = (u_int16_t)(            ((unsigned long) p[18] << 8 ) |
-					        ((unsigned long) p[19]     ) );
-
-	rlnd->fpno = (u_int16_t)(            ((unsigned long) p[20] << 8 ) |
-					        ((unsigned long) p[21]     ) );
-
-	rlnd->blp = (u_int16_t)(            ((unsigned long) p[22] << 8 ) |
-					        ((unsigned long) p[23]     ) );
-	p = &buf[24];
+*/
+	p = &buf[36];
 	return p-buf;
 }
 
@@ -908,7 +1157,7 @@ void McSendRtcpBye(void)
 /* return the number of byte read or 0 if probleme */
 
 int McCheckRtcpBye( unsigned char *buf, int len_buf,
-	McRtcpByeDataStruct *rbye, u_int32_t ipfrom)
+	McRtcpByeDataStruct *rbye, IPAddr ipfrom)
 {
 	unsigned int i;
 	unsigned char * p = buf;
@@ -926,7 +1175,7 @@ int McCheckRtcpBye( unsigned char *buf, int len_buf,
 		fprintf(stderr,"Error receiving rbye: proto error\n");
 		return 0;
 	}
-	rbye->ipaddr = (u_int32_t) ipfrom;
+	rbye->ipaddr = ipfrom;
 	rbye->ssrc = p[4];
 	rbye->pid =  (u_int16_t)(            ((unsigned long) p[6] << 8 ) |
 					        ((unsigned long) p[7]      ) );
@@ -971,7 +1220,7 @@ void McSendRtcpSdesCname(void)
 /* return the number of byte read or 0 if probleme */
 
 int McCheckRtcpSdesCname( unsigned char *buf, int len_buf,
-	McRtcpSdesCnameDataStruct *rscd, u_int32_t ipfrom)
+	McRtcpSdesCnameDataStruct *rscd, IPAddr ipfrom)
 {
 	unsigned int i;
 	unsigned char * p = buf;
@@ -989,7 +1238,7 @@ int McCheckRtcpSdesCname( unsigned char *buf, int len_buf,
 		fprintf(stderr,"Error receiving rscd: proto error\n");
 		return 0;
 	}
-	rscd->ipaddr = (u_int32_t) ipfrom;
+	rscd->ipaddr = ipfrom;
 	rscd->ssrc = p[4];
 	rscd->pid =  (u_int16_t)(            ((unsigned long) p[6] << 8 ) |
 					        ((unsigned long) p[7]      ) );
@@ -1021,7 +1270,7 @@ int McCheckRtcpSdesCname( unsigned char *buf, int len_buf,
 /*
  * return number of byte read and the static recv_buf 
  */
-int McGetRtcpRecvBuf(unsigned char ** buf, u_int32_t * ipfrom)
+int McGetRtcpRecvBuf(unsigned char ** buf, IPAddr * ipfrom)
 {
 	int cnt;
   
@@ -1032,6 +1281,12 @@ int McGetRtcpRecvBuf(unsigned char ** buf, u_int32_t * ipfrom)
 		/* exit(1); */
 	}
 	*buf = recv_buf;
+#ifdef IPV6
+	*ipfrom = rtcp_addr_r.sin6_addr;
+#else
 	*ipfrom = rtcp_addr_r.sin_addr.s_addr;
+#endif
 	return cnt;
 }
+
+#endif /* MULTICAST */

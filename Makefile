@@ -6,7 +6,7 @@
 ## Scott Powers
 ##
 
-MCVER=3.1.0
+MCVER=3.2.0
 
 all: dev_$(DEV_ARCH)
 
@@ -19,6 +19,7 @@ dev_::
 	@echo "  osf1 -- DEC Alpha AXP running OSF/1"
 	@echo "  bsdi -- x86 running BSDI BSD/OS 2.1"
 	@echo "  dec -- DEC 2100 running Ultrix 4.3"
+	@echo "  ultrix -- DEC 2100 running Ultrix 4.4"
 	@echo "  hp -- HP 9000/735 running HP-UX A.09.01"
 	@echo "  ibm -- IBM RS6000 running AIX 4.4 BSD"
 	@echo "  indy -- SGI Indy running IRIX 5.3"
@@ -29,7 +30,8 @@ dev_::
 	@echo "  sgi -- SGI Iris running IRIS 4.0.2"
 	@echo "  solaris-23 -- SPARCstation 20 running Solaris 2.3"
 	@echo "  solaris-24 -- SPARCstation 20 running Solaris 2.4"
-	@echo "  solaris-25 -- SPARCstation 20 running Solaris 2.4"
+	@echo "  solaris-25 -- SPARCstation 20 running Solaris 2.5"
+	@echo "  solaris-25-ipv6 -- SPARCstation 20 running Solaris 2.5 IPV6 kernel"
 	@echo "  solaris-24-x86 -- x86 running Solaris 2.4 for x86"
 	@echo "  sun -- SPARCserver 690MP running SunOS 4.1.3"
 	@echo "  sun-lresolv -- SPARCserver 690MP running SunOS 4.1.3"
@@ -54,6 +56,10 @@ bsdi:
 dev_dec: dec
 dec:
 	$(MAKE) -f makefiles/Makefile.dec
+
+dev_ultrix: ultrix
+ultrix:
+	$(MAKE) -f makefiles/Makefile.ultrix
 
 dev_hp: hp
 hp:
@@ -98,6 +104,10 @@ solaris-24:
 dev_solaris-25: solaris-25
 solaris-25:
 	$(MAKE) -f makefiles/Makefile.solaris-25
+
+dev_solaris-25-ipv6: solaris-25-ipv6
+solaris-25-ipv6:
+	$(MAKE) -f makefiles/Makefile.solaris-25-ipv6
 
 dev_solaris-24-x86: solaris-24-x86
 solaris-24-x86:

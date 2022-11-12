@@ -81,12 +81,33 @@ extern int sys_nerr;
 
 PUBLIC WWW_CONST char * HTInetString ARGS1(SockA*,sin)
 {
+#ifdef IPV6
+    static char string[512];
+    sprintf(string, "%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x",
+	    (int)*((unsigned char *)(&sin->sin6_addr)+0),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+1),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+2),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+3),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+4),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+5),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+6),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+7),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+8),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+9),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+10),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+11),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+12),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+13),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+14),
+	    (int)*((unsigned char *)(&sin->sin6_addr)+15));
+#else
     static char string[16];
     sprintf(string, "%d.%d.%d.%d",
 	    (int)*((unsigned char *)(&sin->sin_addr)+0),
 	    (int)*((unsigned char *)(&sin->sin_addr)+1),
 	    (int)*((unsigned char *)(&sin->sin_addr)+2),
 	    (int)*((unsigned char *)(&sin->sin_addr)+3));
+#endif
     return string;
 }
 
@@ -121,14 +142,47 @@ PUBLIC int HTParseInet ARGS2(SockA *,sin, WWW_CONST char *,str)
   if (port=strchr(host, ':')) {
       *port++ = 0;		/* Chop off port */
       if (port[0]>='0' && port[0]<='9') {
+#ifdef IPV6
+          sin->sin6_port = htons(atol(port));
+#else
           sin->sin_port = htons(atol(port));
+#endif
 	}
     }
+#ifdef IPV6
+/* manage only non numeric adresses */
+/* RFC 2133 */
+/*          phost = gethostbyname2 (host,AF_INET6);
+ * not yet on solaris */
+
+	if (cached_host && (strcmp (cached_host, host) == 0)) {
+		memcpy(&sin->sin6_addr,
+			cached_phost_h_addr, cached_phost_h_length);
+		return 0; /* OK */
+	}
+	phost = hostname2addr(host, AF_INET6);
+	if (!phost) {
+		fprintf(stderr,"IPV6 gasp no hosts \n");
+		return -1;
+	}
+	if(phost->h_length != 16 ){
+		fprintf(stderr,"IPV6 gasp h_lenght = %d\n", phost->h_length);
+		return -1; /* Fail? */
+	}
+	if (cached_host) free (cached_host);
+	if (cached_phost_h_addr) free (cached_phost_h_addr);
+
+	/* Cache new stuff. */
+	cached_host = strdup (host);
+	cached_phost_h_addr = (char*)calloc (phost->h_length + 1, 1);
+	memcpy (cached_phost_h_addr, phost->h_addr, phost->h_length);
+	cached_phost_h_length = phost->h_length;
+	memcpy(&sin->sin6_addr, phost->h_addr, phost->h_length);
+#else
   
   /* Parse host number if present. */  
   numeric_addr = 1;
-  for (tmp = host; *tmp; tmp++) {
-      /* If there's a non-numeric... */
+  for (tmp = host; *tmp; tmp++) { /* If there's a non-numeric... */
       if ((*tmp < '0' || *tmp > '9') && *tmp != '.') {
           numeric_addr = 0;
           goto found_non_numeric_or_done;
@@ -140,15 +194,8 @@ PUBLIC int HTParseInet ARGS2(SockA *,sin, WWW_CONST char *,str)
       sin->sin_addr.s_addr = inet_addr(host); /* See arpa/inet.h */
     } else {		    /* Alphanumeric node name: */
       if (cached_host && (strcmp (cached_host, host) == 0)) {
-#if 0
-          fprintf (stderr, "=-= Matched '%s' and '%s', using cached_phost.\n",
-                   cached_host, host);
-#endif
           memcpy(&sin->sin_addr, cached_phost_h_addr, cached_phost_h_length);
         } else {
-#if 0
-          fprintf (stderr, "=+= Fetching on '%s'\n", host);
-#endif
           phost = gethostbyname (host);
           if (!phost) {
 #ifndef DISABLE_TRACE
@@ -186,7 +233,8 @@ if (www2Trace) fprintf(stderr,
             (int)*((unsigned char *)(&sin->sin_addr)+2),
             (int)*((unsigned char *)(&sin->sin_addr)+3));
 #endif
-  
+
+#endif /* IPV6 */
   return 0;	/* OK */
 }
 
@@ -243,13 +291,25 @@ PUBLIC char * HTHostName(void)
 
 PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
 {
+#ifdef IPV6
+/* 4.3 BSD ipv6 based */
+  struct sockaddr_in6 soc_address;
+  struct sockaddr_in6 *sin6 = &soc_address;
+#else
   struct sockaddr_in soc_address;
   struct sockaddr_in *sin = &soc_address;
+#endif
   int status;
 
   /* Set up defaults: */
+#ifdef IPV6
+  sin6->sin6_family = AF_INET6;
+  sin6->sin6_flowinfo = 0;
+  sin6->sin6_port = htons(default_port);
+#else
   sin->sin_family = AF_INET;
   sin->sin_port = htons(default_port);
+#endif
   
   /* Get node name and optional port number: */
   {
@@ -259,7 +319,11 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
     sprintf (line, "Looking up %s.", p1);
     HTProgress (line);
 
+#ifdef IPV6
+    status = HTParseInet(sin6, p1);
+#else
     status = HTParseInet(sin, p1);
+#endif
     if (status) {
         sprintf (line, "Unable to locate remote host %s.", p1);
         HTProgress(line);
@@ -273,7 +337,11 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
   }
 
   /* Now, let's get a socket set up from the server for the data: */      
+#ifdef IPV6
+  *s = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+#else
   *s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#endif
 
   /*
    * Make the socket non-blocking, so the connect can be canceled.

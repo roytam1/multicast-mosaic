@@ -1,5 +1,6 @@
 /* Please read copyright.ncsa. Don't remove next line */
 #include "copyright.ncsa"
+#include "../libnut/mipcf.h"
 #include "libhtmlw/HTML.h"
 #include "libhtmlw/HTMLP.h"
 #include "mosaic.h"

@@ -36,27 +36,6 @@
 #ifndef rtp_config_h
 #define rtp_config_h
 
-#if defined(sgi) || defined(__bsdi__) || defined(__FreeBSD__)
-#include <sys/types.h>
-#elif defined(linux)
-#include <sys/bitypes.h>
-#else
-#ifdef ultrix
-#include <sys/types.h>
-#endif
-/*XXX*/
-#ifdef sco
-typedef char int8_t;
-#else
-typedef signed char int8_t;
-#endif
-typedef unsigned char u_int8_t;
-typedef short int16_t;
-typedef unsigned short u_int16_t;
-typedef unsigned int u_int32_t;
-typedef int int32_t;
-#endif
-
 #if defined(sun)||defined(_AIX)
 #if defined(__cplusplus)
 extern "C" {

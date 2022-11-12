@@ -1,22 +1,19 @@
 /*
  * mc_defs.h
  * Author: Gilles Dauphin
- * Version 1.0 [May96]
+ * Version 3.1.1 [May97]
  *
  * Copyright (C) - 1996 G.Dauphin, P.Dax (ENST)
  *
  * THIS PROGRAM IS DISTRIBUTED WITHOUT ANY WARRANTY
- * COMMERCIAL USE IS FORBIDDEN WITHOUT EXPLICIT AUTHORIZATION
  * 
- * Bug report :
- * 
- * dax@inf.enst.fr
- * dauphin@sig.enst.fr
+ * Bug report : dax@inf.enst.fr dauphin@sig.enst.fr
  */
 
 #ifndef MC_DEFS_H
 #define MC_DEFS_H
 
+#include "../libnut/mipcf.h"
 
 #define MC_GOTODATA_TIME_OUT (5000U)	/*(5 * 1000) milli-sec. For sending*/
 #define MC_PURGE_TIME_OUT (60000U)	/*(60 * 1000) milli-sec. */
@@ -43,10 +40,10 @@
 
 typedef struct _McRtcpLrmpNackAllDataStruct {
 	unsigned short rh_flags; /* (0x8500 + RTCP_PT_LRMP) */
-	unsigned int ipaddr;	/* user's ip addr */
+	IPAddr  ipaddr;	/* user's ip addr */
 	unsigned short pid;	/* user's pid */
 	unsigned short unused;  /* unused */
-	unsigned int s_ipaddr;  /* the sender source of url_id */
+	IPAddr6 s_ipaddr;  /* the sender source of url_id IPV6 */
 	unsigned short s_pid;
 	unsigned int s_ssrc;	/* sender SSRC */
 	unsigned int url_id;	/* url_id to recover */
@@ -55,10 +52,10 @@ typedef struct _McRtcpLrmpNackAllDataStruct {
 
 typedef struct _McRtcpLrmpNackDataStruct {
 	unsigned short rh_flags; /* (0x8300 + RTCP_PT_LRMP) */
-	unsigned int ipaddr;	/* user's ip addr */
+	IPAddr ipaddr;	/* user's ip addr */
 	unsigned short pid;	/* user's pid */
 	unsigned short unused;  /* unused */
-	unsigned int s_ipaddr;  /* the sender source of url_id */
+	IPAddr6 s_ipaddr;  /* the sender source of url_id */
 	unsigned short s_pid;
 	unsigned int s_ssrc;	/* sender SSRC */
 	unsigned int url_id;	/* url_id to recover */
@@ -69,14 +66,14 @@ typedef struct _McRtcpLrmpNackDataStruct {
 
 typedef struct _McRtcpByeDataStruct {
 	unsigned short rh_flags; /* (0x8000 + RTCP_PT_BYE) */
-	unsigned int ipaddr;	/* user's ip addr */
+	IPAddr ipaddr;	/* user's ip addr */
 	unsigned int ssrc;	/* SSRC */
 	unsigned short pid;	/* user's pid */
 } McRtcpByeDataStruct;
 
 typedef struct _McRtcpSdesCnameDataStruct {
 	unsigned short rh_flags; /* (0x8000 + RTCP_PT_SDES) */
-	unsigned int ipaddr;	/* user's ip addr */
+	IPAddr ipaddr;	/* user's ip addr */
 	unsigned int ssrc;	/* SSRC */
 	unsigned short pid;	/* user's pid */
 	unsigned char code;	/* RTCP_SDES_CNAME */
@@ -89,7 +86,7 @@ typedef struct _mcs_gotodata {
 	unsigned int gmt_init_time; /* Player run games at this time */
 	unsigned int gmt_send_time; /* Player send this message at this time */
 	unsigned int send_cnt;	/* counter */
-	unsigned int ip_addr;	/* user's ip addr */
+	IPAddr ip_addr;	/* user's ip addr */
 	unsigned short pid;	/* user's pid */
 	unsigned int url_id;	/* the id of the url sent */
 	unsigned char len_alias;	/* length of alias name */
@@ -102,7 +99,7 @@ typedef struct _mcs_gotodata {
 typedef struct _mcs_alldata {
 	unsigned short rh_flags;	/* 0x8030 */
 	unsigned char code;	/* MCR_ALLDATA */
-	unsigned int ipaddr;	/* user's ip addr */
+	IPAddr   ipaddr;	/* user's ip addr */
 	unsigned int ssrc;	/* 8bit SSRC */
 	unsigned short pid;	/* user's pid */
 	unsigned int url_id;    /* the id of the url sent */
@@ -119,7 +116,7 @@ typedef struct _mcs_alldata {
 typedef struct _McRtpGotoIdDataStruct {
 	unsigned short rh_flags;	/* 0x8030 */
 	unsigned char code;	/* MCR_HTML_GOTO_ID */
-	unsigned int ipaddr;	/* user's ip addr */
+	IPAddr   ipaddr;	/* user's ip addr */
 	unsigned int ssrc;	/* 8bit SSRC */
 	unsigned short pid;	/* user's pid */
 	unsigned int url_id;    /* the id of the url sent */
@@ -130,7 +127,7 @@ typedef struct _McRtpGotoIdDataStruct {
 typedef struct _McRtpCursorPosDataStruct {
 	unsigned short rh_flags;	/* 0x8030 */
 	unsigned char code;	/* MCR_CURSOR_POS */
-	unsigned int ipaddr;	/* user's ip addr */
+	IPAddr  ipaddr;	/* user's ip addr */
 	unsigned int ssrc;	/* 8bit SSRC */
 	unsigned short pid;	/* user's pid */
 	unsigned int url_id;    /* the id of the url sent */
@@ -196,7 +193,7 @@ typedef struct _McRcvDataStruct {
 } McRcvDataStruct;
 
 typedef struct _mc_user {
-	unsigned int ip_addr;	/* ip address of user */
+	IPAddr ip_addr;	/* ip address of user */
 	pid_t pid ;             /* user's pid  */  
 	char url[MC_MAX_URL_SIZE+1]; /* url send by this user */
 	unsigned int url_id;    /* the id of the url sent */

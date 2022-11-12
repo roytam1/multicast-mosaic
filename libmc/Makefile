@@ -15,7 +15,7 @@ $(LIB): $(OBJ)
 	ar rv $(LIB) $(OBJ)
 	$(RANLIB) $(LIB)
 
-mc_sockio.o: mc_sockio.c mc_sockio.h mc_defs.h mc_action.h
+mc_sockio.o: mc_sockio.c mc_sockio.h mc_defs.h mc_action.h ../libnut/mipcf.h
 	$(CC) $(CFLAGS) -c mc_sockio.c -o mc_sockio.o
 
 mc_misc.o: mc_misc.c mc_misc.h mc_defs.h mc_action.h

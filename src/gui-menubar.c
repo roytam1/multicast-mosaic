@@ -1754,11 +1754,13 @@ void mo_init_menubar()
 	DEFINE_MENUBAR("Thread Style" ,"T",NULL,0,newsfmt_menuspec)
 	NULL_MENUBAR()
 
+#ifdef MULTICAST
 	/* Muticast Menu */
 	ALLOC_MENUBAR(multicast_menuspec,3)
 	DEFINE_MENUBAR("#Send Enable" ,"S",mo_multicast_send_tog,NULL,NULL)
 	DEFINE_MENUBAR("#Show Particpants" ,"P",mo_multicast_show_participant,NULL,NULL)
 	NULL_MENUBAR()
+#endif
 
 	/* The Menubar */
 	ALLOC_MENUBAR(menuspec,9)
@@ -1791,6 +1793,7 @@ XmxMenuRecord *mo_make_document_view_menubar (Widget form, mo_window * win)
         Xmx_n = 0;
         Xmx_w = _menubar;
 
+#ifdef MULTICAST
 	if((win->mc_type != MC_MO_TYPE_MAIN) || (mc_multicast_enable == False)){
 		XmxRSetSensitive (toBeReturned, 
 			(XtPointer) mo_multicast_send_tog,
@@ -1799,5 +1802,6 @@ XmxMenuRecord *mo_make_document_view_menubar (Widget form, mo_window * win)
 			(XtPointer) mo_multicast_show_participant,
                 	XmxNotSensitive);
 	}
+#endif
 	return toBeReturned;
 }

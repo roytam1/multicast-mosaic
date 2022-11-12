@@ -9,6 +9,8 @@
  * Bug report :  dauphin@sig.enst.fr dax@inf.enst.fr
  */
 
+#ifdef MULTICAST
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -23,6 +25,7 @@
 #include <signal.h>
 #include <Xm/XmAll.h>
 
+#include "../libnut/mipcf.h"
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
 #include "../src/mo-www.h"
@@ -45,7 +48,7 @@ extern Widget toplevel;
 
 typedef struct _packet_struct {
 	unsigned char code;
-	unsigned int ipaddr;
+	IPAddr ipaddr;
 	unsigned short pid;
 	unsigned int url_id;
 	unsigned int gmt_send_time;
@@ -382,7 +385,7 @@ void McReadSocketCb(XtPointer clid, int * fd, XtInputId * input_id)
 	McRtpGotoIdDataStruct html_goto_id_data;
 	McRtpCursorPosDataStruct cursor_pos_data;
 	unsigned int rtp_code;
-	u_int32_t ipfrom;
+	IPAddr ipfrom;
 
         len = McGetRecvBuf(&buf, &ipfrom);
         if (len <= 0 ) 
@@ -516,7 +519,6 @@ void McSendHearBeatTimeOutCb(XtPointer clid, XtIntervalId * id)
 /* par un packet NACK_ALL */
         McSendPacket(
               code,
-              Packets[np].ipaddr,
               Packets[np].pid,
               Packets[np].url_id,
               Packets[np].gmt_send_time,
@@ -540,7 +542,6 @@ void McSendAPacketCB(XtPointer clid, XtIntervalId * id)
 	if(nu < NPacketToSend){
 		McSendPacket(
 			Packets[nu].code,
-			Packets[nu].ipaddr,
 			Packets[nu].pid,
 			Packets[nu].url_id,
 			Packets[nu].gmt_send_time,
@@ -573,7 +574,8 @@ void McSendAllDataInBandWidth(McSendDataStruct * d)
 	unsigned int nfpt,npt,lpst, seo, nombre_full_packet, nombre_packet,
 			last_packet_size;
 	unsigned char code;
-	unsigned int ipaddr,url_id, nombre_eo, num_eo, num_packet, packet_size;
+	IPAddr 	 ipaddr;
+	unsigned int url_id, nombre_eo, num_eo, num_packet, packet_size;
 	unsigned long gmt_send_time;
 	unsigned short pid;
 	unsigned int np;
@@ -843,7 +845,7 @@ void McReadRtcpSocketCb(XtPointer clid, int * fd, XtInputId * input_id)
 	McRtcpLrmpNackDataStruct rtcp_lrmp_nack_data;
 	McRtcpLrmpNackAllDataStruct rtcp_lrmp_nack_all_data;
 	McRtcpByeDataStruct rbye;
-	u_int32_t ipfrom;
+	IPAddr ipfrom;
 
         len = McGetRtcpRecvBuf(&buf,&ipfrom);
         if (len <= 0 ) 
@@ -935,7 +937,6 @@ void McSendFastAllEoData(int r_num_eo)
 	for(i=0; i<n; i++){
 		McSendPacket(
                         Packets[deb].code,
-              		Packets[deb].ipaddr,
               		Packets[deb].pid,
               		Packets[deb].url_id,
               		Packets[deb].gmt_send_time,
@@ -967,7 +968,6 @@ void McSendFastPacketEoData(int r_num_eo,int r_fpno)
 
 	McSendPacket(
                 Packets[n].code,
-       		Packets[n].ipaddr,
        		Packets[n].pid,
        		Packets[n].url_id,
        		Packets[n].gmt_send_time,
@@ -979,3 +979,5 @@ void McSendFastPacketEoData(int r_num_eo,int r_fpno)
        		Packets[n].data,
        		Packets[n].packet_size); 
 }
+
+#endif /* MULTICAST */

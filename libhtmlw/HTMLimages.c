@@ -807,7 +807,9 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 	}
 
 	/* Picture stuff if we have an image resolver, use it. */
+#ifdef MULTICAST
 	picd->wtype = hw->html.mc_wtype;
+#endif
 	picd->internal_numeo = pcc->internal_mc_eo;
 	picd->cw_only = pcc->cw_only;
 	XtCallCallbackList ((Widget)hw, hw->html.image_callback,

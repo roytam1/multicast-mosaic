@@ -9,9 +9,10 @@
 
 echo $*
 
-CLASSPATH=/sig/tomcat/dauphin/biss/lib:.:/usr/local/share/kaffe/classes.zip
+
+CLASSPATH=${HOME}/biss/lib:.:/usr/local/share/kaffe/classes.zip
 KAFFEHOME=/usr/local/share/kaffe
-LD_LIBRARY_PATH=/sig/tomcat/dauphin/mbone-dev/biss-0.87/src/biss/awt/kernel/X:/usr/local/lib
+LD_LIBRARY_PATH=${HOME}/biss/src/biss/awt/kernel/X:/usr/local/lib
 
 if [ ! -d "$HOME/.mMosaic" ] ; then
     echo "Creating $HOME/.mMosaic directory"

@@ -41,7 +41,7 @@ typedef enum
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.1.0"
+#define MO_VERSION_STRING "3.2.0"
 #define MO_HELP_ON_VERSION_DOCUMENT \
   mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@sig.enst.fr"
@@ -470,7 +470,7 @@ typedef struct {
 
 #ifdef MULTICAST
 #include "../libmc/mc_defs.h"
-extern unsigned int 	mc_addr_ip_group;
+extern IPAddr 	mc_addr_ip_group;
 extern unsigned short 	mc_port;
 extern unsigned short 	mc_rtcp_port;
 #endif

@@ -6,22 +6,26 @@
 # If you need to make serious changes to get Mosaic to compile on your
 # platform, send context diffs to mosaic-x@ncsa.uiuc.edu.
 
-# -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
+#From jkraft@solti.mcis.washington.edu Thu May  8 20:55:19 1997
+#From: john kraft <jkraft@solti.mcis.washington.edu>
+#Subject: mMosaic on vax ultrix, success.  and some notes.
+#Reply-To: pepe@u.washington.edu
 
-#prereleaseflags = -O
-#prereleaseflags = -xsb -v -g
-#prereleaseflags = -DMDEBUG -v -g
-prereleaseflags =  -v -g
-#prereleaseflags = +w -g
+#Okay, I've got it running on my VAXStation3100 with Ultrix4.4 and
+#motif 1.2
+
+#the compile wasn't too bad.  I started with Makefile.dec, and got
+#it up to date for the new stuff (libaprog and libmc entries mostly)
+
+# -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
 RANLIB = /bin/true
 #### On non-SGI's, this should be ranlib.
-# RANLIB = ranlib
+RANLIB = ranlib
 
-#CC = CC
-CC = cc
+#CC = cc
 #### On Sun's, this should be gcc (ANSI required).
-#CC = gcc
+CC = gcc
 
 #### Linker Flags -- Primarily for linking static on linux-elf.
 #ldflags = -static
@@ -29,7 +33,7 @@ ldflags =
 
 #### For a few files in the source, some compilers may need to be kicked
 #### in K&R mode.  E.g., on SGI's, -cckr does this.
-# knrflag = -cckr
+knrflag = -cckr
 #### On most systems, no flag is needed.
 knrflag =
 
@@ -40,29 +44,30 @@ knrflag =
 #### For NeXT, do -DNEXT
 #### For HP/UX, do -Aa -D_HPUX_SOURCE
 #### For Dell SVR4, do -DSVR4
-#### For Solaris, do -DSVR4 -DSOLARIS
+#### For Solaris, do -DSVR4 
 #### For Esix 4.0.4 and Solaris x86 2.1, do -DSVR4
 #### For Convex whatever, do -DCONVEX
 #### For SCO ODT 3.0, do -DSCO -DSVR4 -DMOTIF1_2
 #### For Motorola SVR4, do -DSVR4 -DMOTOROLA -DMOTIF1_2
-sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
+#sysconfigflags = -DBROKEN_MOTIF
+sysconfigflags = -DMOTIF1_2
 
 #### System libraries.
-# syslibs = -lPW -lsun -lmalloc
+syslibs = -lPW -lsun -lmalloc
 #### For AIX 3.2
 # syslibs = -lPW -lbsd
 #### For most other Motif platforms:
 # syslibs = -lPW
 #### For Sun's and Ultrix and HP and BSD/386:
-# syslibs =
+syslibs =
 #### For Sun's with no DNS:
 # syslibs = -lresolv
 #### For SCO ODT:
 # syslibs = -lPW -lsocket -lmalloc
 #### For Dell SVR4:
 # syslibs = -lnsl -lsocket -lc -lucb
-#### For Solaris (2.x)  --nsl does not link correctly staticly.
-syslibs = -lnsl -lsocket -lgen
+#### For Solaris (?)
+# syslibs = -lnsl -lsocket -lgen
 #### For Motorola SVR4:
 # syslibs = -lnsl -lsocket -lgen
 
@@ -78,12 +83,10 @@ syslibs = -lnsl -lsocket -lgen
 # xinc = -I/usr/include/X11
 #### BSD/386
 # xinc = -I/usr/X11/include
-#### Solaris 2.x (Patched X11R5 and Motif libs)
-xinc = -I/usr/openwin/include -I/usr/dt/include
-#xinc = -I/usr/openwin/include -I$(HOME)/mbone-dev/mMosaic/lesstif-0.77/include
+#xinc = -I/usr/local/include
 
 #### X library locations.
-# xlibs = -lXm_s -lXmu -lXt_s -lX11_s
+xlibs = -lXm_s -lXmu -lXt_s -lX11_s
 #### For Sun's (at least running stock X/Motif as installed on our machines):
 # xlibs = /usr/lib/libXm.a /usr/lib/libXmu.a /usr/lib/libXt.a /usr/lib/libXext.a /usr/lib/libX11.a -lm
 #### For HP-UX 8.00:
@@ -94,48 +97,63 @@ xinc = -I/usr/openwin/include -I/usr/dt/include
 # xlibs = -L/usr/lib/X11 -lXm -lXmu -lXt -lX11
 #### For Dell SVR4:
 # xlibs = -L/usr/X5/lib -lXm -lXmu -lXt -lXext -lX11
-#### For Solaris (2.x) (Use static to go from machine to machine)
-xlibs = -R/usr/openwin/lib -L/usr/openwin/lib 
-xlibs += -L/usr/dt/lib -R/usr/dt/lib -lXm
-#xlibs += -L$(HOME)/mbone-dev/mMosaic/lesstif-0.77/libXm -lXm
-xlibs += -lXmu -lXt
-xlibs += -lXext -lX11
-xlibs += -lm
+#### For Solaris (?)
+# xlibs = -lXm -lXmu -lXt -lXext -lX11 -lm
 #### For SCO ODT 3.0 (I'm told that -lXtXm_s is *not* a typo :-):
 # xlibs = -lXtXm_s -lXmu -lX11_s
 #### For nearly everyone else:
-# xlibs = -lXm -lXmu -lXt -lX11
+xlibs = -lXm -lXmu -lXt -lX11
+#xlibs = -L/usr/local/lib -lXm -lXmu -lXt -lX11
 #### For BSD/386:
 # xlibs = -L/usr/X11/lib -lXm -lXmu -lXt -lX11
 #### For Motorola SVR4:
 # xlibs = -lXm -lXmu -lXt -lXext -lX11 -lm
 
+
+#### DTM AND HDF SUPPORT; READ CAREFULLY
+
+#### If you want to compile with DTM and HDF support, you should leave
+#### the following lines uncommented and make sure you have a copy of
+#### HDF 3.3 (r1 or later) installed and ready.  You can find HDF on
+#### ftp.ncsa.uiuc.edu in /HDF.
+
+#### If you do not want to compile with DTM and HDF support, comment
+#### the following lines out.  (If you are compiling from source for
+#### the first time, you should probably not bother with HDF and DTM
+#### support.)
+
+#### dtmmachtype needs to be set to one of the following:
+####   sun, sgi, dec, ibm, next, cray, convex
+#### If your platform is not one of the above, then either do not compile
+#### with HDF/DTM support or try hacking libdtm/makefile.
+
+#dtmmachtype = dec
+#dtmdirs = libdtm libnet
+#dtmlibs = ../libnet/libnet.a ../libdtm/libdtm.a
+#dtmflags = -DHAVE_DTM -I.. -I../libnet
+#hdfdir = /hdf2/install/dec_mipsel
+#hdflibs = $(hdfdir)/lib/libmfhdf.a $(hdfdir)/lib/libdf.a
+#hdfflags = -DHAVE_HDF -I$(hdfdir)/include
+
 #### PNG SUPPORT
 #### For inline PNG support, the following should be defined:
 #### The libraries currently used are PNGLIB 0.81 and ZLIB 0.95
 
-#pngdir = /xdev/mosaic/libpng/solaris-24
-#pnglibdir = $(pngdir)/lib
-#pngincludedir = $(pngdir)/include
-#pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/libz.a -lm
-#pngflags =  -I$(pngincludedir) -DHAVE_PNG
-pngdir = $(HOME)/mbone-dev/mMosaic/libpng-0.89c
-pnglibdir = $(pngdir)
-pngincludedir = $(pngdir)
-pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/../zlib-1.0.4/libz.a -lm
-pngflags =  -I$(pngincludedir) -I$(pngincludedir)/../zlib-1.0.4 -DHAVE_PNG
+pngdir = /xdev/mosaic/libpng/dec
+pngdir = /usr/local
+pnglibdir = $(pngdir)/lib
+pngincludedir = $(pngdir)/include
+pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/libz.a -lm
+pngflags =  -I$(pngincludedir) -DHAVE_PNG
 
 #### JPEG SUPPORT
 #### For inline JPEG support, the following should be defined:
-#### The library used is Independent JPEG Group (IJG's) 5.0a.  
+#### The library used is Independent JPEG Group (IJG's) 5.0a.
 
-#jpegdir = /xdev/mosaic/libjpeg/solaris-24
-#jpeglibs = $(jpegdir)/lib/libjpeg.a
-#jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
-jpegdir = $(HOME)/mbone-dev/mMosaic/jpeg-6a
-jpeglibs = $(jpegdir)/libjpeg.a
-jpegflags = -I$(jpegdir) -DHAVE_JPEG
-
+jpegdir = /xdev/mosaic/libjpeg/dec
+jpegdir = /usr/local
+jpeglibs = $(jpegdir)/lib/libjpeg.a
+jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
 
 
 #### KERBEROS SUPPORT
@@ -147,12 +165,12 @@ jpegflags = -I$(jpegdir) -DHAVE_JPEG
 #### define the KRB-ENCRYPT flag.
 
 ##krb4dir   = /usr/athena
-#krb4dir   = /xdev/mosaic/libkrb4/solaris-24
+#krb4dir   = /xdev/mosaic/libkrb4/dec
 #krb4libs  = $(krb4dir)/lib/libkrb.a $(krb4dir)/lib/libdes.a
 #krb4flags = -DKRB4 -I$(krb4dir)/include
 
 ##krb5dir   = /krb5
-#krb5dir   = /xdev/mosaic/libkrb5/solaris-24
+#krb5dir   = /xdev/mosaic/libkrb5/dec
 #krb5libs  = $(krb5dir)/lib/libkrb5.a $(krb5dir)/lib/libcrypto.a $(krb5dir)/util/et/libcom_err.a
 #krb5flags = -DKRB5 -I$(krb5dir)/include -I$(krb5dir)/include/krb5
 
@@ -176,11 +194,10 @@ krblibs   = $(krb4libs) $(krb5libs)
 
 #### -lm is required for freeWAIS 0.5, as ceil() is used.
 
-#waisroot = /xdev/mosaic/freeWAIS/solaris24
+#waisroot = /xdev/mosaic/freeWAIS/dec
 #waisflags = -DDIRECT_WAIS -I$(waisroot)/include
 #waislibdir = $(waisroot)/bin
 #waislibs = $(waislibdir)/inv.a $(waislibdir)/wais.a $(waislibdir)/libftw.a -lm
-
 
 
 #### Customization flags:
@@ -191,29 +208,24 @@ krblibs   = $(krb4libs) $(krb5libs)
 #### . If you want to define the default Mosaic documentation directory
 ####   (should be a URL), set -DDOCS_DIRECTORY_DEFAULT=\\\"url\\\"
 #### . Other things you can define are spelled out in src/mosaic.h.
-####
-#### . If you want multicast set -DMULTICAST
-#### . If you run on IPV6 native kernel set -DIPV6
-
 customflags = -DMULTICAST
-#customflags = 
 
 
 # ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------
 
 
-CFLAGS = $(sysconfigflags) $(prereleaseflags)
+CFLAGS = -O $(sysconfigflags) $(prereleaseflags)
 
 # Don't worry about these -- for development purposes only.
 PURIFY = purify
 QUANTIFY = quantify
 
-default: $(dtmdirs) libhtmlw libwww2 libXmx libnut libmc libaprog src
-	@echo \*\*\* Welcome to mMosaic.
-purifyd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-purifyd
-	@echo \*\*\* Welcome to Purify'd mMosaic.
+default: $(dtmdirs) libwww2 libXmx libhtmlw libnut libmc libaprog src
+	@echo \*\*\* Welcome to NCSA Mosaic.
+purifyd: $(dtmdirs) libwww2 libXmx libhtmlw libnnut src-purifyd
+	@echo \*\*\* Welcome to Purify'd NCSA Mosaic.
 quantifyd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-quantifyd
-	@echo \*\*\* Welcome to Quantify'd mMosaic.
+	@echo \*\*\* Welcome to Quantify'd NCSA Mosaic.
 
 libXmx::
 	@echo --- Building libXmx
@@ -221,29 +233,35 @@ libXmx::
 
 libhtmlw::
 	@echo --- Building libhtmlw
-	cd libhtmlw; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag) $(xinc) $(customflags) -DMOTIF -DXMOSAIC"
+	cd libhtmlw; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(customflags) $(knrflag) $(xinc) -DMOTIF -DXMOSAIC"
+
+libmc::
+	@echo --- Building libmc
+	cd libmc; make -k CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc) $(customflags)"
+
+libaprog::
+	@echo --- Building libaprog
+	cd libaprog; make -k CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc) $(customflags)" X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)"
 
 libwww2::
 	@echo --- Building libwww2
-	cd libwww2; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag) $(waisflags) $(krbflags) $(xinc)"
-
+	cd libwww2; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(customflags) $(knrflag) $(waisflags)  $(krbflags) $(xinc)"
 
 libnut::
 	@echo --- Building libnut
 	cd libnut; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag)"
 
-libmc::
-	@echo --- Building libmc
-	cd libmc; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc) $(customflags)"
-
-libaprog::
-	@echo --- Building libaprog
-	cd libaprog; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc) $(customflags)" X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)"
- 
-
 src::
 	@echo --- Building src
-	cd src; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut LIBMC_DIR=../libmc MOSAIC="Mosaic"
+	cd src; make -k CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut LIBMC_DIR=../libmc MOSAIC="Mosaic"
+
+src-purifyd::
+	@echo --- Building Purify'd src
+	cd src; make PURIFY=$(PURIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-p"
+
+src-quantifyd::
+	@echo --- Building Quantify'd src
+	cd src; make PURIFY=$(QUANTIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-q"
 
 libnet::
 	@echo --- Building libnet
@@ -261,8 +279,6 @@ clean:
 	cd libnet; make $@
 	cd libdtm; make $@
 	cd libnut; make $@
-	cd libmc; make $@
-	cd libaprog; make $@
 
 wclean:
 	cd libhtmlw; make $@
@@ -273,7 +289,7 @@ commit:
 update:
 	cvs update
 countlines:
-	wc libdtm/*.[ch] libnet/*.[ch] libXmx/*.[ch] libhtmlw/*.[ch] libwww2/*.[ch] src/*.[ch]
+	wc libdtm/*.[ch] libnet/*.[ch] libXmx/*.[ch] libhtmlw/*.[ch] libwww2/*.[ch] libnut/*.[ch] src/*.[ch]
 replicate:
 	cp Makefile Makefile.sun
 	cp Makefile Makefile.ibm

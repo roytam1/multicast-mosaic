@@ -14,6 +14,7 @@
 #include <Xm/XmAll.h>
 #include <X11/Xmu/Editres.h>
 
+#include "../libnut/mipcf.h"
 #include "libhtmlw/HTML.h"
 #include "mosaic.h"
 #include "proxy.h"
@@ -387,19 +388,23 @@ mo_window *mo_main_next_window (mo_window *win)
 	return win->next;
 }
 
+#ifdef MULTICAST
 mo_window *mo_rcv_next_window (mo_window *win)
 {
 	if (win == NULL)
 		return mc_rcv_winlist;
 	return win->next;
 }
+#endif
 
 /* Register a window in the window list. */
 static void mo_add_window_to_list (mo_window *win)
 {
+#ifdef MULTICAST
 	switch (win->mc_type){
 	case MC_MO_TYPE_UNICAST:
 	case MC_MO_TYPE_MAIN:
+#endif
 		if (main_winlist == NULL) {
 			win->next = NULL;
 			main_winlist = win;
@@ -408,6 +413,7 @@ static void mo_add_window_to_list (mo_window *win)
 			main_winlist = win;
 		}
 		return;
+#ifdef MULTICAST
 	case MC_MO_TYPE_RCV_URL_ONLY:
 	case MC_MO_TYPE_RCV_ALL:
 		if (mc_rcv_winlist == NULL) {
@@ -419,6 +425,7 @@ static void mo_add_window_to_list (mo_window *win)
 		}
 		return;
 	}
+#endif
 }
 
 /* Remove a window from the window list. */
@@ -426,9 +433,11 @@ static void mo_remove_window_from_list (mo_window *win)
 {
 	mo_window *w = NULL, *prev = NULL;
 
+#ifdef MULTICAST
 	switch (win->mc_type){
 	case MC_MO_TYPE_UNICAST:
 	case MC_MO_TYPE_MAIN:
+#endif
 		while (w = mo_main_next_window (w)) {
 			if (w == win) { /* Delete w. */
 				if (!prev) { /* No previous window. */
@@ -447,6 +456,7 @@ static void mo_remove_window_from_list (mo_window *win)
 			}
 			prev = w;
 		}
+#ifdef MULTICAST
 		break;
 	case MC_MO_TYPE_RCV_URL_ONLY:
 	case MC_MO_TYPE_RCV_ALL:
@@ -468,6 +478,7 @@ static void mo_remove_window_from_list (mo_window *win)
 		}
 		break;
 	}
+#endif
 	fprintf(stderr,"[mo_remove_window_from_list] unable to remove\n");
 }
 
@@ -851,9 +862,11 @@ static XmxCallback (anchor_cb)
 	if ( (event->state & ShiftMask) == ShiftMask)
 		win->binary_transfer = 1;
 
+#ifdef MULTICAST
 	if (win->mc_type == MC_MO_TYPE_RCV_ALL){
 		force_newwin =1;
 	}
+#endif
 	if (get_pref_boolean(ePROTECT_ME_FROM_MYSELF)) {
 		int answer = XmxModalYesOrNo (win->base, app_context,
 	 "BEWARE: NCSA disclaims all responsibility regarding your emotional and mental health.\n\nAre you *sure* you want to follow this hyperlink?" , "I'm sure.",
@@ -2425,11 +2438,13 @@ mo_status mo_delete_window (mo_window *win)
 	XtDestroyWidget(win->base);
 	win->base=NULL;
 
+#ifdef MULTICAST
 	if(win->mc_user){
 		win->mc_user->win = NULL;
 		McRemoveMoWin(win->mc_user);
 /*####      McDeleteUser(win->mc_user,win->mc_user->mc_list_number);*/
 	}
+#endif
 
 /*################ */
 /* Free up some of the HTML Widget's state */
@@ -2583,7 +2598,7 @@ void mo_sync_windows(mo_window *win, mo_window *parent)
     mo_set_agents(win, win->agent_state);
 
     imageViewInternal = win->image_view_internal = parent->image_view_internal;
-    XmxRSetToggleState (win->menubar, mo_image_view_internal,
+    XmxRSetToggleState (win->menubar, (char*)mo_image_view_internal,
                       (win->image_view_internal ? XmxSet : XmxNotSet));
 
     win->body_color = parent->body_color;
@@ -2591,7 +2606,7 @@ void mo_sync_windows(mo_window *win, mo_window *parent)
                   WbNbodyColors,
                   win->body_color,
                   NULL);
-    XmxRSetToggleState (win->menubar, mo_body_color,
+    XmxRSetToggleState (win->menubar, (char*)mo_body_color,
                         win->body_color ? XmxSet : XmxNotSet);
 
     win->body_images = parent->body_images;
@@ -2599,15 +2614,15 @@ void mo_sync_windows(mo_window *win, mo_window *parent)
                   WbNbodyImages,
                   win->body_images,
                   NULL);
-    XmxRSetToggleState (win->menubar, mo_body_images,
+    XmxRSetToggleState (win->menubar, (char*)mo_body_images,
                         win->body_images ? XmxSet : XmxNotSet);
 
     win->delay_image_loads = parent->delay_image_loads;
     XmxSetArg (WbNdelayImageLoads, win->delay_image_loads ? True : False);
     XmxSetValues (win->scrolled_win);
-    XmxRSetSensitive (win->menubar, mo_expand_images_current,
+    XmxRSetSensitive (win->menubar, (char*)mo_expand_images_current,
                       win->delay_image_loads ? XmxSensitive : XmxNotSensitive);
-    XmxRSetToggleState (win->menubar, mo_delay_image_loads,
+    XmxRSetToggleState (win->menubar, (char*)mo_delay_image_loads,
                         win->delay_image_loads ? XmxSet : XmxNotSet);
 }
 
@@ -2897,8 +2912,10 @@ static XmxCallback (fire_er_up)
 		init_document = mo_url_canonicalize_local (init_document);
 
 	mc_t = MC_MO_TYPE_UNICAST; /* Open a new window to view a given URL.*/
+#ifdef MULTICAST
 	if (mc_multicast_enable)
 		mc_t = MC_MO_TYPE_MAIN;
+#endif
 /*##################################*/
 /* ### Create the FIRST MAIN WINDOW */
 /*##################################*/
@@ -3111,7 +3128,9 @@ void mo_do_gui (int argc, char **argv)
 		set_pref(eDEFAULT_AUTHOR_NAME, (void *)default_author_name);
 		set_pref(eDEFAULT_AUTHOR_EMAIL, (void *)default_author_email);
 		/*####### */
+#ifdef MULTICAST
 		mc_alias_name = default_author_email;
+#endif
 	}
 
 #ifdef MULTICAST
@@ -3138,7 +3157,15 @@ void mo_do_gui (int argc, char **argv)
 				thePrefsStructP->RdataP->mc_dest, 
 				mc_port, 
 				thePrefsStructP->RdataP->mc_ttl);
+#ifdef IPV6
+/* inet_pton () */
+		if( ascii2addr(AF_INET6,thePrefsStructP->RdataP->mc_dest,&mc_addr_ip_group) == -1){
+			fprintf(stderr,"invalid IPV6Multicast addr\n");
+			exit(1);
+		}
+#else
 		mc_addr_ip_group = inet_addr(thePrefsStructP->RdataP->mc_dest);
+#endif
 		mc_multicast_enable = 1;
 
 		/* initialise global variable for Multicast */
@@ -3537,6 +3564,7 @@ void set_current_win(Widget w, XEvent *event,
 	if (ptr)
 		return;
 
+#ifdef MULTICAST
 	ptr = mc_rcv_winlist;
 	for(i=0;(ptr != NULL) && (i<wincount);i++) {
 		if(ptr->base == toplevel) {
@@ -3549,6 +3577,7 @@ void set_current_win(Widget w, XEvent *event,
 		} else 
 			ptr = ptr->next;
 	}
+#endif
 
 	if(!ptr)
 		fprintf(stderr, "Couldn't find current window. Mosaic will be crashing soon.\n");

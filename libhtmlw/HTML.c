@@ -2,6 +2,7 @@
 #include "copyright.ncsa"
 
 #include <stdio.h>
+#include "../libnut/mipcf.h"
 #include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
@@ -530,7 +531,9 @@ void hw_do_bg(Widget w, char *bgname)
 /*!!! Need the ability to free up the pixmap when done with it (in cache)*/
 /*#########################*/
 	pic_data.src=bgname;
+#ifdef MULTICAST
 	pic_data.wtype = hw->html.mc_wtype;
+#endif
 	pic_data.internal_numeo = 0;
 	XtCallCallbackList ((Widget)hw, hw->html.image_callback,
 				(XtPointer)&pic_data);
@@ -2538,7 +2541,9 @@ static void _HTMLInput( Widget w, XEvent *event,
 	if(IsDelayedHRef(hw, eptr->anchor_tag_ptr->anchor_href)) {
 /*######################*/
 		eptr->pic_data->src=eptr->edata;
+#ifdef MULTICAST
 		eptr->pic_data->wtype = hw->html.mc_wtype;
+#endif
 		eptr->pic_data->internal_numeo = 0;
 		XtCallCallbackList ((Widget)hw, hw->html.image_callback,
 					(XtPointer)(eptr->pic_data));
@@ -2560,7 +2565,9 @@ static void _HTMLInput( Widget w, XEvent *event,
 	    (eptr->anchor_tag_ptr->anchor_href != NULL)&& (IsIsMapForm(hw, eptr->anchor_tag_ptr->anchor_href))) {
 /*######################*/
 		eptr->pic_data->src=eptr->edata;
+#ifdef MULTICAST
 		eptr->pic_data->wtype = hw->html.mc_wtype;
+#endif
 		eptr->pic_data->internal_numeo = 0;
 		XtCallCallbackList ((Widget)hw, hw->html.image_callback,
 					(XtPointer)(eptr->pic_data));
@@ -2584,7 +2591,9 @@ static void _HTMLInput( Widget w, XEvent *event,
 	     AnchoredHeight(hw))) {
 /*######################*/
 		eptr->pic_data->src=eptr->edata;
+#ifdef MULTICAST
 		eptr->pic_data->wtype = hw->html.mc_wtype;
+#endif
 		eptr->pic_data->internal_numeo = 0;
 		XtCallCallbackList ((Widget)hw, hw->html.image_callback,
 					(XtPointer)eptr->pic_data);

@@ -174,7 +174,9 @@ void ImageResolve(Widget w, XtPointer clid, XtPointer calld)
 		return;
 	}
 /*	wtype = img_data->wtype; #############*/
+#ifdef MULTICAST
 	wtype = win->mc_type;
+#endif
 	internal_numeo = img_data->internal_numeo;
 
 	if (!src)
@@ -267,8 +269,10 @@ void ImageResolve(Widget w, XtPointer clid, XtPointer calld)
 	src = mo_url_canonicalize (src, cached_url);
 
 	/* Go see if we already have the image info hanging around. */
+#ifdef MULTICAST
 	if ((wtype != MC_MO_TYPE_MAIN) || (mc_send_enable == False)){
 					/* no cache when sending */
+#endif
 		imi = mo_fetch_cached_image_data (src);
 		if (imi){
 					/* ismap is managed by HTMLWidget */
@@ -317,7 +321,9 @@ void ImageResolve(Widget w, XtPointer clid, XtPointer calld)
 				MoCCISendEventOutput(IMAGE_LOADED);
 			return ;
 		}
+#ifdef MULTICAST
 	}
+#endif
 
 	/* If we don't have the image cached and noload is high,
 	 * then just return NULL to avoid doing a network load. 

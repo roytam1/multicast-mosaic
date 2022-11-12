@@ -32,7 +32,9 @@ Standard C library for malloc() etc
  */
 #ifdef vax
 #ifdef unix
+#ifndef ultrix
 #define ultrix  /* Assume vax+unix=ultrix */
+#endif
 #endif
 #endif
 

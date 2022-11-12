@@ -83,7 +83,9 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 	ats->url_arg = (char **) malloc( sizeof(char *)); /* alloc one */
 	ats->url_arg[ats->url_arg_count] = NULL;
 
+#ifdef MULTICAST
 	ats->wtype = hw->html.mc_wtype;
+#endif
 	ats->internal_numeos = (int*)malloc( sizeof(int)); /*alloc one */
 	ats->ret_filenames = (char **) malloc( sizeof(char *)); /* alloc one */
 	ats->internal_numeos[ats->url_arg_count] = pcc->internal_mc_eo;
@@ -257,7 +259,9 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 		eo.src = zfile;
 		eo.ret_filename = NULL;
 		eo.num_eo = pcc->internal_mc_eo;
+#ifdef MULTICAST
 		eo.wtype = hw->html.mc_wtype;
+#endif
 		eo.cw_only = pcc->cw_only;
 		strcpy(cmdline," ");
 		if (hw->html.get_url_data_cb){

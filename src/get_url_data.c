@@ -47,7 +47,9 @@ void GetUrlData(Widget w, XtPointer clid, XtPointer calld)
 	if (!src)
 		return ;
 
+#ifdef MULTICAST
 	wtype = win->mc_type;
+#endif
 	internal_numeo = eods->num_eo;
 
 	mo_set_current_cached_win (win);

@@ -12,6 +12,8 @@
 #ifndef MC_DISPATCH_H
 #define MC_DISPATCH_H
 
+#ifdef MULTICAST
+
 extern int		mc_multicast_enable;
 extern int		mc_send_enable;
 extern mo_window * 	mc_send_win;
@@ -33,5 +35,7 @@ extern void McSendAllDataOnlyOnce(McSendDataStruct * d);
 extern McGlobalEo * McGetEmptyGlobalObject();
 extern void McSetCursorPos(Widget w, int x, int y);
 extern void McSetHtmlTexte( char *txt);
+
+#endif /* MULTICAST */
 
 #endif /* MC_DISPATCH_H */

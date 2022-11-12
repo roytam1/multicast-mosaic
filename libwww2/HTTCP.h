@@ -19,10 +19,10 @@
 **           returns a pointer to a static string which must be copied if
 **                it is to be kept.
 */
-#ifdef __STDC__
-        extern char * HTInetString(struct sockaddr_in* sin);
+#ifdef IPV6
+        extern char * HTInetString(struct sockaddr_in6 * sin);
 #else
-        extern char * HTInetString();
+        extern char * HTInetString(struct sockaddr_in* sin);
 #endif
 
 

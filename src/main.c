@@ -20,8 +20,10 @@
 #include "globalhist.h"
 #include "cciBindings2.h"
 
+#ifdef MULTICAST
 extern void McSendRtcpBye(void);
 extern int	mc_multicast_enable;
+#endif
 
 /* swp */
 #define _KCMS_H_
@@ -31,8 +33,10 @@ char *userPath=NULL;
 
 void mo_exit (void)
 {
+#ifdef MULTICAST
 	if(mc_multicast_enable)
 		McSendRtcpBye();
+#endif
 	mo_write_default_hotlist ();
 	newsrc_kill ();
 	if (get_pref_boolean(eUSE_GLOBAL_HISTORY))
