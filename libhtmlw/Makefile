@@ -2,7 +2,7 @@ LIBTARGET = libhtmlw.a
 
 all: $(LIBTARGET)
 
-CFILES = HTMLparse.c HTML.c HTMLformat.c HTMLtext.c HTMLlists.c HTMLtable.c \
+CFILES = HTMLcolors.c HTMLparse.c HTML.c HTMLformat.c HTMLtext.c HTMLlists.c HTMLtable.c \
 	 HTMLimages.c HTMLwidgets.c HTML-PSformat.c list.c \
 	 HTMLaprog.c HTMLapplet.c HTMLform.c HTMLframe.c HTMLfonts.c
 

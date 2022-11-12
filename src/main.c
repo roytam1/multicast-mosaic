@@ -254,10 +254,11 @@ void main (int argc, char **argv, char **envp)
 	RequestDataStruct rds;
 	struct hostent * mmmmm;	/* mjr++ 12 Jan 1998 */
 
-/*	_Xdebug =1;	*/
+/*	_Xdebug =1; */
 	signal (SIGBUS, FatalProblem);
 	signal (SIGSEGV, FatalProblem);
 	signal (SIGILL, FatalProblem);
+	signal (SIGFPE, FatalProblem);
 
 /* Since we're doing lots of TCP, just ignore SIGPIPE altogether. */
 	signal (SIGPIPE, SIG_IGN);
@@ -313,7 +314,7 @@ void main (int argc, char **argv, char **envp)
 	mMosaicDisplay = XtDisplay (mMosaicToplevelWidget);    
 	mMosaicRootWindow = DefaultRootWindow(mMosaicDisplay);
 
-/*      XSynchronize(mMosaicDisplay,True);  */
+/*      	XSynchronize(mMosaicDisplay,True); */
 
 	XtVaGetApplicationResources(mMosaicToplevelWidget,
 		(XtPointer) &mMosaicAppData,
@@ -438,6 +439,7 @@ works on my linux box, hopefully on solaris, too */
 		XtVaSetValues(mMosaicToplevelWidget, 
 			XmNbackground, bcolr.pixel, NULL);
 	}
+	HTMLInitColors(mMosaicToplevelWidget, 0);
 
 	vinfo.visualid = XVisualIDFromVisual(DefaultVisual(mMosaicDisplay,
 		DefaultScreen (mMosaicDisplay)));

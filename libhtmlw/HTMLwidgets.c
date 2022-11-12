@@ -1827,9 +1827,9 @@ WidgetInfo * MakeWidget( HTMLWidget hw, char *text,
 			XtGetValues(w, arg, argcnt);
 			/* Set it to default so we don't lose it on "back"*/
                         XtVaSetValues(w,
-                          XmNbackground, hw->html.background_SAVE,
-                          XmNtopShadowColor, hw->html.top_color_SAVE,
-                          XmNbottomShadowColor, hw->html.bottom_color_SAVE,
+                          XmNbackground, hw->html.def_res.bgcolor,
+                          XmNtopShadowColor, hw->html.def_res.top_color,
+                          XmNbottomShadowColor, hw->html.def_res.bottom_color,
                           NULL);
 		} else {
 			width = 0;
@@ -1857,9 +1857,9 @@ WidgetInfo * MakeWidget( HTMLWidget hw, char *text,
 			XtSetValues(wlist->w, arg, argcnt);
 			/* Set it to default so we don't lose it on "back"*/
                         XtVaSetValues(wlist->w,
-                          XmNbackground, hw->html.background_SAVE,
-                          XmNtopShadowColor, hw->html.top_color_SAVE,
-                          XmNbottomShadowColor, hw->html.bottom_color_SAVE,
+                          XmNbackground, hw->html.def_res.bgcolor,
+                          XmNtopShadowColor, hw->html.def_res.top_color,
+                          XmNbottomShadowColor, hw->html.def_res.bottom_color,
                           NULL);
 		}
 

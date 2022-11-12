@@ -213,8 +213,8 @@ unsigned char *ReadXbmBitmap(Widget view, FILE *fp, char *datafile,
             bg_color.pixel = bg_pixel;
             
             /* Now query for the full color info. */
-            XQueryColor (XtDisplay (view), mMosaicColormap , &fg_color);
-            XQueryColor (XtDisplay (view), mMosaicColormap , &bg_color);
+            HTMLPixelToXColor(&fg_color);
+            HTMLPixelToXColor(&bg_color);
 
             done_fetch_colors = 1;
 

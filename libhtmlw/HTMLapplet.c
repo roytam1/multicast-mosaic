@@ -146,7 +146,6 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 
 	ats->internal_numeos = (int*)malloc( sizeof(int)); /*alloc one */
 	ats->ret_filenames = (char **) malloc( sizeof(char *)); /* alloc one */
-	ats->internal_numeos[ats->url_arg_count] = pcc->internal_mc_eo;
 	ats->ret_filenames[ats->url_arg_count] = NULL;
 
 
@@ -315,7 +314,6 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 		}
 		eo.src = zfile;
 		eo.ret_filename = NULL;
-		eo.num_eo = pcc->internal_mc_eo;
 		eo.cw_only = pcc->cw_only;
 		strcpy(cmdline," ");
 		strcat(cmdline," ");
@@ -327,7 +325,6 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
                 GetUrlData((Widget) hw, 
                                      /* mo_window*/ NULL,
                                      (XtPointer) &eo);
-		pcc->internal_mc_eo++;
 		if(eo.ret_filename!=NULL){
 			sprintf(allcmdline,"mv %s $HOME/.mMosaic/classes/%s",eo.ret_filename,
 				eo.src);

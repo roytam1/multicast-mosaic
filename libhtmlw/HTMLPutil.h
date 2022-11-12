@@ -94,9 +94,9 @@ extern String 		ParseTextToPSString(HTMLWidget hw,
 
 
 
-extern void		hw_do_bg(HTMLWidget, PhotoComposeContext *,
+extern void		hw_do_body_bgima(HTMLWidget, PhotoComposeContext *,
 				struct mark_up *mptr);
-extern void		hw_do_color(HTMLWidget,char*,char*,PhotoComposeContext * pcc);
+extern void		hw_do_body_color(HTMLWidget,char*,char*,PhotoComposeContext * pcc);
 
 extern void 		TablePlace(HTMLWidget hw, struct mark_up **mptr, 
 				PhotoComposeContext * pcc, Boolean save_obj);

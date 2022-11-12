@@ -109,10 +109,10 @@ typedef struct {
 	Boolean catch_prior_and_next; 
 	Boolean protect_me_from_myself;      
 					/* new in 2.7 */
-	char * meterForeground;
-	char * meterBackground;
-	char * meterFontForeground;
-	char * meterFontBackground;
+	Pixel meterForeground;
+	Pixel meterBackground;
+	Pixel meterFontForeground;
+	Pixel meterFontBackground;
 	char * acceptlanguage_str;
 	int ftpRedial;
 	Boolean use_screen_gamma;
@@ -178,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.4.6"
+#define MO_VERSION_STRING "3.4.7"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@sig.enst.fr"

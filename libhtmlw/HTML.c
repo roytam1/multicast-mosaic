@@ -158,16 +158,13 @@ static XtResource resources[] = {
 	  XtRString, "False"
 	},
 	{ WbNanchorColor, XtCForeground, XtRPixel, sizeof (Pixel),
-	  XtOffset (HTMLWidget, html.anchor_fg), XtRString, "blue2"
+	  XtOffset (HTMLWidget, html.def_res.fg_link), XtRString, "blue2"
 	},
 	{ WbNvisitedAnchorColor, XtCForeground, XtRPixel, sizeof (Pixel),
-	  XtOffset (HTMLWidget, html.visitedAnchor_fg), XtRString, "purple4"
+	  XtOffset (HTMLWidget, html.def_res.fg_vlink), XtRString, "purple4"
 	},
 	{ WbNactiveAnchorFG, XtCBackground, XtRPixel, sizeof (Pixel),
-	  XtOffset (HTMLWidget, html.activeAnchor_fg), XtRString, "Red"
-	},
-	{ WbNactiveAnchorBG, XtCForeground, XtRPixel, sizeof (Pixel),
-	  XtOffset (HTMLWidget, html.activeAnchor_bg), XtRString, "White"
+	  XtOffset (HTMLWidget, html.def_res.fg_alink), XtRString, "Red"
 	},
 	{ WbNisIndex, WbCIsIndex, XtRBoolean, sizeof (Boolean),
 	  XtOffset (HTMLWidget, html.is_index), XtRString, "False"
@@ -275,118 +272,77 @@ WidgetClass htmlWidgetClass = (WidgetClass)&htmlClassRec;
 
 static Cursor in_anchor_cursor = (Cursor)NULL;
 
-static void InitBody(HTMLWidget hw) 
-{
-	hw->html.bg_image=0;
-	hw->html.bgmap_SAVE=None;
-	hw->html.bgclip_SAVE=None;
-/* ###### ??? Why is this here? */
-	hw->html.view->core.background_pixel = hw->html.background_SAVE ;
-	return;
-}
 
-void hw_do_bg(HTMLWidget hw, PhotoComposeContext * pcc,
+void hw_do_body_bgima(HTMLWidget hw, PhotoComposeContext * pcc,
 	struct mark_up *mptr) 
 {
 	ImageInfo lpicd;
 
-/* clear previous GD 28 Apr 96 Voir aussi HTMLlists.c*/
-	hw->html.bg_image=0;
-	hw->html.bgmap_SAVE=None;
-	hw->html.bgclip_SAVE=None;
-
 	if ( !mptr->s_picd)
 		return;
-/*!!! Need to do delayed image loading junk*/
-/*!!! Need the ability to free up the pixmap when done with it (in cache)*/
-/*#########################*/
+	if ( !mptr->s_picd->fetched)
+		return;
 	lpicd = *(mptr->s_picd);
-	lpicd.internal_numeo = pcc->internal_mc_eo;
-	lpicd.cw_only = pcc->cw_only;
 
-/*#########################*/
-	hw->html.bg_image=1;
-	hw->html.bg_height=lpicd.height;
-	hw->html.bg_width=lpicd.width;
-	hw->html.bgmap_SAVE=lpicd.image;
-	hw->html.bgclip_SAVE=lpicd.clip;
+	hw->html.cur_res.have_bgima=1;
+	hw->html.cur_res.bgima_height=lpicd.height;
+	hw->html.cur_res.bgima_width=lpicd.width;
+	hw->html.cur_res.bgimamap=lpicd.image;
+	hw->html.view->core.background_pixmap = lpicd.image;
+	XSetTile(XtDisplay(hw), hw->html.bgimgGC, hw->html.cur_res.bgimamap);
+	XSetTSOrigin(XtDisplay(hw), hw->html.bgimgGC, 0, 0);
+	XSetFillStyle(XtDisplay(hw), hw->html.bgimgGC, FillTiled);
 }
 
-void hw_do_color(HTMLWidget hw, char *att, char *cname,
+void hw_do_body_color(HTMLWidget hw, char *att, char *cname,
 	PhotoComposeContext * pcc)
 {
-	int r,g,b;
-	XColor ecol,col;
-	XColor fg,sel,ts,bs;
-	XmColorProc calc;
+	XColor col ;
+/*	XColor fg,sel,ts,bs; */
+/*	XmColorProc calc; */
 	Colormap cmap;
-	char *val;
-	char t[3];
-	int allocated=0;
-	int i;
+	int status ;
 
 	if (!att || !*att || !cname || !*cname)
 		return;
+
 	cmap = hw->core.colormap;
-	val=cname;
-	if (*val!='#') {
-		if (XAllocNamedColor(XtDisplay(hw),cmap,cname,&col,&ecol))
-			allocated=1;
+	status = XParseColor(XtDisplay(hw),cmap, cname, &col);
+	col.flags = DoRed | DoGreen | DoBlue;
+	if (!status) {	/* pas d'allocation ou erreur on laisse telque */
+			/* a cause de XFreeColors qui peut faire une erreur */
+			/* BadAccess et ca plante mMosaic */
+		fprintf(stderr,"Cannot alloc Body Color Name: %s\n", cname);
+		return;
 	}
-	if(!allocated){
-		if(*val=='#') val++;
-		if (!*val)
-			return;
-		if (strlen(val)>=6) {
-	            /* Must be valid hex */
-            		for (i=0; i<6; i++) {
-                		if (!strchr("0123456789AaBbCcDdEeFf",val[i])) {
-                    			return;
-                		}
-            		}
+	col.pixel= HTMLXColorToPixel(&col);
 
-			t[2]=0;
-			t[0]=val[0];
-			t[1]=val[1];
-			sscanf(t,"%x",&r);
-			t[0]=val[2];
-			t[1]=val[3];
-			sscanf(t,"%x",&g);
-			t[0]=val[4];
-			t[1]=val[5];
-			sscanf(t,"%x",&b);
 
-			col.red = ((unsigned) r) << 8;
-			col.green = ((unsigned) g) << 8;
-			col.blue = ((unsigned) b) << 8;
-			col.flags = DoRed | DoGreen | DoBlue;
-            
-			if (!XAllocColor(XtDisplay(hw),cmap,&col))
-				return;
-		} else {
-			return;
-		}
+	if (!strcasecmp(att,"text")) {
+		hw->html.cur_res.fg_text = col.pixel;	/* c'est pour le BODY */
+		pcc->fg_text = hw->html.cur_res.fg_text; /* pour le courant*/
+		pcc->fg_text = MMPushColorFg(hw,col.pixel);
 	}
-	if (!strcasecmp(att,"text"))
-		hw->manager.foreground = col.pixel;
+
 	if (!strcasecmp(att,"bgcolor")){ /* calculate shadow colors */
-		calc = XmGetColorCalculation();
-		calc(&col, &fg, &sel, &ts, &bs);
-		if (XAllocColor(XtDisplay(hw),cmap,&ts)) 
-			hw->manager.top_shadow_color = ts.pixel;
-		if (XAllocColor(XtDisplay(hw),cmap,&bs)) 
-			hw->manager.bottom_shadow_color = bs.pixel;
-		hw->core.background_pixel = col.pixel;
+/*		calc = XmGetColorCalculation();
+/*		calc(&col, &fg, &sel, &ts, &bs);
+/*		ts.pixel = HTMLXColorToPixel(&ts);
+/*		hw->manager.top_shadow_color = ts.pixel;
+/*		bs.pixel = HTMLXColorToPixel(&bs);
+ */
 		hw->html.view->core.background_pixel = col.pixel ;
-		hw->html.activeAnchor_bg = col.pixel;
-		pcc->bg = col.pixel;
+		hw->html.cur_res.bgcolor = col.pixel;
+		pcc->bgcolor = MMPushColorBg(hw, col.pixel);
+		XSetWindowBackground(XtDisplay(hw), XtWindow(hw->html.view),
+			hw->html.cur_res.bgcolor);
 	}
 	if (!strcasecmp(att,"link"))
-		hw->html.anchor_fg = col.pixel;
+		hw->html.cur_res.fg_link = col.pixel;
 	if (!strcasecmp(att,"vlink"))
-		hw->html.visitedAnchor_fg = col.pixel;
+		hw->html.cur_res.fg_vlink = col.pixel;
 	if (!strcasecmp(att,"alink"))
-		hw->html.activeAnchor_fg = col.pixel;
+		hw->html.cur_res.fg_alink = col.pixel;
 	return;
 }
 
@@ -922,7 +878,7 @@ static XtGeometryResult GeometryManager ( Widget w,
 	return (XtGeometryYes);
 }
 
-/* Initialize is called when the widget is first initialized.
+/* Initialize is called when the widget is first initialized (created).
  * Check to see that all the starting resources are valid.
  */
 static void Initialize( HTMLWidget request, HTMLWidget nw)
@@ -980,6 +936,7 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 	nw->html.max_pre_width = 0;
 
 	nw->html.drawGC = NULL; 	/* Initialize private widget resources */
+	nw->html.bgimgGC = NULL; 	/* Initialize private widget resources */
 	nw->html.select_start = NULL;
 	nw->html.select_end = NULL;
 	nw->html.sel_start_pos = 0;
@@ -992,17 +949,22 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 	nw->html.press_x = 0;
 	nw->html.press_y = 0;
 
-        nw->html.top_color_SAVE = nw->manager.top_shadow_color;
-        nw->html.bottom_color_SAVE = nw->manager.bottom_shadow_color;
-	nw->html.foreground_SAVE = nw->manager.foreground;
-	nw->html.anchor_fg_SAVE = nw->html.anchor_fg;
-        nw->html.visitedAnchor_fg_SAVE = nw->html.visitedAnchor_fg;
-        nw->html.activeAnchor_fg_SAVE = nw->html.activeAnchor_fg;
-        nw->html.activeAnchor_bg_SAVE = nw->html.activeAnchor_bg;
-        nw->html.background_SAVE = nw->core.background_pixel;
-	nw->html.bgmap_SAVE = None;
-	nw->html.bgclip_SAVE = None;
-	nw->html.bg_image=0;
+/* color setting */
+	nw->html.def_res.bgcolor = nw->core.background_pixel;
+	nw->html.def_res.fgcolor = nw->manager.foreground;
+	nw->html.def_res.top_color = nw->manager.top_shadow_color;
+	nw->html.def_res.bottom_color = nw->manager.bottom_shadow_color;
+	nw->html.def_res.fg_text = nw->manager.foreground;
+/* def_res.fg_link; def_res.fg_vlink; def_res.fg_alink is set by ressources */
+	nw->html.def_res.have_bgima = 0;	/* init with no bgimage */
+	nw->html.def_res.bgimamap = None;
+	nw->html.def_res.bgima_height = 0;
+	nw->html.def_res.bgima_width = 0;
+/* create and init color stack */
+	MMInitWidgetColorStack(nw);
+
+/* copy in current */
+	nw->html.cur_res = nw->html.def_res;
 
 /* Initialize cursor used when pointer is inside anchor. */
         if (in_anchor_cursor == (Cursor)NULL)
@@ -1017,6 +979,9 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 	values.fill_style = FillSolid;
 	valuemask = GCFunction|GCPlaneMask|GCForeground|GCBackground| GCFillStyle;
 	nw->html.drawGC = XCreateGC(XtDisplay(nw),
+				    DefaultRootWindow(XtDisplay(nw)),
+				    valuemask, &values);
+	nw->html.bgimgGC = XCreateGC(XtDisplay(nw),
 				    DefaultRootWindow(XtDisplay(nw)),
 				    valuemask, &values);
 
@@ -1089,9 +1054,7 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 	XtAddCallback(nw->html.hbar, XmNdragCallback,
 		(XtCallbackProc)ScrollMove, (caddr_t)nw);
 
-/*#### do not reformat until sethtmlmark #### */
 /* next call will be Resize or HTMLSetmark or Realize */
-/*	ReformatWindow(nw,False); */
 }
 
 /* This is called by redisplay.  It is passed a rectangle
@@ -1106,8 +1069,8 @@ void ViewRedisplay( HTMLWidget hw, int x, int y, int width, int height)
 
 	if( !XtIsRealized((Widget)hw))
 		return;
-	if(hw->html.bg_image)
-		HTMLDrawBackgroundImage((Widget)hw, x, y, width, height);
+	if(hw->html.cur_res.have_bgima)
+		HTMLDrawBackgroundImage(hw, x, y, width, height);
 /* Use scrollbar values to map from view space to document space. */
 	sx = sy = 0;
 	if (hw->html.use_vbar == True)
@@ -1143,25 +1106,6 @@ void ViewClearAndRefresh( HTMLWidget hw)
 	if (!XtIsRealized((Widget)hw))
 		return;
 
-/* minor trickery to insure that the update happens...*/
-	hw->html.view->core.background_pixel = 
-			hw->core.background_pixel?0:1;
-	r = hw->manager.top_shadow_color;
-	b = hw->manager.bottom_shadow_color;
-	hw->manager.top_shadow_color = 
-			hw->manager.top_shadow_color ? 0 : 1;
-	hw->manager.bottom_shadow_color=
-			hw->manager.bottom_shadow_color? 0: 1;
-	XtVaSetValues(hw->html.view,
-		XmNbackground, hw->core.background_pixel,
-		XmNtopShadowColor, r,
-		XmNbottomShadowColor, b,
-		NULL);
-	XtVaSetValues((Widget)hw,
-		XmNbackground, hw->core.background_pixel,
-		XmNtopShadowColor, r,
-		XmNbottomShadowColor, b,
-		NULL);
 	XClearArea(XtDisplay(hw), XtWindow(hw->html.view),
 		0, 0, 0, 0, False);
 	ViewRedisplay(hw, 0, 0, 
@@ -1169,7 +1113,7 @@ void ViewClearAndRefresh( HTMLWidget hw)
 /* This is a fake deal to make an Expose event tocall Redisplay
 * to redraw the shadow around the view area
 */
-	XClearArea(XtDisplay(hw),XtWindow(hw->html.view),0,0,1,1,True);
+/*	XClearArea(XtDisplay(hw),XtWindow(hw->html.view),0,0,1,1,True); */
 }
 
 /* The Redisplay function is what you do with an expose event.
@@ -1244,14 +1188,13 @@ static void SetAnchor(HTMLWidget hw)
 	struct ele_rec *eptr;
 	struct ele_rec *start;
 	struct ele_rec *end;
-	unsigned long fg, bg;
-	unsigned long old_fg, old_bg;
+	unsigned long fg;
+	unsigned long old_fg;
 
 	eptr = hw->html.active_anchor;
 	if ((eptr == NULL)||(eptr->anchor_tag_ptr->anc_href == NULL))
 		return;
-	fg = hw->html.activeAnchor_fg;
-	bg = hw->html.activeAnchor_bg;
+	fg = hw->html.cur_res.fg_alink;		/* alink is defined for all*/
 
 	FindSelectAnchor(hw, eptr);
 	start = hw->html.select_start;
@@ -1260,42 +1203,30 @@ static void SetAnchor(HTMLWidget hw)
 	while ((eptr != NULL)&&(eptr != end)) {
 		if (eptr->type == E_TEXT) {
 			old_fg = eptr->fg;
-			old_bg = eptr->bg;
 			eptr->fg = fg;
-			eptr->bg = bg;
 			TextRefresh(hw, eptr, 0, (eptr->edata_len - 2));
 			eptr->fg = old_fg;
-			eptr->bg = old_bg;
 		} else 
 			if (eptr->type == E_IMAGE) {
 				old_fg = eptr->fg;
-				old_bg = eptr->bg;
 				eptr->fg = fg;
-				eptr->bg = bg;
 				ImageRefresh(hw, eptr);
 				eptr->fg = old_fg;
-				eptr->bg = old_bg;
 			}
 		eptr = eptr->next;
 	}
 	if (eptr != NULL) {
 		if (eptr->type == E_TEXT) {
 			old_fg = eptr->fg;
-			old_bg = eptr->bg;
 			eptr->fg = fg;
-			eptr->bg = bg;
 			TextRefresh(hw, eptr, 0, (eptr->edata_len - 2));
 			eptr->fg = old_fg;
-			eptr->bg = old_bg;
 		} else 
 			if (eptr->type == E_IMAGE) {
 				old_fg = eptr->fg;
-				old_bg = eptr->bg;
 				eptr->fg = fg;
-				eptr->bg = bg;
 				ImageRefresh(hw, eptr);
 				eptr->fg = old_fg;
-				eptr->bg = old_bg;
 			}
 	}
 }
@@ -2238,10 +2169,9 @@ static Boolean SetValues( HTMLWidget current, HTMLWidget request, HTMLWidget nw)
 		nw->html.num_visitedAnchor_underlines = MAX_UNDERLINES;
 
 	if ((request->html.cur_font != current->html.cur_font)||
-	         (request->html.activeAnchor_fg != current->html.activeAnchor_fg)||
-	         (request->html.activeAnchor_bg != current->html.activeAnchor_bg)||
-	         (request->html.anchor_fg != current->html.anchor_fg)||
-	         (request->html.visitedAnchor_fg != current->html.visitedAnchor_fg)||
+	         (request->html.def_res.fg_alink != current->html.def_res.fg_alink)||
+	         (request->html.def_res.fg_link != current->html.def_res.fg_link)||
+	         (request->html.def_res.fg_vlink != current->html.def_res.fg_vlink)||
 	         (request->html.dashed_anchor_lines != current->html.dashed_anchor_lines)||
 	         (request->html.dashed_visitedAnchor_lines != current->html.dashed_visitedAnchor_lines)||
 	         (request->html.num_anchor_underlines != current->html.num_anchor_underlines)||
@@ -2828,20 +2758,20 @@ void HTMLRetestAnchors(Widget w, visitTestProc testFunc, char * base_url)
 		}
 		if (testFunc != NULL) {
 			if ((*testFunc)((Widget)hw, start->anchor_tag_ptr->anc_href, base_url)) {
-			    start->fg = hw->html.visitedAnchor_fg;
+			    start->fg = hw->html.cur_res.fg_vlink;
 			    start->underline_number =
 				hw->html.num_visitedAnchor_underlines;
 			    start->dashed_underline =
 				hw->html.dashed_visitedAnchor_lines;
 			} else {
-			    start->fg = hw->html.anchor_fg;
+			    start->fg = hw->html.cur_res.fg_link;
 			    start->underline_number =
 				hw->html.num_anchor_underlines;
 			    start->dashed_underline =
 				hw->html.dashed_anchor_lines;
 			}
 		} else {
-			start->fg = hw->html.anchor_fg;
+			start->fg = hw->html.cur_res.fg_link;
 			start->underline_number =
 				hw->html.num_anchor_underlines;
 			start->dashed_underline =
@@ -3093,6 +3023,42 @@ char * HTMLGetTextAndSelection(Widget w,char **startp,char **endp,char **insertp
 	return(text);
 }
 
+static void ResetBody(HTMLWidget hw) 
+{
+	unsigned long pixels[30];
+	int np = 0;
+
+/* release old color and reset to default */
+        if (hw->html.def_res.bgcolor != hw->html.cur_res.bgcolor) {
+		pixels[np] = hw->html.cur_res.bgcolor; np++;
+		hw->html.view->core.background_pixel = hw->html.def_res.bgcolor;
+		XSetWindowBackground(XtDisplay(hw),XtWindow(hw->html.view),
+			hw->html.def_res.bgcolor);
+	}
+	if (hw->html.def_res.have_bgima != hw->html.cur_res.have_bgima) {
+		hw->html.view->core.background_pixmap = XtUnspecifiedPixmap;
+		XSetWindowBackground(XtDisplay(hw),XtWindow(hw->html.view),
+                        hw->html.def_res.bgcolor);
+	}
+/* we SET THE background in the drawing area . reset it
+ * we don't want to scroll the background (like netscape or NCSA mosaic)
+ * if it is a backgorund pixel. Else for a background image we MUST scroll
+ * because of XCopyArea...
+ * A background is FIXED like the screen background 
+ * RESET THE BACKGROUND OF THE DRAWING AREA ONLY 
+ * A background does not have clipmask.... 
+ * A background image don't need to bee freed here. It is allocated by
+ * application and free by her
+ *       have_bgima = 0;         init with no bgimage 
+ *       bgimamap = None;
+ *       bgima_height = 0;
+ *       bgima_width = 0;
+ */
+	XClearWindow(XtDisplay(hw), XtWindow(hw->html.view));
+	hw->html.cur_res = hw->html.def_res;
+	return;
+}
+
 /* Convenience function to set the makup list into the widget.
  * Forces a reformat.
  * If any pointer is passed in as NULL that text is unchanged,
@@ -3111,46 +3077,8 @@ void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 	hw->html.base_url = base_url;
 	if (mlist == NULL)
 		return;
-	InitBody(hw); /*init body stuff. in case they have no body tag*/
+	ResetBody(hw); /*init body stuff. in case they have no body tag*/
 
-/* restore default colors as required */
-	if(hw->manager.foreground != hw->html.foreground_SAVE) {
-		XFreeColors(XtDisplay(hw),hw->core.colormap,
-				&hw->manager.foreground,1,0);
-		hw->manager.foreground = hw->html.foreground_SAVE;
-	}
-        if(hw->html.anchor_fg != hw->html.anchor_fg_SAVE) {
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->html.anchor_fg,1,0);
-            hw->html.anchor_fg = hw->html.anchor_fg_SAVE;
-        }
-        if(hw->html.visitedAnchor_fg != hw->html.visitedAnchor_fg_SAVE){    
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->html.visitedAnchor_fg,1,0);
-            hw->html.visitedAnchor_fg = hw->html.visitedAnchor_fg_SAVE;
-        }
-        if(hw->html.activeAnchor_fg != hw->html.activeAnchor_fg_SAVE){    
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->html.activeAnchor_fg,1,0);
-            hw->html.activeAnchor_fg = hw->html.activeAnchor_fg_SAVE;
-        }
-        if(hw->html.top_color_SAVE != hw->manager.top_shadow_color){
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->manager.top_shadow_color,1,0);
-            hw->manager.top_shadow_color = hw->html.top_color_SAVE;
-        }            
-        if(hw->html.bottom_color_SAVE != hw->manager.bottom_shadow_color){
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->manager.bottom_shadow_color,1,0);
-            hw->manager.bottom_shadow_color = hw->html.bottom_color_SAVE;
-        }            
-        if(hw->core.background_pixel != hw->html.background_SAVE){    
-            XFreeColors(XtDisplay(hw),hw->core.colormap,
-                        &hw->core.background_pixel,1,0);
-            hw->html.activeAnchor_bg = hw->html.activeAnchor_bg_SAVE;
-            hw->core.background_pixel = hw->html.background_SAVE;
-            hw->html.view->core.background_pixel = hw->html.background_SAVE ;
-        }
 	HideWidgets(hw); 		/* Hide any old widgets */
 	HTMLFreeWidgetInfo(hw->html.widget_list);
 	hw->html.widget_list = NULL;
@@ -3159,9 +3087,6 @@ void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 		_XmHTMLDestroyFrames(hw);
 	}
 
-	/* Free any old colors and pixmaps */
-	/*FreeColors(XtDisplay(hw), mMosaicColormap);*/
-				/* Parse the raw text with the HTML parser */
 /* just now. do nothing for test ############ */
 /* ####	FreeMarkUpList(hw->html.html_objects);*/ /* clear previous*/
 /* #### */
@@ -3627,143 +3552,19 @@ int HTMLSearchText(Widget w, char *pattern,
 	return(-1);
 }
 
-void HTMLDrawBackgroundImage(Widget wid, int x, int y, int width, int height) 
+void HTMLDrawBackgroundImage(HTMLWidget hw, int x, int y, int width, int height) 
 {
-int	w_whole=0, h_whole=0,
-	start_width=0, start_height=0,
-	w_start_offset=0, h_start_offset=0,
-	w_whole_tiles=0, h_whole_tiles=0,
-	end_width=0, end_height=0,
-	w, h,
-	destx=0, desty=0;
-HTMLWidget hw = (HTMLWidget) wid;
+	int tile_x_origin, tile_y_origin;
 
-	if(!hw || (x<0) || (y<0) || width<=0 || height<=0 ||
-	   !hw->html.bg_width ||
-	   !hw->html.bg_height || !hw->html.bgmap_SAVE ||
-	   !hw->html.bg_image)
+	tile_x_origin = (x+hw->html.scroll_x) % hw->html.cur_res.bgima_width;  
+	tile_y_origin = (y+hw->html.scroll_y) % hw->html.cur_res.bgima_height;
 
-                return;
-
-        if (width > hw->html.view_width)
-                width=hw->html.view_width-x;
-        if (height > hw->html.view_height)
-                height=hw->html.view_height-y;
-
-	/*
-	 * Figure out the width offset into the bg image.
-	 * Figure out the width of the area to draw.
-	 * If there is a width offset, index the number of width tiles.
-	 * Figure out the height offset into the bg image.
-	 * Figure out the height of the area to draw.
-	 * If there is a height offset, index the number of height tiles.
-	 */
-	w_start_offset = (x+hw->html.scroll_x) % hw->html.bg_width;  
-	if (w_start_offset || (!w_start_offset && width<hw->html.bg_width)) {
-		w_whole++;
-		start_width=hw->html.bg_width-w_start_offset;
-		if (start_width>width)
-			start_width=width;
-	}
-	h_start_offset = (y+hw->html.scroll_y) % hw->html.bg_height;
-	if (h_start_offset || (!h_start_offset && height<hw->html.bg_height)) {
-		h_whole++;
-		start_height=hw->html.bg_height-h_start_offset;
-		if (start_height>height)
-			start_height=height;
-	}
-
-	/*
-	 * Now that we know the width and height of the first area to draw,
-	 *   we can compute how many "whole" tiles to draw for entire width
-	 *   and the entire height.
-	 * We do not bother setting w_whole_tiles or h_whole_tiles to zero
-	 *   if the if fails because they are inited to zero.
-	 */
-	if (width-start_width) {
-		w_whole_tiles=(width-start_width)/hw->html.bg_width;
-		w_whole+=w_whole_tiles;
-	}
-	if (height-start_height) {
-		h_whole_tiles=(height-start_height)/hw->html.bg_height;
-		h_whole+=h_whole_tiles;
-	}
-
-	/*
-	 * Now we have the numbers to compute the amount of the last tile to
-	 *   draw.
-	 * If there is something to draw, index the "whole" variable.
-	 */
-	end_width=width-(start_width+(w_whole_tiles*hw->html.bg_width));
-	if (end_width)
-		w_whole++;
-	end_height=height-(start_height+(h_whole_tiles*hw->html.bg_height));
-	if (end_height)
-		h_whole++;
-/*
-printf("x:%d  y:%d  width:%d  height:%d\n",x,y,width,height);
-printf("w_start_offset:%d  h_start_offset:%d\n",w_start_offset,h_start_offset);
-printf("start_width:%d  start_height:%d\n",start_width,start_height);
-printf("end_width:%d  end_height:%d\n",end_width,end_height);
-printf("w_whole_tiles:%d  h_whole_tiles:%d\n",w_whole_tiles,h_whole_tiles);
-printf("w_whole:%d  h_whole:%d\n\n",w_whole,h_whole);
-*/
-	/*
-	 * Now it's time to draw...yippeeeee.
-	 *
-	 * This could probably stand to be optimized, but I wanted something
-	 *   that worked first.
-	 */
-	desty=y;
-/*
-	if (hw->html.bgclip_SAVE!=None) {
-		XSetClipMask(XtDisplay(hw), hw->html.drawGC,
-			     hw->html.bgclip_SAVE);
-	}
-*/
-	for (h=0; h<h_whole; h++) {
-		destx=x;
-		for (w=0; w<w_whole; w++) {
-/*
-			if (hw->html.bgclip_SAVE!=None) {
-				XSetClipOrigin(XtDisplay(hw), hw->html.drawGC,
-					       (destx-(w_start_offset*(!w))),
-					       (desty-(h_start_offset*(!h))));
-			}
-*/
-			XCopyArea(XtDisplay(wid), hw->html.bgmap_SAVE,
-				  XtWindowOfObject(hw->html.view),
-				  hw->html.drawGC,
-				  w_start_offset*(!w),
-				  h_start_offset*(!h),
-				  (!w ? (start_width ? start_width :
-				    hw->html.bg_width) :
-				   ((w+1)==w_whole ? (end_width ? end_width :
-				     hw->html.bg_width) :
-				    hw->html.bg_width)),
-				  (!h ? (start_height ? start_height :
-				    hw->html.bg_height) :
-				   ((h+1)==h_whole ? (end_height ? end_height :
-				     hw->html.bg_height) :
-				    hw->html.bg_height)),
-				  destx, desty);
-			destx+=(!w ? (start_width ? start_width :
-				 hw->html.bg_width) :
-				hw->html.bg_width);
-		}
-		desty+=(!h ? (start_height ? start_height :
-			 hw->html.bg_height) :
-			hw->html.bg_height);
-	}
-
-/*
-	if (hw->html.bgclip_SAVE!=None) {
-		XSetClipMask(XtDisplay(hw), hw->html.drawGC, None);
-		XSetClipOrigin(XtDisplay(hw), hw->html.drawGC, 0, 0);
-	}
-*/
-	return;
+	XSetTSOrigin(XtDisplay(hw), hw->html.bgimgGC, tile_x_origin,
+		tile_y_origin);
+	XFillRectangle(XtDisplay(hw), XtWindow(hw->html.view),
+                hw->html.bgimgGC, x, y, width, height);
 }
+
  
 static Boolean html_accept_focus(Widget w, Time *t)
 {

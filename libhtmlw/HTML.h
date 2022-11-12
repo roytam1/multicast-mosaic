@@ -61,10 +61,11 @@ extern void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 extern int HTMLSearchText (Widget w, char *pattern,
 	ElementRef *m_start, ElementRef *m_end, int backward, int caseless);
 extern int HTMLSearchNews(Widget w,ElementRef *m_start, ElementRef *m_end);
-extern void HTMLDrawBackgroundImage(Widget w, int x, int y, int width, 
-				    int height);
 extern void McUpdateWidgetObject(Widget w, int num_eo, char * data, int len_data);
 
+extern void HTMLInitColors(Widget w, unsigned int nc);
+extern Pixel HTMLXColorToPixel(XColor * xc);
+extern void HTMLPixelToXColor(XColor * c);
 /*
  * Public Structures
  */
@@ -309,6 +310,8 @@ typedef struct _TableRec {
 	int *	col_w;		/* taille definitive des colonnes */
 	int	is_tint;	/* is table in table? */
 	int 	estimate_height; /* comptuted estimated height */
+	Boolean	have_bgcolor;
+	Pixel	bgcolor;
 } TableInfo;
 
 typedef struct sel_rec {

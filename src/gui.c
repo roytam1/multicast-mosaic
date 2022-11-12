@@ -1734,27 +1734,11 @@ static mo_status mo_fill_window (mo_window *win)
 	XtAddCallback(win->meter, XmNexposeCallback, DrawMeter, (XtPointer)win);
 	XtAddCallback(win->meter, XmNresizeCallback,ResizeMeter,(XtPointer)win);
 
-	/* grab some colors */
-	{
-		XColor ccell1,ccell2;
 
-		XAllocNamedColor(mMosaicDisplay, mMosaicColormap ,
-			mMosaicAppData.meterForeground,
-			&ccell1,&ccell2);
-		win->meter_fg = ccell2.pixel;
-		XAllocNamedColor(mMosaicDisplay, mMosaicColormap ,
-			mMosaicAppData.meterBackground,
-			&ccell1,&ccell2);
-		win->meter_bg = ccell2.pixel;
-		XAllocNamedColor(mMosaicDisplay, mMosaicColormap ,
-			mMosaicAppData.meterFontForeground,
-			&ccell1,&ccell2);
-		win->meter_font_fg = ccell2.pixel;
-		XAllocNamedColor(mMosaicDisplay, mMosaicColormap ,
-                        mMosaicAppData.meterFontBackground,
-                        &ccell1,&ccell2);
-       		win->meter_font_bg = ccell2.pixel;
-	}
+	win->meter_fg = mMosaicAppData.meterForeground;
+	win->meter_bg = mMosaicAppData.meterBackground;
+	win->meter_font_fg = mMosaicAppData.meterFontForeground;
+       	win->meter_font_bg = mMosaicAppData.meterFontBackground;
 
 	win->tracker_widget = XtVaCreateManagedWidget(" ",xmLabelWidgetClass,
 			win->slab[SLAB_STATUS],

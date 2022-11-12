@@ -115,6 +115,11 @@ typedef struct _FontStack {
 	struct _FontStack *next;	/* to be stacked */
 } FontStack;
 
+typedef struct _ColorStack {
+	Pixel	pixel;
+	struct _ColorStack *next;	/* to be stacked */
+} ColorStack;
+
 /* a stack to maintain a html fifo stack */
 typedef struct _PhotoComposeContext {
 	int width_of_viewable_part;	/* never change */
@@ -156,9 +161,8 @@ typedef struct _PhotoComposeContext {
 	int pf_lf_state; 	/* state for linefeed */
 	int preformat;		/* is in <PRE> ? */
 	DivAlignType div;	/* is in <CENTER> ? */
-	int internal_mc_eo ;	/* internal multicast embedded object number */
-	unsigned long	fg ;	/* the current foreground */
-	unsigned long	bg ;	/* the current background */
+	unsigned long	fg_text;	/* the current text foreground */
+	unsigned long	bgcolor;	/* the current background */
 	int		underline_number ;
 	int		in_underlined ;
 	Boolean		dashed_underlines ;
@@ -182,10 +186,41 @@ typedef struct _PhotoComposeContext {
 	int		Width ;
 	DescRec		DescType ;
 	int		InDocHead ;
-	char *		TitleText ;
 	MapInfo *	cur_map;
 } PhotoComposeContext;
 
+typedef struct _HTMLSubRessources {	
+/* color of background is set by BODY, TABLE , TR, TD TH (and style...) */
+/* Part of photocomposecontext */
+/* For BODY, a background image superseeded a background pixel.... */
+	Pixel	bgcolor;	/* set by <body bgcolor = > */
+
+        Pixel   fgcolor;	/* foreground top and bottom shadow color */
+	Pixel	top_color;	/* is computed from bg color */
+	Pixel	bottom_color;    
+
+/* color of text is set by : BODY, BASEFONT and FONT (and style...) */
+/* fg_text is part of PhotoComposeContext */
+	Pixel	fg_text;	/* set by <body text = > */
+
+/* color of link alink and vlink is only set by BODY (and style...) */
+/* Not part of PhotoComposeContext */
+	Pixel	fg_link;	/* unvisited color link */
+	Pixel	fg_vlink;	/* visited link color */
+	Pixel	fg_alink;	/* active link color (when clic on a link */
+
+/* background image is set by BODY */
+	int	have_bgima;	/* <body background=uri */
+	Pixmap	bgimamap;	/* set to NULL at init */
+        int     bgima_height;
+        int     bgima_width; 
+/*	int		bg_image;		*/
+/*	Pixmap		bgmap_SAVE;		*/
+/*      int             bg_height;		*/
+/*      int             bg_width; 		*/
+} HTMLSubRessources;
+
+	/* default ressource of widget. to be use when reset */
 /* New fields for the HTML widget */
 typedef struct _HTMLPart {
 	/* Resources */
@@ -199,34 +234,15 @@ typedef struct _HTMLPart {
 	XtCallbackList		anchor_callback;
 	XtCallbackList		form_callback;
 
-/*
- * Without motif we have to define our own forground resource
- * instead of using the manager's
- */
-	Pixel			anchor_fg;
-	Pixel			visitedAnchor_fg;
-	Pixel			activeAnchor_fg;
-	Pixel			activeAnchor_bg;
+/* Ces ressources sont defini a la creation et constitue le defaut */
+	HTMLSubRessources	def_res;
+/* Ceci est 'reseter' par copie de def_res lors d'un chargement de page html */
+	HTMLSubRessources	cur_res;
 
-        Boolean                 body_colors;
-	Boolean                 body_images;
+        Boolean                 body_colors; 	/* did we enable body colors ?? */
+	Boolean                 body_images;    /* enable body image ? */
 
 	int			max_colors_in_image;
-	int			bg_image;
-
-	Pixmap			bgmap_SAVE;
-	Pixmap			bgclip_SAVE;
-        int                     bg_height;
-        int                     bg_width; 
-
-        Pixel                   foreground_SAVE;
-	Pixel			anchor_fg_SAVE;
-	Pixel			visitedAnchor_fg_SAVE;
-	Pixel			activeAnchor_fg_SAVE;
-	Pixel			activeAnchor_bg_SAVE;
-	Pixel			top_color_SAVE;
-	Pixel			bottom_color_SAVE;    
-        Pixel                   background_SAVE;
     
 	int			num_anchor_underlines;
 	int			num_visitedAnchor_underlines;
@@ -234,7 +250,6 @@ typedef struct _HTMLPart {
 	Boolean			dashed_visitedAnchor_lines;
 	Boolean			is_index;
 	int			percent_vert_space;
-
 
         XtPointer		previously_visited_test;
 	char *			base_url;
@@ -261,6 +276,7 @@ typedef struct _HTMLPart {
 	int			new_end_pos;
 	struct ele_rec		*active_anchor;
 	GC			drawGC;
+	GC			bgimgGC;
 	int			press_x;
 	int			press_y;
 	Time			but_press_time;
@@ -310,6 +326,9 @@ typedef struct _HTMLPart {
 	FontStack	*font_stack;	/* Widget have font stack */
 	XFontStruct	*default_font;	/* start with this font */
 	XFontStruct 	*cur_font;	/* current font drawing */
+
+	ColorStack	*color_stack_bg;
+	ColorStack	*color_stack_fg;
 /*#############*/
 /* amb */
 /*        XFontStruct             *supsub_font; */
@@ -350,7 +369,13 @@ extern void _FreeTableStruct(TableInfo * t);
 extern void MMPopFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc);
 extern void MMPushFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc);
 extern void MMInitWidgetFont(HTMLWidget hw);
+extern Pixel MMPopColorBg(HTMLWidget hw);
+extern Pixel MMPopColorFg(HTMLWidget hw);
+extern Pixel MMPushColorBg(HTMLWidget hw, Pixel new_pix);
+extern Pixel MMPushColorFg(HTMLWidget hw, Pixel new_pix);
+extern void MMInitWidgetColorStack(HTMLWidget hw);
+extern void MMResetWidgetColorStack(HTMLWidget hw);
 
-
-
+extern void HTMLDrawBackgroundImage(HTMLWidget w, int x, int y, int width, 
+				    int height);
 #endif /* HTMLP_H */

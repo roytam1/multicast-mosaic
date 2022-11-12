@@ -454,6 +454,9 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	lt.min_width =0;
 	lt.max_width =0;
 	lt.is_tint = 0;
+	lt.have_bgcolor = False;
+	lt.bgcolor = 0;
+
 	if ( (tptr=ParseMarkTag(mptr->start,MT_TABLE,"BORDER")) ){
 		lt.borders = atoi(tptr);
 		free(tptr);
@@ -479,7 +482,18 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 		lt.cellPadding = atoi(tptr);
 		free(tptr);
 	}
+	if ( (tptr=ParseMarkTag(mptr->start,MT_TABLE,"BGCOLOR")) ) {
+		XColor c;
+		int status;
 
+		status = XParseColor(XtDisplay(hw),hw->core.colormap, tptr, &c);
+        	c.flags = DoRed | DoGreen | DoBlue;
+		if (status) {
+			lt.bgcolor = HTMLXColorToPixel(&c);
+			lt.have_bgcolor = True;
+		}
+		free(tptr);
+	}
 	/* find the first TR or CAPTION */
 	caption_found = 0;
 	tr_found = 0;
@@ -913,7 +927,7 @@ void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc,
 	int max_line_bot;
 	int delta;
 	struct ele_rec * cr_eptr;
-	struct ele_rec * eptr;
+	struct ele_rec * table_eptr;
 	int w_in_cell;
 	int to_add_col;
 	int wanted_w;
@@ -1052,6 +1066,11 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 
         LineBreak(hw, *mptr, pcc);
 
+	if (t->have_bgcolor) {
+		pcc->bgcolor = MMPushColorBg(hw, t->bgcolor);
+	} else {
+		pcc->bgcolor = MMPushColorBg(hw, pcc->bgcolor);
+	}
 	tbl_pcc = *pcc;
 	
 /* now compute the real width of cell and create element in cell */
@@ -1062,6 +1081,9 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	line_pcc.y = tbl_pcc.y + t->borders + t->cellSpacing;
 	line_pcc.eoffsetx = tbl_pcc.left_margin+tbl_pcc.eoffsetx;
 	max_line_bot = line_pcc.y+ h_def_height_cell;
+	table_eptr = CreateElement(hw,E_TABLE, pcc->cur_font,
+		pcc->x, pcc->y,
+		0 /* w_table */, 0 /*h_table*/,0 /* h_table*/, pcc);
 	for(i=0; i< t->num_row; i++){
 		int cell_offset;
 
@@ -1156,7 +1178,6 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 			line[j] = cell;
 			line_pcc.widget_id = work_pcc.widget_id;
 			line_pcc.element_id = work_pcc.element_id;
-			line_pcc.internal_mc_eo = work_pcc.internal_mc_eo;
 			line_pcc.aprog_id = work_pcc.aprog_id;
 			line_pcc.applet_id = work_pcc.applet_id;
 		}
@@ -1189,7 +1210,6 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 
 	pcc->widget_id = line_pcc.widget_id;
 	pcc->element_id =line_pcc.element_id ;
-	pcc->internal_mc_eo = line_pcc.internal_mc_eo ;
 	pcc->aprog_id =	line_pcc.aprog_id ;
 	pcc->applet_id = line_pcc.applet_id ;
 
@@ -1197,19 +1217,24 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	h_table += t->cellSpacing + t->borders;
 	t->height = h_table;
 /* creer l'element graphique qui entoure la table */
-	eptr = CreateElement(hw,E_TABLE, pcc->cur_font,
-		pcc->x, pcc->y, w_table, h_table, h_table, pcc); 
+/*	table_eptr = CreateElement(hw,E_TABLE, pcc->cur_font,
+		pcc->x, pcc->y, w_table, h_table, h_table, pcc);  */
 
-	eptr->underline_number = 0; /* Table's can't be underlined */
-	eptr->table_data = t;
+	table_eptr->underline_number = 0; /* Table's can't be underlined */
+	table_eptr->table_data = t;
+
+	table_eptr->width = w_table;
+	table_eptr->height = h_table;
+	table_eptr->baseline = h_table;
+	pcc->bgcolor = MMPopColorBg(hw);
 
 /* adjust the mptr at end */
 	*mptr = t->tb_end_mark;		/* advance mark pointer to end of table */
 
 /* adjust pcc */
 
-        pcc->x += eptr->width;
-	pcc->y += eptr->height;
+        pcc->x += table_eptr->width;
+	pcc->y += table_eptr->height;
 	pcc->div = DIV_ALIGN_LEFT;
 /* do a linefeed */
 	LinefeedPlace(hw,t->tb_end_mark,pcc);
@@ -1218,7 +1243,7 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 }
 
 /* put this in widget ! #### */
-static GC ttopGC, tbotGC;            
+static GC ttopGC, tbotGC, colorGC;
 
 #define shadowpm_width 2             
 #define shadowpm_height 2            
@@ -1242,9 +1267,6 @@ void TableRefresh( HTMLWidget hw, struct ele_rec *eptr)
                                        
 	t = eptr->table_data; 
 
-/* ### trace seulement les contours de la table */
-	if(! t->borders )
-		return;
 	x = eptr->x;
 	y = eptr->y;
 	x = x - hw->html.scroll_x;
@@ -1253,24 +1275,37 @@ void TableRefresh( HTMLWidget hw, struct ele_rec *eptr)
 	if (y > hw->html.view_height || y + eptr->height < 0)
 		return;                 /* not visible */
 
+/* fill background of table */
+
+	if ( colorGC == NULL) {
+		unsigned long valuemask;
+		XGCValues values;
+
+		valuemask = 0;
+		colorGC = XCreateGC(dsp, RootWindow(dsp, DefaultScreen(dsp))
+                        , valuemask, &values);
+		XSetForeground(dsp, colorGC, WhitePixel(dsp, DefaultScreen(dsp)));
+	}
+	if (t->have_bgcolor) {
+		XSetForeground(dsp, colorGC, t->bgcolor);
+		XFillRectangle(dsp, XtWindow(hw->html.view), colorGC,
+			x, y, eptr->width, eptr->height);
+	}
+
+/* ### trace seulement les contours de la table */
+	if(! t->borders )
+		return;
+
 	if (ttopGC == NULL) {          
 		char dash_list[2];         
 		unsigned long valuemask;   
 		XGCValues values;
 
-/*
-values.tile = XCreatePixmapFromBitmapData(dsp, RootWindowOfScreen(scn),
-shadowpm_bits, shadowpm_width, shadowpm_height,
-BlackPixelOfScreen(scn), WhitePixelOfScreen(scn), DefaultDepthOfScreen(scn));
-*/                     
 		values.stipple = XCreateBitmapFromData(dsp,
 			RootWindowOfScreen(scn),
 			shadowpm_bits, shadowpm_width, shadowpm_height);
 		values.fill_style = FillSolid;
-/*
-valuemask = GCFunction|GCPlaneMask|GCForeground| GCBackground|
-GCFillStyle | GCStipple;
-*/
+
 		valuemask = GCFillStyle | GCStipple ;
 		ttopGC = XCreateGC(dsp, RootWindow(dsp, DefaultScreen(dsp))
 			, valuemask, &values);
@@ -1292,9 +1327,9 @@ GCFillStyle | GCStipple;
 	XSetTSOrigin(dsp, ttopGC, hw->html.scroll_x % 2, hw->html.scroll_y % 2);                
 	XSetTSOrigin(dsp, tbotGC, hw->html.scroll_x % 2, hw->html.scroll_y % 2);
 
-	if (hw->html.bg_image) {       
-		ltopGC = ttopGC;           
-		lbotGC = tbotGC;           
+	if (hw->html.cur_res.have_bgima) {       
+		ltopGC = ttopGC;
+		lbotGC = tbotGC;
 	} else {                       
 		ltopGC = hw->manager.top_shadow_GC;
 		lbotGC = hw->manager.bottom_shadow_GC;
@@ -1324,7 +1359,7 @@ GCFillStyle | GCStipple;
 			, lbotGC, x + eptr->width - 1, y0
 			, x + eptr->width - 1, y1);
 	} else {                       
-		if (hw->html.bg_image) {   
+		if (hw->html.cur_res.have_bgima) {   
 			XSetFillStyle(dsp, ltopGC, FillStippled);
 			XSetFillStyle(dsp, lbotGC, FillStippled);
 		}                          
@@ -1400,7 +1435,7 @@ GCFillStyle | GCStipple;
 		XFillPolygon(dsp, XtWindow(hw->html.view)
 			, lbotGC, pt, 6, Complex, CoordModeOrigin);
 
-		if (hw->html.bg_image) {   
+		if (hw->html.cur_res.have_bgima) {   
 			XSetFillStyle(dsp, ltopGC, FillSolid);
 			XSetFillStyle(dsp, lbotGC, FillSolid);
 		}                          

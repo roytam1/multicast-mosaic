@@ -135,6 +135,8 @@ static void FreeMarkup( struct mark_up *mptr)
 		free(mptr->text);
 	if (mptr->start)
 		free(mptr->start);
+	if (mptr->pcdata)
+		free(mptr->pcdata);
 	free(mptr);
 }
 
@@ -508,6 +510,7 @@ struct mark_up * HTMLLexem( char *str)
 			mark->anc_name = NULL;
 			mark->anc_href = NULL;
 			mark->anc_title = NULL;
+			mark->pcdata = NULL;
 			current = AddObj(&list, current, mark);
 		}
 /* end is on '<' or '\0' */
@@ -538,6 +541,7 @@ struct mark_up * HTMLLexem( char *str)
 			mark->anc_name = NULL;
 			mark->anc_href = NULL;
 			mark->anc_title = NULL;
+			mark->pcdata = NULL;
 			current = AddObj(&list, current, mark);
 			return(list);
 		}
@@ -552,6 +556,7 @@ struct mark_up * HTMLLexem( char *str)
 		mark->anc_name = NULL;
 		mark->anc_href = NULL;
 		mark->anc_title = NULL;
+		mark->pcdata = NULL;
 		current = AddObj(&list, current, mark);
 		start = (char *)(end + 1);
 /* start is a pointer after the '>' character */
@@ -576,6 +581,9 @@ typedef struct _ParserContext {
 	ParserStack *base_stk;	/* stack base point */
 	ParserStack *top_stk; 			/* actual stack */
 	int has_head;				/* head seen */
+	int has_title;				/* title seen */
+	char * title_text;			/* TITLE text */
+	struct mark_up * title_mark;		/* TITLE text */
 	int has_body;				/* body seen */
 	int has_frameset;			/* frameset seen */
 	int frameset_depth;			/* nested frameset */
@@ -615,6 +623,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 	case M_COMMENT:
 	case M_DOCTYPE:
 	case M_NOFRAMES:		/* we are configured with FRAME */
+	case M_META:			/* we are not able to do with */
 		return REMOVE_TAG;
 	default:
 		break;
@@ -646,6 +655,12 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 			if (mptr->is_end)
 				return REMOVE_TAG;
 			tmptr = HTMLLexem("<HTML>");
+			*im_ret = tmptr;
+			return INSERT_TAG;
+		case M_TITLE:
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			tmptr = HTMLLexem("<HTML><HEAD>");
 			*im_ret = tmptr;
 			return INSERT_TAG;
 		case M_FRAMESET:
@@ -757,8 +772,12 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 			*sop = SOP_PUSH;
 			return REMOVE_TAG;
 		case M_TITLE:
+			if(pc->has_title)
+				return REMOVE_TAG;
 			if (mptr->is_end)
 				return REMOVE_TAG;
+			pc->title_mark = mptr;
+			pc->title_text = NULL;
 			*sop = SOP_PUSH;
 			return GOOD_TAG;
 		case M_META:
@@ -773,6 +792,20 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 			/* le tag suivant est en principe BODY ou FRAMESET */
 			*sop = SOP_POP;
 			return GOOD_TAG; /* reste sur statck M_HTML */
+		case M_BODY:
+		case M_FRAMESET:
+		case M_TABLE:
+		case M_HEADER_1:
+		case M_HEADER_2:
+		case M_HEADER_3:
+		case M_HEADER_4:
+		case M_HEADER_5:
+		case M_HEADER_6:
+		case M_PARAGRAPH:
+		case M_ANCHOR:
+			tmptr = HTMLLexem("</HEAD>");
+			*im_ret = tmptr; /* close the head */
+			return INSERT_TAG;
 		default:
 			return REMOVE_TAG;
 		}
@@ -782,14 +815,27 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		case M_NONE:            /* test a white string */
                         if (mptr->is_white_text)
                                 return REMOVE_TAG;
-			return GOOD_TAG;
+			if (!pc->title_text) {
+				pc->title_text = strdup(mptr->text);
+				return REMOVE_TAG;
+			}
+			pc->title_text = (char*)realloc(pc->title_text,
+				strlen(pc->title_text)+ strlen(mptr->text)+2);
+			strcat(pc->title_text,mptr->text);
+			return REMOVE_TAG;
 		case M_TITLE:
 			if (!mptr->is_end)
 				return REMOVE_TAG;      /* deja dans TITLE */
+			pc->has_title = 1;
+			if (!pc->title_text)
+				pc->title_text = strdup("Untitled");
+			pc->title_mark->pcdata = strdup(pc->title_text);
 			*sop = SOP_POP;
-			return GOOD_TAG; /* next state will be HEAD */
+			return REMOVE_TAG; /* next state will be HEAD */
 		default:
-			return REMOVE_TAG;
+			tmptr = HTMLLexem("</TITLE>");
+			*im_ret = tmptr; /* close the title */
+			return INSERT_TAG;
 		}
 		break;
 	case M_SCRIPT:
@@ -1302,10 +1348,9 @@ HtmlTextInfo * HTMLParseRepair( char *str)
 	struct mark_up * mptr;		/* current to analyze */
 	struct mark_up *pmptr;		/* previous analyze */
 	struct mark_up begm;		/* begin of list */
-	char * base_url, *title_text, *title;
+	char * base_url;
 	char * base_target =NULL;
 	HtmlTextInfo *htinfo;
-	int in_title;
 
 	if (str == NULL)
 		return(NULL);
@@ -1320,6 +1365,9 @@ HtmlTextInfo * HTMLParseRepair( char *str)
 	Pcxt.base_stk = &BaseStck;
 	Pcxt.top_stk = Pcxt.base_stk; /*mtype=M_INIT_STATE next = NULL */
 	Pcxt.has_head =0;
+	Pcxt.has_title =0;
+	Pcxt.title_text =NULL;
+	Pcxt.title_mark =NULL;
 	Pcxt.has_body =0;
 	Pcxt.has_frameset = 0;
 	Pcxt.frameset_depth = 0;
@@ -1327,38 +1375,9 @@ HtmlTextInfo * HTMLParseRepair( char *str)
 
         mptr = begm.next;
         base_url = NULL;
-        in_title =0;
-        title_text = NULL;
-        title = NULL;		/* #### */
         while (mptr != NULL){ 
 /* if in_title, grab the text until end marker */
-                if (in_title && (mptr->type != M_TITLE) && (mptr->type !=M_NONE)){
-                        mptr = mptr->next;
-                        continue;
-                }       
                 switch (mptr->type){
-                case M_NONE:    
-                        if (in_title) {
-                                if ( !title_text) {
-                                        title_text = strdup(mptr->text);
-                                        break;
-                                }      
-                                title_text = (char*)realloc(title_text,
-                                        strlen(title_text)+ strlen(mptr->text)+2);
-                                strcat(title_text,mptr->text);
-                                break; 
-                        }              
-                        break;         
-                case M_TITLE:          
-                        if (mptr->is_end) {  
-                                in_title = 0;
-                                if (title_text)
-                                        title = title_text;
-                                break; 
-                        }              
-                        in_title = 1;  
-                        title_text = NULL;
-                        break;         
 /* take care of tag BASE */            
                 case M_BASE:           
                         if (mptr->is_end)
@@ -1372,7 +1391,9 @@ HtmlTextInfo * HTMLParseRepair( char *str)
                 mptr = mptr->next;     
         }
 	htinfo = (HtmlTextInfo *) malloc(sizeof(HtmlTextInfo));
-	htinfo->title = title;
+	if (!Pcxt.title_text) 
+		Pcxt.title_text = strdup("Untitled");
+	htinfo->title = Pcxt.title_text;
 	htinfo->base_url = base_url;
 	htinfo->base_target = base_target;
 	htinfo->mlist = begm.next;

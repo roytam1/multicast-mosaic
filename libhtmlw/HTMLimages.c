@@ -36,7 +36,6 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 
 	picd->map = NULL;
 	picd->fptr = NULL; 
-	picd->internal_numeo = pcc->internal_mc_eo;
 	picd->cw_only = pcc->cw_only;
 
 /* now we have an image. It is :

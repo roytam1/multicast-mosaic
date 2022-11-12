@@ -561,14 +561,14 @@ void PartialRefresh(HTMLWidget hw, struct ele_rec *eptr,
 
 	height = eptr->height;
 	if (height > 0) {
-		if(!hw->html.bg_image)
+		if(!hw->html.cur_res.have_bgima)
 			XFillRectangle(XtDisplay(hw), XtWindow(hw->html.view),
 				hw->html.drawGC, x, y,
 				(unsigned int)all.width, (unsigned int)height);
 	}
 	width = all.width;
 
-	if(bg!=hw->html.view->core.background_pixel || !hw->html.bg_image) {
+	if(bg!=hw->html.view->core.background_pixel || !hw->html.cur_res.have_bgima) {
 		XSetForeground(XtDisplay(hw), hw->html.drawGC, bg);
 		XSetBackground(XtDisplay(hw), hw->html.drawGC, fg);
 
@@ -583,22 +583,16 @@ void PartialRefresh(HTMLWidget hw, struct ele_rec *eptr,
 			    x, y + eptr->baseline,
 			    (char *)tdata, tlen);
 	} else {
-		XSetForeground(XtDisplay(hw), hw->html.drawGC, bg);
-		XSetBackground(XtDisplay(hw), hw->html.drawGC, fg);
-		XFillRectangle(XtDisplay(hw), XtWindow(hw->html.view),
-			       hw->html.drawGC,
-			       x, y,
-			       width, height);
+/* XFillRectangle(XtDisplay(hw), XtWindow(hw->html.view), hw->html.drawGC,
+	       x, y, width, height);
+*/
+		HTMLDrawBackgroundImage(hw, (x<0 ? 0 : x), (y<0 ? 0 : y),
+			(x<0 ? (width+x) : width), height );
 		XSetForeground(XtDisplay(hw), hw->html.drawGC, fg);
 		XSetBackground(XtDisplay(hw), hw->html.drawGC, bg);
-		HTMLDrawBackgroundImage((Widget)hw,
-					(x<0 ? 0 : x), (y<0 ? 0 : y),
-					(x<0 ? (width+x) : width),
-					height );
 		XDrawString(XtDisplay(hw), XtWindow(hw->html.view),
-			    hw->html.drawGC,
-			    x, y + eptr->baseline,
-			    (char *)tdata, tlen);
+			hw->html.drawGC, x, y + eptr->baseline,
+			(char *)tdata, tlen);
 	}
 	if (eptr->underline_number) {
 		int i, ly;
@@ -713,7 +707,7 @@ void HRuleRefresh( HTMLWidget hw, struct ele_rec *eptr)
 
 	/* blank out area */
 	XSetForeground(XtDisplay(hw), hw->html.drawGC, eptr->bg);
-	if(!hw->html.bg_image)
+	if(!hw->html.cur_res.have_bgima)
 		XFillRectangle(XtDisplay(hw), XtWindow(hw->html.view),
 			hw->html.drawGC, x1, y1, width, height);
 	y1 = y1 + (height / 2) - 1;

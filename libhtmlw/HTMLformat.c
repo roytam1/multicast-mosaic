@@ -48,7 +48,6 @@ struct mark_up * NULL_ANCHOR_PTR = &NULL_ANCHOR ;
 
 /* ############## This is may be as global ####*/
 static int InDocHead;
-static int in_title;
 
 /* ##############  This is maybe in a context stack ####*/
 static DescRec BaseDesc;
@@ -124,8 +123,8 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
 	eptr->underline_number = pcc->underline_number;
 	eptr->dashed_underline = pcc->dashed_underlines;
 	eptr->strikeout = pcc->strikeout;
-	eptr->fg = pcc->fg;
-	eptr->bg = pcc->bg;
+	eptr->fg = pcc->fg_text;
+	eptr->bg = pcc->bgcolor;
         eptr->anchor_tag_ptr = NULL_ANCHOR_PTR;	/* putit in struct markup##### */
         eptr->edata = NULL;
         eptr->edata_len = 0;
@@ -311,11 +310,6 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	mark = *mptr;
 	type = mark->type;
 
-	/* If we are not in a tag that belongs in the HEAD, end the HEAD
-	   section  - amb */
-	if (in_title && (type != M_TITLE)) {
-		return;
-	}
 /* some marker other than M_NONE M_BASE M_ISINDEX M_COMMENT finish the HEAD */
 	if (InDocHead) {
 		if((type != M_NONE)&&(type != M_BASE)&&
@@ -376,6 +370,23 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 			pcc->div = DIV_ALIGN_CENTER;
 		}
 		break;
+	case M_DIV:
+		if (mark->is_end) {
+			LineBreak(hw,*mptr,pcc);
+			pcc->div = DIV_ALIGN_LEFT;
+			break;
+		}
+		LineBreak(hw,*mptr,pcc);
+		LinefeedPlace(hw,*mptr,pcc);
+		pcc->div = DIV_ALIGN_LEFT;
+		tptr = ParseMarkTag(mark->start, MT_DIV, "ALIGN");
+		if ( tptr && !strcasecmp(tptr, "CENTER"))
+			pcc->div = DIV_ALIGN_CENTER;
+		if ( tptr && !strcasecmp(tptr, "RIGHT"))
+			pcc->div = DIV_ALIGN_RIGHT;
+		if(tptr)
+			free(tptr);
+		break;
 /*
  * Just insert a linefeed, or ignore if this is prefomatted
  * text because the <P> will be followed be a linefeed.
@@ -417,11 +428,6 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	 * XtGetValues().
 	 */
 	case M_TITLE:
-		if (mark->is_end) {
-			in_title = 0;
-		} else {
-			in_title =1;
-		}
 		break;
 /* Strikeout means draw a line through the text.
  * Right now we just set a boolean flag which gets shoved
@@ -566,21 +572,15 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 					tmp=ParseMarkTag(mark->start,
 						MT_BODY,atts[i]);
 					if (tmp) {
-						hw_do_color(hw,atts[i],tmp,pcc);
+						hw_do_body_color(hw,atts[i],tmp,pcc);
 						free(tmp);
 						tmp=NULL;
 					}
 				}
 			}
 			if (hw->html.body_images && mark->s_picd) {
-				hw_do_bg(hw,pcc,mark);
-			} else {        
-                                /* Make sure these are clear SAM */
-                                hw->html.bg_image=0;
-                                hw->html.bgmap_SAVE=None;
-                                hw->html.bgclip_SAVE=None;
-                        } 
-/*##### */
+				hw_do_body_bgima(hw,pcc,mark);
+			}
 		        InDocHead = 0;   /* end <head> section */
 			pcc->ignore = 0;
 		}
@@ -601,7 +601,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	 */
 	case M_ANCHOR:
 		if (mark->is_end) {
-			pcc->fg = hw->manager.foreground;
+			pcc->fg_text = MMPopColorFg(hw);
 			pcc->underline_number = pcc->in_underlined;
 			pcc->dashed_underlines = False;
 			pcc->anchor_tag_ptr = NULL_ANCHOR_PTR;
@@ -620,34 +620,33 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 					MT_ANCHOR, AT_TITLE);
 		(*mptr)->anc_target = ParseMarkTag(mark->start,
 					MT_ANCHOR, AT_TARGET);
-
 		if (tptr != NULL) { 
-		    	pcc->fg = hw->html.anchor_fg;
-		    	pcc->underline_number = hw->html.num_anchor_underlines;
-		    	pcc->dashed_underlines = hw->html.dashed_anchor_lines;
 /* we may want to send the href back somewhere else and
  * find out if we've visited it before */
 		        if (hw->html.previously_visited_test != NULL) {
-			    if((*(visitTestProc)
-			      (hw->html.previously_visited_test)) ((Widget)hw, tptr,hw->html.base_url)) {
-			        pcc->fg = hw->html.visitedAnchor_fg;
-			        pcc->underline_number = hw->html.num_visitedAnchor_underlines;
-			        pcc->dashed_underlines= hw->html.dashed_visitedAnchor_lines;
-			    } else {
-			        pcc->fg = hw->html.anchor_fg;
-			        pcc->underline_number = hw->html.num_anchor_underlines;
-			        pcc->dashed_underlines = hw->html.dashed_anchor_lines;
-			    }
+				if((*(visitTestProc) (hw->html.previously_visited_test)) ((Widget)hw, tptr,hw->html.base_url)) {
+			        	pcc->fg_text = MMPushColorFg(hw, hw->html.cur_res.fg_vlink);
+			        	pcc->underline_number = hw->html.num_visitedAnchor_underlines;
+			        	pcc->dashed_underlines= hw->html.dashed_visitedAnchor_lines;
+			    	} else {
+			        	pcc->fg_text = MMPushColorFg(hw, hw->html.cur_res.fg_link);
+			        	pcc->underline_number = hw->html.num_anchor_underlines;
+			        	pcc->dashed_underlines = hw->html.dashed_anchor_lines;
+			    	}
 		        } else {
-			    pcc->fg = hw->html.anchor_fg;
-			    pcc->underline_number =hw->html.num_anchor_underlines;
-			    pcc->dashed_underlines = hw->html.dashed_anchor_lines;
-		    }
+		    		pcc->fg_text = MMPushColorFg(hw, hw->html.cur_res.fg_link);
+		    		pcc->underline_number = hw->html.num_anchor_underlines;
+		    		pcc->dashed_underlines = hw->html.dashed_anchor_lines;
+		    	}
+		} else {
+			/* we push because it is only a <A name=..> */
+			/* ... an anchor name */
+			pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		}
 		if (pcc->in_underlined) {
-		    pcc->dashed_underlines = False;
-		    if (!pcc->underline_number)
-		      pcc->underline_number = 1;
+		    	pcc->dashed_underlines = False;
+		    	if (!pcc->underline_number)
+		      		pcc->underline_number = 1;
 		}
 		break;
 /* Blockquotes increase the margin width. They cannot be nested. */
@@ -1074,8 +1073,11 @@ int FormatAll(HTMLWidget hw, int Fwidth, Boolean save_obj)
 	pcc.pf_lf_state = 0;	/* linefeed state. Hack for preformat */
 	pcc.preformat = 0;
 	pcc.div = DIV_ALIGN_LEFT;
-	pcc.fg = hw->manager.foreground;
-	pcc.bg = hw->core.background_pixel;
+
+	MMResetWidgetColorStack (hw);
+	pcc.fg_text = hw->html.color_stack_fg->pixel;	/* def_res and bottom */
+	pcc.bgcolor = hw->html.color_stack_bg->pixel;   /* is same */
+
 	pcc.underline_number = 0;
 	pcc.in_underlined = 0;
 	pcc.dashed_underlines = False;
@@ -1090,7 +1092,6 @@ int FormatAll(HTMLWidget hw, int Fwidth, Boolean save_obj)
         pcc.superscript = 0;
         pcc.subscript = 0;
 	pcc.indent_level = 0;
-	pcc.internal_mc_eo = 0;
 	pcc.text_area_buf = NULL;
 	pcc.ignore = 0;
 	pcc.current_select = NULL;
@@ -1109,7 +1110,6 @@ int FormatAll(HTMLWidget hw, int Fwidth, Boolean save_obj)
 	DescType->save_cur_line_width = pcc.cur_line_width;
 	DescType->cur_line_width = pcc.cur_line_width;
 	InDocHead = 0;
-	in_title = 0;
 /* Free up previously formatted elements */
 	FreeLineList(hw->html.formatted_elements,hw);
 /* Start a null element list, to be filled in as we go. */
@@ -1173,8 +1173,8 @@ void RefreshElement(HTMLWidget hw,struct ele_rec *eptr)
 /*		printf("Refresh E_CR\n"); */
 		break;
 	case E_LINEFEED:
-	        if(!hw->html.bg_image)
-		  LinefeedRefresh(hw, eptr); 
+/*	        if(!hw->html.bg_image) */
+		LinefeedRefresh(hw, eptr); 
 		break;
 	case E_IMAGE:
 		ImageRefresh(hw, eptr);

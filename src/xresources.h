@@ -138,16 +138,16 @@ static XtResource resources[] = {
   { "srcTrace", "SrcTrace", XtRBoolean, sizeof (Boolean),
       offset (srcTrace), XtRString, "False" },
 
-  { "meterForeground", "MeterForeground", XtRString, sizeof (char *),
+  { "meterForeground", "MeterForeground", XtRPixel, sizeof (Pixel ),
       offset (meterForeground), XtRString, "#FFFF00000000"},
 
-  { "meterBackground", "MeterBackground", XtRString, sizeof (char *),
+  { "meterBackground", "MeterBackground", XtRPixel, sizeof (Pixel),
       offset (meterBackground), XtRString, "#2F2F4F4F4F4F"},
 
-  { "meterFontForeground", "MeterFontForeground", XtRString, sizeof (char *),
+  { "meterFontForeground", "MeterFontForeground", XtRPixel, sizeof (Pixel),
       offset (meterFontForeground), XtRString, "#FFFFFFFFFFFF"},
 
-  { "meterFontBackground", "MeterFontBackground", XtRString, sizeof (char *),
+  { "meterFontBackground", "MeterFontBackground", XtRPixel, sizeof (Pixel),
       offset (meterFontBackground), XtRString, "#000000000000"},
 
 /* Accept-Language stuff - BJS */

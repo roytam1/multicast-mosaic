@@ -363,9 +363,7 @@ static void mo_extract_anchors(mo_hotlist *list, struct mark_up *mptr)
 	for (; mptr != NULL; mptr = mptr->next)
 	switch (mptr->type) {
 	case M_TITLE:		/* title tag */
-		if (mptr->is_end && last_text)
-/* if this is the end tag, take the last text as name */
-			name = mo_convert_newlines_to_spaces (strdup(last_text));
+		name = mo_convert_newlines_to_spaces (strdup(mptr->pcdata));
 		break;
 	case M_NONE:		/* text, not tag */
 		if (notSpacesOrNewLine(mptr->text))
@@ -531,6 +529,7 @@ static void mo_read_hotlist(mo_hotlist *list, FILE *fp)
 	long size;
 	struct mark_up *hot_mark_up, *mptr;
 	char *text;
+	HtmlTextInfo * htinfo;
 
 	fseek(fp, 0L, SEEK_END);
 	size = ftell(fp);
@@ -541,7 +540,8 @@ static void mo_read_hotlist(mo_hotlist *list, FILE *fp)
 	text[size] = '\0';
 
 /* parse the HTML document */
-	hot_mark_up = HTMLLexem(text);
+	htinfo = HTMLParseRepair(text);
+	hot_mark_up = htinfo->mlist;
 	free(text);
 
 /* some pre-processing to see if this is in hotlist format or if this is a
@@ -600,10 +600,7 @@ static void mo_read_hotlist(mo_hotlist *list, FILE *fp)
 				done = 1;
 				break;
 			case M_TITLE:
-				if(mptr->is_end){
-					title = last_text ?
-						strdup(last_text): (char*)NULL;
-				}
+				title = mptr->pcdata;
 				have_dd = 0;
 				break;
 			case M_DESC_TEXT:
@@ -682,7 +679,7 @@ static void mo_write_list_r(mo_hotlist *list, FILE *fp)
  */
 mo_status mo_write_hotlist (mo_hotlist *list, FILE *fp)
 {
-	fprintf(fp,"<HTML>\n<TITLE>Hotlist from user %s</TITLE>\n<BODY>\n",mMosaicAppData.author_full_name);
+	fprintf(fp,"<HTML>\n<HEAD>\n<TITLE>Hotlist from user %s</TITLE>\n</HEAD>\n<BODY>\n",mMosaicAppData.author_full_name);
 	fprintf(fp,"<H1>Hotlist from user %s</H1>\n",mMosaicAppData.author_full_name);
 	fprintf(fp,"<DD>primaryhotlist\n<DL>\n");
 	mo_write_list_r(list, fp);
@@ -1158,9 +1155,9 @@ static void mo_insert_item_in_current_hotlist(mo_window *win)
 	      XmToggleButtonGadgetSetState(eht_info->tog_url, False, False);
 	    }
 	} else {
-	  XmTextFieldSetString(eht_info->title_text, "");
-	  XmTextFieldSetString(eht_info->url_text, "");
-	  XmTextFieldSetString(eht_info->comment_text, "");
+	  XmTextFieldSetString(eht_info->title_text, " ");
+	  XmTextFieldSetString(eht_info->url_text, " ");
+	  XmxTextSetString(eht_info->comment_text, "");
 	}
     }
 }

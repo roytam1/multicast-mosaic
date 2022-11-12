@@ -59,7 +59,6 @@ static struct c_box_rec {
 } C_boxes[256];
 
 
-static int allocation_index[256];
 static int BoxCount;
 static struct color_rec *glohash_ptr;
 static struct color_rec *free_hash = (struct color_rec *)NULL;
@@ -457,94 +456,6 @@ static void MedianCut( unsigned char *data, int w, int h, XColor *colrs,
 	}
 }
 
-/*
- * Free all the colors in the default colormap that we have allocated so far.
- */
-void FreeColors(Display *d, Colormap colormap)
-{
-	int i, j;
-	unsigned long pix;
-
-	for (i=0; i<256; i++) {
-		if (allocation_index[i]) {
-			pix = (unsigned long)i;
-			/* Because X is stupid, we have to Free the color
-			 * once for each time we've allocated it.
-			 */
-			for (j=0; j<allocation_index[i]; j++)
-				XFreeColors(d, colormap, &pix, 1, 0L);
-		}
-		allocation_index[i] = 0;
-	}
-}
-
-/* Find closest color by allocating it, or picking an already allocated color
- */
-void FindColor(Display *d, Colormap colormap, XColor *colr)
-{
-	int i, match;
-	int rd, gd, bd, dist, mindist;
-	int cindx;
-	XColor tempcolr;
-	static XColor def_colrs[256];
-	static int have_colors = 0;
-	int NumCells;
-
-        tempcolr.red=colr->red;      
-        tempcolr.green=colr->green;  
-        tempcolr.blue=colr->blue;    
-        tempcolr.flags=colr->flags;  
-
-	match = XAllocColor(d, colormap, colr);
-	if (match == 0) {
-                colr->red=tempcolr.red;
-                colr->green=tempcolr.green;
-                colr->blue=tempcolr.blue;  
-                colr->flags=tempcolr.flags;
-
-		NumCells = DisplayCells(d, DefaultScreen(d));
-		if (!have_colors) {
-			for (i=0; i<NumCells; i++)
-				def_colrs[i].pixel = i;
-			XQueryColors(d, colormap, def_colrs, NumCells);
-			have_colors = 1;
-		}
-		mindist = 196608;		/* 256 * 256 * 3 */
-		cindx = -1;
-		for (i=0; i<NumCells; i++) {
-			rd=(int)(def_colrs[i].red >> 8) - (int)(colr->red >> 8);
-			gd=(int)(def_colrs[i].green>> 8)-(int)(colr->green >> 8);
-			bd=(int)(def_colrs[i].blue >> 8)-(int)(colr->blue >> 8);
-			dist = (rd * rd) + (gd * gd) + (bd * bd);
-			if (dist < mindist) {
-				mindist = dist;
-				cindx = def_colrs[i].pixel;
-				if (dist == 0)
-					break;
-			}
-		}
-                if (cindx==(-1)) {   
-                        colr->pixel=BlackPixel(d, DefaultScreen(d));
-                        colr->red = colr->green = colr->blue = 0;
-                } else {               
-                        colr->pixel = cindx;
-                        colr->red = def_colrs[cindx].red;
-                        colr->green = def_colrs[cindx].green;
-                        colr->blue = def_colrs[cindx].blue;
-                } 
-	} else {
-			/* Keep a count of how many times we have allocated the
-			 * same color, so we can properly free them later.
-			 */
-		allocation_index[colr->pixel]++;
-			/* If this is a new color, we've actually changed default
-			 * colormap, and may have to re-query it later.
-			 */
-		if (allocation_index[colr->pixel] == 1)
-			have_colors = 0;
-	}
-}
-
 #ifdef NEW
 extern int bits_per_pixel(int dpy, int depth); /*this is in ../src/pixmaps.c*/
 #endif
@@ -843,8 +754,7 @@ static Pixmap InfoToImage( HTMLWidget hw, ImageInfo *img_info, int clip)
 					      (tmpcolr.green>>5)*16 +
 					      (tmpcolr.blue>>5)*5) / (65504/64);
 			} else {
-				FindColor(XtDisplay(hw), mMosaicColormap ,
-					  &tmpcolr);
+				tmpcolr.pixel = HTMLXColorToPixel(&tmpcolr);
 				Mapping[i] = tmpcolr.pixel;
 			}
 		}
@@ -1449,8 +1359,6 @@ void MMPreloadImage(mo_window *win, struct mark_up *mptr, MimeHeaderStruct *mhs,
 
 	/* here we have an image from the cache or the net */
 /* data is in icbs */                  
-/*        pcc->internal_mc_eo++;         */
-                                       
 /* Make stuff to create image with correct colors and size */
 
         if( (lpicd.req_width != lpicd.width ) ||
@@ -1482,7 +1390,7 @@ void MMPreloadImage(mo_window *win, struct mark_up *mptr, MimeHeaderStruct *mhs,
 */
                 lbg_pixel = hw->core.background_pixel;
                 tmpcolr.pixel = lbg_pixel;
-                XQueryColor(XtDisplay(hw), hw->core.colormap, &tmpcolr);
+                HTMLPixelToXColor(&tmpcolr);
                 bg_red = lpicd.colrs[bg].red = tmpcolr.red;
                 bg_green = lpicd.colrs[bg].green = tmpcolr.green;
                 bg_blue = lpicd.colrs[bg].blue = tmpcolr.blue;

@@ -204,6 +204,7 @@ struct mark_up {
 	char * anc_href;
 	char * anc_title;
 	char * anc_target;
+	char * pcdata;		/* #pcdata for tag such <title> */
 };
 
 typedef struct _HtmlTextInfo {

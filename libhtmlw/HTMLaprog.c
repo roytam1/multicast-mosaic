@@ -180,7 +180,6 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 
 	aps->internal_numeos = (int*)malloc( sizeof(int)); /*alloc one */
 	aps->ret_filenames = (char **) malloc( sizeof(char *)); /* alloc one */
-	aps->internal_numeos[aps->url_arg_count] = pcc->internal_mc_eo;
 	aps->ret_filenames[aps->url_arg_count] = NULL;
 
 	aps->cw_only = pcc->cw_only;
@@ -329,7 +328,6 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 
 				eo.src = aps->url_arg[i];
 				eo.ret_filename = NULL;
-				eo.num_eo = pcc->internal_mc_eo;
 				eo.cw_only = pcc->cw_only;
 				strcat(cmdline," ");
 /* bug ###### */
@@ -340,7 +338,6 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 				GetUrlData((Widget) hw,
 					/* mo_window*/ NULL,
 					(XtPointer) &eo);
-				pcc->internal_mc_eo++;
 				if(eo.ret_filename!=NULL){
 					strcat(cmdline, eo.ret_filename);
 					get_cnt++;
