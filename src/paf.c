@@ -761,6 +761,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		}
 		free(win->frame_sons);
 		win->frame_sons = NULL;
+		win->frame_sons_nbre = 0;
 		HTMLUnsetFrameSet (win->scrolled_win);
 		win->frame_type = NOTFRAME_TYPE;
 	}

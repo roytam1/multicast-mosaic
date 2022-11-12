@@ -28,6 +28,17 @@ static void mo_add_to_rbm_history(mo_window *win, char *url, char *title);
 /* ----------------------------- HISTORY LIST ----------------------------- */
 
 /* navigation */
+static void set_popup_frame( char* str, int set, mo_window *win)
+{
+	int i;
+
+	if(!win->frame_sons)
+		return;
+	for (i= 0; i< win->frame_sons_nbre; i++){
+		if (win->frame_sons[i])
+			mo_popup_set_something(str, set, win->frame_sons[i]->popup_b3_items);
+	}
+}
 
 /* This could be cached, but since it shouldn't take too long... */
 void mo_back_possible (mo_window *win)
@@ -35,6 +46,8 @@ void mo_back_possible (mo_window *win)
         mo_tool_state(&(win->tools[BTN_PREV]),XmxSensitive,BTN_PREV);
         XmxRSetSensitive (win->menubar, (XtPointer)mo_back, XmxSensitive);
         mo_popup_set_something("Back", XmxSensitive, win->popup_b3_items);
+	if (win->frame_type == FRAMESET_TYPE) 
+		set_popup_frame("Back", XmxSensitive, win);
 }
 
  
@@ -45,6 +58,8 @@ void mo_back_impossible (mo_window *win)
         XmxRSetSensitive (win->menubar, (XtPointer)mo_back, XmxNotSensitive);
         mo_tool_state(&(win->tools[BTN_PREV]),XmxNotSensitive,BTN_PREV);
         mo_popup_set_something("Back", XmxNotSensitive, win->popup_b3_items);
+	if (win->frame_type == FRAMESET_TYPE) 
+		set_popup_frame("Back", XmxNotSensitive, win);
 }                                     
 
 void mo_forward_possible (mo_window *win)
@@ -52,6 +67,8 @@ void mo_forward_possible (mo_window *win)
         mo_tool_state(&(win->tools[BTN_NEXT]),XmxSensitive,BTN_NEXT);
         XmxRSetSensitive(win->menubar, (XtPointer)mo_forward, XmxSensitive);
         mo_popup_set_something("Forward", XmxSensitive, win->popup_b3_items);
+	if (win->frame_type == FRAMESET_TYPE) 
+		set_popup_frame("Forward", XmxSensitive, win);
 }                                     
        
 /* purpose: Can't go forward (nothing in the history list). */
@@ -60,6 +77,8 @@ void mo_forward_impossible (mo_window *win)
 	mo_tool_state(&(win->tools[BTN_NEXT]),XmxNotSensitive,BTN_NEXT);
 	XmxRSetSensitive (win->menubar, (XtPointer)mo_forward, XmxNotSensitive);
 	mo_popup_set_something("Forward", XmxNotSensitive, win->popup_b3_items);
+	if (win->frame_type == FRAMESET_TYPE) 
+		set_popup_frame("Forward", XmxNotSensitive, win);
 }      
 
 /* ---------------------------- kill functions ---------------------------- */
@@ -437,7 +456,7 @@ static void NavigateFrame(mo_window *fwin, char * aurl_wa, char *aurl,
 		if (pnode->previous) {
 			mo_back_possible(pwin);
 		} else {
-               		mo_back_possible (pwin);
+               		mo_back_impossible (pwin);
 		}
 		return;
 	case NAVIGATE_TARGET_SELF:
@@ -603,6 +622,7 @@ static void back_from_frameset(mo_window *win, mo_node *cur_node, mo_node *new_n
 	}    
 	free(win->frame_sons);
 	win->frame_sons = NULL;
+	win->frame_sons_nbre = 0;
 	HTMLUnsetFrameSet (win->scrolled_win);
 	win->frame_type = NOTFRAME_TYPE;
 
@@ -823,6 +843,7 @@ static void forward_from_frameset(mo_window *win, mo_node *cur_node, mo_node *ne
 	}    
 	free(win->frame_sons);
 	win->frame_sons = NULL;
+	win->frame_sons_nbre = 0;
 	HTMLUnsetFrameSet (win->scrolled_win);
 	win->frame_type = NOTFRAME_TYPE;
 
