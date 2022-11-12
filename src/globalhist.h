@@ -13,6 +13,6 @@ extern void MMInitHistory(char * rootdir);
 extern void MMUpdateGlobalHistory (char *aurl);
 
 mo_status mo_been_here_before_huh_dad (char *);
-mo_status mo_wipe_global_history (mo_window *);
+void mo_wipe_global_history (mo_window *);
 
 #endif

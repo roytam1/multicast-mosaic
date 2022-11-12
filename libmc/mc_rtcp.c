@@ -96,7 +96,7 @@ void McRtcpWriteSdes()
 	
 /* TOOL */
 	itm[3].type = RTCP_SDES_TOOL;
-	strcpy(itm[3].d, "mMosaic-3.6.7");
+	strcpy(itm[3].d, "mMosaic-3.6.8");
 	itm[3].len= strlen(itm[3].d);
 
         ebuf[0] = 0x80;     /* V,P,SC */

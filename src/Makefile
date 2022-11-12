@@ -23,7 +23,7 @@ globalhist.o: globalhist.c ../libhtmlw/HTML.h
 	$(CC) -c $(CFLAGS) $(AUX_CFLAGS) globalhist.c
 
 $(MOSAIC): $(OBJS) $(PROGRAM_LIBS)
-	$(CC) $(LDFLAGS) -o $(MOSAIC) $(OBJS) $(LIBS) 
+	$(CC) $(LDFLAGS) -o $(MOSAIC) $(OBJS) $(LIBS)
 
 
 HFILES = mosaic.h xresources.h

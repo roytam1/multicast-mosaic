@@ -40,7 +40,7 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
-#if !defined(__SunOS_5_7)
+#if !defined(__SunOS_5_7) && !defined(__SunOS_5_8)
 int srandom(int);
 int random(void);
 #endif

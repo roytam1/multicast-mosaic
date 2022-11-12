@@ -22,5 +22,8 @@ extern void mo_forward_possible (mo_window *win);
 extern void MMUpdNavigationOnNewURL( mo_window *win, char * aurl_wa, char *aurl,
         char *goto_anchor, char *text, MimeHeaderStruct *mhs, int docid,
         HtmlTextInfo * htinfo);
+extern void mo_kill_node_descendents_frame(mo_window *win, mo_node *node,
+        mo_node ** ret_next);
+extern void mo_kill_node_descendents(mo_window *win, mo_node *node);
 
 #endif

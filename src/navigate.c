@@ -118,7 +118,7 @@ void mo_free_node_data (mo_node *node)
 	memset(node,0,sizeof(mo_node)); /* sanity */
 }
 
-static void mo_kill_node_descendents_frame(mo_window *win, mo_node *node,
+void mo_kill_node_descendents_frame(mo_window *win, mo_node *node,
 	mo_node ** ret_next)
 {
 	mo_node *foo, *next;
@@ -148,7 +148,7 @@ static void mo_kill_node_descendents_frame(mo_window *win, mo_node *node,
    mo_node itself, and kill them.  This is equivalent to calling
    mo_kill_node on each of those nodes, except this is faster since
    all the Motif list entries can be killed at once. */
-static void mo_kill_node_descendents (mo_window *win, mo_node *node)
+void mo_kill_node_descendents (mo_window *win, mo_node *node)
 {
 	mo_node *foo, *next;
 

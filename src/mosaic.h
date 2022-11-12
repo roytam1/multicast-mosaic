@@ -178,10 +178,10 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.6.7"
+#define MO_VERSION_STRING "3.6.8"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
-#define MO_DEVELOPER_ADDRESS "mMosaic-dev@tsi.enst.fr"
+#define MO_DEVELOPER_ADDRESS "dauphin@enst.fr"
 
 #ifndef DOCS_DIRECTORY_DEFAULT
 #define DOCS_DIRECTORY_DEFAULT \
@@ -190,12 +190,12 @@ typedef enum {
 
 /* This must be a straight string as it is included into a struct; no tricks. */
 #ifndef HOME_PAGE_DEFAULT
-#define HOME_PAGE_DEFAULT "http://www-sig.enst.fr/~dauphin/mMosaic/index.html"
+#define HOME_PAGE_DEFAULT "http://www.enst.fr/~dauphin/mMosaic/index.html"
 #endif /* not HOME_PAGE_DEFAULT */
 
 #ifndef WHATSNEW_PAGE_DEFAULT
 #define WHATSNEW_PAGE_DEFAULT \
-	"http://www-sig.enst.fr/~dauphin/mMosaic/change.html"
+	"http://www.enst.fr/~dauphin/mMosaic/change.html"
 #endif /* not WHATSNEW_PAGE_DEFAULT */
 
 #ifndef DEMO_PAGE_DEFAULT

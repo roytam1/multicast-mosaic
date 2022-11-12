@@ -10,7 +10,7 @@
 #	- NetWinder (StrongArm based machine)
 #	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.6.7
+MCVER=3.6.8
 
 ##
 ## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
@@ -21,8 +21,8 @@ MCVER=3.6.7
 ##
 
 #CC = gcc
-#CC = cc
-CC = CC
+CC = cc
+#CC = CC
 
 ##
 ## Linker options
@@ -49,9 +49,9 @@ CC = CC
 # SGI Mipspro
 #prereleaseflags = -g -n32 -Xcpluscomm -woff 1009,1014,1048,1110,1116,1185,1188,1204,1230,1233
 # Sun Workshop C Compiler
-#prereleaseflags = -v -g -xstrconst
+prereleaseflags = -v -g -xstrconst
 # Sun Workshop C++ Compiler
-prereleaseflags = +w -g
+#prereleaseflags = +w -g
 
 # For building a shared lib add this	(don't use: experimental)
 #prereleaseflags = $prereleaseflags -fPIC
@@ -163,6 +163,10 @@ xinc	= -I/usr/openwin/include -I/usr/dt/include
 # Solaris 2.x
 xlibs	= -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/dt/lib -R/usr/dt/lib
 xlibs	+= -lXm -lXmu -lXt -lXext -lX11 -lm
+
+#
+# private
+#xlibs	+= /home/dauphin/motif/openmotif2.1.30/b/motif/lib/Xm/libXm21.a -lXmu -lXp -lXt -lXext -lX11 -lm
 
 ##
 ## PNG support (PNGLIB 0.99d and ZLIB 1.0.9)
@@ -283,6 +287,7 @@ customflags =
 ## ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------
 ##
 
+ARCHIVEDIR = /enst/ftp/pub/mbone/mMosaic
 CFLAGS = $(sysconfigflags) $(prereleaseflags) $(mcflag) $(plugflags) $(customflags)
 
 all: libhtmlw libnut $(mclib) $(pluglib) $(explugdir) src
@@ -341,23 +346,23 @@ clean:
 
 archive:
 	$(MAKE) clean
-	(cd ..; tar cf /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar ./mMosaic-src-$(MCVER) )
-	gzip -9 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar
-	chmod 444 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar.gz
-	- rm /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-src.tar.gz
-	(cd /tsi/archive/ftp/pub/multicast/mMosaic; ln -s mMosaic-$(MCVER).tar.gz mMosaic-src.tar.gz)
+	(cd ..; tar cf $(ARCHIVEDIR)/mMosaic-$(MCVER).tar ./mMosaic-src-$(MCVER) )
+	gzip -9 $(ARCHIVEDIR)/mMosaic-$(MCVER).tar
+	chmod 444 $(ARCHIVEDIR)/mMosaic-$(MCVER).tar.gz
+	- rm $(ARCHIVEDIR)/mMosaic-src.tar.gz
+	(cd $(ARCHIVEDIR); ln -s mMosaic-$(MCVER).tar.gz mMosaic-src.tar.gz)
 
 archive-bin :
 	- strip src/mMosaic
-	- cp src/mMosaic /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
-	- gzip -9 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
-	chmod 444 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25.gz
-	- rm /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-solaris25-bin.gz
-	(cd /tsi/archive/ftp/pub/multicast/mMosaic; ln -s mMosaic-$(MCVER)-bin-solaris-25.gz mMosaic-solaris25-bin.gz)
+	- cp src/mMosaic $(ARCHIVEDIR)/mMosaic-$(MCVER)-bin-solaris-25
+	- gzip -9 $(ARCHIVEDIR)/mMosaic-$(MCVER)-bin-solaris-25
+	chmod 444 $(ARCHIVEDIR)/mMosaic-$(MCVER)-bin-solaris-25.gz
+	- rm $(ARCHIVEDIR)/mMosaic-solaris25-bin.gz
+	(cd $(ARCHIVEDIR); ln -s mMosaic-$(MCVER)-bin-solaris-25.gz mMosaic-solaris25-bin.gz)
 
 snap :
 	$(MAKE) clean
-	(cd ..; tar cf /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-snap.tar ./mMosaic-src-$(MCVER) )
-	gzip -9 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-snap.tar
-	chmod 444 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-snap.tar.gz
+	(cd ..; tar cf $(ARCHIVEDIR)/mMosaic-snap.tar ./mMosaic-src-$(MCVER) )
+	gzip -9 $(ARCHIVEDIR)/mMosaic-snap.tar
+	chmod 444 $(ARCHIVEDIR)/mMosaic-snap.tar.gz
 

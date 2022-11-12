@@ -120,9 +120,6 @@ int sarg[7],smalllogo=0,stexttools=0;
 
 XColor fg_color, bg_color;
 
-/* Forward declaration of test predicate. */
-int anchor_visited_predicate (Widget, char *, char *);
-
 /* When we first start the application, we call mo_startup()
    after creating the unmapped toplevel widget.  mo_startup()
    either sets the value of this to 1 or 0.  If 0, we don't
@@ -562,8 +559,8 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 		rds.req_url = mo_url_canonicalize_keep_anchor(href,
 				win->current_node->base_url);
 		win = get_frame_target(win, win->current_node->htinfo->base_target, wacd->target);
-		win->navigation_action = NAVIGATE_NEW;
 		if (win){
+			win->navigation_action = NAVIGATE_NEW;
 			if (win->frame_type != FRAME_TYPE) {
 				MMPafLoadHTMLDocInWin (win, &rds);
 			} else {	/* clic in FRAME */
@@ -616,6 +613,7 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
  *   there before.
  ****************************************************************************/
 int anchor_visited_predicate (Widget w, char *href, char * base_url)
+/*static void anchor_visited_predicate (Widget w, XtPointer clid, XtPointer calld) */
 {
 	int rv;
 
@@ -1630,7 +1628,7 @@ static mo_status mo_fill_window (mo_window *win)
 					XmNtopAttachment, XmATTACH_FORM,
 					XmNbottomAttachment, XmATTACH_FORM,
 					NULL);
-	win->url_widget = XtVaCreateManagedWidget("text",xmTextFieldWidgetClass,
+	win->url_widget = XtVaCreateManagedWidget("urltext",xmTextFieldWidgetClass,
 					win->slab[SLAB_URL],
 					XmNrightOffset, 3,
 					XmNleftOffset, 3,
@@ -1643,6 +1641,7 @@ static mo_status mo_fill_window (mo_window *win)
 					XmNcursorPositionVisible, True,
 					XmNeditable, True,
                                         XmNtraversalOn, True,
+					XmNvalue," ",
 					NULL);
 	/* DO THIS WITH THE SLAB MANAGER - BJS */
 	XtAddCallback (win->url_widget, XmNactivateCallback, url_field_cb, (XtPointer)win);
@@ -1651,10 +1650,13 @@ static mo_status mo_fill_window (mo_window *win)
 	win->slab[SLAB_VIEW]= win->scrolled_win= XtVaCreateManagedWidget ("view",
 		htmlWidgetClass, form, 
        		XmNresizePolicy, XmRESIZE_ANY,
-		WbNpreviouslyVisitedTestFunction, anchor_visited_predicate,
 		XmNshadowThickness, 2,
+		/*WbNpreviouslyVisitedTestFunction,anchor_visited_predicate,*/
 		NULL);
 /*########### a mettre sous forme de callback ################ */
+/*	XtAddCallback(win->scrolled_win, WbNpreviouslyVisitedTestFunction, 
+		anchor_visited_predicate, win);
+*/
 	XtAddCallback(win->scrolled_win,
 		WbNpointerMotionCallback, pointer_motion_callback,win);
 	XtAddCallback (win->scrolled_win, WbNanchorCallback, anchor_cb, win);
@@ -1888,11 +1890,16 @@ mo_status mo_delete_window (mo_window *win)
 }
 ################ */
 
-	while (node) {
-		mo_node *tofree = node;
-		node = node->next;
-		mo_free_node_data (tofree); /*####### FIXME*/
-		free (tofree);
+	if(node->node_type == NODE_NOTFRAME_TYPE) {
+		mo_kill_node_descendents(win, node);
+		mo_free_node_data (node);
+		free (node);
+	} else {		/* NODE_FRAMESET_TYPE */
+		mo_node *next;
+
+		mo_kill_node_descendents_frame(win, node, &next);
+		mo_free_node_data (node);
+                free(node);
 	}
 	win->first_node=NULL;
 	free (win->search_start);
@@ -2104,6 +2111,9 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 
 	swin->scrolled_win= htmlw;
 /*######	WbNpreviouslyVisitedTestFunction, anchor_visited_predicate, */
+/*	XtAddCallback(swin->scrolled_win, WbNpreviouslyVisitedTestFunction, 
+		anchor_visited_predicate, swin);
+*/
 /*########### a mettre sous forme de callback ################ */
 	XtAddCallback(swin->scrolled_win,
 		WbNpointerMotionCallback, pointer_motion_callback,swin);

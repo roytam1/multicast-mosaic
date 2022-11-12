@@ -844,7 +844,7 @@ void mo_help_about(Widget w, XtPointer clid, XtPointer calld)
 
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
-	rds.req_url = "http://sig.enst.fr/~dauphin/mMosaic/index.html";
+	rds.req_url = "http://www.enst.fr/~dauphin/mMosaic/index.html";
 	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
 	neww->navigation_action = NAVIGATE_NEW;
