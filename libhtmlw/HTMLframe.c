@@ -1193,7 +1193,7 @@ void  _XmHTMLDestroyFrames(HTMLWidget hw)
 * In:
 *       hw:           XmHTMLWidget id
 */
-static void _XmHTMLReconfigureFrames(HTMLWidget hw)
+void _XmHTMLReconfigureFrames(HTMLWidget hw)
 {
         HTMLWidget frame;
         int i;

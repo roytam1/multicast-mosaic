@@ -58,11 +58,18 @@ const char * MMOSAIC_PRESENT = "mmosaic_presentation" ;
 
 void FreeMimeStruct( MimeHeaderStruct *mhs)
 {
-/* ### FIXME don't know where to free mhs...*/
-/*	if( mhs->content_type ) free(mhs->content_type); */
-/*	if( mhs->expires ) free(mhs->expires ); */
-/*	if( mhs->last_modified ) free(mhs->last_modified); */
-/*	if( mhs->location ) free(mhs->location); */
+/* ### FIXME don't know where to free mhs (because MULTICAST need it)...*/
+/* ###	if( mhs->content_type ) free(mhs->content_type); ###*/
+/*###	if( mhs->expires ) free(mhs->expires ); ###*/
+/*###	if( mhs->last_modified ) free(mhs->last_modified);###*/
+/*###	if( mhs->location ) free(mhs->location);###*/
+
+	mhs->content_type = NULL; /*sanity */
+	mhs->expires = NULL;	/* sanity */
+	mhs->last_modified = NULL;	/* sanity */
+	mhs->location = NULL;	/* sanity */
+
+/*###	free(mhs); ###*/
 }
 
 static void SetMimeToken(MimeHeaderStruct *mhs, char *token, char *value)

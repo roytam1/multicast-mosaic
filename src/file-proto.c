@@ -54,6 +54,7 @@ void read_file_local(PafDocDataStruct * pafd)
 	MimeHeaderStruct mhs;
 	int soc,i,statresult;
 
+	memset(&mhs,0,sizeof(MimeHeaderStruct));
 	local_name = HTLocalName(pafd->aurl);
 	if (!local_name){
 		free(pafd->www_con_type);

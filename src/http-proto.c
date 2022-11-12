@@ -226,6 +226,8 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
  * qu'on doit faire et ou on en est. Autrement dit : dans quel etat on est,
  * et suivant cet etat on fait des 'choses'
  */
+
+	memset(&mhs,0,sizeof(MimeHeaderStruct));
 	server_version[0] = '\0';
 
 /* lire les donnes */
@@ -246,6 +248,7 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 /* ###########	Read the first line of the response  #############   */
 /* It is the status line respons header. The read_stat say: we are at
  * beginning. Read the status line. Get numeric status etc */
+		memset(&mhs,0,sizeof(MimeHeaderStruct));
 		ParseMimeHeader("", &mhs);  /* get a default mime header*/
 		*(pafd->mhs) = mhs;
 #ifdef DEBUG_HTTP
@@ -503,6 +506,7 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 /* en fait on lit le header, si il y en a un, jusqu'a une ligne vide
  * prendre le 'parseur' MIME dans HTMIME.c. */
 
+		memset(&mhs,0,sizeof(MimeHeaderStruct));
 		ParseMimeHeader(pafd->iobs.iobuf, &mhs); 
 /* If we asked only to read the header or footer or we used a HEAD
  * method then we stop here as we don't expect any body part.

@@ -74,7 +74,7 @@ static void add_url_to_bucket (int buck, char *url, int cid)
         Bucket *bkt = &(hash_tab[buck]);
         HashEntry *l;
  
-        l = (HashEntry *)malloc (sizeof (HashEntry));
+        l = (HashEntry *)calloc (1, sizeof (HashEntry));
         l->url = strdup (url);
         l->cid=cid;
         l->next = NULL;
@@ -89,7 +89,7 @@ static void add_url_to_bucket (int buck, char *url, int cid)
 
 /* assume the url exist in the list */
 
-static void remove_url_to_bucket(int buck, char * url)
+static void remove_url_from_bucket(int buck, char * url)
 {
         Bucket *bkt = &(hash_tab[buck]);
 	HashEntry *prev, *deb, *next;
@@ -101,8 +101,9 @@ static void remove_url_to_bucket(int buck, char * url)
 			next = deb->next;
 			if (prev == NULL){
 				hash_tab[buck].head = next;
+			} else {
+				prev->next = next;
 			}
-			prev->next = next;
 			free (deb->url);
 			free (deb);
 			bkt->count--;
@@ -172,10 +173,10 @@ void MMCacheInit( char * root_dirname)
 	hcid =0;
 
 /* alloc and look at max number of file MAX_N_FILE_CACHE */
-	cid_cache = (CacheEntry *) malloc( MAX_N_FILE_CACHE * sizeof(CacheEntry));
+	cid_cache = (CacheEntry *) calloc( MAX_N_FILE_CACHE , sizeof(CacheEntry));
 
 /* create a hash-code table and a reverse cid table */
-	hash_tab = (Bucket *) malloc( MAX_N_FILE_CACHE * sizeof(Bucket));
+	hash_tab = (Bucket *) calloc( MAX_N_FILE_CACHE , sizeof(Bucket));
 	for( i=0 ; i<MAX_N_FILE_CACHE; i++){
 		cid_cache[i].exist = 0;
 		cid_cache[i].url = NULL;
@@ -322,10 +323,14 @@ int MMCacheFindData(char *aurl_wa, char *aurl, int fdw, MimeHeaderStruct *mhs)
 			sprintf(fname, "%s/%s", lcachedir_name, scid); /* the filename */
 			mhs->content_length = cid_cache[cid].size; 
 			mhs->content_encoding = cid_cache[cid].content_encoding;
+			if(mhs->content_type) free(mhs->content_type);
 			mhs->content_type = strdup(cid_cache[cid].content_type);
+			if(mhs->last_modified) free(mhs->last_modified);
 			mhs->last_modified = strdup( 
 				rfc822ctime(cid_cache[cid].last_modify));
+			if(mhs->expires) free(mhs->expires);
 			mhs->expires = strdup("never");  /* ### FIXME */
+			if(mhs->location) free(mhs->location);
 			mhs->location = NULL;
 			mhs->status_code = HTTP_STATUS_INTERNAL_CACHE_HIT;
 			fdr = open(fname, O_RDONLY);
@@ -378,7 +383,7 @@ void MMCachePutDataInCache(char *fname_r, char *aurl_wa, char *aurl,
 		h = hash_url(aurl);
 		cid = lnext_cid;
 		if (cid_cache[cid].url) {
-			remove_url_to_bucket(hash_url(cid_cache[cid].url), cid_cache[cid].url);
+			remove_url_from_bucket(hash_url(cid_cache[cid].url), cid_cache[cid].url);
 			free(cid_cache[cid].url);
 		}
 		lnext_cid++;
@@ -392,6 +397,7 @@ void MMCachePutDataInCache(char *fname_r, char *aurl_wa, char *aurl,
 		cid_cache[cid].url = strdup(aurl);
 		cid_cache[cid].size = mhs->content_length;
 		cid_cache[cid].last_modify = t;
+		if(cid_cache[cid].content_type) free(cid_cache[cid].content_type);
 		cid_cache[cid].content_type = strdup(mhs->content_type);
 		cid_cache[cid].content_encoding = mhs->content_encoding;
 		cid_cache[cid].exist = 1;
@@ -463,6 +469,8 @@ void MMCacheClearCache(void)
 		cid_cache[i].exist = 0;
 		if (cid_cache[i].url)
 			free(cid_cache[i].url);
+		if(cid_cache[i].content_type)
+			free(cid_cache[i].content_type);
 		cid_cache[i].url = NULL;
 		cid_cache[i].size = 0;
 		cid_cache[i].last_modify = 0;
@@ -477,6 +485,8 @@ void MMCacheClearCache(void)
 			deb = next;
 		}
 	}
+	memset(cid_cache,0,MAX_N_FILE_CACHE*sizeof(CacheEntry));
+	memset(hash_tab,0,MAX_N_FILE_CACHE*sizeof(Bucket));
 	MMCacheWriteCache();
 }
 
@@ -498,7 +508,7 @@ void MMCacheWriteCache(void )
 	 for( i=0 ; i<MAX_N_FILE_CACHE; i++){
 		if (! cid_cache[i].url)
 			continue;
-		fprintf (fp, "<li><a content_type=%s content_encoding=%d size=%u cid=%d mdate=%u href=\"%s\">%s</a>\n",
+		fprintf (fp, "<li><a content_type=%s content_encoding=%d size=%u cid=%d mdate=%lu href=\"%s\">%s</a>\n",
 			cid_cache[i].content_type,
 			cid_cache[i].content_encoding,
 			cid_cache[i].size,

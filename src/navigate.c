@@ -70,8 +70,31 @@ void mo_free_node_data (mo_node *node)
 	free (node->aurl);
 	free (node->base_url);
 	free (node->text);
+	node->title = NULL; 			/* sanity */
+	node->aurl_wa = NULL; 			/* sanity */
+	node->aurl = NULL; 			/* sanity */
+	node->base_url = NULL; 			/* sanity */
+	node->text = NULL; 			/* sanity */
+/* ### here is the code by Winfried. He are right, */
+/* but I need to review all mMosaic code */
+/* when process anchor in URL */
+/*{      char *href=strchr(node->aurl_wa,'#');
+/*       if(node->aurl_wa) free (node->aurl_wa);
+/*       if(node->aurl) free (node->aurl);
+/*       if(node->base_url) free (node->base_url);
+/*       if(node->goto_anchor) free (node->goto_anchor);
+/*       if(!href)                     
+/*   {                                 
+/*       if(node->text) free (node->text);  
+/*       if(node->title) free (node->title); 
+/*       if(node->m_list) FreeMarkUpList(node->m_list);
+/*       if(node->mhs) FreeMimeStruct(node->mhs);
+/*   }
+*/
 	FreeMarkUpList(node->m_list);
+	node->m_list = NULL;		/* sanity */
 	FreeMimeStruct(node->mhs);
+	node->mhs = NULL;		/* sanity */
 }
 
 /* Iterate through all descendents of an mo_node, but not the given
@@ -80,15 +103,18 @@ void mo_free_node_data (mo_node *node)
    all the Motif list entries can be killed at once. */
 static void mo_kill_node_descendents (mo_window *win, mo_node *node)
 {
-	mo_node *foo;
+	mo_node *foo, *next;
 	int count = 0;
 
 	if (node == NULL)
 		return ;
-	for (foo = node->next; foo != NULL; foo = foo->next) {
+	for (foo = node->next; foo != NULL; ) {
+		next=foo->next;
 		mo_free_node_data (foo);
 		count++;
+		free(foo); foo=next;
 	}
+	node->next=NULL;
 
 /* Free count number of items from the end of the list... */
 	if (win->history_list && count) {
@@ -108,7 +134,7 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 	mo_node *node;
 	NavigationType nt = win->navigation_action;
 
-	node = (mo_node *)malloc (sizeof (mo_node));
+	node = (mo_node *)calloc (1, sizeof (mo_node));
 	node->aurl_wa = strdup(aurl_wa); /* aurl with anchor */
 	node->aurl = strdup(aurl);	/* THE absolute url of doc. */
 	node->goto_anchor = NULL;

@@ -543,6 +543,12 @@ static void mo_read_hotlist(mo_hotlist *list, FILE *fp)
 /* parse the HTML document */
 	htinfo = HTMLParseRepair(text);
 	hot_mark_up = htinfo->mlist;
+	free(htinfo->title);free(htinfo->base_url);free(htinfo->base_target);
+	htinfo->title = NULL;		/* sanity */
+	htinfo->base_url = NULL;		/* sanity */
+	htinfo->base_target = NULL;		/* sanity */
+
+	free(htinfo);
 	free(text);
 
 /* some pre-processing to see if this is in hotlist format or if this is a

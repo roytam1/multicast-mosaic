@@ -1,5 +1,5 @@
 # Toplevel Makefile for mMosaic.
-#This Release 3.4.14 compile on:
+#This Release 3.4.15 compile on:
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
@@ -7,7 +7,7 @@
 #	- Mandrake6.1
 #	- NetWinder (StrongArm based machine)
 
-MCVER=3.4.14
+MCVER=3.4.15
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 

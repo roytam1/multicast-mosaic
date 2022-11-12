@@ -1158,6 +1158,15 @@ static void Redisplay( HTMLWidget hw, XEvent * event, Region region)
  */
 static void Resize( HTMLWidget hw)
 {
+        if( hw->html.frame_type == FRAMESET_TYPE){ /* resize child */
+		XtResizeWidget(hw->html.view, hw->core.width, hw->core.height,
+			hw->html.view->core.border_width);
+		hw->html.view_width= hw->core.width;
+		hw->html.view_height = hw->core.height;
+		/*ConfigScrollBars(hw);*/
+		_XmHTMLReconfigureFrames(hw);
+		return;
+	}
 	ResetWidgetsOnResize(hw);
 	ReformatWindow(hw, True);
 	ScrollWidgets(hw);

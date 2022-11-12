@@ -152,7 +152,7 @@ static BalloonInfoData * AlloBalloonInfoData ( mo_window * win, char * s)
 {
 	BalloonInfoData * info;
 
-	info =  (BalloonInfoData*) malloc(sizeof(BalloonInfoData));
+	info =  (BalloonInfoData*) calloc(1,sizeof(BalloonInfoData));
 	info->win = win;
 	info->msg = s;
 	return info;
@@ -482,7 +482,7 @@ static mo_window * get_frame_target( mo_window *win, char *base_target, char* ta
  */
 static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 {
-	char *href, *reftext;
+	char *href;
 	mo_window *win = (mo_window*)client_data;
 	XButtonReleasedEvent *event = 
 	      (XButtonReleasedEvent *)((WbAnchorCallbackData *)call_data)->event;
@@ -563,10 +563,12 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 		if (!answer)
 			return;
 	}
-	if (((WbAnchorCallbackData *)call_data)->text)
-		reftext = strdup (((WbAnchorCallbackData *)call_data)->text);
-	else
-		reftext = strdup ("Untitled");
+/*
+ *	if (((WbAnchorCallbackData *)call_data)->text)
+ *		reftext = strdup (((WbAnchorCallbackData *)call_data)->text);
+ *	else
+ *		reftext = strdup ("Untitled");
+*/
 
 	mo_convert_newlines_to_spaces (href);
 	rds.ct = rds.post_data = NULL;
@@ -1975,7 +1977,7 @@ mo_status mo_delete_window (mo_window *win)
 	while (node) {
 		mo_node *tofree = node;
 		node = node->next;
-/*		mo_free_node_data (tofree); ####### FIXME*/
+		mo_free_node_data (tofree); /*####### FIXME*/
 		free (tofree);
 	}
 	win->first_node=NULL;
@@ -2171,8 +2173,8 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
  *	win->print_text = 0;
 */
 	swin->print_format = parent->print_format;
-	swin->search_start = (void *)malloc (sizeof (ElementRef));
-	swin->search_end = (void *)malloc (sizeof (ElementRef));
+	swin->search_start = (void *)calloc (1,sizeof (ElementRef));
+	swin->search_end = (void *)calloc (1,sizeof (ElementRef));
 	swin->src_search_pos=0;
 	swin->delay_object_loads = parent->delay_object_loads;
 	swin->font_size = parent->font_size;
@@ -2325,8 +2327,8 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 	win->mail_format = 0;
 	win->print_text = 0;
 	win->print_format = mo_plaintext;
-	win->search_start = (void *)malloc (sizeof (ElementRef));
-	win->search_end = (void *)malloc (sizeof (ElementRef));
+	win->search_start = (void *)calloc (1,sizeof (ElementRef));
+	win->search_end = (void *)calloc (1,sizeof (ElementRef));
 	win->src_search_pos=0;
 	win->delay_object_loads = mMosaicAppData.delay_object_loads;
 	win->font_size = mo_get_font_size_from_res(
@@ -2454,7 +2456,7 @@ void mo_open_another_window (mo_window *win, char *url)
 static XEvent *mo_manufacture_dummy_event (Widget foo)
 {
 	/* This is fucking hilarious. */
-	XAnyEvent *a = (XAnyEvent *)malloc (sizeof (XAnyEvent));
+	XAnyEvent *a = (XAnyEvent *)calloc (1,sizeof (XAnyEvent));
 	a->type = 1; /* HAHA! */
 	a->serial = 1; /* HAHA AGAIN! */
 	a->send_event = False;

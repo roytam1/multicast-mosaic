@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <assert.h>
 
 #include "URLParse.h"
 #include "../libhtmlw/HTML.h"
@@ -34,7 +35,7 @@ static void McAddDepend( mo_window * win, int moid)
 {
 	if (win->n_do == 0){
 		win->n_do++;
-		win->dot = (int*) malloc(sizeof(int));
+		win->dot = (int*) calloc(1,sizeof(int));
 		win->dot[0] = moid;
 		return;
 	}
@@ -56,7 +57,7 @@ static void McAddDependFrame(mo_window * topw, int moid, int index)
 
 	if (topw->n_do == 0){
 		topw->n_do = ndot;
-		topw->dot = (int*) malloc(sizeof(int) * ndot);
+		topw->dot = (int*) calloc(ndot, sizeof(int) );
 	}
 	topw->dot[index] = moid;
 }
@@ -79,6 +80,8 @@ void MMFinishPafSaveData(PafDocDataStruct * pafd)
 	win = pafd->win;
 
 /* free the things we have build in MMPafSaveData */
+	if(pafd->fd < 0)
+		abort();		/* let me know */
 	close(pafd->fd);
 	pafd->fd = -1;
 	free(pafd->fname);
@@ -102,6 +105,8 @@ void MMErrorPafSaveData(PafDocDataStruct * pafd, char * reason)
 	win = pafd->win;
 
 /* free the things we have build in MMPafSaveData */
+	if(pafd->fd < 0)
+		abort();		/* let me know */
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
@@ -131,11 +136,15 @@ void MMStopPafSaveData(PafDocDataStruct * pafd)
 
 	free(pafd->aurl);
 	free(pafd->aurl_wa);
+	if(pafd->fd < 0)
+		abort();		/* let me know */
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
 	free(pafd->fname);
 	/* free(pafd->mhs);	### FIXME */
+	FreeMimeStruct(pafd->mhs);
+	pafd->mhs = NULL;	/* sanity */
 	free(pafd);
 	XtPopdown(win->base);
 	XtDestroyWidget(win->base);
@@ -169,7 +178,7 @@ void MMPafSaveData(Widget top, char * aurl, char * fname)
 		return;
 	}
 /* alloc the data to be autonomous */
-	win = (mo_window *) malloc(sizeof(mo_window));
+	win = (mo_window *) calloc(1,sizeof(mo_window));
 	pafd = (PafDocDataStruct *) calloc(1, sizeof(PafDocDataStruct));
 	pafd->mhs = (MimeHeaderStruct*) calloc(1, sizeof(MimeHeaderStruct));
 	pafd->fname = strdup(fname);
@@ -182,6 +191,8 @@ void MMPafSaveData(Widget top, char * aurl, char * fname)
 	Xmx_n = 0;
 	XmxSetArg (XmNiconName, (long)"mMosaic Loading");
 	XmxSetArg (XmNallowShellResize, False);
+	XmxSetArg (XmNheight,207);
+	XmxSetArg (XmNwidth,400);
 	win->base = XtCreatePopupShell("mMosaic: Load to disk",
 		topLevelShellWidgetClass, top, Xmx_wargs, Xmx_n);
 	Xmx_n = 0;
@@ -200,7 +211,8 @@ void MMPafSaveData(Widget top, char * aurl, char * fname)
 	win->tracker_widget = XmxMakeLabel(form, "Requesting Connection...");
 	sep = XmxMakeHorizontalSeparator(form);
 	win->logo = XmxMakePushButton( form, "Stop", icon_pressed_cb, (XtPointer)win);
-	XmxApplyPixmapToLabelWidget(win->logo, IconPix[0]);
+/* ### why not? */
+/*	XmxApplyPixmapToLabelWidget(win->logo, IconPix[0]); */
 
 /* update pafd */
 	pafd->www_con_type = NULL;
@@ -212,7 +224,7 @@ void MMPafSaveData(Widget top, char * aurl, char * fname)
 
 	pafd->pragma_no_cache = False;
 
-	pafd->twirl_struct = (TwirlStruct*) malloc(sizeof(TwirlStruct));
+	pafd->twirl_struct = (TwirlStruct*) calloc(1,sizeof(TwirlStruct));
 	pafd->twirl_struct->logo_widget = win->logo;
 	pafd->twirl_struct->logo_count = 0;
 	pafd->twirl_struct->time_id = XtAppAddTimeOut(mMosaicAppContext,
@@ -239,7 +251,7 @@ void MMPafSaveData(Widget top, char * aurl, char * fname)
 
 	XmxSetOffsets(win->tracker_widget,14,10,10,10);
 	XmxSetConstraints(win->tracker_widget, XmATTACH_WIDGET, XmATTACH_NONE,
-					XmATTACH_FORM, XmATTACH_NONE,
+					XmATTACH_FORM, XmATTACH_FORM,
 					dest_label, NULL, NULL, NULL);
 	XmxSetArg (XmNtopOffset, 10);
 	XmxSetConstraints(sep, XmATTACH_WIDGET, XmATTACH_NONE,
@@ -320,6 +332,8 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 				XtRemoveTimeOut(pafd->twirl_struct->time_id);                                     
 				free(pafd->twirl_struct);
 				free(pafd->sps.accept);
+				if(pafd->fd <0)
+					abort();	/* let me know */
 				close(pafd->fd);
 				pafd->fd = -1;
 				unlink(pafd->fname);
@@ -342,20 +356,22 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 	if (pafd->post_ct && pafd->post_data){
 		free(pafd->post_data);
 		free(pafd->post_ct);
-		pafd->post_ct = NULL;
-		pafd->post_data = NULL;
+		pafd->post_ct = NULL;		/* sanity */
+		pafd->post_data = NULL;		/* sanity */
 	}
 	free(pafd->sps.accept);
 	free(pafd->aurl);
 	free(pafd->aurl_wa);
 	if (pafd->goto_anchor)
 		free(pafd->goto_anchor);
+	if (pafd->fd < 0)
+		abort();		/* le me know */
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
 	free(pafd->fname);
 	FreeMimeStruct(pafd->mhs);
-	pafd->mhs = NULL;
+	pafd->mhs = NULL;	/* sanity */
 
 	free(pafd);
 	win->pafd = NULL;
@@ -395,6 +411,8 @@ void MMStopPafDocData(PafDocDataStruct * pafd)
 	if (pafd->goto_anchor)
 		free(pafd->goto_anchor);
 
+	if (pafd->fd <0)
+		abort();
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
@@ -430,6 +448,8 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	win = pafd->win;
 
 /* free the things we have build in MMPafDocData */
+	if (pafd->fd <0)
+		abort();
 	close(pafd->fd);
 	pafd->fd = -1;
 
@@ -447,14 +467,17 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		case 302:
 			pafd->n_redirect++;
 			if (pafd->n_redirect > 4){
-				(*pafd->call_me_on_error)(pafd,"to many redirect");
+				(*pafd->call_me_on_error)(pafd,"to many redirects");
 				return;
 			}
 			unlink(pafd->fname);
 			pafd->fd = open(pafd->fname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+			if(pafd->aurl_wa) free(pafd->aurl_wa);
 			pafd->aurl_wa = strdup(pafd->mhs->location);
+			if(pafd->aurl) free(pafd->aurl);
 			pafd->aurl = strdup(pafd->mhs->location);
 			FreeMimeStruct(pafd->mhs);
+			pafd->mhs=(MimeHeaderStruct*) calloc(1,sizeof(MimeHeaderStruct));
 
 			pafd->pragma_no_cache = True;
 /* And redo a reuqest for redirect */
@@ -559,6 +582,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		XtRemoveTimeOut(pafd->twirl_struct->time_id);
 		free(pafd->twirl_struct);
 		free(pafd->sps.accept);
+		if (pafd->fd < 0) abort();		/* let me know */
 		close(pafd->fd);       
 		pafd->fd = -1;
 		free(pafd->fname);     
@@ -610,7 +634,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	mptr = mlist;
 	pafd->num_of_eo = 0;
 	base_url = htinfo->base_url;
-	eo_tab = (EmbeddedObjectEntry *) malloc(sizeof(EmbeddedObjectEntry));
+	eo_tab = (EmbeddedObjectEntry *) calloc(1,sizeof(EmbeddedObjectEntry));
 			/* alloc one */
 /* recuperer le reste des embedded objects (si necessaire)*/
 /* relancer la bete pour les embedded objets si il y en a */
@@ -618,6 +642,9 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		title = strdup(pafd->aurl_wa);
 	else
 		title = htinfo->title;
+	free(htinfo->base_target);
+	htinfo->base_target = NULL;	/* sanity */
+	free(htinfo);
 	while (mptr != NULL){
 		char * tptr;
 		ImageInfo * picd;
@@ -627,7 +654,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		case M_BODY:		/* BODY can have image... */
 			if (mptr->is_end)
 				break;
-			picd = (ImageInfo *) malloc(sizeof(ImageInfo ));
+			picd = (ImageInfo *) calloc(1, sizeof(ImageInfo ));
 			MMPreParseImageBody(win, picd, mptr);
 			mptr->s_picd = picd;	/* if image body is wrong,*/
 						/* display nothing */
@@ -656,7 +683,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 			}
 			free(tptr);
 /* continue with image processing */
-			picd = (ImageInfo *) malloc(sizeof(ImageInfo ));
+			picd = (ImageInfo *) calloc(1, sizeof(ImageInfo ));
 			MMPreParseInputTagImage(win, picd, mptr);
 			mptr->s_picd = picd; /* in all case display something*/
 			if (picd->internal && !picd->fetched && !picd->delayed){
@@ -678,7 +705,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		case M_IMAGE:
 			if (mptr->is_end)
 				break;
-			picd = (ImageInfo *) malloc(sizeof(ImageInfo ));
+			picd = (ImageInfo *) calloc(1,sizeof(ImageInfo ));
 			MMPreParseImageTag(win, picd, mptr);
 /* on return : two case on fetched:               
  * - fetched = True => this is an internal , width height and image are ok 
@@ -724,7 +751,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	docid =0;
 /* on met a jour immediatement la partie navigation. Car on doit avoir un 
  * current_node qui memorise tout la requete 
- * title is alway allocated.
+ * title is always allocated.
  */
 	MMUpdNavigationOnNewURL(win, pafd->aurl_wa, pafd->aurl, pafd->goto_anchor, base_url,
 		base_target, title,
@@ -808,6 +835,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 					XtRemoveTimeOut(pafd->twirl_struct->time_id);
 					free(pafd->twirl_struct);
 					free(pafd->sps.accept);
+					if (pafd->fd <0 ) abort();
 					close(pafd->fd);
 					pafd->fd = -1;
 					unlink(pafd->fname); 
@@ -826,14 +854,16 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 /* en finir avec la requete de pafd. */
         	win = pafd->win;
 /* don't do this: registered in navigation */
-/*		free(pafd->aurl); free(pafd->aurl_wa); free(pafd->mhs); */
+/*###		free(pafd->aurl); free(pafd->aurl_wa); free(pafd->mhs); */
+		pafd->aurl = NULL;	 /* sanity */
+		pafd->aurl_wa = NULL;	 /* sanity */
+		pafd->mhs = NULL;	 /* sanity */
  
 /* stop the twirl */
 		XtRemoveTimeOut(pafd->twirl_struct->time_id);
 		free(pafd->twirl_struct);
 		free(pafd->sps.accept);
-		close(pafd->fd);
-		pafd->fd = -1;
+		assert( pafd->fd == -1 ) ;	/* finnish doc : fd is closed*/
 		unlink(pafd->fname); 
 		free(pafd->fname);
 		free(pafd);
@@ -846,10 +876,10 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	pafd->embedded_object_tab = eo_tab; /* une selection de mlist*/
 	pafd->cur_processing_eo = 0;		/* demande le premier */
 /* a paf child inherit some data from its father */
-	pafd->paf_child = (PafDocDataStruct *) malloc( sizeof(PafDocDataStruct));
+	pafd->paf_child = (PafDocDataStruct *) calloc(1, sizeof(PafDocDataStruct));
 	pafd->paf_child->parent_paf = pafd;
 	pafc = pafd->paf_child;
-	pafc->mhs = (MimeHeaderStruct*) malloc( sizeof(MimeHeaderStruct));
+	pafc->mhs = (MimeHeaderStruct*) calloc(1, sizeof(MimeHeaderStruct));
 /* inherit from parent */
         pafc->twirl_struct = pafd->twirl_struct;
 /* don't inherit from parent */
@@ -959,12 +989,13 @@ void MMPafLoadHTMLDocInWin( mo_window * win, RequestDataStruct * rds)
 	fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if ( fd < 0) {                
 		XmxMakeErrorDialog(win->base, "Can't open temp file", "System Error");
+		remove(fname);
 		return;               
 	}
 /* fill the 'paf' struct for the request */
-	pafd = (PafDocDataStruct *) malloc( sizeof(PafDocDataStruct));
+	pafd = (PafDocDataStruct *) calloc(1, sizeof(PafDocDataStruct));
 	pafd->gui_action = gui_action;
-	pafd->mhs = (MimeHeaderStruct*) malloc( sizeof(MimeHeaderStruct));
+	pafd->mhs = (MimeHeaderStruct*) calloc(1, sizeof(MimeHeaderStruct));
 	pafd->mhs->cache_control = CACHE_CONTROL_NONE;
 	pafd->www_con_type = NULL;
 	pafd->fname = fname;
@@ -995,7 +1026,7 @@ void MMPafLoadHTMLDocInWin( mo_window * win, RequestDataStruct * rds)
 	}
 
 /* #### plus tard */
-	pafd->twirl_struct = (TwirlStruct*) malloc(sizeof(TwirlStruct));
+	pafd->twirl_struct = (TwirlStruct*) calloc(1,sizeof(TwirlStruct));
 	pafd->twirl_struct->logo_widget = win->logo;
 	pafd->twirl_struct->logo_count = 0;
 	pafd->twirl_struct->time_id = XtAppAddTimeOut(mMosaicAppContext,
@@ -1024,12 +1055,14 @@ void MMStopPafEmbeddedObject(PafDocDataStruct * pafc)
 	pafc->www_con_type = NULL;
 
 	close(pafc->fd);
+	pafc->fd = -1;
 	unlink(pafc->fname);
 	free(pafc->sps.accept);
 	free(pafc->aurl);
 	free(pafc->aurl_wa);
 	free(pafc->fname);
 	/*free(pafc->mhs);	### FIXME */
+	FreeMimeStruct(pafc->mhs);
 	free(pafc);
 	ppaf->paf_child = NULL;
 }
@@ -1050,6 +1083,7 @@ void MMErrorPafEmbeddedObject (PafDocDataStruct * pafc, char *reason)
 	}
 /* XmxMakeErrorDialog(pafc->win->base, reason, "Net Error"); */
 	close(pafc->fd);
+	pafc->fd = -1;
 	unlink(pafc->fname);
 	ppaf = pafc->parent_paf;
 	mptr = ppaf->embedded_object_tab[ppaf->cur_processing_eo].mark;
@@ -1175,7 +1209,7 @@ for state */
         	XtRemoveTimeOut(ppaf->twirl_struct->time_id);
         	free(ppaf->twirl_struct);
         	free(ppaf->sps.accept);
-        	close(ppaf->fd);   
+		assert(ppaf->fd == -1); /* parent is close */
         	unlink(ppaf->fname);
         	free(ppaf->fname);
         	free(ppaf);
@@ -1198,7 +1232,10 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 	int elem_id;
 	int moid_ret = -1;
 
+	if (pafc->fd <0 )
+		abort();
 	close(pafc->fd);
+	pafc->fd = -1;
 	ppaf = pafc->parent_paf;
 	mptr = ppaf->embedded_object_tab[ppaf->cur_processing_eo].mark;
 /* pre-process the object */
@@ -1266,6 +1303,8 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 
 	unlink(pafc->fname);
 	ppaf->cur_processing_eo++;
+
+/*------------ ALL EMBEDDED OBJECTS DONE ? ------------*/
 	if ( ppaf->cur_processing_eo >= ppaf->num_of_eo) {
 
 #ifdef MULTICAST
@@ -1323,6 +1362,8 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 					XtRemoveTimeOut(pafd->twirl_struct->time_id);
 					free(pafd->twirl_struct);
 					free(pafd->sps.accept);
+					if (pafd->fd < 0)
+						abort();
 					close(pafd->fd);
 					pafd->fd = -1;
 					unlink(pafd->fname); 
@@ -1349,7 +1390,10 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
         	XtRemoveTimeOut(ppaf->twirl_struct->time_id);
         	free(ppaf->twirl_struct);
         	free(ppaf->sps.accept);
-        	close(ppaf->fd);   
+
+/* parent paf is closed when load is complete */
+		assert(ppaf->fd == -1);
+
         	unlink(ppaf->fname);
         	free(ppaf->fname);
         	free(ppaf);
@@ -1362,7 +1406,7 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 	MMPafLoadEmbeddedObjInDoc(ppaf->paf_child);
 }
 
-/* we are call for all object */
+/* we are called for all object */
 static void MMPafLoadEmbeddedObjInDoc(PafDocDataStruct * pafc)
 {
 	PafDocDataStruct * pafd;
@@ -1387,6 +1431,7 @@ static void MMPafLoadEmbeddedObjInDoc(PafDocDataStruct * pafc)
         fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if ( fd < 0) {                 
                 XmxMakeErrorDialog(pafc->win->base, "Can't open temp file", "System Error");                                   
+		remove(fname);
                 return;
         } 
         pafc->fname = fname;           

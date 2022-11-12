@@ -370,7 +370,7 @@ static struct mark_up * get_mark(char *start, char **endp)
 	if (strncmp (start, "<!--", 4)==0)
 		comment=1;
 	start++;
-	mark = (struct mark_up *)malloc(sizeof(struct mark_up));
+	mark = (struct mark_up *)calloc(1,sizeof(struct mark_up));
 	CHECK_OUT_OF_MEM(mark);
 	ptr = start; 	/* Grab the mark text */
 
@@ -497,7 +497,7 @@ struct mark_up * HTMLLexem( const char *str_in)
 		text = get_text(start, &end, &is_white);
 /* If text is OK, put it into a mark structure, and add it to the linked list. */
 		if (text ) {
-			mark = (struct mark_up *)malloc(sizeof(struct mark_up));
+			mark = (struct mark_up *)calloc(1,sizeof(struct mark_up));
 			CHECK_OUT_OF_MEM(mark);
 			mark->type = M_NONE;	/* it's a text */
 			mark->is_end = 0;
@@ -528,7 +528,7 @@ struct mark_up * HTMLLexem( const char *str_in)
 #ifdef HTMLTRACE
 			fprintf(stderr, "error parsing mark, missing '>'\n");
 #endif
-			mark = (struct mark_up *)malloc(sizeof(struct mark_up));
+			mark = (struct mark_up *)calloc(1,sizeof(struct mark_up));
 			CHECK_OUT_OF_MEM(mark);
 			mark->type = M_END_STATE;	/* it's finish */
 			mark->is_end = 0;
@@ -766,7 +766,11 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		case M_NONE:            /* test a white string */
                         if (mptr->is_white_text)
                                 return REMOVE_TAG;
-			tmptr = HTMLLexem("<TITLE>Untitled</TITLE></HEAD><BODY>");
+			if(pc->has_title){
+				tmptr = HTMLLexem("</HEAD><BODY>");
+			} else {
+				tmptr = HTMLLexem("<TITLE>Untitled</TITLE></HEAD><BODY>");
+			}
 			*im_ret = tmptr;
 			return INSERT_TAG;
 		case M_NOSCRIPT:		/* this is stupid */
@@ -838,9 +842,12 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 			*sop = SOP_POP;
 			return REMOVE_TAG; /* next state will be HEAD */
 		default:
-			tmptr = HTMLLexem("</TITLE>");
-			*im_ret = tmptr; /* close the title */
-			return INSERT_TAG;
+/* because winfried feedback 21 Mar 2000 : title close on /title */
+/*			tmptr = HTMLLexem("</TITLE>");
+/*			*im_ret = tmptr; /* close the title */
+/*			return INSERT_TAG;
+*/
+			return REMOVE_TAG;
 		}
 		break;
 	case M_SCRIPT:
@@ -1238,7 +1245,7 @@ void PushParserStack(ParserContext *pc, MarkType id)
 { 
         ParserStack *stmp;
  
-        stmp = (ParserStack*)malloc(sizeof(ParserStack));
+        stmp = (ParserStack*)calloc(1,sizeof(ParserStack));
         stmp->mtype = id;
         stmp->next = pc->top_stk;
         pc->top_stk = stmp;    
@@ -1395,7 +1402,7 @@ HtmlTextInfo * HTMLParseRepair( char *str)
                 }                      
                 mptr = mptr->next;     
         }
-	htinfo = (HtmlTextInfo *) malloc(sizeof(HtmlTextInfo));
+	htinfo = (HtmlTextInfo *) calloc(1,sizeof(HtmlTextInfo));
 	if (!Pcxt.title_text) 
 		Pcxt.title_text = strdup("Untitled");
 	htinfo->title = Pcxt.title_text;
