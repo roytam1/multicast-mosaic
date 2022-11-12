@@ -80,8 +80,7 @@ void MMFinishPafSaveData(PafDocDataStruct * pafd)
 	win = pafd->win;
 
 /* free the things we have build in MMPafSaveData */
-	if(pafd->fd < 0)
-		abort();		/* let me know */
+	assert(pafd->fd >=0 ); 		/* let me know */
 	close(pafd->fd);
 	pafd->fd = -1;
 	free(pafd->fname);
@@ -105,8 +104,7 @@ void MMErrorPafSaveData(PafDocDataStruct * pafd, char * reason)
 	win = pafd->win;
 
 /* free the things we have build in MMPafSaveData */
-	if(pafd->fd < 0)
-		abort();		/* let me know */
+	assert(pafd->fd >=0 ); 		/* let me know */
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
@@ -133,11 +131,11 @@ void MMStopPafSaveData(PafDocDataStruct * pafd)
         pafd->www_con_type = NULL;
 
 	free(pafd->sps.accept);
-
 	free(pafd->aurl);
 	free(pafd->aurl_wa);
-	if(pafd->fd < 0)
-		abort();		/* let me know */
+
+	assert(pafd->fd >= 0); 	/* let me know */
+
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
@@ -211,8 +209,7 @@ void MMPafSaveData(Widget top, char * aurl, char * fname)
 	win->tracker_widget = XmxMakeLabel(form, "Requesting Connection...");
 	sep = XmxMakeHorizontalSeparator(form);
 	win->logo = XmxMakePushButton( form, "Stop", icon_pressed_cb, (XtPointer)win);
-/* ### why not? */
-/*	XmxApplyPixmapToLabelWidget(win->logo, IconPix[0]); */
+	XmxApplyPixmapToLabelWidget(win->logo, IconPix[0]);
 
 /* update pafd */
 	pafd->www_con_type = NULL;
@@ -332,10 +329,7 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 				XtRemoveTimeOut(pafd->twirl_struct->time_id);                                     
 				free(pafd->twirl_struct);
 				free(pafd->sps.accept);
-				if(pafd->fd <0)
-					abort();	/* let me know */
-				close(pafd->fd);
-				pafd->fd = -1;
+				assert(pafd->fd == -1 ); /* let me know */
 				unlink(pafd->fname);
 				free(pafd->fname);
 				free(pafd);
@@ -392,9 +386,16 @@ void MMStopPafDocData(PafDocDataStruct * pafd)
 	}
 	pafd->paf_child =NULL;
 
-/* if a www connection is in progress, abort it */
+/* if a http connection is in progress for html page, abort it */
 	if (pafd->www_con_type && pafd->www_con_type->call_me_on_stop_cb ) {
 		(*pafd->www_con_type->call_me_on_stop_cb)(pafd);
+		assert( pafd->fd > 0);	/* finnish doc : fd is open*/
+					/* else let me know */
+		close(pafd->fd);
+		pafd->fd = -1;
+		unlink(pafd->fname);
+		free(pafd->fname);
+		pafd->fname = NULL;	/*sanity */
 	}
 	pafd->www_con_type = NULL;
 
@@ -405,21 +406,15 @@ void MMStopPafDocData(PafDocDataStruct * pafd)
 		pafd->post_data = NULL;
 	}
 	free(pafd->sps.accept);
-
 	free(pafd->aurl_wa);
 	free(pafd->aurl);
 	if (pafd->goto_anchor)
 		free(pafd->goto_anchor);
 
-	if (pafd->fd <0)
-		abort();
-	close(pafd->fd);
-	pafd->fd = -1;
-	unlink(pafd->fname);
-	free(pafd->fname);
+	assert( pafd->fd == -1 ) ;	/* finnish doc : fd is closed*/
 
 	FreeMimeStruct(pafd->mhs);
-	pafd->mhs = NULL;
+	pafd->mhs = NULL;	/* sanity */
 	free(pafd);
 	win->pafd = NULL;
 /* securityType=HTAA_UNKNOWN; */
@@ -448,8 +443,8 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	win = pafd->win;
 
 /* free the things we have build in MMPafDocData */
-	if (pafd->fd <0)
-		abort();
+	assert(pafd->fd > 0);
+
 	close(pafd->fd);
 	pafd->fd = -1;
 
@@ -582,9 +577,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		XtRemoveTimeOut(pafd->twirl_struct->time_id);
 		free(pafd->twirl_struct);
 		free(pafd->sps.accept);
-		if (pafd->fd < 0) abort();		/* let me know */
-		close(pafd->fd);       
-		pafd->fd = -1;
+		assert(pafd->fd == -1);
 		free(pafd->fname);     
 		free(pafd);            
 		win->pafd = NULL;      
@@ -835,9 +828,9 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 					XtRemoveTimeOut(pafd->twirl_struct->time_id);
 					free(pafd->twirl_struct);
 					free(pafd->sps.accept);
-					if (pafd->fd <0 ) abort();
-					close(pafd->fd);
-					pafd->fd = -1;
+
+					assert(pafd->fd == -1);
+
 					unlink(pafd->fname); 
 					free(pafd->fname);
 					free(pafd);
@@ -1053,6 +1046,8 @@ void MMStopPafEmbeddedObject(PafDocDataStruct * pafc)
 		(*pafc->www_con_type->call_me_on_stop_cb)(pafc);
 	}
 	pafc->www_con_type = NULL;
+
+	assert(pafc->fd >0 );		/* let me know */
 
 	close(pafc->fd);
 	pafc->fd = -1;
@@ -1362,10 +1357,9 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 					XtRemoveTimeOut(pafd->twirl_struct->time_id);
 					free(pafd->twirl_struct);
 					free(pafd->sps.accept);
-					if (pafd->fd < 0)
-						abort();
-					close(pafd->fd);
-					pafd->fd = -1;
+
+					assert( pafd->fd == -1);
+
 					unlink(pafd->fname); 
 					free(pafd->fname);
 					free(pafd);

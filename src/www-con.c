@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <sys/time.h>
+#include <assert.h>
 
 
 #if defined(SVR4) && !defined(SCO) && !defined(linux)
@@ -37,6 +38,7 @@
 
 extern int errno;
 
+#include "../libnut/mosaic-types.h"
 #include "../libnut/system.h"
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
@@ -54,6 +56,10 @@ extern int errno;
 #define DEBUG_HTTP
 #endif
 
+#ifdef IPV6
+enum InIpV cipv = IN_IPV_UNKNOWN;
+#endif
+
 static void doc_connect_succes(PafDocDataStruct * pafd);
 
 /*	Produce a string for an Internet address
@@ -63,36 +69,60 @@ static void doc_connect_succes(PafDocDataStruct * pafd);
 **		it is to be kept.
 */
 
-static const char * HTInetString (SockA *sin)
-{
+/*static const char * HTInetString (SockA *sin) */
+
 #ifdef IPV6
-    static char string[512];
-    sprintf(string, "%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x",
-	    (int)*((unsigned char *)(&sin->sin6_addr)+0),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+1),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+2),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+3),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+4),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+5),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+6),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+7),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+8),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+9),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+10),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+11),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+12),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+13),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+14),
-	    (int)*((unsigned char *)(&sin->sin6_addr)+15));
+static const char * HTInetString (void *s, enum InIpV type)
 #else
-    static char string[16];
-    sprintf(string, "%d.%d.%d.%d",
+static const char * HTInetString (SockA4 *sin)
+#endif
+{
+    static char string[512];
+#ifdef IPV6
+	switch (type) {
+	case IN_IPV_6 : {
+		SockA6 *sin = (SockA6 *) s;
+
+    		sprintf(string, "%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x.%x",
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+0),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+1),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+2),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+3),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+4),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+5),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+6),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+7),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+8),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+9),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+10),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+11),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+12),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+13),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+14),
+	    		(int)*((unsigned char *)(&sin->sin6_addr)+15));
+		}
+		break;
+	case IN_IPV_4 : {
+		SockA4 *sin = (SockA4 *)s;
+
+    		sprintf(string, "%d.%d.%d.%d",
+	    		(int)*((unsigned char *)(&sin->sin_addr)+0),
+	    		(int)*((unsigned char *)(&sin->sin_addr)+1),
+	    		(int)*((unsigned char *)(&sin->sin_addr)+2),
+	    		(int)*((unsigned char *)(&sin->sin_addr)+3));
+		}
+		break;
+	default:
+		assert(0);
+	}
+#else
+    	sprintf(string, "%d.%d.%d.%d",
 	    (int)*((unsigned char *)(&sin->sin_addr)+0),
 	    (int)*((unsigned char *)(&sin->sin_addr)+1),
 	    (int)*((unsigned char *)(&sin->sin_addr)+2),
 	    (int)*((unsigned char *)(&sin->sin_addr)+3));
 #endif
-    return string;
+    	return string;
 }
 
 
@@ -101,25 +131,42 @@ static const char * HTInetString (SockA *sin)
 ** On entry,
 **	str	points to a string with a node name or number,
 **		with optional trailing colon and port number.
-**	sin	points to the binary internet or decnet address field.
 **
 ** On exit,
-**	*sin	is filled in. If no port is specified in str, that
+**	*sin4	is filled in. If no port is specified in str, that
 **		field is left unchanged in *sin.
+**	*sin6	is filled in. If no port is specified in str, that
+**		field is left unchanged in *sin.
+** return:
+**	0	IN_IPV_UNKNOWN	(or fail)
+**	1	IN_IPV_4	(or good)
+**	2	IN_IPV_6
 */
-static int HTParseInet (SockA *sin, const char *str)
+#ifdef IPV6
+static enum InIpV HTParseInet (SockA4 *sin4, SockA6 *sin6, const char *str)
+#else
+static enum InIpV HTParseInet (SockA4 *sin4, const char *str)
+#endif
 {
 	char *port;
 	char host[256];
 	struct hostent  *phost;	/* Pointer to host - See netdb.h */
 	int numeric_addr;
 	char *tmp;
+	enum InIpV cip_v;
   
-	static char *cached_host = NULL;
-	static char *cached_phost_h_addr = NULL;
-	static int cached_phost_h_length = 0;
+#ifdef IPV6
+	static char *cached6_host = NULL;
+	static char *cached6_phost_h_addr = NULL;
+	static int cached6_phost_h_length = 0;
+#endif
+	static char *cached4_host = NULL;
+	static char *cached4_phost_h_addr = NULL;
+	static int cached4_phost_h_length = 0;
 
 	strcpy(host, str);		/* Take a copy we can mutilate */
+
+	cip_v = IN_IPV_UNKNOWN;
   
 /* Parse port number if present */    
 	port = strchr(host, ':');
@@ -127,92 +174,147 @@ static int HTParseInet (SockA *sin, const char *str)
 		*port++ = 0;		/* Chop off port */
 		if (port[0]>='0' && port[0]<='9') {
 #ifdef IPV6
-			sin->sin6_port = htons(atol(port));
+			sin6->sin6_port = (u_int16_t)htons(atol(port));
+			sin4->sin_port = (u_int16_t)htons(atol(port));
 #else
-			sin->sin_port = htons(atol(port));
+			sin4->sin_port = (u_int16_t)htons(atol(port));
 #endif
 		}
 	}
 
 #ifdef IPV6
-/* manage only non numeric adresses */
+	if (cached6_host && (strcmp (cached6_host, host) == 0)) {
+		memcpy(&sin6->sin6_addr,
+			cached6_phost_h_addr, cached6_phost_h_length);
+		return IN_IPV_6 ; /* OK */
+	}
+	if (cached4_host && (strcmp (cached4_host, host) == 0)) {
+		memcpy(&sin4->sin_addr,
+			cached4_phost_h_addr, cached4_phost_h_length);
+		return IN_IPV_4 ; /* OK */
+	}
+/* manage only non numeric adresses for IPV6 */
 /* RFC 2133 */
-/*          phost = gethostbyname2 (host,AF_INET6);
- * not yet on solaris */
+	phost = gethostbyname2 (host,AF_INET6);
+	if (phost) {			/* try IPV6 */
+#ifdef DEBUG_IPV6
+		fprintf(stderr, "Talking to IPv6 host...\n");
+#endif
+		if(phost->h_length != 16 ){	
+#ifdef DEBUG_IPV6
+			fprintf(stderr,"IPv6 has h_lenght = %d. Returning ...\n",
+				phost->h_length);
+			assert(phost->h_length == 16);
+#endif
+			return IN_IPV_UNKNOWN; /* Fail */
+		}
+		cip_v = IN_IPV_6;
+/* Cache new stuff. */
+		if (cached6_host) free (cached6_host);
+		if (cached6_phost_h_addr) free (cached6_phost_h_addr);
 
-	if (cached_host && (strcmp (cached_host, host) == 0)) {
-		memcpy(&sin->sin6_addr,
-			cached_phost_h_addr, cached_phost_h_length);
-		return 0; /* OK */
+		cached6_host = strdup (host);
+		cached6_phost_h_addr = (char*)calloc (phost->h_length + 1, 1);
+		memcpy (cached6_phost_h_addr, phost->h_addr, phost->h_length);
+		cached6_phost_h_length = phost->h_length;
+		memcpy(&sin6->sin6_addr, phost->h_addr, phost->h_length);
+		return IN_IPV_6 ; /* OK */
+	} else {				/* try ipv4 */
+#ifdef DEBUG_IPV6
+		fprintf(stderr, "Trying IPV4 host...\n");
+#endif
+/* Parse host number if present. */  
+		numeric_addr = 1;
+		for (tmp = host; *tmp; tmp++) { /* If there's a non-numeric... */
+			if ((*tmp < '0' || *tmp > '9') && *tmp != '.') {
+				numeric_addr = 0;
+				break;
+			}
+		}
+		cip_v = IN_IPV_4;
+ 		if (numeric_addr) {   /* Numeric node address: */
+			sin4->sin_addr.s_addr = inet_addr(host); /* See arpa/inet.h */
+		} else {		    /* Alphanumeric node name: */
+			if (cached4_host && (strcmp (cached4_host, host) == 0)){
+				memcpy(&sin4->sin_addr, cached4_phost_h_addr, cached4_phost_h_length);
+			} else {
+				phost = gethostbyname2 (host,AF_INET);
+/*				phost = gethostbyname (host); */
+				if (!phost) {
+					fprintf (stderr, "Can't find internet node name `%s'.\n",host);
+					return IN_IPV_UNKNOWN;  /* Fail */
+				}
+/* Free previously cached strings. */
+				if (cached4_host) {
+					free (cached4_host);
+					cached4_host=NULL;
+				}
+				if (cached4_phost_h_addr) {
+					free (cached4_phost_h_addr);
+					cached4_phost_h_addr=NULL;
+				}
+/* Cache new stuff. */
+				cached4_host = strdup (host);
+				cached4_phost_h_addr = (char*)calloc (phost->h_length + 1, 1);
+				memcpy (cached4_phost_h_addr, phost->h_addr, phost->h_length);
+				cached4_phost_h_length = phost->h_length;
+				memcpy(&sin4->sin_addr, phost->h_addr, phost->h_length);
+			}
+		}
+#ifdef DEBUG_HTTP
+		fprintf(stderr, "TCP: Parsed address as port %d, IP address %s\n",
+			(int)ntohs(sin4->sin_port),
+			HTInetString(sin4,sin6,IN_IPV_4));
+#endif
+		return cip_v;	/* OK */
 	}
-	phost = hostname2addr(host, AF_INET6);
-	if (!phost) {
-		fprintf(stderr,"IPV6 gasp no hosts \n");
-		return -1;
-	}
-	if(phost->h_length != 16 ){
-		fprintf(stderr,"IPV6 gasp h_lenght = %d\n", phost->h_length);
-		return -1; /* Fail? */
-	}
-	if (cached_host) free (cached_host);
-	if (cached_phost_h_addr) free (cached_phost_h_addr);
+#else		/* NOT compile with IPV6 */
 
-	/* Cache new stuff. */
-	cached_host = strdup (host);
-	cached_phost_h_addr = (char*)calloc (phost->h_length + 1, 1);
-	memcpy (cached_phost_h_addr, phost->h_addr, phost->h_length);
-	cached_phost_h_length = phost->h_length;
-	memcpy(&sin->sin6_addr, phost->h_addr, phost->h_length);
-#else
 /* Parse host number if present. */  
 	numeric_addr = 1;
 	for (tmp = host; *tmp; tmp++) { /* If there's a non-numeric... */
 		if ((*tmp < '0' || *tmp > '9') && *tmp != '.') {
 			numeric_addr = 0;
-			goto found_non_numeric_or_done;
+			break;
 		}
 	}
+	cip_v = IN_IPV_4;
   
-found_non_numeric_or_done:
 	if (numeric_addr) {   /* Numeric node address: */
-		sin->sin_addr.s_addr = inet_addr(host); /* See arpa/inet.h */
+		sin4->sin_addr.s_addr = inet_addr(host); /* See arpa/inet.h */
 	} else {		    /* Alphanumeric node name: */
-		if (cached_host && (strcmp (cached_host, host) == 0)) {
-			memcpy(&sin->sin_addr, cached_phost_h_addr, cached_phost_h_length);
+		if (cached4_host && (strcmp (cached4_host, host) == 0)) {
+			memcpy(&sin4->sin_addr, cached4_phost_h_addr, cached4_phost_h_length);
 		} else {
 			phost = gethostbyname (host);
 			if (!phost) {
-				if (mMosaicAppData.wwwTrace)
-					fprintf (stderr, "HTTPAccess: Can't find internet node name `%s'.\n",host);
-				return -1;  /* Fail? */
+				fprintf (stderr, "HTParseInet: Can't find internet node name `%s'.\n",host);
+				return IN_IPV_UNKNOWN;  /* Fail */
 			}
 /* Free previously cached strings. */
-			if (cached_host) {
-				free (cached_host);
-				cached_host=NULL;
+			if (cached4_host) {
+				free (cached4_host);
+				cached4_host=NULL;
 			}
-			if (cached_phost_h_addr) {
-				free (cached_phost_h_addr);
-				cached_phost_h_addr=NULL;
+			if (cached4_phost_h_addr) {
+				free (cached4_phost_h_addr);
+				cached4_phost_h_addr=NULL;
 			}
 /* Cache new stuff. */
-			cached_host = strdup (host);
-			cached_phost_h_addr = (char*)calloc (phost->h_length + 1, 1);
-			memcpy (cached_phost_h_addr, phost->h_addr, phost->h_length);
-			cached_phost_h_length = phost->h_length;
-			memcpy(&sin->sin_addr, phost->h_addr, phost->h_length);
+			cached4_host = strdup (host);
+			cached4_phost_h_addr = (char*)calloc (phost->h_length + 1, 1);
+			memcpy (cached4_phost_h_addr, phost->h_addr, phost->h_length);
+			cached4_phost_h_length = phost->h_length;
+			memcpy(&sin4->sin_addr, phost->h_addr, phost->h_length);
 		}
 	}
 #ifdef DEBUG_HTTP
-		fprintf(stderr, "TCP: Parsed address as port %d, IP address %d.%d.%d.%d\n",
-			(int)ntohs(sin->sin_port),
-			(int)*((unsigned char *)(&sin->sin_addr)+0),
-			(int)*((unsigned char *)(&sin->sin_addr)+1),
-			(int)*((unsigned char *)(&sin->sin_addr)+2),
-			(int)*((unsigned char *)(&sin->sin_addr)+3));
+		fprintf(stderr, "TCP: Parsed address as port %d, IP address %s\n",
+			(int)ntohs(sin4->sin_port),
+			HTInetString(sin4,sin6,cip_v));
 #endif
 #endif /* IPV6 */
-	return 0;	/* OK */
+	return cip_v;	/* OK */
 }
 
 /* ############################## */
@@ -226,7 +328,7 @@ static void doc_cancel_connect_time_out_cb(XtPointer clid, XtIntervalId * id)
 /* remove trigger */
 	pafd->www_con_type->call_me_on_stop_cb = NULL;
 	XtRemoveTimeOut(pafd->loop_connect_time_out_id);
-	pafd->loop_connect_time_out_id = (XtIntervalId) NULL;	/* sanity */
+	pafd->loop_connect_time_out_id = (XtIntervalId) 0;	/* sanity */
 
 /* close the unsucces socket */
 	close(pafd->www_con_type->prim_fd);
@@ -245,7 +347,7 @@ static void MMStopConnectPostRequestAndGetTypedData(PafDocDataStruct * pafd)
 {
 /* remove trigger */
 	XtRemoveTimeOut(pafd->loop_connect_time_out_id);
-	pafd->loop_connect_time_out_id = (XtIntervalId) NULL;  /* sanity */
+	pafd->loop_connect_time_out_id = (XtIntervalId) 0;  /* sanity */
 	XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
 
 /* close the pending connect socket */
@@ -260,6 +362,8 @@ static void loop_doc_connect_cb(XtPointer clid, XtIntervalId * id)
 	PafDocDataStruct * pafd = (PafDocDataStruct *) clid;
 	int status;
 	unsigned long loop_connect_time = 100; /* second and next loop = 100 milli sec */
+	struct sockaddr * psin;
+	int socksize;
 
 /* Try to connect again to make sure. If we try to connect again, and get
  * EISCONN, it means we have a successful connection.
@@ -270,11 +374,28 @@ static void loop_doc_connect_cb(XtPointer clid, XtIntervalId * id)
  * gd: Proposal solution: if status is 0, the connect is a success. Because
  *      on a succes , the errno is not significative
  */
-	status =connect(pafd->www_con_type->prim_fd,
-		(struct sockaddr*)&(pafd->www_con_type->sin), sizeof(SockA));
+	switch(pafd->www_con_type->ipv){
+	case IN_IPV_4:
+		psin = (struct sockaddr *)&(pafd->www_con_type->sin4);
+		socksize = sizeof(SockA4);
+		break;
+#ifdef IPV6
+	case IN_IPV_6:
+		psin = (struct sockaddr *)&(pafd->www_con_type->sin6);
+		socksize = sizeof(SockA6);
+		break;
+#endif
+	default:
+		assert(0);
+	}
+/*	status =connect(pafd->www_con_type->prim_fd,
+ *		(struct sockaddr*)&(pafd->www_con_type->sin), sizeof(SockA));
+*/
+	status =connect(pafd->www_con_type->prim_fd, psin, socksize);
+
 	if ( (status == 0) || ((status < 0) && (errno == EISCONN))) { /* succes in connect */
 		XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
-		pafd->loop_connect_time_out_id = (XtIntervalId) NULL;  /* sanity */
+		pafd->loop_connect_time_out_id = (XtIntervalId) 0;  /* sanity */
 		doc_connect_succes(pafd);
 		return;
 	}
@@ -296,7 +417,7 @@ static void loop_doc_connect_cb(XtPointer clid, XtIntervalId * id)
 	free(pafd->www_con_type);
 	pafd->www_con_type = NULL;
 	XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
-	pafd->loop_connect_time_out_id = (XtIntervalId) NULL;  /* sanity */
+	pafd->loop_connect_time_out_id = (XtIntervalId) 0;  /* sanity */
 	(*pafd->call_me_on_error)(pafd,"Connection Error: Can't connect");
 	return;
 }
@@ -316,7 +437,8 @@ static void doc_connect_succes(PafDocDataStruct * pafd)
 /* Make the socket blocking again on good connect */
 	status = ioctl(pafd->www_con_type->prim_fd, FIONBIO, &zero);
 	if (status == -1) {	/* for developpers */
-		fprintf (stderr, "Could not restore socket to blocking.");
+		fprintf (stderr, "%s.%d:Could not restore socket to blocking.\n",
+			__FILE__,__LINE__);
 	}
 
 /* send the command. Yes, We are able to do that because we are in
@@ -327,7 +449,7 @@ static void doc_connect_succes(PafDocDataStruct * pafd)
 	switch ( pafd->con_type) {
 	case HTTP_CON_TYPE:
 /* ################# put and post */
-/* int do_head = 0; * int do_put = 0; * int do_meta = 0;
+/* int do_head = 0; int do_put = 0; int do_meta = 0;
  * FILE *put_fp;
  * if (do_put) {       
  * while (status>0) {     
@@ -391,18 +513,28 @@ static void doc_connect_succes(PafDocDataStruct * pafd)
 
 void PostRequestAndGetTypedData( char * aurl, PafDocDataStruct * pafd)
 {
-	SockA sin ;
+	SockA4 sin4;
+#ifdef IPV6
+	SockA6 sin6;
+#endif
 	char * access_part;
 	int def_port = 0;
 	int con_type = FILE_CON_TYPE;
 	char * hap = NULL;	/* Host And Port */
+	enum InIpV cipv;
 	int status;
 	int one = 1;
 	int soc= -1;		/* the socket */
 	unsigned long cancel_time = 60 * 1000; /* 20 seconds for connect */
 	unsigned long loop_connect_time = 1;    /* first loop = 1 milli sec */
 	char * ptr;
+	struct sockaddr * psin;
+	int socksize;
 
+	memset(&sin4, 0, sizeof(SockA4));
+#ifdef IPV6
+	memset(&sin6, 0, sizeof(SockA6));
+#endif
 	access_part = "file";
 	if( !strncmp(aurl,"http",4) ){
 		def_port = 80;
@@ -477,43 +609,54 @@ void PostRequestAndGetTypedData( char * aurl, PafDocDataStruct * pafd)
 /* Set up defaults network parameter */
 
 #ifdef IPV6
-	sin.sin6_family = AF_INET6;
-	sin.sin6_flowinfo = 0;
-	sin.sin6_port = htons(def_port);
-#else
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(def_port);
+	sin6.sin6_family = AF_INET6;
+	sin6.sin6_flowinfo = 0;
+	sin6.sin6_port = htons(def_port);
 #endif
+	sin4.sin_family = AF_INET;
+	sin4.sin_port = htons(def_port);
 
 	XmxAdjustLabelText(pafd->win->tracker_widget, "Connecting...");
 	XFlush(mMosaicDisplay);
 
 /* Get node name and optional port number: */
-	status = HTParseInet(&sin, hap);	/* return 0 on succes */
-	if (status) {
-		char * info = (char*) malloc(strlen(hap) + 100);
+#ifdef IPV6
+	cipv = HTParseInet(&sin4, &sin6, hap); 
+#else
+	cipv = HTParseInet(&sin4, hap);	/* return IPV4/6 on succes */
+#endif
+	switch (cipv){
+	case IN_IPV_UNKNOWN: {
+			char * info = (char*) malloc(strlen(hap) + 100);
 
-		sprintf(info, "Unable to locate remote host :\n%s", hap);
-		XmxMakeErrorDialog(pafd->win->base, info, "Net Error");
-		free(pafd->www_con_type);
-		pafd->www_con_type = NULL;
-		(*pafd->call_me_on_error)(pafd,info);
-		free(hap);
-		free(info);
-		return ;
+			sprintf(info, "%s.%d:Unable to locate remote host :\n%s",
+			__FILE__,__LINE__, hap);
+			XmxMakeErrorDialog(pafd->win->base, info, "Net Error");
+			free(pafd->www_con_type);
+			pafd->www_con_type = NULL;
+			(*pafd->call_me_on_error)(pafd,info);
+			free(hap);
+			free(info);
+			return ;
+		}
+		break;
+	case IN_IPV_4:
+		pafd->www_con_type->ipv = IN_IPV_4;
+		soc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		break;
+#ifdef IPV6
+	case IN_IPV_6:
+		pafd->www_con_type->ipv = IN_IPV_6;
+		soc = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+		break;
+#endif
 	}
 	free(hap);
 
 /* Now, let's get a socket set up from the server for the data: */      
 /* ### remember : implement Keep-Alive or persistent connection on ftp */
 
-#ifdef IPV6
-	soc = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-#else
-	soc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-#endif
 	if ( soc < 0 ) {
-		perror("PostRequestAndGetTypedData:");
 		XmxMakeErrorDialog(pafd->win->base, "Can't create socket",
 			"Net Error");
 		free(pafd->www_con_type);
@@ -545,14 +688,30 @@ void PostRequestAndGetTypedData( char * aurl, PafDocDataStruct * pafd)
  *		if the socket STREAMS module is the topmost module on the protocol
  *		stack with a write service procedure.This will be the normal case.
  */
-	status= connect(soc, (struct sockaddr*)&sin, sizeof(SockA));
+	switch(cipv){
+	case IN_IPV_4:
+		psin = (struct sockaddr *)&(sin4);
+		socksize = sizeof(SockA4);
+		pafd->www_con_type->sin4 = sin4;
+		break;
+#ifdef IPV6
+	case IN_IPV_6:
+		psin = (struct sockaddr *)&(sin6);
+		socksize = sizeof(SockA6);
+		pafd->www_con_type->sin6 = sin6; 
+		break;
+#endif
+	default:
+		assert(0);
+	}
+
+	status= connect(soc, psin, socksize);
 
 /* In most of case the connection is in progress */
 /* activate a timeout to cancel connection or warn an error */
 /* activate a XtAppAddInput with WriteMask to know if the socket is available */
 /* then make a good blocking socket connection */
 
-	pafd->www_con_type->sin = sin;
 	pafd->www_con_type->prim_fd = soc;
 
 /* don't forget: we can be interrupted by the stop button */
@@ -582,6 +741,6 @@ void PostRequestAndGetTypedData( char * aurl, PafDocDataStruct * pafd)
         pafd->www_con_type = NULL;
         XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
 	XtRemoveTimeOut(pafd->loop_connect_time_out_id);
-	pafd->loop_connect_time_out_id = (XtIntervalId) NULL;  /* sanity */
+	pafd->loop_connect_time_out_id = (XtIntervalId) 0;  /* sanity */
         (*pafd->call_me_on_error)(pafd,"Connection Error: Can't connect");
 }

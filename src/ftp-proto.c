@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <assert.h>
 
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
@@ -71,7 +72,7 @@ static int parse_respons (PafDocDataStruct *pafd)
 */
 
 	if (pafd->iobs.len_iobuf < 5){
-		return 0; /* notenought data */
+		return 0; /* not enough data */
 	}
 	if ( !isdigit(buf[0]) || !isdigit(buf[1]) || !isdigit(buf[2])){
 		return -1; /* protocol error */
@@ -122,112 +123,157 @@ static int parse_respons (PafDocDataStruct *pafd)
 }
 
 #ifdef IPV6
-/* static const struct in6_addr anyaddr = IPV6ADDR_ANY_INIT; */
 static const struct in6_addr anyaddr = IN6ADDR_ANY_INIT;
 #endif                                 
+
 static int get_listen_socket_and_port_command(char *cmd, PafDocDataStruct *pafd )
 {
 #ifdef IPV6                            
 /* 4.3 BSD ipv6 based */       
-	struct sockaddr_in6 soc_address;
-	struct sockaddr_in6 *sin6 = &soc_address;
 	int isv4;                      
-#else                                  
-	struct sockaddr_in soc_address; /* Binary network address */
-	struct sockaddr_in *sin = &soc_address;
+	SockA6 soc6_address;
+	SockA6 *sin6 = &soc6_address;
+	int isv4mapped=0;      
 #endif     
+	SockA4 soc4_address;		/* Binary network address */
+	SockA4 *sin4 = &soc4_address;
 	int status;
-	int address_length = sizeof(soc_address);
+	struct sockaddr * psin;
+	int socksize;
+	int s_socksize;
+	enum InIpV cipv = IN_IPV_UNKNOWN;
+	
+ 
+	assert(pafd->www_con_type->second_fd == -1);
+	memset(sin4, 0, sizeof(SockA4));
+#ifdef IPV6
+	memset(sin6, 0, sizeof(SockA6));
+#endif
 
 /* Create internet socket */           
+	switch(pafd->www_con_type->ipv){
+	case IN_IPV_UNKNOWN:
+		assert(0);	/* impossible */
+	case IN_IPV_4:
+		pafd->www_con_type->second_fd = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		cipv = IN_IPV_4;
+        	sin4->sin_family = AF_INET;   /* Family=internet, host order  */
+        	sin4->sin_addr.s_addr = INADDR_ANY; /* Any peer address */
+		psin = (struct sockaddr *)sin4;
+		socksize = sizeof(SockA4);
+		break;
 #ifdef IPV6                            
-	pafd->www_con_type->second_fd = socket (AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-#else                                  
-	pafd->www_con_type->second_fd = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
-#endif                                 
-	if (pafd->www_con_type->second_fd < 0)            
-		return -1;             
-
-/* Search for a free port. */          
-#ifdef IPV6                            
-	sin6->sin6_family = AF_INET6;   /* Family = internet, host order  */
-	sin6->sin6_addr = anyaddr; 	/* Any peer address */
-#else                                        
-	sin->sin_family = AF_INET;       /* Family = internet, host order  */
-	sin->sin_addr.s_addr = INADDR_ANY; /* Any peer address */
-#endif 
-	status = getsockname(pafd->www_con_type->prim_fd,
-		 (struct sockaddr *)&soc_address, &address_length);
-	if (status<0)
-		return -1;
-
-#ifdef IPV6
-	soc_address.sin6_port = 0; /* Unspecified: please allocate */
-#else
-	soc_address.sin_port = 0; /* Unspecified: please allocate */
+	case IN_IPV_6:
+		pafd->www_con_type->second_fd = socket (AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+		cipv = IN_IPV_6;
+        	sin6->sin6_family = AF_INET6;   /* Family=internet, host order */
+        	sin6->sin6_addr = anyaddr;      /* Any peer address */
+		psin = (struct sockaddr *)sin6;
+		socksize = sizeof(SockA6);
+		break;
 #endif
-/* Cast to generic sockaddr */
-	status=bind(pafd->www_con_type->second_fd,
-		(struct sockaddr*)&soc_address, sizeof(soc_address));
-	if (status<0)
-		return -1;
-	address_length = sizeof(soc_address);
-	status = getsockname(pafd->www_con_type->second_fd,
-		(struct sockaddr*)&soc_address, &address_length);
-	if (status<0)
-		return -1;
-#ifdef IPV6
-	isv4 = IN6_IS_ADDR_V4MAPPED(&soc_address.sin6_addr); */
-/* isv4 = inet6_isipv4addr(&soc_address.sin6_addr); */
-#endif
-
-/* Now we must find out who we are to tell the other guy */
-#ifdef IPV6                           
-/* ##### choose ipv4 or ipv6 addr BEUUUURK! */
-	if (isv4){                    
-		sprintf(cmd, "PORT %d,%d,%d,%d,%d,%d\015\012",
-			(int)*((unsigned char *)(&sin6->sin6_addr)+12),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+13),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+14),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+15),
-			(int)*((unsigned char *)(&sin6->sin6_port)+0),
-			(int)*((unsigned char *)(&sin6->sin6_port)+1));       
-	} else {                       
-		sprintf(cmd, "LPRT %d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\015\012",
-			6, 16,                                 
-			(int)*((unsigned char *)(&sin6->sin6_addr)+0),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+1),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+2),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+3),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+4),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+5),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+6),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+7),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+8),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+9),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+10),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+11),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+12),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+13),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+14),
-			(int)*((unsigned char *)(&sin6->sin6_addr)+15),
-			2,                                     
-			(int)*((unsigned char *)(&sin6->sin6_port)+0),
-			(int)*((unsigned char *)(&sin6->sin6_port)+1));
-	}                              
-#else                                    
-	sprintf(cmd, "PORT %d,%d,%d,%d,%d,%d\015\012",
-		(int)*((unsigned char *)(&sin->sin_addr)+0),
-		(int)*((unsigned char *)(&sin->sin_addr)+1),
-		(int)*((unsigned char *)(&sin->sin_addr)+2),
-		(int)*((unsigned char *)(&sin->sin_addr)+3),
-		(int)*((unsigned char *)(&sin->sin_port)+0),
-		(int)*((unsigned char *)(&sin->sin_port)+1));               
-#endif                                 
-#ifdef DEBUG_FTP
-	if(mMosaicAppData.wwwTrace) {
-		 fprintf(stderr, "FTP--> %s\n",cmd);
+	default:
+		assert(0);      /* impossible */
 	}
+	if (pafd->www_con_type->second_fd < 0) {
+		fprintf(stderr,"%s.%d:socket() < 0. Returning ...\n",
+		__FILE__,__LINE__);
+		return -1;             
+	}
+
+/* Search for a free port. */
+	s_socksize = socksize;
+	status = getsockname(pafd->www_con_type->prim_fd, psin, &socksize);
+
+	assert(s_socksize == socksize); /* socksize change. Why? */
+
+        if (status<0) {
+		fprintf(stderr,"%s.%d:getsockname() < 0. Returning ...\n",
+		__FILE__,__LINE__);
+		return -1;             
+	}                                  
+	switch (cipv){
+	case IN_IPV_4:
+		soc4_address.sin_port = 0; /* Unspecified: please allocate */
+		break;
+#ifdef IPV6
+	case IN_IPV_6:
+		soc6_address.sin6_port = 0; /* Unspecified: please allocate */
+		break;
+#endif
+	}
+/* Cast to generic sockaddr */
+	status=bind(pafd->www_con_type->second_fd, psin, socksize);
+	if (status<0) {
+		fprintf(stderr,"%s.%d:bind() < 0. Returning ...\n",
+		__FILE__,__LINE__);
+		return -1;
+	}
+
+	s_socksize = socksize;
+	status = getsockname(pafd->www_con_type->second_fd, psin, &socksize);
+
+	assert(s_socksize == socksize); /* socksize change. Why? */
+
+	if (status<0) {
+		fprintf(stderr,"%s.%d:getsockname() < 0. Returning ...\n",
+		__FILE__,__LINE__);
+		return -1;
+	}
+
+#ifdef IPV6
+	if(cipv == IN_IPV_6) {
+		isv4mapped = IN6_IS_ADDR_V4MAPPED(&soc6_address.sin6_addr);
+/* Now we must find out who we are to tell the other guy */
+/* How the other guy see us (V6 or V4 ?)
+ * ##### choose ipv4 or ipv6 addr for cmd PORT... BEUUUURK!
+ */
+		if (isv4mapped){                    /* our V4 addr is 4 last byte */
+			sprintf(cmd, "PORT %d,%d,%d,%d,%d,%d\015\012",
+				(int)*((unsigned char *)(&sin6->sin6_addr)+12),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+13),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+14),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+15),
+				(int)*((unsigned char *)(&sin6->sin6_port)+0),
+				(int)*((unsigned char *)(&sin6->sin6_port)+1));
+		} else {                       
+			sprintf(cmd, "LPRT %d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\015\012",
+				6, 16,                                 
+				(int)*((unsigned char *)(&sin6->sin6_addr)+0),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+1),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+2),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+3),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+4),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+5),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+6),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+7),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+8),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+9),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+10),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+11),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+12),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+13),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+14),
+				(int)*((unsigned char *)(&sin6->sin6_addr)+15),
+				2,                                     
+				(int)*((unsigned char *)(&sin6->sin6_port)+0),
+				(int)*((unsigned char *)(&sin6->sin6_port)+1));
+		}
+	} else
+#endif
+	if (cipv == IN_IPV_4) {
+		sprintf(cmd, "PORT %d,%d,%d,%d,%d,%d\015\012",
+			(int)*((unsigned char *)(&sin4->sin_addr)+0),
+			(int)*((unsigned char *)(&sin4->sin_addr)+1),
+			(int)*((unsigned char *)(&sin4->sin_addr)+2),
+			(int)*((unsigned char *)(&sin4->sin_addr)+3),
+			(int)*((unsigned char *)(&sin4->sin_port)+0),
+			(int)*((unsigned char *)(&sin4->sin_port)+1));
+	} else {
+		assert(0);	/* impossible */
+	}
+#ifdef DEBUG_FTP
+	fprintf(stderr, "FTP--> %s\n",cmd);
 #endif
                                        
 /* Inform TCP that we will accept connections */
@@ -328,9 +374,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
         len_read = read(pafd->www_con_type->prim_fd, ibuf, sizeof(ibuf));
         syserror = errno;
 #ifdef DEBUG_FTP
-        if (mMosaicAppData.wwwTrace) 
-                fprintf (stderr, "Read = %d syserror = %d\n",
-                        len_read, syserror);
+        fprintf (stderr, "Read = %d syserror = %d\n", len_read, syserror);
 #endif
 /* on peut gerer un buffer d'entree/sortie reserver au I/O */
         if (len_read > 0) {     /* append to io buffer */
@@ -357,10 +401,17 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		char * cmd;
 
 		status = parse_respons (pafd);  /* read respons on connect*/
-		if (! status)		/* not enought data */
+		if (! status)		/* not enough data */
 			return;
 		if (status != 2) {
-			MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 			return;
 		}
 /* The connect(2) is a success. Time to send passwd parameters */
@@ -373,7 +424,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		sw = write(pafd->www_con_type->prim_fd, cmd, (int)strlen(cmd));
 		free(cmd);
 		if (sw < 0){
-			MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+			MMCancelFTPReadDocOnError(pafd,"FTP CMD USER Write error");
 			return;
 		}
 		pafd->read_stat = FTP_READ_R_ON_USER;
@@ -389,14 +440,21 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		if (! status)		/* not enought data */
 			return;
 		if (status != 3){
-			MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
                         return;
 		}
 /* PASS */
 		sprintf(cmd,"PASS mMosaic@\015\012"); /*@@*/
 		sw = write(pafd->www_con_type->prim_fd, cmd, (int)strlen(cmd));
 		if (sw < 0){
-			MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+			MMCancelFTPReadDocOnError(pafd,"FTP CMD PASS Write error");
 			return;
 		}
 		pafd->read_stat = FTP_READ_R_ON_PASS;
@@ -409,7 +467,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		char acc_cmd[40];
 
 		status = parse_respons (pafd);
-		if (! status)		/* not enought data */
+		if (! status)		/* not enough data */
 			return;
 		if (status == 3){
 /* ACCT */
@@ -418,7 +476,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 				acc_cmd, (int)strlen(acc_cmd));
 			if (sw < 0){
 				MMCancelFTPReadDocOnError(pafd,
-					"FTP Connection Failed");
+					"FTP CMD ACCT write error");
 				return;
 			}
 			pafd->read_stat = FTP_READ_R_ON_ACCT;
@@ -427,18 +485,32 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 			return;
 		}
 		if( status != 2) {
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 			return;
 		}
 		status = get_listen_socket_and_port_command(port_cmd, pafd);
 /* PORT */
 		if ( status !=0 ){
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 			return;
 		}
 		sw = write(pafd->www_con_type->prim_fd,port_cmd,strlen(port_cmd));
 		if (sw < 0){
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			MMCancelFTPReadDocOnError(pafd, "FTP CMD PORT write error");
 			return;
 		}
 		pafd->iobs.iobuf[0] = '\0';
@@ -450,21 +522,35 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		char port_cmd[1000];
 
 		status = parse_respons (pafd);
-		if (! status)		/* not enought data */
+		if (! status)		/* not enough data */
 			return;
 		if( status != 2) {
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 			return;
 		}
 		status = get_listen_socket_and_port_command(port_cmd, pafd);
 /* PORT */
 		if ( status !=0 ){
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 			return;
 		}
 		sw = write(pafd->www_con_type->prim_fd,port_cmd,strlen(port_cmd));
 		if (sw < 0){
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			MMCancelFTPReadDocOnError(pafd, "FTP CMD PORT write error");
 			return;
 		}
 		pafd->iobs.iobuf[0] = '\0';
@@ -477,17 +563,24 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		char cmd[100];
 
                 status = parse_respons (pafd);
-		if (! status)		/* not enought data */
+		if (! status)		/* not enough data */
 			return;
 		if( status != 2) {
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 			return;
 		}
 /* TYPE */
 		sprintf(cmd, "TYPE I\015\012");
 		sw = write(pafd->www_con_type->prim_fd,cmd,strlen(cmd));
 		if (sw < 0){
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			MMCancelFTPReadDocOnError(pafd, "FTP CMD TYPE write error");
 			return;
 		}
 		pafd->iobs.iobuf[0] = '\0';
@@ -500,10 +593,17 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		char * cmd;
 
                 status = parse_respons (pafd);
-		if (! status)		/* not enought data */
+		if (! status)		/* not enough data */
 			return;
 		if( status != 2) {
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 			return;
 		}
 /* RETR */
@@ -513,7 +613,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		free(cmd);
 		free(fname);
 		if (sw < 0){
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			MMCancelFTPReadDocOnError(pafd, "FTP CMD RETR write error");
 			return;
 		}
 		pafd->iobs.iobuf[0] = '\0';
@@ -524,16 +624,35 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 
 	if ( pafd->read_stat == FTP_READ_R_ON_RETR_FILE){
 #ifdef IPV6
-		struct sockaddr_in6 soc_address;
-#else
-		struct sockaddr_in soc_address;
+		SockA6 soc6_address;
 #endif
-		int soc_addrlen = sizeof(soc_address);
+		enum InIpV cipv = pafd->www_con_type->ipv;
+		SockA4 soc4_address;
+		struct sockaddr * psin;
+		int socksize ;
+		int s_socksize;
 		char * fname = URLParse(pafd->aurl,"", PARSE_PATH + PARSE_PUNCTUATION);
 		char * cmd;
 
+		memset(&soc4_address, 0, sizeof(SockA4));
+#ifdef IPV6
+		memset(&soc6_address, 0, sizeof(SockA6));
+#endif
+		switch (cipv) {
+		case IN_IPV_4:
+			psin = (struct sockaddr *)&soc4_address;
+			socksize = sizeof(SockA4);
+			break;
+#ifdef IPV6
+		case IN_IPV_6:
+			psin = (struct sockaddr *)&soc6_address; 
+			socksize = sizeof(SockA6);
+			break;
+#endif
+		}
+
                 status = parse_respons (pafd);
-		if (! status)		/* not enought data */
+		if (! status)		/* not enough data */
 			return;
 		if (status != 1){ /* not a file. CWD to it and NLST */
 /* try to cwd to a directory */
@@ -543,7 +662,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 			free(cmd);
 			free(fname);
 			if (sw < 0){
-				MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+				MMCancelFTPReadDocOnError(pafd, "FTP CMD CWD write error");
 				return;
 			}
 			pafd->iobs.iobuf[0] = '\0';
@@ -552,11 +671,14 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 			return;
 		}
 /* we get a file: Wait for the connection and get the data_soc */
+		s_socksize = socksize;
 		pafd->www_con_type->third_fd = accept(
-			pafd->www_con_type->second_fd,
-			(struct sockaddr *)&soc_address, &soc_addrlen);
+			pafd->www_con_type->second_fd, psin, &socksize);
+
+		assert(s_socksize == socksize); /* why it change */
+
 		if (pafd->www_con_type->third_fd < 0) {
-				MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+				MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed trying to accept third_fd");
 				return;
 		}
 		pafd->iobs.iobuf[0] = '\0';
@@ -574,7 +696,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		fprintf (stderr, " This is a Bug, Please report \n");
 		fprintf(stderr, "read_ftp_doc_prim_fd_cb: pafd->read_stat == FTP_READING_DATASOC_FILE !!! \n");
 		fprintf(stderr, "Aborting...\n");
-		abort(); /* incoherence: peux pas lire un status et des donnees*/
+		assert(0); /* incoherence: peux pas lire un status et des donnees*/
 			/* en meme temps */
 	}
 	if (pafd->read_stat == FTP_READ_R_ON_END_OF_FILE) { /* end process file */
@@ -588,7 +710,14 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 
 		status = parse_respons (pafd);  /* Pick up final reply */
 		if (status != 2) {                
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 		} 
 		pafd->www_con_type->call_me_on_stop_cb = NULL; 
 		free(pafd->iobs.iobuf);
@@ -621,16 +750,23 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		char cmd[40];
 
                 status = parse_respons (pafd);
-		if (! status)		/* not enought data */
+		if (! status)		/* not enough data */
 			return;
 		if( status != 2) {
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 			return;
 		}
 		sprintf(cmd, "NLST -Lla\015\012");
 		sw = write(pafd->www_con_type->prim_fd,cmd,strlen(cmd));
 		if (sw < 0){
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			MMCancelFTPReadDocOnError(pafd, "FTP CMD NLST -Lla write error");
 			return;
 		}
 		pafd->iobs.iobuf[0] = '\0';
@@ -641,21 +777,40 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 
 	if (pafd->read_stat == FTP_READ_R_ON_NLSTLLA_DIR){
 #ifdef IPV6
-		struct sockaddr_in6 soc_address;
-#else
-		struct sockaddr_in soc_address;
+		SockA6 soc6_address;
 #endif
-		int soc_addrlen = sizeof(soc_address);
+		enum InIpV cipv = pafd->www_con_type->ipv;
+		SockA4 soc4_address;
+		struct sockaddr * psin;
+		int socksize ;
+		int s_socksize;
+
+		memset(&soc4_address, 0, sizeof(SockA4));
+#ifdef IPV6
+		memset(&soc6_address, 0, sizeof(SockA6));
+#endif
+		switch (cipv) {
+		case IN_IPV_4:
+			psin = (struct sockaddr *)&soc4_address;
+			socksize = sizeof(SockA4);
+			break;
+#ifdef IPV6
+		case IN_IPV_6:
+			psin = (struct sockaddr *)&soc6_address; 
+			socksize = sizeof(SockA6);
+			break;
+#endif
+		}
 
                 status = parse_respons (pafd);
-		if (! status)		/* not enought data */
+		if (! status)		/* not enough data */
 			return;
 		if(status==5) { /*unrecognized command or failed*/
-			char cmd[40];
-			sprintf(cmd, "NLST\015\012");
-			sw = write(pafd->www_con_type->prim_fd,cmd,strlen(cmd));
+			char cmd1[40];
+			sprintf(cmd1, "NLST\015\012");
+			sw = write(pafd->www_con_type->prim_fd,cmd1,strlen(cmd1));
 			if (sw < 0){ 
-				MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+				MMCancelFTPReadDocOnError(pafd, "FTP CMD NLST write error");
 				return; 
 			}
 			pafd->iobs.iobuf[0] = '\0';
@@ -664,16 +819,26 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 			return;
 		}
 		if (status != 1){      
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 			return;
                 }
 /* status=2 succes. read the dir: Wait for the connection and get the data_soc */
+		s_socksize = socksize;
 		pafd->www_con_type->third_fd = accept(
-			pafd->www_con_type->second_fd,
-			(struct sockaddr *)&soc_address, &soc_addrlen);
+			pafd->www_con_type->second_fd, psin, &socksize);
+
+		assert(s_socksize == socksize); /* Why change */
+
 		if (pafd->www_con_type->third_fd < 0) {
-				MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
-				return;
+			MMCancelFTPReadDocOnError(pafd, "FTP unable to accept the data socket");
+			return;
 		}
 		pafd->iobs.iobuf[0] = '\0';
 		pafd->iobs.len_iobuf = 0;
@@ -690,25 +855,54 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 
 	if (pafd->read_stat == FTP_READ_R_ON_NLST_DIR){
 #ifdef IPV6
-		struct sockaddr_in6 soc_address;
-#else
-		struct sockaddr_in soc_address;
+		SockA6 soc6_address;
 #endif
-		int soc_addrlen = sizeof(soc_address);
+		enum InIpV cipv = pafd->www_con_type->ipv;
+		SockA4 soc4_address;
+		struct sockaddr * psin;
+		int socksize ;
+		int s_socksize;
+
+		memset(&soc4_address, 0, sizeof(SockA4));
+#ifdef IPV6
+		memset(&soc6_address, 0, sizeof(SockA6));
+#endif
+		switch (cipv) {
+		case IN_IPV_4:
+			psin = (struct sockaddr *)&soc4_address;
+			socksize = sizeof(SockA4);
+			break;
+#ifdef IPV6
+		case IN_IPV_6:
+			psin = (struct sockaddr *)&soc6_address; 
+			socksize = sizeof(SockA6);
+			break;
+#endif
+		}
 
                 status = parse_respons (pafd);
-		if (! status)		/* not enought data */
+		if (! status)		/* not enough data */
 			return;
 		if (status != 1){      
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 			return;
                 }
 /* status=2 succes. read the dir: Wait for the connection and get the data_soc */
+		s_socksize = socksize;
 		pafd->www_con_type->third_fd = accept(
-			pafd->www_con_type->second_fd,
-			(struct sockaddr *)&soc_address, &soc_addrlen);
+			pafd->www_con_type->second_fd, psin, &socksize);
+
+		assert( s_socksize == socksize);	/* why change */
+
 		if (pafd->www_con_type->third_fd < 0) {
-				MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");
+				MMCancelFTPReadDocOnError(pafd, "FTP unable to accept data sock");
 				return;
 		}
 		pafd->iobs.iobuf[0] = '\0';
@@ -725,7 +919,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		fprintf (stderr, " This is a Bug, Please report \n");
 		fprintf(stderr, "read_ftp_doc_prim_fd_cb: pafd->read_stat == FTP_READING_DATASOC_DIR !!! \n");
 		fprintf(stderr, "Aborting...\n");
-		abort(); /* incoherence: peux pas lire un status et des donnees*/
+		assert(0); /* incoherence: peux pas lire un status et des donnees*/
 			/* en meme temps */
 	}
 	if (pafd->read_stat == FTP_READ_R_ON_END_OF_DIR) { /* end process dir */
@@ -735,7 +929,14 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 
 		status = parse_respons (pafd);  /* Pick up final reply */
 		if (status != 2) {    
-			MMCancelFTPReadDocOnError(pafd, "FTP Connection Failed");                                     
+			switch (status) {
+			case -1:
+				MMCancelFTPReadDocOnError(pafd,"FTP protocol error.");
+				break;
+			default:
+				MMCancelFTPReadDocOnError(pafd,"FTP Connection Failed");
+				break;
+			}
 		}
 		pafd->www_con_type->call_me_on_stop_cb = NULL;
 		free(pafd->iobs.iobuf);
@@ -769,7 +970,7 @@ void ftp_read_third_fd_file_cb(XtPointer clid, int * fd, XtInputId * id)
 {
 	PafDocDataStruct * pafd = (PafDocDataStruct *) clid;
 	int len_w, syserror, len_read;
-	char info[256];         /* large enought... */
+	char info[256];         /* large enough... */
 	char ibuf[IBUF_SIZE];
 
 /* Set the meter....    */
@@ -795,7 +996,7 @@ void ftp_read_third_fd_file_cb(XtPointer clid, int * fd, XtInputId * id)
 		fprintf (stderr, " This is a Bug, Please report \n");
 		fprintf(stderr, "ftp_read_third_fd_file_cb: len_read < 0 !!! \n");
 		fprintf(stderr, "Aborting...\n");
-		abort();
+		assert(0);
 	}
 /* len_read = 0 => EOF */
 /* copy iobuf to target */
@@ -824,7 +1025,7 @@ void ftp_read_third_fd_dir_nlstlla_cb(XtPointer clid, int * fd, XtInputId * id)
 {
 	PafDocDataStruct * pafd = (PafDocDataStruct *) clid;
 	int syserror, len_read;
-	char info[256];         /* large enought... */
+	char info[256];         /* large enough... */
 	char ibuf[IBUF_SIZE];
 	char *ct;
         char *filename ;
@@ -856,7 +1057,7 @@ void ftp_read_third_fd_dir_nlstlla_cb(XtPointer clid, int * fd, XtInputId * id)
 		fprintf (stderr, " This is a Bug, Please report \n");
 		fprintf(stderr, "ftp_read_third_fd_dir_nlstlla_cb: len_read < 0 !!! \n");
 		fprintf(stderr, "Aborting...\n");
-		abort();
+		assert(0);
 	}
 /* len_read = 0 => EOF */
 /* convert iobuf to html */
@@ -1029,12 +1230,12 @@ void ftp_read_third_fd_dir_nlstlla_cb(XtPointer clid, int * fd, XtInputId * id)
                 nStringLen = strlen(itemname); 
                 nSpaces = 20 - nStringLen;
                 if (nTime == 1) {      
-                        struct tm *ptr;
+                        struct tm *ptr1;
                         time_t t;  
                                        
                         t=time(0);     
-                        ptr=localtime(&t);
-                        sprintf(szYear,"%d",1900+ptr->tm_year);
+                        ptr1=localtime(&t);
+                        sprintf(szYear,"%d",1900+ptr1->tm_year);
                         sprintf(szDate, "%*s%9s %s %s %s %2.2s, %s", nSpaces, " ", itemsize, szFileInfo, szTime, szMonth, szDay, szYear);
                 } else if (nTime == 0) {
                         sprintf(szDate, "%*s%9s %s %s %s %2.2s, %s", nSpaces, " ", itemsize, szFileInfo, "     ", szMonth, szDay, szYear);
@@ -1061,7 +1262,7 @@ void ftp_read_third_fd_dir_nlst_cb(XtPointer clid, int * fd, XtInputId * id)
 	/*only name*/
 	PafDocDataStruct * pafd = (PafDocDataStruct *) clid;
 	int syserror, len_read; 
-	char info[256];         /* large enought... */
+	char info[256];         /* large enough... */
 	char ibuf[IBUF_SIZE];          
 	char *ct;                      
 	char *filename ;               
@@ -1092,7 +1293,7 @@ void ftp_read_third_fd_dir_nlst_cb(XtPointer clid, int * fd, XtInputId * id)
 		fprintf (stderr, " This is a Bug, Please report \n");
 		fprintf(stderr, "ftp_read_third_fd_dir_nlstlla_cb: len_read < 0 !!! \n");
 		fprintf(stderr, "Aborting...\n");
-		abort();               
+		assert(0);               
 	}                              
 /* len_read = 0 => EOF */              
 /* convert iobuf to html */            

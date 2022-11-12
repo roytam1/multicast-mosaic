@@ -4,10 +4,25 @@
 #include <arpa/inet.h>
 
 #ifdef IPV6
-typedef struct sockaddr_in6 SockA;  /* See netinet/in.h */
+typedef struct sockaddr_in6 SockA6;  /* See netinet/in.h */
+
+enum InIpV { 
+	IN_IPV_UNKNOWN = 0,
+	IN_IPV_4 = 1,
+	IN_IPV_6 = 2
+};
+
 #else
-typedef struct sockaddr_in SockA;
+
+enum InIpV { 
+	IN_IPV_UNKNOWN = 0,
+	IN_IPV_4 = 1
+};
+
 #endif
+
+typedef struct sockaddr_in SockA4;
+
 
 #define FILE_CON_TYPE 0
 #define HTTP_CON_TYPE 1
@@ -35,10 +50,14 @@ typedef struct _IOBStruct {
 } IOBStruct;
 
 typedef struct _WWWConType {
+	enum InIpV ipv;		/* IPV4 or IPV6 */
 	int prim_fd;		/* fd of prim channel: generaly read */
 	int second_fd;		/* fd of 2nd socket : example FTP (listen soc) */
 	int third_fd;		/* fd of data_soc for FTP */
-	SockA sin;
+	SockA4 sin4;
+#ifdef IPV6
+	SockA6 sin6;
+#endif
 	void (*call_me_on_stop_cb)(struct _PafDocDataStruct *);
 	void (*call_me_on_error_cb)(struct _PafDocDataStruct *, char *reason);
 } WWWConType;
