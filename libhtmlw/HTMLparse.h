@@ -204,6 +204,25 @@ typedef enum {
 typedef struct _TableRec	*TablePtr;
 typedef struct image_rec	*ImageInfoPtr;
 
+#define AREA_RECT 1
+#define AREA_CIRCLE 2
+#define AREA_POLYGON 3
+#define AREA_DEFAULT 4
+
+typedef struct _AreaRec {
+	int shape;
+	int n_coords;		/* number of coords */
+	int * coords;		/* table of sequential coords */
+	char * href;		/* target */
+	char * alt;
+} AreaRec;
+
+typedef struct _MapRec {
+	char * name;		/* <MAP name=map1> */
+	int n_area;		/* number of <area> */
+	AreaRec ** areas;	/* table of area */
+} MapRec;
+
 struct mark_up {
 	MarkType type;
 	int is_end;
@@ -358,6 +377,8 @@ typedef struct _HtmlTextInfo {
 	struct mark_up *mlist;
 	int    nframes;		/* if not null, it's a frameset */
 	TopFrameSetInfo *frameset_info;	/* info if it is a frameset */
+	int n_map;		/* number of MAP in HTML page */
+	MapRec ** maps;		/* table of <MAP> */
 } HtmlTextInfo;
 
 

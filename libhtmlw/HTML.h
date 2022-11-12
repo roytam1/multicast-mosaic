@@ -120,30 +120,6 @@ typedef struct form_rec {
 	struct form_rec *next;
 } FormInfo;
 
-/* Client-Side Ismap -- SWP */
-typedef struct coord_rec {
-      int coord;
-      struct coord_rec *next;
-} CoordInfo;
-
-
-typedef struct area_rec {
-      int shape;
-      CoordInfo *coordList;
-      CoordInfo *currentCoord;
-      char *href;
-      char *alt;
-      struct area_rec *next;
-} AreaInfo;
-
-
-typedef struct map_rec {
-      char *name;
-      AreaInfo *areaList;
-      AreaInfo *currentArea;
-      struct map_rec *next;
-} MapInfo;
-
 
 /*##########*/
 
@@ -152,12 +128,6 @@ typedef struct _PointerMotionCBStruct {
 	XEvent *ev;
 } PointerMotionCBStruct;
         
-/*      
- * defines for client-side ismap -- SWP
- */     
-#define AREA_RECT 0 
-#define AREA_CIRCLE 1  
-#define AREA_POLYGON 2 
 /*##########*/
 
 typedef struct image_rec {
@@ -173,7 +143,7 @@ typedef struct image_rec {
 	int hspace;
 	int vspace;
 	char *usemap; 
-        MapInfo *map;
+        MapRec *map;
 	int ismap;
 	FormInfo *fptr;
 	int internal;
@@ -234,8 +204,8 @@ typedef struct _CellStruct {
         int max_width;
         int min_width;          
 	int line_bottom;
-        AlignType valignement ;
-        AlignType halignement ;
+        AlignType valignment ;
+        AlignType halignment ;
 	int have_bgcolor;
 	Pixel bgcolor;
 } CellStruct;
@@ -307,6 +277,8 @@ typedef enum {
 	E_CR,
 	E_LINEFEED,
 	E_IMAGE,
+/*	E_IMAGE_MAP, */
+/*	E_MAP */
 	E_INPUT_IMAGE,
 	E_ANCHOR,
 	E_WIDGET,
@@ -314,8 +286,7 @@ typedef enum {
 	E_TABLE	,
 	E_CELL_TABLE,
 	E_OBJECT,
-	E_APPLET,
-	E_MAP
+	E_APPLET
 } ElementType;
 
 struct ele_rec {

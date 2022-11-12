@@ -62,7 +62,7 @@ static void add_url_to_bucket (McBucket * hash_tab, int buck, char *url, int moi
         McBucket *bkt = &(hash_tab[buck]);
         McHashEntry *l;
  
-        l = (McHashEntry *)malloc (sizeof (McHashEntry));
+        l = (McHashEntry *)calloc (1, sizeof (McHashEntry));
         l->aurl = strdup (url);
         l->moid=moid;
         l->next = bkt->head;     
@@ -85,7 +85,7 @@ void McSenderCacheInit( char * root_name)
 	mc_root_dirname = strdup(root_name);	/* ~/.mMosaic must exit */
 
 	l = strlen(mc_root_dirname);
-	mc_cachedir_name = (char*) malloc(l + 12);
+	mc_cachedir_name = (char*) calloc(l+12, 1);
 	strcpy(mc_cachedir_name,mc_root_dirname);
 	strcat(mc_cachedir_name,"/mcache");
 	mc_len_cachedir_name = strlen(mc_cachedir_name);
@@ -608,12 +608,12 @@ void McSourceCacheInit( Source *src, char * root_name)
 	src->source_cachedir_name = src_source_cachedir_name;
 	src->source_len_cachedir_name = src_source_len_cachedir_name;
 /* alloc an initiale moid_cache */
-	src->objects = (McObjectStruct *)malloc(INIT_N_FILE_CACHE * sizeof(McObjectStruct));
+	src->objects = (McObjectStruct *)calloc(INIT_N_FILE_CACHE , sizeof(McObjectStruct));
 	src->objects_tab_size = 0;
 	McRcvrSrcAllocObject(src, INIT_N_FILE_CACHE);
 
 /* create a hash-code table and a reverse moid table */
-	src->hash_tab = (McBucket *) malloc(HASH_TABLE_SIZE * sizeof(McBucket));
+	src->hash_tab = (McBucket *) calloc(HASH_TABLE_SIZE , sizeof(McBucket));
 	for( i=0 ; i<HASH_TABLE_SIZE; i++){
 		src->hash_tab[i].head = NULL;
 		src->hash_tab[i].count = 0;

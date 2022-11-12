@@ -52,7 +52,7 @@ static Boolean 		ConvertSelection( Widget w, Atom *selection,
 static void 		LoseSelection( Widget w, Atom *selection);
 static void 		SelectionDone( Widget w, Atom *selection, Atom *target);
 
-static void		_HTMLInput(Widget w, XEvent *event,
+static void		_HTMLInput(Widget w, struct ele_rec *eptr, XEvent *event,
 				String *params, Cardinal *num_params);
 static void             Initialize(HTMLWidget request, HTMLWidget nw);
 static void             Redisplay(HTMLWidget hw, XEvent *event, Region region);
@@ -889,11 +889,11 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 	if (nw->core.width == 0)
 		nw->core.width = nw->html.margin_width << 1 ;
 	if (nw->core.width == 0)
-		nw->core.width = 10 ;
+		nw->core.width = MARGIN_DEFAULT ;
 	if (nw->core.height == 0)
 		nw->core.height = nw->html.margin_height << 1 ;
 	if (nw->core.height == 0)
-		nw->core.height = 10 ;
+		nw->core.height = MARGIN_DEFAULT ;
 /* Make sure the underline numbers are within bounds. */
 	if (nw->html.num_anchor_underlines < 0)
 		nw->html.num_anchor_underlines = 0;
@@ -1892,6 +1892,16 @@ static void ExtendEnd( Widget w, XEvent *event,
 		return;
 	eptr = LocateElement(hw, BuEvent->x, BuEvent->y, &epos);
 
+	/* We first process the IMG usemap=#map */
+	if (((BuEvent->button == Button1)||(BuEvent->button == Button2))&&
+		(eptr) && (eptr->type == E_IMAGE )&&
+		(eptr->pic_data) && (eptr->pic_data->usemap) &&
+		((BuEvent->time - hw->html.but_press_time) < CLICK_TIME) ) 
+	{
+		_HTMLInput(w, eptr, event, params, num_params);
+		return;
+	}
+		
 	/*
 	 * If we just released button one or two, and we are on an object,
 	 * and we have an active anchor, and we are on the active anchor,
@@ -1903,7 +1913,7 @@ static void ExtendEnd( Widget w, XEvent *event,
 		(eptr == hw->html.active_anchor)&&
 		((BuEvent->time - hw->html.but_press_time) < CLICK_TIME))
 	{
-		_HTMLInput(w, event, params, num_params);
+		_HTMLInput(w, eptr, event, params, num_params);
 		return;
 	}
 	if (hw->html.active_anchor != NULL) {
@@ -2018,7 +2028,8 @@ static void ExtendEnd( Widget w, XEvent *event,
   XUndefineCursor (XtDisplay (hw), XtWindow (hw->html.view));
 
 /* KNOWN PROBLEM: We never get LeaveNotify or FocusOut events,
-   despite the fact we've requested them.  Bummer. */
+ * despite the fact we've requested them.  Bummer. */
+
 static void TrackMotion( Widget w, XEvent *event,
 	String * params,         /* unused */
 	Cardinal * num_params)   /* unused */
@@ -2048,38 +2059,53 @@ static void TrackMotion( Widget w, XEvent *event,
 		LEAVING_ANCHOR (hw);
 		return;
 	}
-		/* We're hitting a new anchor if eptr exists and
-		 * eptr != cached tracked element and anchor_tag_ptr != NULL. */
-	if ( eptr->anchor_tag_ptr->anc_href != NULL || eptr->type == E_INPUT_IMAGE) {
+
+/* We're hitting a new anchor if eptr exists and
+ * eptr != cached tracked element and anchor_tag_ptr != NULL. */
+
+	if ( eptr->anchor_tag_ptr->anc_href != NULL ||
+	     eptr->type == E_INPUT_IMAGE ||
+	     (eptr->type == E_IMAGE && eptr->pic_data->usemap )) {
 		pmcbs.href = eptr->anchor_tag_ptr->anc_href;
 		if (eptr->type == E_INPUT_IMAGE) {
 			pmcbs.href = "Send Request";
 		}
+		if (eptr->type == E_IMAGE && eptr->pic_data->usemap) {
+			char * href;
+
+			if( !MapAreaFound(hw, eptr, x, y, &href)) {
+				 LEAVING_ANCHOR (hw);
+				 return;
+			}
+			pmcbs.href = href;
+		}
+
 		XtCallCallbackList((Widget)hw,
 			hw->html.pointer_motion_callback, &pmcbs );
 		XDefineCursor (XtDisplay (hw), XtWindow (hw->html.view), 
 			in_anchor_cursor);
-	} else 
-		if (eptr->anchor_tag_ptr->anc_href == NULL && eptr->type !=E_INPUT_IMAGE) {
-		/* We're leaving an anchor if eptr exists and
-		 * a cached ele exists and we're not entering a new anchor. */
+	} else {
+		if (eptr->anchor_tag_ptr->anc_href == NULL && 
+		    eptr->type !=E_INPUT_IMAGE &&
+		    !(eptr->type ==E_IMAGE && eptr->pic_data->usemap)) {
+/* We're leaving an anchor if eptr exists and
+ * a cached ele exists and we're not entering a new anchor. */
 			LEAVING_ANCHOR (hw);
 		}
+	}
 	return;
 }
 
 /* Process mouse input to the HTML widget
  * Currently only processes an anchor-activate when Button1 is pressed
  */
-static void _HTMLInput( Widget w, XEvent *event,
+static void _HTMLInput( Widget w, struct ele_rec *eptr, XEvent *event,
 	String * params,	/* unused */
 	Cardinal * num_params)	/* unused */
 {
 	HTMLWidget hw = (HTMLWidget)XtParent(w);
-	struct ele_rec *eptr;
 	char *tptr, *ptr;
 	WbAnchorCallbackData cbdata;
-	int epos;
 	Boolean on_gadget;
 	char *buf = NULL;
 
@@ -2093,11 +2119,13 @@ static void _HTMLInput( Widget w, XEvent *event,
 		return;
 	if (event->type != ButtonRelease)
 		return; 
-	eptr = LocateElement(hw,event->xbutton.x,event->xbutton.y, &epos);
-	if (eptr == NULL)
-		return;
-	if (eptr->anchor_tag_ptr->anc_href == NULL && eptr->type!=E_INPUT_IMAGE)
-		return;
+
+	assert(eptr != NULL);
+
+	if (!( (eptr->type == E_IMAGE) && eptr->pic_data->usemap ) ) {
+		if (eptr->anchor_tag_ptr->anc_href == NULL && eptr->type!=E_INPUT_IMAGE)
+			return;
+	}
 		   /* Save the anchor text, replace newlines with * spaces. */
 	tptr = ParseTextToString(
 		hw->html.select_start, hw->html.select_end,
@@ -2117,11 +2145,6 @@ static void _HTMLInput( Widget w, XEvent *event,
 
 /* An INPUT TYPE=image in Form */
 	if((eptr->type == E_INPUT_IMAGE) && eptr->fptr) {      
-		/*int form_x, form_y; */
-		/*form_x = event->xbutton.x + hw->html.scroll_x - eptr->x;*/
-		/*form_y = event->xbutton.y + hw->html.scroll_y - eptr->y;*/
-		/*ImageSubmitForm(eptr->pic_data->fptr, event, form_x, form_y); */
-
 		InputImageSubmitForm(eptr->fptr, event, hw);
 		return;
 	} 
@@ -2135,7 +2158,14 @@ static void _HTMLInput( Widget w, XEvent *event,
     		sprintf(buf, "%s?%d,%d", eptr->anchor_tag_ptr->anc_href,
 			event->xbutton.x + hw->html.scroll_x - eptr->x,
 			event->xbutton.y + hw->html.scroll_y - eptr->y);
-       	} else {
+       	} else if (eptr->type == E_IMAGE && eptr->pic_data->usemap) {
+		char * href;
+
+		if( !MapAreaFound(hw, eptr, event->xbutton.x, event->xbutton.y, &href) ) {
+			return;
+		}
+		buf = strdup(href);
+	} else {
 		buf = strdup(eptr->anchor_tag_ptr->anc_href);
 	}
 /* XXX: should call a media dependent function that decides how to munge the
@@ -2804,7 +2834,6 @@ void HTMLRetestAnchors(Widget w, visitTestProc testFunc, char * base_url)
 		case E_CELL_TABLE:
 		case E_OBJECT:
 		case E_APPLET:
-		case E_MAP:
 			break;
 		}
 		start = start->next;
@@ -2825,9 +2854,9 @@ void HTMLSetSelection(Widget w, ElementRef *start, ElementRef *end)
 	HTMLWidget hw = (HTMLWidget)w;
 	int found;
 	struct ele_rec *eptr;
-	struct ele_rec *e_start;
-	struct ele_rec *e_end;
-	int start_pos, end_pos;
+	struct ele_rec *e_start=NULL;
+	struct ele_rec *e_end=NULL;
+	int start_pos, end_pos=NULL;
 	Atom *atoms;
 	int i, buffer;
 	char *text;
@@ -3090,9 +3119,11 @@ void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 		_XmHTMLDestroyFrames(hw);
 	}
 
-/* just now. do nothing for test ############ */
-/* ####	FreeMarkUpList(hw->html.html_objects);*/ /* clear previous*/
-/* #### */
+/* see: FreeHtmlTextInfo():
+ * when we free a node, we free the mark_up list of this node.
+ * Thus we must not free the hw->html.html_objects here.
+ */
+
 	hw->html.html_objects = mlist;
 				/* Reformat the new text */
 	hw->html.max_pre_width = 0;
@@ -3314,7 +3345,7 @@ int HTMLSearchText(Widget w, char *pattern,
 	char cval;
 	struct ele_rec *eptr;
 	int s_pos;
-	struct ele_rec *s_eptr;
+	struct ele_rec *s_eptr=NULL;
 	ElementRef s_ref, e_ref;
 	ElementRef *start, *end;
 
@@ -3636,12 +3667,19 @@ int HTMLSearchText(Widget w, char *pattern,
 void HTMLDrawBackgroundImage(HTMLWidget hw, int x, int y, int width, int height) 
 {
 	int tile_x_origin, tile_y_origin;
+/*
+ *	tile_x_origin = (x+hw->html.scroll_x) % hw->html.cur_res.bgima_width;  
+ *	tile_y_origin = (y+hw->html.scroll_y) % hw->html.cur_res.bgima_height;
+ *	XSetTSOrigin(XtDisplay(hw), hw->html.bgimgGC, tile_x_origin,
+ *		tile_y_origin);
+*/
 
-	tile_x_origin = (x+hw->html.scroll_x) % hw->html.cur_res.bgima_width;  
-	tile_y_origin = (y+hw->html.scroll_y) % hw->html.cur_res.bgima_height;
+/* Winfried 8 Nov 2000 */
+	tile_x_origin = hw->html.scroll_x % hw->html.cur_res.bgima_width;  
+	tile_y_origin = hw->html.scroll_y % hw->html.cur_res.bgima_height;
+	XSetTSOrigin(XtDisplay(hw), hw->html.bgimgGC, -tile_x_origin,
+		-tile_y_origin);
 
-	XSetTSOrigin(XtDisplay(hw), hw->html.bgimgGC, tile_x_origin,
-		tile_y_origin);
 	XFillRectangle(XtDisplay(hw), XtWindow(hw->html.view),
                 hw->html.bgimgGC, x, y, width, height);
 }

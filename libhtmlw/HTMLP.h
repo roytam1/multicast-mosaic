@@ -150,7 +150,7 @@ typedef struct _PhotoComposeContext {
 	int		Width ;
 	DescRec		DescType ;
 	int		InDocHead ;
-	MapInfo *	cur_map;
+	MapRec *	cur_map;
 } PhotoComposeContext;
 
 typedef struct _HTMLSubRessources {	
@@ -248,7 +248,7 @@ typedef struct _HTMLPart {
 	struct mark_up	*html_objects;
 	WidgetInfo	*widget_list;
 	FormInfo	*form_list;
-	MapInfo         *map_list;
+	MapRec		*map_list;
         Boolean         obscured;
 	struct ele_rec	*last_formatted_elem;
 	struct ele_rec	*cur_elem_to_format;
@@ -328,6 +328,8 @@ extern void ObjectPlace(HTMLWidget hw, struct mark_up **mptr,
 
 extern void ObjectRefresh(HTMLWidget hw, struct ele_rec *eptr);
 
-/*extern void _FreeAprogStruct(AprogInfo * aps); */
-/*extern void _FreeTableStruct(TableInfo * t); */
+extern void SkipMap(struct mark_up **map_start);
+extern int MapAreaFound(HTMLWidget hw,struct ele_rec * eptr,
+	Dimension x,Dimension y, char** href);
+
 #endif /* HTMLP_H */

@@ -196,7 +196,7 @@ unsigned char *ReadXbmBitmap(Widget view, FILE *fp, char *datafile,
 	char *t;
 	char *t2;
 	unsigned char *ptr, *dataP;
-	int bytes_per_line, version10p, raster_length, padding;
+	int bytes_per_line, version10p=0, raster_length, padding;
 	int i, bytes, temp, value;
 	int Ncolors, charspp, xpmformat;
         static unsigned long fg_pixel, bg_pixel;

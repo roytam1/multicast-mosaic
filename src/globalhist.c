@@ -21,7 +21,7 @@
 
 typedef struct entry {
 	char *url; 		/* Canonical URL for this document. */
-	int last_visited;
+	time_t last_visited;
 	struct entry *next;
 } entry;
 
@@ -66,7 +66,7 @@ static int hash_url (char *url)
 /* Assume url isn't already in the bucket; add it by
  * creating a new entry and sticking it at the head of the bucket's
  * linked list of entries. */
-static void add_url_to_bucket (int buck, char *url, int lastdate)
+static void add_url_to_bucket (int buck, char *url, time_t lastdate)
 {
 	bucket *bkt = &(hhash_table[buck]);
 	entry *l;
@@ -74,13 +74,8 @@ static void add_url_to_bucket (int buck, char *url, int lastdate)
 	l = (entry *)calloc (1,sizeof (entry));
 	l->url = strdup (url);
 	l->last_visited=lastdate;
-	l->next = NULL;
-	if (bkt->head == NULL)
-		bkt->head = l;
-	else {
-		l->next = bkt->head;
-		bkt->head = l;
-	}
+	l->next = bkt->head;
+	bkt->head = l;
 	bkt->count++ ;
 }
 

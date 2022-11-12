@@ -30,11 +30,10 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 		picd->border = picd->req_border;
 	}
 /* remarque : remaining field to update : 
- *      map = NULL; fptr = NULL; 
+ *      fptr = NULL; 
  *      internal_numeo = -1; cw_only = -1;
  */
 
-	picd->map = NULL;
 	picd->fptr = NULL; 
 	picd->cw_only = pcc->cw_only;
 

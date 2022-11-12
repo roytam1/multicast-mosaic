@@ -555,8 +555,8 @@ static PopupItem model_popup_items[] = {	 /* Permanent stuff */
 static Widget _PopupMenuBuilder(mo_window * win, Widget parent, int type, char *title, 
 			char mnem, PopupItem *items)
 {
-	Widget menu, cascade;
-	XmString str;
+	Widget menu=NULL, cascade=NULL;
+	XmString str=NULL;
 	int i, mapping_del;
 
 	mapping_del = mMosaicAppData.popupCascadeMappingDelay;

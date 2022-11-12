@@ -190,7 +190,7 @@ void read_file_local(PafDocDataStruct * pafd)
 		(*pafd->call_me_on_succes)(pafd);
 		return;
 	} /* end if localname is directory */
-/* a file */
+/* localname is a file */
 	soc = open(local_name, O_RDONLY);
 	pafd->www_con_type->prim_fd = soc;
 	if ( soc < 0 ) {

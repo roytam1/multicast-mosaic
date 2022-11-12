@@ -30,39 +30,10 @@ void FreeLineList( struct ele_rec *list, HTMLWidget w)
 			free((char *)eptr->edata);
 			eptr->edata = NULL;
 		}
+/*      	if(eptr->table_data)  
+/*      		FreeTableInfo(eptr->table_data);
+*/
 		eptr->anchor_tag_ptr = NULL;
-/*######################################################################
- * free this somewhere in img.c ##########
- *		if((eptr->type == E_IMAGE) && eptr->pic_data->fetched ) {
- */                         /* Don't free internal images */
-/*			if((eptr->pic_data->image != (Pixmap)NULL)&&
- *			   (eptr->pic_data->internal != 1) ){
- *				XFreePixmap(XtDisplay(w), eptr->pic_data->image);
- *				eptr->pic_data->image = (Pixmap)NULL;
- *				if (eptr->pic_data->clip != (Pixmap)NULL) {
- *					XFreePixmap(XtDisplay(w),
- *						eptr->pic_data->clip);
- *					eptr->pic_data->clip = (Pixmap)NULL;
- *				}
- *			}
- *			free(eptr->pic_data);
- *		}
- *        	if(eptr->pic_data->fptr != NULL) {###don't know what to do #### */
-/*			typedef struct form_rec {
- *			} FormInfo;
- *		}
- *
- *      	if(eptr->widget_data != NULL) {
- *			typedef struct wid_rec {
- *			} WidgetInfo;
- *
- *		}
- *      	if(eptr->table_data != NULL) {
-/*		}
- *      	if(eptr->font != NULL) {
- *			XFontStruct *font;
- *		}
- *###################################*/
 		eptr->next = NULL;
 		eptr->prev = NULL;
 		free((char *)eptr);

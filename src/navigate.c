@@ -748,7 +748,7 @@ void mo_back (Widget w, XtPointer clid, XtPointer calld)
 {
 	RequestDataStruct rds;
 	mo_window *ewin = (mo_window*) clid; /* event win */
-	mo_window *stop_win ; 		/* win ou on envoie le stop */
+	mo_window *stop_win=NULL ; 	/* win ou on envoie le stop */
 
 	switch(ewin->frame_type) {
 	case NOTFRAME_TYPE:
@@ -970,7 +970,7 @@ void mo_forward (Widget w, XtPointer clid, XtPointer calld)
 {
 	RequestDataStruct rds;
 	mo_window *ewin = (mo_window*) clid;
-	mo_window *stop_win ;           /* win ou on envoie le stop */
+	mo_window *stop_win=NULL ;           /* win ou on envoie le stop */
 
         switch(ewin->frame_type) {     
         case NOTFRAME_TYPE:            

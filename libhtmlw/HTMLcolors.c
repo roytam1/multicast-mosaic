@@ -104,11 +104,11 @@ static XColor ***AllocColorCube(unsigned int nr, unsigned int ng, unsigned int n
 	XColor ***cc;
 	int i,j;
 
-	cc = (XColor ***) malloc(nb * sizeof(XColor **));
+	cc = (XColor ***) calloc(nb , sizeof(XColor **));
 	for(i = 0; i < nb; i++) {
-		cc[i] = (XColor **) malloc(ng * sizeof(XColor *));
+		cc[i] = (XColor **) calloc(ng , sizeof(XColor *));
 		for(j = 0; j < ng; j++) {
-			cc[i][j] = (XColor *) malloc(nr * sizeof(XColor));
+			cc[i][j] = (XColor *) calloc(nr , sizeof(XColor));
 		}
 	}
 	return cc;
@@ -212,7 +212,7 @@ void HTMLInitColors(Widget w, unsigned int nc)
 	case PseudoColor:	/* r/w hardware one colormap*/
 		GetColorCubeSize(&use_ncell, &Nr, &Ng, &Nb);
 		cc = AllocColorCube(Nr,Ng,Nb);
-		ct = (Pixel*) malloc(use_ncell * sizeof(Pixel));
+		ct = (Pixel*) calloc(use_ncell , sizeof(Pixel));
 		status = 1;
 		alloc = 0;
 		dr = Nr > 1 ? (double) Nr - 1.0 : 1.0;
@@ -419,10 +419,10 @@ Pixel MMPushColorBg(HTMLWidget hw, Pixel new_pix)
 
 	ocstack = hw->html.color_stack_bg;
 
-        hw->html.color_stack_bg = (ColorStack*) calloc(1,sizeof(ColorStack));
+	hw->html.color_stack_bg = (ColorStack*) calloc(1,sizeof(ColorStack));
 	hw->html.color_stack_bg->pixel = new_pix;
-        hw->html.color_stack_bg->next = ocstack;
-        return hw->html.color_stack_bg->pixel;
+	hw->html.color_stack_bg->next = ocstack;
+	return hw->html.color_stack_bg->pixel;
 }
 Pixel MMPushColorFg(HTMLWidget hw, Pixel new_pix)
 {
@@ -430,10 +430,10 @@ Pixel MMPushColorFg(HTMLWidget hw, Pixel new_pix)
 
 	ocstack = hw->html.color_stack_fg;
 
-        hw->html.color_stack_fg = (ColorStack*) calloc(1,sizeof(ColorStack));
+	hw->html.color_stack_fg = (ColorStack*) calloc(1,sizeof(ColorStack));
 	hw->html.color_stack_fg->pixel = new_pix;
-        hw->html.color_stack_fg->next = ocstack;
-        return hw->html.color_stack_fg->pixel;
+	hw->html.color_stack_fg->next = ocstack;
+	return hw->html.color_stack_fg->pixel;
 }
 
 static void GetDefaultWidgetColorBg (HTMLWidget hw, Pixel * bg)

@@ -933,9 +933,9 @@ static mo_status mo_create_ed_or_ins_hot_win (mo_window *win, int isInsert)
 	Widget ed_or_ins_w, dialog_frame;
 	Widget dialog_sep, buttons_form;
 	Widget eht_form, title_label, url_label, comment_label, url_val,
-		comment_val, sep2;
+		comment_val, sep2=NULL;
 	edit_or_insert_hot_info *eht_info;
-	Widget togm, togm2, insert_tog, append_tog;
+	Widget togm=NULL, togm2=NULL, insert_tog, append_tog;
 
 	eht_info = (edit_or_insert_hot_info *) calloc(1,
 				sizeof(edit_or_insert_hot_info));

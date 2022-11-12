@@ -44,8 +44,8 @@ void ObjectPlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext *pcc)
 	int height;
 	int width;
 
-	struct mark_up * pmptr ;
-	struct ele_rec * eptr;
+	struct mark_up * pmptr  = NULL;
+	struct ele_rec * eptr = NULL;
 	HtmlObjectStruct * obs=NULL;
 	int extra = 0;
 	int argcnt ;

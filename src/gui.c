@@ -2477,7 +2477,7 @@ void mo_process_external_directive (char *directive, char *url)
 		XFlush(mMosaicDisplay);
 		return;
 	}
-	if (!strncmp (directive, "scrolldown", 9)) {
+	if (!strncmp (directive, "scrolldown", 10)) {
 		params[0] = "0";
 		XtVaGetValues (win->scrolled_win, XmNverticalScrollBar, 
 			(long)(&sb), NULL);
@@ -2488,7 +2488,7 @@ void mo_process_external_directive (char *directive, char *url)
 		XFlush(mMosaicDisplay);
 		return;
 	}
-	if (!strncmp (directive, "scrollup", 7)) {
+	if (!strncmp (directive, "scrollup", 8)) {
 		params[0] = "0";
 		XtVaGetValues (win->scrolled_win, XmNverticalScrollBar, 
 			(long)(&sb), NULL);

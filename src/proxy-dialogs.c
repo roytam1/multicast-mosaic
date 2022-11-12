@@ -89,6 +89,8 @@ static struct Proxy *ftp_proxy_env = NULL;
 static struct Proxy *gopher_proxy_env = NULL;
 static struct Proxy *wais_proxy_env = NULL;
 
+static void CommitNoproxyInfo( Widget w, XtPointer client, XtPointer call);
+
 /* say if noproxy exist */
 int GetNoProxy(char *access, char *hap)
 {
@@ -406,7 +408,7 @@ static struct Proxy * FindProxyEntry(char *txt)
 	return p;
 }
 
-void AddProxyToList(struct Proxy *proxy)
+static void AddProxyToList(struct Proxy *proxy)
 {
 	char *p;
 	XmString string;
@@ -423,7 +425,7 @@ void AddProxyToList(struct Proxy *proxy)
 	XmStringFree(string);
 }
 
-void ShowProxyList()
+static void ShowProxyList()
 {
 	Widget scrolled;
 	struct Proxy *proxy;
@@ -440,7 +442,7 @@ void ShowProxyList()
 	}
 }
 
-void AppendProxy(struct Proxy *p)
+static void AppendProxy(struct Proxy *p)
 {
 	struct Proxy *cur;
 
@@ -459,10 +461,11 @@ void AppendProxy(struct Proxy *p)
 	}
 }
 
-void CommitProxyInfo( Widget w, XtPointer client, XtPointer call)
+
+static void CommitProxyInfo( Widget w, XtPointer client, XtPointer call)
 {
 	struct Proxy *p;
-	char *proxy, *addr, *port;
+	char *proxy=NULL, *addr, *port;
 
 	if (Proxy_Edit_Info->IF->proxy_text) {
 		proxy = XmTextGetString(Proxy_Edit_Info->IF->proxy_text);
@@ -821,7 +824,7 @@ static void CallAddProxy(Widget w, XtPointer client, XtPointer call)
 	EditProxyInfo(w, client, call, ADD);
 }
 
-void DeleteProxy(struct Proxy *p)
+static void DeleteProxy(struct Proxy *p)
 {
 	struct Proxy *cur;
 	struct Proxy *pl;
@@ -921,7 +924,7 @@ void PopProxyDialog()
 	Arg args[20];
 
 	XFontStruct *font;
-	XmFontList *fontlist;
+	XmFontList *fontlist=NULL;
 
 	if (ProxyDialog) {
 		ShowProxyList();
@@ -1068,6 +1071,98 @@ void PopProxyDialog()
 }
 
 /* ############# NoProxy ############# */
+
+static void AddNoproxyToList(struct Proxy *proxy)
+{
+	char *p;
+	XmString string;
+	Widget scrolled = Noproxy_Edit_Info->scrolled;
+
+	p = strdup(proxy->address);
+
+	string = XmStringCreateSimple(p);
+	XmListAddItem(scrolled, string, 0);
+	free(p);
+	XmStringFree(string);
+}
+
+static void ShowNoproxyList()
+{
+	Widget scrolled;
+	struct Proxy *proxy;
+
+	scrolled = Noproxy_Edit_Info->scrolled;
+	proxy = Noproxy_List;
+	XmListDeleteAllItems(Noproxy_Edit_Info->scrolled);
+	while (proxy != NULL) {
+		AddNoproxyToList(proxy);
+		proxy = proxy->next;
+	}
+}
+
+static void AppendNoproxy(struct Proxy *p)
+{
+	struct Proxy *cur;
+
+	cur = Noproxy_List;
+	p->next = NULL;
+	p->prev = NULL;
+	if (cur != NULL) {
+		while (cur->next != NULL) 
+			cur = cur->next;
+		p->prev = cur;
+		cur->next = p;
+	} else {
+		Noproxy_List = p;
+	}
+}
+
+static void CommitNoproxyInfo( Widget w, XtPointer client, XtPointer call)
+{
+	struct Proxy *p;
+	char *addr;
+
+	addr = XmTextGetString(Noproxy_Edit_Info->IF->addr_text);
+	if (addr[0] == '\0') {
+		XmxMakeErrorDialog(mMosaicToplevelWidget,
+			COMMIT_ADDR_EMPTY_ERROR, "No Address Entered");
+		XtManageChild (Xmx_w);
+		return;
+	}
+
+	/* Make sure it is all lowercase */
+	{char *ptr; for (ptr=addr; ptr && *ptr; ptr++) *ptr=tolower(*ptr);}
+
+	if (Noproxy_Edit_Info->type == EDIT) {
+		p = Noproxy_Edit_Info->editing;
+	} else {
+		p = (struct Proxy *)calloc(1, sizeof(struct Proxy));
+		Noproxy_Edit_Info->editing = p;
+	}
+
+	p->scheme = NULL;
+
+	if (p->address)
+		p->address = (char *)realloc(p->address,strlen(addr)+1);
+	else
+		p->address = (char *)calloc(1, strlen(addr)+1);
+
+	strcpy(p->address, addr);
+	XtFree(addr);
+
+	p->port = NULL;
+
+	if (Noproxy_Edit_Info->IF->alive!=NULL) {
+		p->alive = (XmToggleButtonGetState(Noproxy_Edit_Info->IF->alive) == True) ? 0 : 1;
+	}
+
+	if (Noproxy_Edit_Info->type == ADD) {
+		AddNoproxyToList(p);
+		AppendNoproxy(p);
+	}
+	ShowNoproxyList();
+	XtPopdown(EditNoproxyDialog);
+}
 
 static void EditNoproxyInfo( Widget w, XtPointer client, XtPointer call, int type)
 {
@@ -1251,7 +1346,7 @@ static void EditNoproxyInfo( Widget w, XtPointer client, XtPointer call, int typ
 	XtManageChild(rc);
 	XtManageChild(main_form);
 
-        XtAddCallback(commit, XmNactivateCallback, CommitProxyInfo, Noproxy_Edit_Info);
+        XtAddCallback(commit, XmNactivateCallback, CommitNoproxyInfo, Noproxy_Edit_Info);
         XtAddCallback(dismiss, XmNactivateCallback, CallDismiss, EditNoproxyDialog);
 	XtAddCallback(help, XmNactivateCallback, CallHelp, "help-noproxy-edit.html");
 
@@ -1261,34 +1356,6 @@ static void EditNoproxyInfo( Widget w, XtPointer client, XtPointer call, int typ
 		ClearProxyText(Noproxy_Edit_Info);
 
 	XtPopup(EditNoproxyDialog, XtGrabNone);
-}
-
-static void AddNoproxyToList(struct Proxy *proxy)
-{
-	char *p;
-	XmString string;
-	Widget scrolled = Noproxy_Edit_Info->scrolled;
-
-	p = strdup(proxy->address);
-
-	string = XmStringCreateSimple(p);
-	XmListAddItem(scrolled, string, 0);
-	free(p);
-	XmStringFree(string);
-}
-
-static void ShowNoproxyList()
-{
-	Widget scrolled;
-	struct Proxy *proxy;
-
-	scrolled = Noproxy_Edit_Info->scrolled;
-	proxy = Noproxy_List;
-	XmListDeleteAllItems(Noproxy_Edit_Info->scrolled);
-	while (proxy != NULL) {
-		AddNoproxyToList(proxy);
-		proxy = proxy->next;
-	}
 }
 
 static struct Proxy * FindNoproxyEntry(char *txt)
@@ -1333,72 +1400,7 @@ static void CallWriteNoproxies(Widget w, XtPointer client, XtPointer call)
         XtManageChild (Xmx_w);
         fclose(fp);
 }
-
-static void AppendNoproxy(struct Proxy *p)
-{
-	struct Proxy *cur;
-
-	cur = Noproxy_List;
-	p->next = NULL;
-	p->prev = NULL;
-	if (cur != NULL) {
-		while (cur->next != NULL) 
-			cur = cur->next;
-		p->prev = cur;
-		cur->next = p;
-	} else {
-		Noproxy_List = p;
-	}
-}
-
-static void CommitNoproxyInfo( Widget w, XtPointer client, XtPointer call)
-{
-	struct Proxy *p;
-	char *addr;
-
-	addr = XmTextGetString(Noproxy_Edit_Info->IF->addr_text);
-	if (addr[0] == '\0') {
-		XmxMakeErrorDialog(mMosaicToplevelWidget,
-			COMMIT_ADDR_EMPTY_ERROR, "No Address Entered");
-		XtManageChild (Xmx_w);
-		return;
-	}
-
-	/* Make sure it is all lowercase */
-	{char *ptr; for (ptr=addr; ptr && *ptr; ptr++) *ptr=tolower(*ptr);}
-
-	if (Noproxy_Edit_Info->type == EDIT) {
-		p = Noproxy_Edit_Info->editing;
-	} else {
-		p = (struct Proxy *)calloc(1, sizeof(struct Proxy));
-		Noproxy_Edit_Info->editing = p;
-	}
-
-	p->scheme = NULL;
-
-	if (p->address)
-		p->address = (char *)realloc(p->address,strlen(addr)+1);
-	else
-		p->address = (char *)calloc(1, strlen(addr)+1);
-
-	strcpy(p->address, addr);
-	XtFree(addr);
-
-	p->port = NULL;
-
-	if (Noproxy_Edit_Info->IF->alive!=NULL) {
-		p->alive = (XmToggleButtonGetState(Noproxy_Edit_Info->IF->alive) == True) ? 0 : 1;
-	}
-
-	if (Noproxy_Edit_Info->type == ADD) {
-		AddNoproxyToList(p);
-		AppendNoproxy(p);
-	}
-	ShowNoproxyList();
-	XtPopdown(EditNoproxyDialog);
-}
-
-        
+ 
 static void CallEditNoproxy(Widget w, XtPointer client, XtPointer call)
 {
         EditNoproxyInfo(w, client, call, EDIT);
@@ -1473,7 +1475,7 @@ void PopNoproxyDialog()
 	Arg args[20];
 
 	XFontStruct *font;
-	XmFontList *fontlist;
+	XmFontList *fontlist=NULL;
 
 	if (NoproxyDialog) {
 		ShowNoproxyList();

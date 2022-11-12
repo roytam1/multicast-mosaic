@@ -79,19 +79,16 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
  */
 	if (hw->html.formatted_elements == NULL){ /* the first element */
 						/* create it */
-		eptr = (struct ele_rec *) malloc( sizeof(struct ele_rec));
+		eptr = (struct ele_rec *) calloc(1, sizeof(struct ele_rec));
 		CHECK_OUT_OF_MEM(eptr);
 		hw->html.formatted_elements = eptr;
-		memset(eptr, 0, sizeof(struct ele_rec)); /* initialize */
-		eptr->next =NULL;
-		eptr->prev =NULL;
 		hw->html.cur_elem_to_format = eptr;
 		hw->html.last_formatted_elem = eptr;
 	} 
 	/* work now with the current element to format */
 	eptr = hw->html.cur_elem_to_format;
 	if ( eptr == NULL) { /* no current element , add one at end */
-		eptr = (struct ele_rec *) malloc( sizeof(struct ele_rec));
+		eptr = (struct ele_rec *) calloc(1, sizeof(struct ele_rec));
 		CHECK_OUT_OF_MEM(eptr);
 		eptr->next = NULL;
 		eptr->prev = hw->html.last_formatted_elem;
@@ -121,6 +118,12 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
         eptr->internal_numeo = 0;
 	eptr->valignment = VALIGN_BOTTOM;
 	eptr->halignment = HALIGN_LEFT;
+/* 
+       if(pcc->div == DIV_ALIGN_TOP) eptr->valignment = VALIGN_TOP;
+       else if(pcc->div == DIV_ALIGN_MIDDLE) eptr->valignment = VALIGN_MIDDLE;
+       else if(pcc->div == DIV_ALIGN_CENTER) eptr->halignment = HALIGN_CENTER;
+       else if(pcc->div == DIV_ALIGN_RIGHT) eptr->halignment = HALIGN_RIGHT;
+*/
 	eptr->selected = False;
 	eptr->indent_level = pcc->indent_level;
 	eptr->start_pos = 0;
@@ -251,7 +254,7 @@ void ListNumberPlace( HTMLWidget hw, PhotoComposeContext * pcc, int val)
         }
 	pcc->have_space_after = 0;
 	pcc->is_bol =1;
-	pcc->x = pcc->x ;
+	pcc->x = pcc->x ; /* ###why? */ /* pcc->x +=  width + (width + 1)/2; */
 }
 
 /* Horrible code for the TEXTAREA element.  Escape '\' and ''' by
@@ -371,29 +374,38 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	case M_CENTER:
 		if (mark->is_end) {
 			LineBreak(hw,*mptr,pcc);
+			/* ###PopDiv(pcc); */
 			pcc->div = DIV_ALIGN_LEFT;
 		} else {
 			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
+			/* ###PushDiv(pcc); */
 			pcc->div = DIV_ALIGN_CENTER;
 		}
 		pcc->processing_text = False;
 		break;
-	case M_DIV:
+	case M_DIV:	/* generic langage/style container HTML4.0 page71*/
 		if (mark->is_end) {
 			LineBreak(hw,*mptr,pcc);
+			/* ###PopDiv(pcc); */
 			pcc->div = DIV_ALIGN_LEFT;
 			pcc->processing_text = False;
 			break;
 		}
 		LineBreak(hw,*mptr,pcc);
 		LinefeedPlace(hw,*mptr,pcc);
+		/* ###PushDiv(pcc); */
 		pcc->div = DIV_ALIGN_LEFT;
 		tptr = ParseMarkTag(mark->start, MT_DIV, "ALIGN");
 		if ( tptr && !strcasecmp(tptr, "CENTER"))
+			/* ###Pushdiv( ... ) */
 			pcc->div = DIV_ALIGN_CENTER;
 		if ( tptr && !strcasecmp(tptr, "RIGHT"))
+			/* ###Pushdiv( ... ) */
 			pcc->div = DIV_ALIGN_RIGHT;
+		if ( tptr && !strcasecmp(tptr, "LEFT"))
+			/* ###Pushdiv( ...... ) */
+			;
 		if(tptr)
 			free(tptr);
 		pcc->processing_text = False;
@@ -402,7 +414,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
  * Just insert a linefeed, or ignore if this is prefomatted
  * text because the <P> will be followed be a linefeed.
  */
-	case M_PARAGRAPH:
+	case M_PARAGRAPH:	/* HTML 40 Page 87 */
 		if (mark->is_end) {
 			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
@@ -671,13 +683,15 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		if (mark->is_end) {
 			pcc->left_margin = pcc->left_margin - hw->html.margin_width;
 			LineBreak(hw,*mptr,pcc);
-			pcc->x = pcc->left_margin;
+			pcc->x = pcc->left_margin /* + ### pcc->eoffsetx*/;
+			/* ### pcc->cur_line_width += hw->html.margin_width; */
 			LinefeedPlace(hw,*mptr,pcc);
 		} else {
 			LineBreak(hw,*mptr,pcc);
 			pcc->left_margin = pcc->left_margin + hw->html.margin_width;
 			LinefeedPlace(hw,*mptr,pcc);
-			pcc->x = pcc->left_margin;
+			pcc->x = pcc->left_margin /*### + pcc->eoffsetx*/;
+			/*### pcc->cur_line_width -= hw->html.margin_width;*/
 		}
 		break;
 
@@ -754,7 +768,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 				LinefeedPlace(hw,*mptr,pcc);
 				pcc->div = DIV_ALIGN_LEFT;
 			}
-			dptr = (DescRec *)malloc(sizeof(DescRec));
+			dptr = (DescRec *)calloc(1, sizeof(DescRec));
 /* Save the old state, and start a new */
 			dptr->compact = 0;
 			pcc->indent_level++;
@@ -823,7 +837,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 
 			LineBreak(hw,*mptr,pcc);
 			pcc->indent_level++;
-			dptr = (DescRec *)malloc(sizeof(DescRec));
+			dptr = (DescRec *)calloc(1, sizeof(DescRec));
 /* Check is this is a compact list */
 			tptr = ParseMarkTag(mark->start, MT_DESC_LIST, "COMPACT");
 			if (tptr != NULL) {
@@ -910,7 +924,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 
 /* Start the form */
 		LinefeedPlace(hw,*mptr,pcc);
-		pcc->cur_form = (FormInfo *)malloc( sizeof(FormInfo));
+		pcc->cur_form = (FormInfo *)calloc(1, sizeof(FormInfo));
 		pcc->cur_form->next = NULL;
 		pcc->cur_form->hw = (Widget)hw;
 		pcc->cur_form->action = NULL;
@@ -927,16 +941,11 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		 * Text: "This is a searchable index.
 		 *  Enter search keywords: "
 		 */
-		mark_tmp.text = (char *)malloc(strlen(
-			"This is a searchable index.  Enter search keywords: ")
-			 + 1);
-		strcpy(mark_tmp.text,
+		mark_tmp.text = strdup(
 			"This is a searchable index.  Enter search keywords: ");
 		PartOfTextPlace(hw, &mark_tmp, pcc);
 /* Fake up the text INPUT tag.  */
-		mark_tmp.start = (char *)malloc( strlen(
-					"input SIZE=25 NAME=\"isindex\"") + 1);
-		strcpy(mark_tmp.start,"input SIZE=25 NAME=\"isindex\"");
+		mark_tmp.start = strdup("input SIZE=25 NAME=\"isindex\"");
 		WidgetPlace(hw, &mark_tmp,  pcc);
 /*  Horizontal rule */
 		LinefeedPlace(hw,*mptr,pcc);
@@ -968,27 +977,21 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		break;
 #ifdef APPLET
 	case M_APPLET:
-		if ((*mptr)->is_end) 		/* end of applet */
+		if (mark->is_end) 		/* end of applet */
 			return;
 		AppletPlace(hw,mptr,pcc,save_obj);
 		break;
 #endif
 #ifdef OBJECT
 	case M_OBJECT:
-		if ((*mptr)->is_end) 		/* end of object */
+		if (mark->is_end) 		/* end of object */
 			return;
 		ObjectPlace(hw,mptr,pcc);
 		break;
 #endif
 	case M_MAP:
-#ifdef HTMLTRACE
-		fprintf(stderr,"Tag <MAP> not yet implemented\n");
-#endif
-		break;
-	case M_AREA:
-#ifdef HTMLTRACE
-		fprintf(stderr,"Tag <AREA> not yet implemented\n");
-#endif
+	case M_AREA:	/* MAP and AREA is not graphical element */
+			/* that's just info on how to process pointer in image */
 		break;
 
 	case M_HTML:			/* don't know what to do with */
@@ -1267,7 +1270,6 @@ struct ele_rec * LocateElement( HTMLWidget hw, int x, int y, int *pos)
 		case E_CELL_TABLE:
 		case E_OBJECT:
 		case E_APPLET:
-		case E_MAP:
 			break;
 		}
 		if (rptr)

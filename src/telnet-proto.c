@@ -109,7 +109,7 @@ static void run_a_command (char *command)
 void MMStartRemoteSession (char * access, char * host, mo_window *win)
 {
 	char *user, *hostname, *port;
-	int portnum;
+	int portnum=0;
 	char command[256];
 	char *xterm_str;
 	enum _login_protocol { telnet, rlogin } login_protocol;

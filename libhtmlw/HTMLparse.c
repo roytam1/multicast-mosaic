@@ -14,10 +14,41 @@
 #include "HTMLmiscdefs.h"
 #include "HTMLparse.h"
 
+#define DEFAULT_FRAME_MARGIN_HEIGHT   5
+#define DEFAULT_FRAME_MARGIN_WIDTH    5
+
 typedef struct amp_esc_rec {
 	char *tag;
 	char value;
 } AmpEsc;
+
+/* Parser state stack object */  
+typedef struct _ParserStack{
+        MarkType mtype;			/* current state id */
+        struct _ParserStack *next;	/* ptr to next record */
+}ParserStack;
+
+typedef struct _ParserContext {
+	ParserStack *base_stk;			/* stack base point */
+	ParserStack *top_stk; 			/* actual stack */
+	int has_head;				/* head seen */
+	int has_title;				/* title seen */
+	char * title_text;			/* TITLE text */
+	struct mark_up * title_mark;		/* TITLE text */
+	int has_body;				/* body seen */
+	int has_base;				/* base seen */
+	int has_frameset;			/* frameset seen */
+	int frameset_depth;			/* nested frameset */
+	int nframes;				/* number of frame (at top level)*/
+	struct mark_up * frameset_mark;		/* FIRST <FRAMESET> */
+	struct mark_up * object_start;		/* object begin */
+
+	struct mark_up *map_start;
+	int n_area;
+
+	MapRec ** map_table;		/* table of map */
+	int map_count;			/* number of map */
+} ParserContext;
 
 static AmpEsc AmpEscapes[] = {
 	{"lt", '<'},
@@ -129,6 +160,8 @@ static AmpEsc AmpEscapes[] = {
 };
 
 static MarkType ParseMarkType(char *str);
+static void AddMap(ParserContext *pc, struct mark_up * map_start,
+	struct mark_up * map_end, int area_count);
 
 static void FreeMarkup( struct mark_up *mptr)
 {
@@ -151,6 +184,12 @@ static void FreeMarkup( struct mark_up *mptr)
 /*	if (mptr->t_p1){       */ /* table */
 /*		_FreeTableStruct(mptr->t_p1); */
 /*	} */
+/* #######
+/*       if(mptr->s_picd) /* mptr->type == M_IMAGE */
+/*    {HTMLWidget wid = (HTMLWidget) (win?win->scrolled_win:NULL);
+/*         FreeImageInfo(wid, mptr->s_picd);
+/*    }
+/*####### */
 	free(mptr);
 }
 
@@ -220,7 +259,7 @@ void clean_white_space(char *txt)
 static char ExpandEscapes(char *esc)
 {
 	int cnt;
-	char val;
+	char val=0;
 	char *endc;
 	int escLen, ampLen;
 	int base = 10;
@@ -613,29 +652,7 @@ struct mark_up * HTMLLexem( const char *str_in)
 	return(list);
 }
 
-/* Parser state stack object */  
-typedef struct _ParserStack{
-        MarkType mtype;			/* current state id */
-        struct _ParserStack *next;	/* ptr to next record */
-}ParserStack;
-
 ParserStack BaseStck =  { M_INIT_STATE, NULL }; /* never write here */
-
-typedef struct _ParserContext {
-	ParserStack *base_stk;			/* stack base point */
-	ParserStack *top_stk; 			/* actual stack */
-	int has_head;				/* head seen */
-	int has_title;				/* title seen */
-	char * title_text;			/* TITLE text */
-	struct mark_up * title_mark;		/* TITLE text */
-	int has_body;				/* body seen */
-	int has_base;				/* base seen */
-	int has_frameset;			/* frameset seen */
-	int frameset_depth;			/* nested frameset */
-	int nframes;				/* number of frame (at top level)*/
-	struct mark_up * frameset_mark;		/* FIRST <FRAMESET> */
-	struct mark_up * object_start;		/* object begin */
-} ParserContext;
 
 static  ParserContext Pcxt = {
 	&BaseStck,	/* base_stk */
@@ -649,7 +666,10 @@ static  ParserContext Pcxt = {
 	0,		/* has_frameset */
 	0,		/* frameset_depth */
 	0,		/* nframe */
-	NULL		/* frameset_mark */
+	NULL,		/* frameset_mark */
+	NULL,		/* object_start */
+	NULL,		/* map_start */
+	0		/* n_area */
 };
 
 static struct mark_up begin_mark;
@@ -741,7 +761,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
  * <HTML>...<BODY>...</BODY> mptr
  * <HTML>...<FRAMESET>...</FRAMESET> mptr
  */
-	case M_HTML:
+	case M_HTML:			/* switch (state) */
 		switch (mptr->type) {
 		case M_NONE:            /* test a white string */
                         if (mptr->is_white_text)
@@ -811,6 +831,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 			return INSERT_TAG;
 		}
 		break;
+		/* end state == M_HTML */
 	case M_HEAD:
 		switch (mptr->type){
 		case M_NONE:            /* test a white string */
@@ -1004,6 +1025,16 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
                         mptr->try_next_obj = NULL; 
 			*sop = SOP_PUSH;
 			return GOOD_TAG;
+		case M_MAP:		/* state is M_BODY, mptr->type is MAP */
+			if(mptr->is_end)  /* see </MAP> whitout <MAP> */
+				return REMOVE_TAG;
+			pc->map_start = mptr;
+			pc->n_area = 0;
+			*sop = SOP_PUSH;	/* look for AREA */
+			return GOOD_TAG;
+		case M_AREA:	/* <area> outside <map> */
+			return REMOVE_TAG;
+
 		case M_FONT:
 		case M_BIG:
 		case M_NONE:
@@ -1019,7 +1050,6 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		case M_HEADER_5:
 		case M_HEADER_6:
 		case M_ADDRESS:
-		case M_AREA:
 		case M_CITATION:
 		case M_FORM:
 		case M_ITALIC:
@@ -1067,7 +1097,6 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		case M_DIRECTORY:
 		case M_INPUT:
 		case M_LIST_ITEM:
-		case M_MAP:
 		case M_MENU:
 		case M_NUM_LIST:
 		case M_OPTION:
@@ -1079,7 +1108,26 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		}
 		return REMOVE_TAG;	/* Unknow tag for BODY state */
 		break;
-	case M_OBJECT:			/* state id OBJECT */
+		/* end state == M_BODY */
+	case M_MAP:			/* state is MAP */
+		switch(mptr->type) {
+		case M_AREA:
+			if(mptr->is_end)
+				return REMOVE_TAG;
+			pc->n_area ++;
+			return GOOD_TAG;
+		case M_MAP:		/* pop stack */
+			if (!mptr->is_end) { /* forbidden MAP in MAP */
+				return REMOVE_TAG;
+			}
+			/* mptr is on </MAP> */
+			AddMap(pc, pc->map_start, mptr, pc->n_area);
+			*sop = SOP_POP;
+			return GOOD_TAG; /* next state will be upper block*/
+		default:		 /* only <area> is authorized */
+			return REMOVE_TAG;
+		}
+	case M_OBJECT:			/* state is OBJECT */
 		switch (mptr->type) {
 		case M_PARAM:
 			if (mptr->is_end) 
@@ -1533,6 +1581,26 @@ static void FreeTopFrameSetInfo(HtmlTextInfo * hti)
 	free(top);
 }
 
+static void FreeArea(AreaRec * area)
+{
+	free(area->coords);
+	free(area->href);
+	free(area->alt);
+	free(area);
+}
+static void FreeMap(MapRec * map)
+{
+	AreaRec * area;
+	int n_area = map->n_area;
+	int i;
+
+	for(i=0; i<n_area; i++) {
+		FreeArea(map->areas[i]);
+	}
+	free(map->areas);
+	free(map);
+}
+
 void FreeHtmlTextInfo(HtmlTextInfo * htinfo)
 {
 	if (htinfo->nframes)
@@ -1543,11 +1611,19 @@ void FreeHtmlTextInfo(HtmlTextInfo * htinfo)
 	if (htinfo->base_target)free(htinfo->base_target);
 	if (htinfo->mlist)
 		FreeMarkUpList(htinfo->mlist);
-	
+	if (htinfo->n_map){
+		int i;
+		MapRec * map;
+
+		for(i=0; i<htinfo->n_map; i++) {
+			map = htinfo->maps[i];
+			FreeMap(map);
+		}
+		free(htinfo->maps);
+	}
 	free(htinfo);
 }
 
-                                      
 static void pushFrameSet(FrameSetInfo *frame_set)
 {
         FrameStack *tmp;              
@@ -1759,12 +1835,12 @@ static FrameInfo * doFrame(TopFrameSetInfo *topfs, char *attributes, int idx)
                 	frame->frame_resize = 0;
 
                 frame->frame_src = ParseMarkTag(attributes,MT_FRAME,"src");
-                frame->frame_margin_width = 5;
+                frame->frame_margin_width = DEFAULT_FRAME_MARGIN_WIDTH;
                 if (chPtr = ParseMarkTag(attributes, MT_FRAME, "marginwidth")){
                         frame->frame_margin_width = atoi(chPtr);
                         free(chPtr);
                 }
-                frame->frame_margin_height = 5;
+                frame->frame_margin_height = DEFAULT_FRAME_MARGIN_HEIGHT;
                 if (chPtr = ParseMarkTag(attributes, MT_FRAME, "marginheight")){
                         frame->frame_margin_height = atoi(chPtr);
                         free(chPtr);
@@ -1795,8 +1871,8 @@ static FrameInfo * doFrame(TopFrameSetInfo *topfs, char *attributes, int idx)
                 }                      
         } else {                       
                 frame->frame_src           = NULL;
-                frame->frame_margin_width  = 5;
-                frame->frame_margin_height = 5;
+                frame->frame_margin_width  = DEFAULT_FRAME_MARGIN_WIDTH;
+                frame->frame_margin_height = DEFAULT_FRAME_MARGIN_HEIGHT;
                 frame->frame_resize        = 1;
         }                              
                                        
@@ -1955,6 +2031,147 @@ static TopFrameSetInfo * makeFramesetInfo(struct mark_up * mptr, int o_nframe)
 	assert(0);		/* never goes here, else parser error... */
 }
 
+int * CoordVals(char *coords, int n)
+{
+	char * beg_int;
+	int * coord_tab;
+	int i;
+
+	coord_tab = (int *)calloc(n,sizeof(int));
+
+	beg_int=coords;
+	for(i=0; i<n; i++){
+		coord_tab[i] = atoi(beg_int);
+		beg_int = strchr(beg_int,',');
+		beg_int++;
+	}
+	return coord_tab;
+}
+
+/*--- HTML 4.01, 13.6.1 Client-side image maps: the MAP and AREA elements  ---*/                                
+/* Add a <MAP> to contexte */
+static MapRec * CreateMap(ParserContext *pc, struct mark_up * map_start,
+        struct mark_up * map_end, int area_count)
+{
+	char *map_name = 0, *coords, *end;
+	char *val;           
+	MapRec *cur_map = NULL;  
+	AreaRec *cur_area = NULL;
+	int i_area;
+	int * cur_coord;
+	struct mark_up *mptr;
+ 
+	if( area_count <=0)
+		return NULL;
+
+	mptr = map_start;
+	assert(mptr->type == M_MAP && !mptr->is_end);
+
+	map_name=ParseMarkTag(mptr->start,MT_MAP,"name");
+	if (!map_name )
+		return NULL;
+
+	cur_map=(MapRec *)calloc(1,sizeof(MapRec));
+	cur_map->name = map_name;
+	cur_map->n_area = area_count;
+	cur_map->areas = (AreaRec **)calloc(area_count, sizeof(AreaRec *));
+	i_area = 0;
+	mptr = mptr->next;
+	while(mptr) {
+		char * href;
+		char * shape_s, *tmpPtr;
+		int shape;
+		int comma_count,n_coord;
+		int * area_coords=NULL;
+
+		if( mptr->type == M_MAP && mptr->is_end)
+			break;		/* end process */
+		assert(mptr->type == M_AREA);
+        
+		href = ParseMarkTag(mptr->start,MT_AREA,"href");
+		if (! href )
+			continue;
+		shape_s = ParseMarkTag(mptr->start,MT_AREA,"shape");
+		shape = AREA_RECT;	/* default */
+		if(shape_s) {
+			if(strcasecmp(shape_s,"default") == 0)
+				shape = AREA_DEFAULT;
+			else if(strcasecmp(shape_s,"circle") == 0)
+				shape = AREA_CIRCLE;
+			else if((strcasecmp(shape_s,"poly") == 0) ||(strcasecmp(shape_s,"polygon") == 0))
+				shape = AREA_POLYGON;
+			free(shape_s);
+		}
+		
+		coords = ParseMarkTag(mptr->start,MT_AREA,"coords");
+		if(!coords)
+			shape = AREA_DEFAULT;
+
+		comma_count = 0;
+		for(tmpPtr = coords; tmpPtr && *tmpPtr != '\0'; tmpPtr++)
+			if(*tmpPtr == ',')
+				comma_count++;
+
+		n_coord = 0;
+		if( shape == AREA_RECT ) {
+			if (comma_count != 3) {
+				mptr = mptr->next;
+				continue;
+			}
+			area_coords = CoordVals(coords, 4);
+			n_coord = 4;
+		} else if( shape == AREA_CIRCLE) {
+			if (comma_count != 2) {
+				mptr = mptr->next;
+				continue;
+			}
+			area_coords = CoordVals(coords, 3);
+			n_coord=3;
+		} else if( shape == AREA_POLYGON) {
+			if ((comma_count < 5) && ((comma_count % 2) != 1)) {
+				mptr = mptr->next;
+				continue;
+			}
+			area_coords = CoordVals(coords, comma_count+1);
+			n_coord = comma_count+1;
+		}
+
+		if(coords)	free(coords);       
+
+		cur_area = (AreaRec *)calloc(1,sizeof(AreaRec));
+		cur_area->href = href;
+		cur_area->shape = shape;
+		cur_area->alt = ParseMarkTag(mptr->start,MT_AREA,"alt");
+		cur_area->coords = area_coords;
+		cur_area->n_coords = n_coord;
+
+		cur_map->areas[i_area] = cur_area;
+		i_area++;
+		mptr = mptr->next;
+	} /* while(mptr) */      
+	cur_map->n_area = i_area;
+	return cur_map;
+}
+
+static void AddMap(ParserContext *pc, struct mark_up * map_start,
+	struct mark_up * map_end, int area_count)
+{
+	MapRec * new_map;
+
+	new_map = CreateMap(pc, map_start, map_end, area_count);
+	if (! new_map)
+		return;
+	if (!pc->map_count) {
+		pc->map_count = 1;
+		pc->map_table = (MapRec **) calloc(1, sizeof(MapRec *));
+	} else {
+		pc->map_count++;
+		pc->map_table = (MapRec **) realloc(pc->map_table,
+					pc->map_count * sizeof(MapRec *));
+	}
+	pc->map_table[pc->map_count -1 ] = new_map;
+}
+
 /* ########################################### */
 /* ########################################### */
 /* Parser of HTML text.  Takes raw text, and produces a linked
@@ -1998,12 +2215,17 @@ HtmlTextInfo * HTMLParseRepair( char *str)
 	Pcxt.frameset_depth = 0;
 	Pcxt.nframes = 0;
 	Pcxt.frameset_mark = NULL;
+	Pcxt.object_start = NULL;
+
+	Pcxt.map_start = NULL;
+	Pcxt.n_area = 0;
+	Pcxt.map_table = NULL;
+	Pcxt.map_count = 0;
 	RecurHTMLParseRepair(&Pcxt, pmptr, mptr, M_INIT_STATE);
 
         mptr = begm.next;
         base_url = NULL;
         while (mptr != NULL){ 
-/* if in_title, grab the text until end marker */
                 switch (mptr->type){
 /* take care of tag BASE */            
                 case M_BASE:           
@@ -2035,6 +2257,8 @@ HtmlTextInfo * HTMLParseRepair( char *str)
 	htinfo->mlist = begm.next;
 	htinfo->nframes = Pcxt.nframes;	/* if not null, it's a frameset */
 	htinfo->frameset_info = fs_info;
+	htinfo->n_map = Pcxt.map_count;
+	htinfo->maps = Pcxt.map_table;
 	return htinfo ;
 }
 

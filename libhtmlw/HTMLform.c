@@ -72,7 +72,7 @@ void BeginForm(HTMLWidget hw, struct mark_up ** mptr,
 	}
 
 /* create a Form structure */
-	pcc->cur_form = (FormInfo *)malloc(sizeof(FormInfo));
+	pcc->cur_form = (FormInfo *)calloc(1,sizeof(FormInfo));
 	pcc->cur_form->next = NULL;
 	pcc->cur_form->hw = (Widget)hw;
 	pcc->cur_form->action = ParseMarkTag(mark->start,
@@ -94,7 +94,7 @@ void BeginForm(HTMLWidget hw, struct mark_up ** mptr,
 void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
         PhotoComposeContext * pcc)
 {
-	char *tptr2, * tptr, *sptr;
+	char * tptr, *sptr;
 	int dir, ascent, descent;
 	XCharStruct all;
 	char * text;

@@ -628,7 +628,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 #endif
 		enum InIpV cipv = pafd->www_con_type->ipv;
 		SockA4 soc4_address;
-		struct sockaddr * psin;
+		struct sockaddr * psin=NULL;
 		int socksize ;
 		int s_socksize;
 		char * fname = URLParse(pafd->aurl,"", PARSE_PATH + PARSE_PUNCTUATION);
@@ -781,7 +781,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 #endif
 		enum InIpV cipv = pafd->www_con_type->ipv;
 		SockA4 soc4_address;
-		struct sockaddr * psin;
+		struct sockaddr * psin=NULL;
 		int socksize ;
 		int s_socksize;
 
@@ -859,7 +859,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 #endif
 		enum InIpV cipv = pafd->www_con_type->ipv;
 		SockA4 soc4_address;
-		struct sockaddr * psin;
+		struct sockaddr * psin=NULL;
 		int socksize ;
 		int s_socksize;
 

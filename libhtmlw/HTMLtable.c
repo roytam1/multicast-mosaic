@@ -69,7 +69,7 @@ void _FreeTableStruct(TableInfo * t)
    if tr parse until (td or th)
    if td or th then FormatChunk ()
 */
-void UpdateColList( ColumnList ** col_list, int td_count,
+static void UpdateColList( ColumnList ** col_list, int td_count,
 		MarkType m_cell_type,
 		struct mark_up * td_start_mark, struct mark_up * td_end_mark,
 		int colspan,int rowspan, int have_bgcolor, Pixel bgcolor)
@@ -534,7 +534,29 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 #ifdef HTMLTRACE
 		printf("[MakeTable] %s not yet implemented\n","ALIGN");
 #endif
+/* ##########
+           if(strcasecmp(tptr,"LEFT") == 0) halignment=HALIGN_LEFT;
+               else
+           if(strcasecmp(tptr,"CENTER") == 0) halignment=HALIGN_CENTER;
+               else
+           if(strcasecmp(tptr,"RIGHT") == 0)  halignment=HALIGN_RIGHT;
 		free(tptr);
+/* #######--- INHERITED value ? ---
+	if(halignment == ALIGN_NONE)
+	{if(pcc->div == DIV_ALIGN_LEFT) halignment = HALIGN_LEFT;
+	else
+	if(pcc->div == DIV_ALIGN_CENTER) halignment = HALIGN_CENTER;
+	else
+	if(pcc->div == DIV_ALIGN_RIGHT) halignment = HALIGN_RIGHT;
+	}else
+	{if(halignment == HALIGN_LEFT) pcc->div = DIV_ALIGN_LEFT;
+	else
+	if(halignment == HALIGN_CENTER) pcc->div = DIV_ALIGN_CENTER;
+	else
+	if(halignment == HALIGN_RIGHT) pcc->div = DIV_ALIGN_RIGHT;
+	}
+	lt.halignment = halignment;
+####### */
 	}
 	if ( (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLSPACING")) ) {
 		lt.cellSpacing = atoi(tptr);
@@ -648,6 +670,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	tr_start_found = 0;
 	td_start_found = 0;
 
+/* ####### val=ParseMarkTag(sm->start,type_string,"VALIGN"); */
 	while (sm){
 /* Traitement de <TD> ou <TH> */
 		if( ((sm->type == M_TD) || (sm->type == M_TH))&&
@@ -896,7 +919,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	return t;
 }
 
-void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_pcc)
+static void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_pcc)
 {
 	PhotoComposeContext deb_pcc;
 	PhotoComposeContext fin_pcc;

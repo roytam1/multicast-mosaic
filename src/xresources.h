@@ -47,7 +47,7 @@ static XtResource resources[] = {
   { "loadLocalFile","LoadLocalFile",XtRInt,sizeof(int),
       offset (load_local_file), XtRString, "1"},
   { "editCommand", "EditCommand", XtRString, sizeof (char *),
-      offset (edit_command), XtRString, NULL },
+      offset (edit_command), XtRString, "/usr/bin/vi" },
   { "editCommandUseXterm", "EditCommandUseXterm", XtRBoolean, sizeof (Boolean),
       offset (edit_command_use_xterm), XtRString, "True" },
 #ifdef _AIX
@@ -123,7 +123,7 @@ static XtResource resources[] = {
 
   { "printPaperSizeUS", "PrintPaperSizeUS",
       XtRBoolean, sizeof (Boolean),
-      offset (print_us), XtRString, "True" },
+      offset (print_us), XtRString, "False" },
 
           /* new in 2.7 */
   { "installColormap", "InstallColormap", XtRBoolean, sizeof (Boolean),

@@ -501,17 +501,34 @@ void McDisplayWindowText(Source *s, unsigned int state_id)
                 int i;                 
 
                 for(i = 0; i < win->frame_sons_nbre; i++) {
+#ifdef OBJECT
+			if (win->frame_sons[i]->htinfo) {
+                                MMStopPlugins(win->frame_sons[i],
+                                        win->frame_sons[i]->htinfo->mlist);
+                        }
+#endif
                         MMDestroySubWindow(win->frame_sons[i]);
                         win->frame_sons[i] = NULL; /* sanity */
                 }                      
                 free(win->frame_sons); 
+		win->frame_sons = NULL;
+        	win->frame_sons_nbre = 0;
                 HTMLUnsetFrameSet (win->scrolled_win);
 /* ###################################################################### */
 /*              FreeHtmlTextInfo(win->htinfo); don't free here but in nav. */
 /* ###################################################################### */
                 win->frame_type = NOTFRAME_TYPE;
+		/* don't know how to navigate in multicast frameset */
+		/* recreate a navigation from begining */
+		win->first_node = NULL;
         } 
 
+/* stop old plugins if exist */
+#ifdef OBJECT
+        if (win->htinfo) {
+                MMStopPlugins(win, win->htinfo->mlist);
+        }
+#endif
 	state = s->states[state_id];
 	start_moid = state.start_moid;
 

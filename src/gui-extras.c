@@ -186,7 +186,7 @@ mo_status mo_update_links_window(mo_window *win)
 {
 	char **hrefs,**imgs;
 	int i,p,count,hcount,icount;
-	XmString *xmstr;
+	XmString *xmstr = NULL;
 
 	hrefs = HTMLGetHRefs(win->scrolled_win,&hcount);
 	imgs = HTMLGetImageSrcs(win->scrolled_win,&icount);

@@ -178,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.6.9"
+#define MO_VERSION_STRING "3.7.0"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "dauphin@enst.fr"
@@ -580,7 +580,7 @@ typedef struct _NavFrameInfo {
 	struct mo_node *frame_node;
 } NavFrameInfo;
 
-typedef enum { NODE_FRAMESET_TYPE, NODE_NOTFRAME_TYPE} NodeType;
+typedef enum { NODE_FRAMESET_TYPE=2, NODE_NOTFRAME_TYPE} NodeType;
 
 /* mo_node is a component of the linear history list.  A single
    mo_node will never be effective across multiple mo_window's;

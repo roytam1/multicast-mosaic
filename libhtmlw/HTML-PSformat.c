@@ -1639,7 +1639,6 @@ String ParseTextToPSString(HTMLWidget	 	hw,
 	case E_CELL_TABLE:
 	case E_OBJECT:
 	case E_APPLET:
-	case E_MAP:
 		break;
 	}
 	last = eptr;

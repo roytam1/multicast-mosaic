@@ -1113,7 +1113,7 @@ void MMPreParseImageTag(mo_window * win, ImageInfo *picd, struct mark_up *mptr)
 	lpicd.req_border = -1;
         lpicd.hspace = DEF_IMAGE_HSPACE;
         lpicd.vspace = DEF_IMAGE_VSPACE;
-        lpicd.usemap = usemapPtr;      
+        lpicd.usemap = NULL;      
         lpicd.map = NULL;              
         lpicd.ismap = 0;               
         lpicd.fptr = NULL;             
@@ -1183,6 +1183,18 @@ void MMPreParseImageTag(mo_window * win, ImageInfo *picd, struct mark_up *mptr)
 	if (ismapPtr) {                
 		lpicd.ismap = 1;       
 		free(ismapPtr);        
+	}
+
+	if (usemapPtr && (*usemapPtr == '#')) {	/* find the map */
+		int i;
+
+		for (i = 0 ; i < win->htinfo->n_map; i++) {
+			if (!strcmp(win->htinfo->maps[i]->name,usemapPtr+1) ){
+				lpicd.map = win->htinfo->maps[i];
+        			lpicd.usemap = usemapPtr;      
+				break;
+			}
+		}
 	}
 
 /* remarque:
