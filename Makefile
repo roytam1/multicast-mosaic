@@ -1,12 +1,12 @@
 # Toplevel Makefile for mMosaic.
-#This Release 3.4.12 compile on:
+#This Release 3.4.13 compile on:
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
 #	- FreeBSD3.1
 #	- Mandrake6.1
 
-MCVER=3.4.12
+MCVER=3.4.13
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 

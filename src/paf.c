@@ -539,8 +539,6 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		char * command = (char*)malloc(6*l);
 		char * cmd = (char*)malloc(10*l);
 
-/* winfried propal is: if (strstr(presentation, "%%s")){ */
-/* but dont' understand why ##### 28/02/2000 */
 		if (strstr(presentation, "%s")){
 			sprintf (command, presentation,
 				pafd->fname, pafd->fname, pafd->fname,

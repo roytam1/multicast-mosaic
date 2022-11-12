@@ -265,11 +265,11 @@ void HTMLInitColors(Widget w, unsigned int nc)
 		stepg = 65535.0 /  dg;
 		stepb = 65535.0 /  db ;
 		cur_b = 0.0;
-		for(i = 0; (i < Nb) && status ; i++) {
+		for(i = 0; (i < Nb) ; i++) {
 			cur_g = 0.0;
-			for(j = 0; (j < Ng) && status ; j++) {
+			for(j = 0; (j < Ng) ; j++) {
 				cur_r = 0.0;
-				for(k = 0; (k < Nr) && status ; k++) {
+				for(k = 0; (k < Nr) ; k++) {
 					color.blue = floor(cur_b);
 					color.green = floor(cur_g);
 					color.red = floor(cur_r);

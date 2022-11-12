@@ -983,9 +983,23 @@ static void mo_view_keypress_handler(Widget w, XtPointer clid,
 	switch(_key){
 	case XK_Prior: /* Page up. */
 	case XK_KP_Prior:
+	case XK_BackSpace:
+	case XK_Delete:
+		XtVaGetValues (win->scrolled_win, XmNverticalScrollBar, 
+				(long)(&sb), NULL);
+		if (sb && XtIsManaged (sb)) {
+			XtCallActionProc (sb, "PageUpOrLeft", event, params, 1);
+		}
 		break;
 	case XK_Next:  /* Page down. */
 	case XK_KP_Next:
+	case XK_Return:
+	case XK_space:
+		XtVaGetValues (win->scrolled_win, XmNverticalScrollBar, 
+				(long)(&sb), NULL);
+		if (sb && XtIsManaged (sb)) {
+			XtCallActionProc (sb, "PageDownOrRight", event, params, 1);
+		}
 		break;
 	case XK_Home: /* Home -- Top */
 		HTMLGotoId(win->scrolled_win, 0,0);

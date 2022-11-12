@@ -1554,7 +1554,7 @@ String ParseTextToPSString(HTMLWidget	 	hw,
     Pixels_Page = (int) (page_dimens.text_height / Points_Pixel);		
 	
     PSinit();
-    PSheader("tilte:" /*hw->html.title*/, fontfamily, url, time_str);
+    PSheader("title:" /*hw->html.title*/, fontfamily, url, time_str);
     PSnewpage();
 
     last = start;

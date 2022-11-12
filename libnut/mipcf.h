@@ -74,11 +74,4 @@ typedef u_int32_t 	IPAddr;
 #define ADDRCMP(a,b)	ADDRCMP44(a,b)
 #endif
 
-struct __mcmo_in6_addr__ {
-	u_int8_t addr[16];	/* compatible Ipv6 struct */
-};
-
-typedef struct __mcmo_in6_addr__ IPAddr6 ;
-typedef u_int32_t	IPAddr4;
-
 #endif /* mipcf_h */
