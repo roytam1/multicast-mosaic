@@ -165,6 +165,24 @@ GuiEntry * CreateMemberGuiEntry(Source *s)
 	return &mc_gui_member_list[mc_gui_member_count-1];
 }
 
+void UpdGuiMemberName( Source * s)
+{
+	int nu = s->gui_ent->nu;
+	Widget wname = mc_gui_member_list[nu].toggle;
+
+	XmxAdjustLabelText(wname, s->sdes_name);
+}
+
+void UpdGuiMemberPage( Source * s)
+{
+	int nu = s->gui_ent->nu;
+	Widget wname = mc_gui_member_list[nu].label;
+	char buf[200];
+
+	sprintf(buf,"Page %d", s->c_sid);
+	XmxAdjustLabelText(wname, buf);
+}
+
 typedef struct _McHtmlTopInfoWindow {
 	struct mark_up *mlist;
 	char * aurl;

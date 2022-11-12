@@ -609,7 +609,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 
 	mptr = mlist;
 	pafd->num_of_eo = 0;
-	base_url = NULL;
+	base_url = htinfo->base_url;
 	eo_tab = (EmbeddedObjectEntry *) malloc(sizeof(EmbeddedObjectEntry));
 			/* alloc one */
 /* recuperer le reste des embedded objects (si necessaire)*/

@@ -24,9 +24,14 @@
 
    
 typedef struct _RtpPacket {     
+	u_int32_t pt;		/* payload type */
 	u_int16_t seqn;
         u_int32_t rtp_ts;
 	u_int32_t ssrc;
+
+	int cur_pos_x;
+	int cur_pos_y;
+
         unsigned char is_eod;
 	char *to_free;		/* when is_eod is true, free data */
 	int data_type;
@@ -83,7 +88,7 @@ typedef struct _MissRange {
 
 typedef struct _ChunkedBufStruct {
 	int size_data;		/* size of data */
-	char * data;		/* partial data when size is knowed */
+	char * data;	/* partial data when size is knowed */
 	PacketDataChunk *lpdc;	/* list of chunck of data */
 				/* order by offset. The first packet # 0 */
 				/* is the MIME header */
@@ -195,6 +200,8 @@ typedef struct _Source {
 
 	long		lts;	/* local time stamp (unixtime) */
 
+	int	c_sid;
+
 /* cache for source */
 	char *source_cachedir_name;
 	int source_len_cachedir_name;
@@ -209,6 +216,9 @@ typedef struct _Source {
 /* frame stuff */
 	int frameset_moid;
 	int frameset_dot_count;
+
+	int old_cur_pos_x;
+	int old_cur_pos_y;
 
 } Source;
 
@@ -346,4 +356,9 @@ extern void McSourceCacheInit( Source *src, char * root_name);
 extern void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
         char *aurl, MimeHeaderStruct *mhs, int moid,
         char **fname_ret, MimeHeaderStruct *mhs_ret);
+
+extern void UpdGuiMemberName( Source *s);
+extern void UpdGuiMemberPage( Source *s);
+extern int McRcvrSrcCheckBufferObject(Source *s, int moid);
+extern void McSendRtpCursorPosition(int rtp_ts, int x, int y);
 #endif

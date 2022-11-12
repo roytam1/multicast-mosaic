@@ -93,7 +93,7 @@ Source * newSource(u_int32_t srcid, IPAddr addr)
         char * a_ad;
         struct in_addr ina;
 
-        ina.S_un.S_addr = addr;        
+        ina.s_addr = addr;        
 
         a_ad = inet_ntoa(ina);         
         s->mute = True;                
@@ -126,6 +126,9 @@ Source * newSource(u_int32_t srcid, IPAddr addr)
         s->objects = NULL;              
 	s->states_tab_size = 0;
 	s->objects_tab_size = 0;
+
+	s->old_cur_pos_x = -100;
+	s->old_cur_pos_y= -100;
 
 	McSourceCacheInit(s,mMosaicRootDirName); /* create a cache for it */
         return s;
@@ -524,18 +527,26 @@ void ProcessRtcpSdes(Source * s, RtcpPacket* rcs)
 	if (!sdes)
 		return;
 /* setup NAME EMAIL ... */
-	if (*sdes->cname) {
-		strcpy(s->sdes_cname, sdes->cname);
-		s->uc_rtp_port = sdes->uc_rtp_port;
-		s->uc_rtcp_port = sdes->uc_rtcp_port;
-		s->uc_rtp_ipaddr = sdes->uc_rtp_ipaddr;
+	if (*sdes->cname ) {
+		if (strcmp(s->sdes_cname, sdes->cname) != 0) {
+			strcpy(s->sdes_cname, sdes->cname);
+			s->uc_rtp_port = sdes->uc_rtp_port;
+			s->uc_rtcp_port = sdes->uc_rtcp_port;
+			s->uc_rtp_ipaddr = sdes->uc_rtp_ipaddr;
+		}
+#ifdef DEBUG_MULTICAST
 fprintf(stderr,"ProcessRtcpSdes: cname = %s, rtp_port = %d, rtcp_port = %d, rtp_ipaddr = %d\n", s->sdes_cname, s->uc_rtp_port, s->uc_rtcp_port, s->uc_rtp_ipaddr);
+#endif
 	}
 	if (*sdes->tool)
 		strcpy(s->sdes_tool, sdes->tool);
 	if (*sdes->email)
 		strcpy(s->sdes_email, sdes->email);
-	if (*sdes->name)
-		strcpy(s->sdes_name, sdes->name);
+	if (*sdes->name){
+		if (strcmp(s->sdes_name, sdes->name) !=0){
+			strcpy(s->sdes_name, sdes->name);
+			UpdGuiMemberName(s);
+		}
+	}
 	return;
 }

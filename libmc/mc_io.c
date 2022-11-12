@@ -395,7 +395,7 @@ int DewrapRtpData( unsigned char *buf, int len_buf,
 	unsigned int rh_flags;
 	unsigned char * p = buf;
 
-	if ( len_buf < 24 ){ 
+	if ( len_buf < 16 ){ 
 		fprintf(stderr,"Error receiving Rtp data: n = %d\n", len_buf);
 		return 0;
 	}
@@ -403,7 +403,21 @@ int DewrapRtpData( unsigned char *buf, int len_buf,
 	rh_flags = (u_int16_t) (	((unsigned long) p[0] << 8 ) |
                                         ((unsigned long) (p[1] & 0xff) ) );
 
-	if (rh_flags != (u_int16_t) 0x8062){
+	switch (rh_flags){
+	case 0x8062:	/* PT HTML */
+		if ( len_buf < 24 ){ 
+			fprintf(stderr,"Error receiving Rtp data: n = %d\n", len_buf);
+			return 0;
+		}
+		break;
+	case 0x8063:	/* PT CURSOR POS */
+		if ( len_buf < 16 ){ 
+			fprintf(stderr,"Error receiving Rtp data: n = %d\n", len_buf);
+			return 0;
+		}
+		break;
+	default:
+		fprintf(stderr,"Error receiving Rtp data: rh = %x\n",rh_flags);
 		return 0;
 	}
 
@@ -419,7 +433,17 @@ int DewrapRtpData( unsigned char *buf, int len_buf,
 				    ((u_int32_t) p[9] << 16) |
 				    ((u_int32_t) p[10] << 8) |
 				    ((u_int32_t) p[11]      ) );
+	if ( rh_flags == (u_int32_t)0x8063 ){
+		rs_ret->pt = 0x63;
+		rs_ret->cur_pos_x = (int16_t)( ((u_int32_t) p[12] << 8) |
+					       ((u_int32_t) p[13]     ) );
+		rs_ret->cur_pos_y = (int16_t)( ((u_int32_t) p[14] << 8) |
+					       ((u_int32_t) p[15]     ) );
+		return 1;
+	}
+
 /* PT data */
+	rs_ret->pt = 0x62;
 	if (p[12] != 0) {	/* Version */
 		return 0;
 	}
@@ -519,6 +543,43 @@ int McWrite( int fd, unsigned char * buf, int len)
    PT = 98 (HTML)
 */
 
+
+void McSendRtpCursorPosition(int rtp_ts, int x, int y)
+{
+        int len_buf;
+	int cnt;
+	static int mc_seq_number_cur_pos = 0;
+ 
+        emit_buf[0] = 0x80;     /* V,P,CC */
+        emit_buf[1] = 0x63;        /* PT=99 Curseur position */ 
+
+        emit_buf[2] = (mc_seq_number_cur_pos >> 8) & 0xff; /* sequence number */
+        emit_buf[3] = mc_seq_number_cur_pos & 0xff;
+        mc_seq_number_cur_pos++;
+
+        emit_buf[4] = (rtp_ts >> 24) & 0xff;    /* timestamp */
+        emit_buf[5] = (rtp_ts >> 16) & 0xff;
+        emit_buf[6] = (rtp_ts >> 8) & 0xff;
+        emit_buf[7] =  rtp_ts & 0xff;
+
+        emit_buf[8] = (mc_local_srcid >> 24) & 0xff;    /* SSRC */
+        emit_buf[9] = (mc_local_srcid >> 16) & 0xff;
+        emit_buf[10] = (mc_local_srcid >> 8) & 0xff;
+        emit_buf[11] =  mc_local_srcid & 0xff;
+
+	emit_buf[12] = (x >> 8) & 0xff;
+	emit_buf[13] = x & 0xff;
+	emit_buf[14] = (y >> 8) & 0xff;
+	emit_buf[15] = y & 0xff;
+
+        len_buf = 16 ;
+
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr, "McSendRtpCursorPosition: x=%d, y=%d, ts=%u, srcid=%u\n",
+		x, y, rtp_ts, mc_local_srcid);
+#endif
+        cnt = McWrite(mc_fd_rtp_w, emit_buf, len_buf);
+}
 
 void McSendRtpDataTimeOutCb(XtPointer clid, XtIntervalId * id)
 {
@@ -665,9 +726,9 @@ void UcRtpSendDataPacketTo(IPAddr addr, unsigned short port , RtpPacket *p)
         memcpy(&emit_buf[24], p->d, p->d_len);
 
 #ifdef DEBUG_MULTICAST
-	fprintf(stderr, "UcRtpSendDataPacketTo: seq=%d, ts=%u, srcid=%u, id=%u, offset=%u, d_len=%u\n",
+	fprintf(stderr, "UcRtpSendDataPacketTo: seq=%d, ts=%u, srcid=%u, id=%u, offset=%u, d_len=%u, eod = %d\n",
 		0, p->rtp_ts, mc_local_srcid,
-		p->id, p->offset,p->d_len);
+		p->id, p->offset,p->d_len, p->is_eod);
 #endif
 
 	cnt = sendto(uc_fd_rtp_w, (char*)emit_buf, len_buf, 0,

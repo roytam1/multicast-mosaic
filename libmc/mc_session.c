@@ -242,6 +242,7 @@ int McRcvrSrcCheckBufferStateWithData(Source *s, int is_end, int state_id,
 #endif
 	status = PutPacketInChkBuf(s->states[state_id].chkbuf, is_end, offset,
 		d, d_len);
+	fprintf(stderr,"McRcvrSrcCheckBufferStateWithData: putting state_id %d, offset %d, d_len %d, is_end %d status %d\n", state_id, offset, d_len, is_end, status);
         if (status == COMPLETE_BUFFER) {
 		int len;
 
@@ -327,11 +328,11 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 	McStateStruct st;
 	int i;
 
-	if (s->mute)
-		return;
 	if (s->cur_seq != ((seqn -1 ) & 0xffff) ) { /* rutpure de sequence */
 						/* packet lost */
+#ifdef DEBUG_MULTICAST
 		fprintf(stderr, "DO something for retrieve\n");
+#endif
 		try_retrieve = 1;
 	} else {
 		s->last_valid_seq = seqn;
@@ -348,7 +349,7 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 		fprintf(stderr,"Out of mem\n");
 		abort();
 	}
-	
+
 /* update and check: si toutes les donnees sont la pour le state_id */
 /* on fait la demande de repair dans cette routine */
 /* si les donnees sont completes on fait le parse dans cette routine */
@@ -371,6 +372,7 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 	status = McRcvrSrcCheckBufferObject(s, st.start_moid);
 	if (status != PARSED_ALL_DEPEND_BUFFER)
 		return;
+
 	if (st.n_do != 0) {		/* that's a Frameset */
 					/* reorder depend object */
 		ReOrderDepend(s, st.start_moid, st.dot, st.n_do);
@@ -385,6 +387,10 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 		if (status != PARSED_ALL_DEPEND_BUFFER)
 			return;
 	}
+
+	if (s->mute)
+		return;
+	
 /* COMPLETE and all depend object of object are here, play with them*/
 /* at this point state is complete. Display it now */
 	McDoWindowText(s, state_id);	/*Display full doc */
@@ -474,6 +480,7 @@ static int McRcvrSrcCheckBufferObjectWithData(Source *s, int is_end, int moid,
 		return PARSED_ALL_DEPEND_BUFFER;
 	status = PutPacketInChkBuf(s->objects[moid].chkbuf, is_end, offset,
 		d, d_len);
+	fprintf(stderr,"McRcvrSrcCheckBufferObjectWithData: putting moid %d, offset %d, d_len %d, is_end %d status %d\n", moid, offset, d_len, is_end, status);
 	if (status == COMPLETE_BUFFER) {
 		len = ChkBufToBuf(s->objects[moid].chkbuf, &s->objects[moid].buffer);
 		s->objects[moid].chkbuf = NULL;		/* sanity */
@@ -665,25 +672,28 @@ void McUpdateDataSourceWithObject(Source *s, int is_end, u_int16_t seqn,
                         /* pour cet oject est en instance, pending */
                         /* la description de l'oject n'est pas encore valide */
          
-        ob = s->objects[moid]; /* l'analyse est deja faite */
-
-	if (s->objects[moid].stateless == True && ostatus != PARSED_BUFFER) {
-		McRcvSrcMakeStateFromObject(s, &ob, ob.statid);
-	}
-	status = McRcvrSrcCheckBufferObject(s, moid);
-	if (status == PARSED_BUFFER  && ostatus != PARSED_BUFFER) {
-		if (s->objects[moid].stateless == True) {
-			McRcvSrcScheduleCheckState(s, ob.statid);
-		}
-		return;		/* missing depend object */
-	}
-
-	s->objects[moid].buffer_status = PARSED_ALL_DEPEND_BUFFER;
-
+/*        ob = s->objects[moid]; /* l'analyse est deja faite */
+/*
+/*	if (s->objects[moid].stateless == True && ostatus != PARSED_BUFFER) {
+/*		McRcvSrcMakeStateFromObject(s, &ob, ob.statid);
+/*	}
+*/
+/*	status = McRcvrSrcCheckBufferObject(s, moid);
+/*	if (status == PARSED_BUFFER  && ostatus != PARSED_BUFFER) {
+/*		if (s->objects[moid].stateless == True) {
+/*			McRcvSrcScheduleCheckState(s, ob.statid);
+/*		}
+/*		return;		/* missing depend object */
+/*	}
+/*
+/*	s->objects[moid].buffer_status = PARSED_ALL_DEPEND_BUFFER;
+/*	s->objects[moid].buffer_status = status;
+/*
 /* COMPLETE at this point object is complete including depend. */
-	if (s->objects[moid].stateless == True) {
-		McDoWindowText(s, ob.statid);    /*Display full doc */
-	}
+/*	if (s->objects[moid].stateless == True) {
+/*		McDoWindowText(s, ob.statid);    /*Display full doc */
+/*	}
+*/
 }
 
 /*##########################*/

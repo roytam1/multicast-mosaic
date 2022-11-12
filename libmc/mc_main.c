@@ -16,6 +16,9 @@
 #include "mc_mosaic.h"
 #include "mc_main.h"
 #include "mc_gui.h"
+#include "mc_misc.h"
+
+#include "vir_cursor.xbm"
 
 mo_window * 	mc_send_win;		/* if != NULL we are sending... */
 int      	mc_multicast_enable;	/* mMosaic called with mc options */
@@ -83,6 +86,12 @@ int mc_local_object_id = -1;
 int mc_status_report_state_id = -1;
 int mc_status_report_object_id = -1;
 
+Pixmap			VirCursorPix;
+GC			gc_vc;
+XGCValues gcv;
+unsigned long gcm;
+unsigned long fg;
+unsigned long bg;
 
 /* initialisation of multicast datas structure */
 /* called in gui.c after we open the first Mosaic window */
@@ -92,6 +101,7 @@ void McInit(mo_window * win)
 	char * s;
 	unsigned short port;
 	struct in_addr ina;
+	Widget hw;
 
 	rtp_init_time = ntptime();
         mc_multicast_enable = 0;             
@@ -205,7 +215,7 @@ void McInit(mo_window * win)
 	uc_fd_rtcp_r = -1;
 
 	mc_local_ip_addr = GetLocalIpAddr();
-	ina.S_un.S_addr = mc_local_ip_addr;
+	ina.s_addr = mc_local_ip_addr;
 	mc_local_ip_addr_string = strdup(inet_ntoa(ina));
 	mc_fd_rtp_r = McOpenRead(mc_rtp_addr_ip_group,mc_rtp_addr_port,
 		mMosaicAppData.mc_ttl);
@@ -246,8 +256,49 @@ REMARQUES:
 	The UcRtcpWriteSdesCb callback will send data when he know
 	where to send (if we know some sender target host)
 */
+
+/* create the virtual cursor */
+	hw = win->scrolled_win;
+	fg = 0;	/*hw->html.foreground_SAVE; */
+	bg = 1; /*hw->html.background_SAVE; */
+      	VirCursorPix = XCreatePixmapFromBitmapData (mMosaicDisplay,
+                     DefaultRootWindow(mMosaicDisplay),
+                       (char*)vir_cursor_bits, vir_cursor_width,
+                    vir_cursor_height, fg^bg, 0, 
+		DefaultDepth( mMosaicDisplay,
+		              DefaultScreen( mMosaicDisplay ) 
+		            ) );
+	gcm = GCFunction | GCForeground | GCPlaneMask | GCBackground |
+		GCSubwindowMode ;
+      	gcv.function = GXxor;
+     	gcv.foreground = /*fg ^ bg*/  0;
+      	gcv.plane_mask = AllPlanes;
+    	gcv.background = 0;
+	gcv.subwindow_mode = IncludeInferiors;
+
+	gc_vc = XCreateGC(mMosaicDisplay,
+			XtWindow(mMosaicToplevelWidget),gcm,&gcv);
 }
 
+void McMoveVirtualCursor(Source *s, int x, int y)
+{
+	Widget hw;
+
+	if (s->mute)
+		return;
+
+	hw = s->win->scrolled_win;
+
+	XCopyArea(mMosaicDisplay,VirCursorPix,XtWindow(hw),
+		gc_vc,0,0,vir_cursor_width,vir_cursor_height,
+		s->old_cur_pos_x, s->old_cur_pos_y);
+
+	XCopyArea(mMosaicDisplay,VirCursorPix,XtWindow(hw),
+		gc_vc,0,0,vir_cursor_width,vir_cursor_height,
+		x,y);
+	s->old_cur_pos_x = x;
+	s->old_cur_pos_y = y;
+}
 
 void McStartSender(mo_window * main_win)
 {
@@ -383,8 +434,10 @@ static void UcRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 
 /* do nothing until the source is well know */
 /* and not in collision */
-	if ( s == NULL)
+	if ( s == NULL) {
+		fprintf(stderr,"UcRtpReadCb: NULL source\n");
 		return;
+	}
 	if (s->is_sender == False) {
 		RegisterSender(s, &rs);
 	}
@@ -396,6 +449,7 @@ static void UcRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 			rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
 		break;
 	case HTML_OBJECT_DATA_TYPE:
+		fprintf(stderr,"UcRtpReadCb: calling McUpdateDataSourceWithObject\n");
 		McUpdateDataSourceWithObject(s, rs.is_eod, rs.seqn=0,
                         rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
 		break;
@@ -432,6 +486,10 @@ static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 		RegisterSender(s, &rs);
 	}
 
+	if (rs.pt == 0x63 ){	/* curseur */
+		McMoveVirtualCursor(s, rs.cur_pos_x, rs.cur_pos_y);
+		return;
+	}
 /* Show the source data in the window */
 	switch (rs.data_type){
 	case HTML_STATE_DATA_TYPE:
@@ -503,14 +561,34 @@ static void McSendNewErrorObject(char *aurl, int status_code,
 	}                              
 }
 
-/*#include "vir_cursor.xbm"
-/*static XtIntervalId 		mc_send_goto_id_time_out_id;
-/*Pixmap			VirCursorPix;
-/*GC			gc_vc;
-/*	XGCValues gcv;		*/
-/*	unsigned long gcm;	*/
-/*	unsigned long fg;	*/
-/*	unsigned long bg;	*/
+void McEmitCursor(mo_window * win, XEvent * ev)
+{
+	XMotionEvent * xmev;
+        struct timeval tv;
+	int rtp_ts;
+
+	if ( ev->type != MotionNotify)
+		return;
+
+	gettimeofday(&tv, 0);
+        rtp_ts = McRtpTimeStamp(tv); /* sample time when file come */
+
+	xmev = &ev->xmotion;
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr, "--------------------\n");
+	fprintf(stderr,"window = %08x root = %08x subwin = %08x x = %d y = %d x_root = %d y_root = %d state = %08x is_hint = %d \n",
+		xmev->window,
+		xmev->root,
+		xmev->subwindow,
+		xmev->x,
+		xmev->y,
+		xmev->x_root,
+		xmev->y_root,
+		xmev->state,
+		xmev->is_hint);
+#endif
+	McSendRtpCursorPosition(rtp_ts, xmev->x, xmev->y);
+}
 /* ###########
 /*void McSendAllDataOnlyOnce(McSendDataStruct * d)
 /*{
@@ -524,7 +602,6 @@ static void McSendNewErrorObject(char *aurl, int status_code,
 /*	mask = sigmask(SIGUSR1);
 /*	omask = sigblock(mask);
 /*#endif
-/*	McFillData( d,  mc_send_win);
 /*	McSendAllDataInBandWidth(d);
 /*#ifdef SVR4
 /*	if( sigrelse(SIGUSR1) != 0) {
@@ -534,35 +611,7 @@ static void McSendNewErrorObject(char *aurl, int status_code,
 /*	sigsetmask(omask);
 /*#endif
 /*}
-/* create the virtual cursor */
-/*	hw = (HTMLWidget) win->scrolled_win;
-/*	fg = hw->html.foreground_SAVE;
-/*	bg = hw->html.background_SAVE;
-/*      	VirCursorPix = XCreatePixmapFromBitmapData (mMosaicDisplay,
-/*                     DefaultRootWindow(mMosaicDisplay),
-/*                       (char*)vir_cursor_bits, vir_cursor_width,
-/*                    vir_cursor_height, fg^bg, 0, 
-/*		DefaultDepth( mMosaicDisplay,
-/*		              DefaultScreen( mMosaicDisplay ) 
-/*		            ) );
-/*	gcm = GCFunction | GCForeground | GCPlaneMask | GCBackground |
-/*		GCSubwindowMode ;
-/*      	gcv.function = GXxor;
-/*     	gcv.foreground = /*fg ^ bg*/ /* 0;
-/*      	gcv.plane_mask = AllPlanes;
-/*    	gcv.background = 0;
-/*	gcv.subwindow_mode = IncludeInferiors;
-/*
-/*	gc_vc = XCreateGC(mMosaicDisplay,
-/*			XtWindow(mMosaicToplevelWidget),gcm,&gcv);
-/* #### */
-/*void McSetCursorPos(Widget w, int x, int y)
-/*{
-/*	HTMLWidget hw = (HTMLWidget) w;
-/*	XCopyArea(mMosaicDisplay,VirCursorPix,XtWindow(hw->html.view),
-/*		gc_vc,0,0,vir_cursor_width,vir_cursor_height,
-/*		x,y);
-/*}
+
 /*####### case of navigation ########### */
 /* navigation in history never modify a doc or object... */
 /* juste update the 'RTPtimestamp' in SR. Back to the futur... */

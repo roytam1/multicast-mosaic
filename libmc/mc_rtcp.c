@@ -96,7 +96,7 @@ void McRtcpWriteSdes()
 	
 /* TOOL */
 	itm[3].type = RTCP_SDES_TOOL;
-	strcpy(itm[3].d, "mMosaic-3.4.4");
+	strcpy(itm[3].d, "mMosaic-3.4.5");
 	itm[3].len= strlen(itm[3].d);
 
         ebuf[0] = 0x80;     /* V,P,SC */
@@ -163,8 +163,9 @@ SdesStruct * parse_sdes(RtcpPacket* rcs)
 			sdes.uc_rtp_ipaddr = htonl(h);
 			sdes.uc_rtp_port = htons(port);
 			sdes.uc_rtcp_port = htons(port +1);
-			d_len = d_len -2 - psdesd[1] ;
+/*			d_len = d_len -2 - psdesd[1] ;
 			psdesd = psdesd + psdesd[1] + 2;
+*/
 			break;
 		case RTCP_SDES_NAME:
 			strncpy(sdes.name, (char*)&psdesd[2], psdesd[1]);

@@ -105,9 +105,16 @@ static void McObjectToPacket( McObjectStruct *obs)
                         p_d_l = r_b;            /* packet data len */
                 } else {               
                         p_d_l = s_dchunk;
-                }                      
+                }
+#ifdef DEBUG_MULTICAST
+		fprintf (stderr,"McObjectToPacket: pckting moid %d, offset %d, d_len %d, is_eod %d\n", moid, ptab[i]->offset, ptab[i]->d_len, ptab[i]->is_eod);
+#endif
         }                              
         ptab[n_t -1]->is_eod = 1;   
+#ifdef DEBUG_MULTICAST
+		fprintf (stderr,"McObjectToPacket: pckting (ovewrite) moid %d, offset %d, d_len %d, is_eod %d\n", ptab[n_t -1]->id, ptab[n_t -1]->offset, ptab[n_t -1]->d_len, ptab[n_t -1]->is_eod);
+#endif
+
 	ptab[n_t -1]->to_free = odata; /* free in McSendRtpDataTimeOutCb */
 	if (deb_p){
 		end_p->next = ptab[0];
@@ -241,24 +248,32 @@ static int UpdChkBuf(ChunkedBufStruct *cbs, char *d, unsigned int offset,
 	MissRange *plmr,*fmr;
 	MissRange cmr;
 
+#ifdef DEBUG_MULTICAST
 	fprintf(stderr,"UpdChkBuf: offset = %d, d_len = %d, size_data = %d\n",
  		offset, d_len, cbs->size_data);
-	if(offset + d_len > cbs->size_data) { /* bug??? */
-		fprintf(stderr, "Complexe BUG in UpdChkBuf offset+d_len > coe->size_data\007\n");
-		abort();
-		return CHUNKED_BUFFER;
+#endif
+	if ( cbs->data) {
+		if(offset + d_len > cbs->size_data) { /* bug??? */
+			fprintf(stderr, "Complexe BUG in UpdChkBuf offset+d_len > coe->size_data\007\n");
+			abort();
+			return CHUNKED_BUFFER;
+		}
 	}
 
 	plmr = cbs->lmr;
-	if (!plmr)
+	if (!plmr) {
+		abort(); /* impossible */
 		return COMPLETE_BUFFER;
+	}
 	while( plmr ) {
 		if ( !( offset >= plmr->from && offset <= plmr->to) ) {
 			plmr = plmr->next;
 			continue;
 		}
 /* update data plmr coe->beg coe->end lmr */
-		memcpy(&cbs->data[offset], d, d_len);
+		if (cbs->data) {
+			memcpy(&cbs->data[offset], d, d_len);
+		}
 /* now fork or merge MissRange */
 		cmr = *plmr;
 		if ( cmr.from == offset) {
@@ -314,10 +329,20 @@ static int MergeChkBufLpdc(int size, ChunkedBufStruct *cbs, char *d, int offset,
 	PacketDataChunk *p, *plpdc;
 	int status = CHUNKED_BUFFER;
 	int f_status = CHUNKED_BUFFER;
+	MissRange *plmr, *nlmr;
 
 	cbs->size_data = size;
 	cbs->data = (char*) malloc(size + 1);
+	cbs->lmr->from = 0;
 	cbs->lmr->to = size - 1 ;
+	plmr = cbs->lmr->next;
+	while (plmr) {	/* free old and restart */
+		nlmr = plmr->next;
+		free(plmr);
+		plmr = nlmr;
+	}
+	cbs->lmr->next = NULL;
+
 	cbs->data[size] = '\0';
 	status = UpdChkBuf(cbs, d, offset, d_len);
 	f_status = status;
@@ -385,22 +410,28 @@ int PutPacketInChkBuf(ChunkedBufStruct *cbs, int is_end, int offset,
 		cbs->lpdc->d_len = d_len;
 		cbs->lpdc->d = (char*)malloc(d_len);
 		memcpy(cbs->lpdc->d, d, d_len);
+		status = UpdChkBuf(cbs, d, offset, d_len);
+	  /* update lmr because of UcSendRepairMcScheduleQueryRepairObjects */
 		return CHUNKED_BUFFER;
 	}
+/* sort by offset */
 	plpdc = cbs->lpdc;
 	while (plpdc) {
-		if (plpdc->offset == offset)
-			return CHUNKED_BUFFER;
+		if (plpdc->offset == offset) {
+			return CHUNKED_BUFFER; /*duplicate */
+		}
 		last_lpdc = plpdc;
 		plpdc = plpdc->next;
 	}
-
+/* ###insert by offset order....  */
 	last_lpdc->next = (PacketDataChunk*)calloc(1,sizeof(PacketDataChunk));
 	plpdc = last_lpdc->next;
 	plpdc->offset = offset;
 	plpdc->d_len = d_len;
 	plpdc->d = (char*)malloc(d_len);
 	memcpy(plpdc->d, d, d_len);
+	status = UpdChkBuf(cbs, d, offset, d_len);
+		 /* update lmr because of UcSendRepair McScheduleQueryRepairObjects*/
 	return CHUNKED_BUFFER;
 }
 

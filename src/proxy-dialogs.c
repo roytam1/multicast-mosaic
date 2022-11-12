@@ -1056,7 +1056,7 @@ struct Proxy * GetNoProxy(char *access, char *site)
 		return NULL;
 
 	if ((port = strchr(site,':')) != NULL) {
-		*port++ = 0;
+/*		*port++ = 0; */
 		portnum = atoi(port);
 	} else {
 		if      (!strcmp(access,"http"))    portnum = 80;

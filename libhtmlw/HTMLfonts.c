@@ -38,8 +38,8 @@ static FontCache font_cache = {		/* master font cache */
 	NULL, 0, 0, NULL, NULL, NULL};
 
 static int PseudoXFontSize[] = {
-	0, 6,
-	8, 9, 10, 12, 14, 16, 18,
+	0, 8,
+	9, 10, 11, 12, 14, 16, 18,
 	20, 24, 30, 34, 40, 50, 60, 72
 };
 

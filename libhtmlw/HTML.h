@@ -170,6 +170,10 @@ typedef struct map_rec {
 
 /*##########*/
 
+typedef struct _PointerMotionCBStruct {
+	char *href;
+	XEvent *ev;
+} PointerMotionCBStruct;
         
 /*      
  * defines for client-side ismap -- SWP

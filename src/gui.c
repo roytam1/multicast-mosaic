@@ -32,9 +32,15 @@
 #include "paf.h"
 #include "cache.h"
 
+#ifdef MULTICAST
+#include "../libmc/mc_main.h"
+extern mo_window * mc_send_win;
+#endif
+
 #include "bitmaps/security.xbm"
 
 #include "pixmaps.h"
+
 
 #ifdef MULTICAST
 #include "../libhtmlw/HTML.h"
@@ -597,11 +603,24 @@ int anchor_visited_predicate (Widget w, char *href, char * base_url)
 
 static void pointer_motion_callback (Widget w, XtPointer clid, XtPointer calld)
 {
-	char *href = (char*) calld;
+	PointerMotionCBStruct *pmcbs = (PointerMotionCBStruct*) calld;
 	XmString xmstr;
 	char *to_free = NULL, *to_free_2 = NULL;
 	mo_window * win = (mo_window*) clid;
+	char * href= pmcbs->href;
 
+#ifdef MULTICAST
+		/* Si je suis l'emetteur */
+	if (mc_send_win) {
+		if (mc_send_win == win || win->frame_parent == mc_send_win ) {
+			XEvent *ev = pmcbs->ev;
+				/* - recuperer x et y du pointeur */
+				/* - translater les coordonee because les frames */
+				/* - envoyer en multicast */
+			McEmitCursor(mc_send_win, ev);
+		}
+	}
+#endif
 	if (!mMosaicAppData.track_pointer_motion)
 		return;
 	if (href && *href) {

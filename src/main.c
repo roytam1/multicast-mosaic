@@ -71,6 +71,9 @@ char		*mMosaicPersonalTypeMap = NULL;
 char		*mMosaicPersonalExtensionMap = NULL;
 char		*mMosaicAppVersion;
 
+#ifdef MULTICAST
+extern mo_window * mc_send_win;
+#endif
 
 /* --------------BalloonHelpStuff---------------------------------------- */
 
@@ -521,5 +524,16 @@ works on my linux box, hopefully on solaris, too */
 
 /* GO ! */
 
+#ifndef DEBUG_EVENT
 	XtAppMainLoop(mMosaicAppContext);
+#else
+	for (;;) {
+		XEvent event;
+
+		XtAppNextEvent(mMosaicAppContext, &event);
+		if (mc_send_win)
+			McEmitCursor(mc_send_win, &event);
+		XtDispatchEvent(&event);
+	}
+#endif
 }

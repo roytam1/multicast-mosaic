@@ -2079,7 +2079,7 @@ static void ExtendEnd( Widget w, XEvent *event,
 }
 
 #define LEAVING_ANCHOR(hw) \
-  XtCallCallbackList ((Widget)hw,hw->html.pointer_motion_callback,"");\
+  XtCallCallbackList ((Widget)hw,hw->html.pointer_motion_callback,&pmcbs);\
   XUndefineCursor (XtDisplay (hw), XtWindow (hw->html.view));
 
 /* KNOWN PROBLEM: We never get LeaveNotify or FocusOut events,
@@ -2091,6 +2091,10 @@ static void TrackMotion( Widget w, XEvent *event,
 	HTMLWidget hw = (HTMLWidget)XtParent(w);
 	struct ele_rec *eptr;
 	int epos, x, y;
+	PointerMotionCBStruct pmcbs;
+
+	pmcbs.href = "";
+	pmcbs.ev = event;
 
 	if (XtClass(hw) != htmlWidgetClass)
 		return;
@@ -2104,21 +2108,6 @@ static void TrackMotion( Widget w, XEvent *event,
 			LEAVING_ANCHOR (hw);
 		return;
 	}
-#ifdef MULTICAST                      
-/*
-	if( (hw->html.mc_wtype == MC_MO_TYPE_MAIN) && 
-	    mc_send_win && (mc_data_send_data_struct.is_send !=0) ){
-                unsigned char code;   
-                unsigned long gmt_send_time;
-
-                code = MCR_CURSOR_POS;
-                gmt_send_time = McDate();
-                                      
-                McSendRtpCursorPos( code, mc_my_pid, mc_local_url_id,
-                                gmt_send_time, x,y);
-        }                             
-*/
-#endif 
 	eptr = LocateElement(hw, x, y, &epos);
 	if (eptr == NULL){
 		LEAVING_ANCHOR (hw);
@@ -2127,8 +2116,9 @@ static void TrackMotion( Widget w, XEvent *event,
 		/* We're hitting a new anchor if eptr exists and
 		 * eptr != cached tracked element and anchor_tag_ptr != NULL. */
 	if (eptr != NULL && eptr->anchor_tag_ptr->anc_href != NULL) {
+		pmcbs.href = eptr->anchor_tag_ptr->anc_href;
 		XtCallCallbackList((Widget)hw,
-			hw->html.pointer_motion_callback, eptr->anchor_tag_ptr->anc_href);
+			hw->html.pointer_motion_callback, &pmcbs );
 		XDefineCursor (XtDisplay (hw), XtWindow (hw->html.view), 
 			in_anchor_cursor);
 	} else 

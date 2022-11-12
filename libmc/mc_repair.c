@@ -119,6 +119,39 @@ static void McScheduleQueryRepairObjects(Source *s, int from, int to)
 	}
 }
 
+static void McScheduleQueryRepairObjectsTree( Source *s, int moid)
+{
+	int status;
+	int i;
+	int no;
+
+	status = s->objects[moid].buffer_status;
+	if (status == PARSED_ALL_DEPEND_BUFFER ){
+		return;
+	}
+	if ( !(status == PARSED_BUFFER || status == COMPLETE_BUFFER) ) {
+		McScheduleQueryRepairObjects(s, moid, moid);
+		return;
+	}
+
+/* le buffer est bon et il n'y a pas d'objet dependant => promu a PARSED_ALL_DEPEND_BUFFER */
+	if ( (status == PARSED_BUFFER) && (s->objects[moid].n_do == 0) ) {
+		s->objects[moid].buffer_status = PARSED_ALL_DEPEND_BUFFER;
+		return;
+	}
+
+	for (i = 0; i< s->objects[moid].n_do; i++) {
+		no = s->objects[moid].dot[i];
+		status = s->objects[no].buffer_status;
+		if (status == PARSED_ALL_DEPEND_BUFFER ){
+			continue;
+		}
+/* if ( !(status == PARSED_BUFFER || status == COMPLETE_BUFFER) )  */
+/* l'arbre de depandance ne doit pas boucler */
+		McScheduleQueryRepairObjectsTree(s, s->objects[moid].dot[i]);
+	}	
+}
+
 void McQueryRepairFromStatr(Source *s, RtcpPacket* rcs)
 {
 	RtcpStard *psrd = (RtcpStard *) rcs->d;
@@ -129,13 +162,16 @@ void McQueryRepairFromStatr(Source *s, RtcpPacket* rcs)
 	int rtp_otime;
 	int status;
 
-	if(s->mute)
-		return;
-
 	sid = ntohl (psrd->sid);
 	c_sid = ntohl (psrd->c_sid);
 	oid = ntohl (psrd->oid);
 	rtp_otime = ntohl (psrd->rtp_otime);
+
+	if (c_sid != s->c_sid && sid >= c_sid) {
+		s->c_sid = c_sid;
+		UpdGuiMemberPage(s);
+	}
+
 
 /* check and alloc enought object. repair missing object */
 /* this may be long to repair because object may depend of object... */
@@ -150,26 +186,61 @@ void McQueryRepairFromStatr(Source *s, RtcpPacket* rcs)
 		fprintf(stderr,"Out of mem\n");
 		abort();
 	}
+	if (c_sid > sid){
+		if( !McRcvrSrcAllocState(s, c_sid)) {
+			fprintf(stderr,"Out of mem\n");
+			abort();
+		}
+		return;
+	}
+
+	if(s->mute)
+		return;
 
 	lvo = s->last_valid_object_id;
-	if (lvo < oid ) { /* schedule une demande de repair pour tous les objets manquant */
-		/* look for missing object, missing packet in object etc..*/
-		McScheduleQueryRepairObjects(s, lvo+1, oid);
-		/* an object will be complete, so check state */
-		McRcvSrcScheduleCheckState(s, sid);
-	}
+/*	if (lvo < oid ) { /* schedule une demande de repair pour tous les objets manquant */
+/*		/* look for missing object, missing packet in object etc..*/
+/*		McScheduleQueryRepairObjects(s, lvo+1, oid);
+/*		/* an object will be complete, so check state */
+/*		McRcvSrcScheduleCheckState(s, sid);
+/*	}
+*/
 
 	lvs = s->last_valid_state_id;
 	if ( lvs < sid) { /* schedule une demande de repair pour ces etats */
-		McScheduleQueryRepairStates(s, lvs+1, sid);
+		McScheduleQueryRepairStates(s, lvs+1, sid); 
+/*		McScheduleQueryRepairStates(s, sid, sid); */
 		/* schedule a check for sid */
 		/* when check is good we display the valid state */
 		McRcvSrcScheduleCheckState(s, sid);
 		return;
 	}
-	if (lvo < oid )	/* FIXME: si tous les obj sont la pour l'etat,
-			/* alors afficher */
-		return;
+
+		/* FIXME: si tous les obj sont la pour l'etat,
+		/* s->states[sid]/start_moid/n_do/dot/ */
+		/* alors afficher */
+	if (lvo < oid ) {
+		int do_return = 0;
+		int i;
+
+		status=  McRcvrSrcCheckBufferObject(s, s->states[c_sid].start_moid);
+		if (status != PARSED_ALL_DEPEND_BUFFER) {
+			McScheduleQueryRepairObjectsTree(s, s->states[c_sid].start_moid);
+			McRcvSrcScheduleCheckState(s, c_sid);
+			return;
+		}
+		for (i = 0; i<s->states[c_sid].n_do; i++){
+			status=  McRcvrSrcCheckBufferObject(s, s->states[c_sid].dot[i]);
+			if (status != PARSED_ALL_DEPEND_BUFFER) {
+				McScheduleQueryRepairObjectsTree(s, s->states[c_sid].dot[i]);
+				do_return =1;
+			}
+		}
+		if (do_return){
+			McRcvSrcScheduleCheckState(s, c_sid);
+			return;
+		}
+	}
 	if (lvs < c_sid)	/* because c_sid not transmit yet */
 		return;
 	if (c_sid == s->current_state_id_in_window )
@@ -297,11 +368,11 @@ static void McSendStateRepairAnswerCb(XtPointer clid, XtIntervalId * id)
 		if (query_offset >= data_size) { /*request an impossible offset */
 			abort();
 		}
-		if ( query_offset + query_len > data_size) { /* adjust len */
-			fprintf(stderr, "BUG len adjust \007\n");
+		if (query_len < 0 ) {
 			query_len = data_size - query_offset;
 		}
-		if (query_len < 0 ) {
+		if ( query_offset + query_len > data_size) { /* adjust len */
+			fprintf(stderr, "BUG len adjust \007\n");
 			query_len = data_size - query_offset;
 		}
 		if (query_len <= 0 ) {
@@ -356,7 +427,7 @@ static void McSendStateRepairAnswerCb(XtPointer clid, XtIntervalId * id)
 	                        p_d_l = s_dchunk;
 	                }
 	        }
-		if ( offset + s_dchunk >= data_size) {
+		if ( ptab[n_t -1]->offset + s_dchunk >= data_size) {
 	        	ptab[n_t -1]->is_eod =  1;      
 	        	ptab[n_t -1]->to_free = NULL; /* Dont'free in McSendRtpDataTimeOutCb */
 		}
@@ -409,7 +480,7 @@ typedef struct _RtcpRepaird {
 /* depending of some algo... */
 
 static XtIntervalId mc_queue_state_repair_query_timer_id;
-static int mc_queue_state_repair_query_time = 1000;
+static int mc_queue_state_repair_query_time = 100;
 
 static void McScheduleStateRepairAnswer( Source *s, u_int32_t id,
 	u_int32_t offset, int len)
@@ -515,11 +586,11 @@ static void McSendObjectRepairAnswerCb(XtPointer clid, XtIntervalId * id)
                 if (query_offset >= data_size) { /*request an impossible offset */
                         abort();
                 }
-                if ( query_offset + query_len > data_size) { /* adjust len */
-                        fprintf(stderr, "BUG len adjust \007\n");
+                if (query_len < 0 ) {
                         query_len = data_size - query_offset;
                 }
-                if (query_len < 0 ) {
+                if ( query_offset + query_len > data_size) { /* adjust len */
+                        fprintf(stderr, "BUG len adjust \007\n");
                         query_len = data_size - query_offset;
                 }
                 if (query_len <= 0 ) {
@@ -580,12 +651,22 @@ static void McSendObjectRepairAnswerCb(XtPointer clid, XtIntervalId * id)
                         } else {
                                 p_d_l = s_dchunk;
                         }
+#ifdef DEBUG_MULTICAST                
+                fprintf (stderr,"McSendObjectRepairAnswerCb: pckting moid %d, offset %d, d_len %d, is_eod %d\n", ptab[i]->id, ptab[i]->offset, ptab[i]->d_len, ptab[i]->is_eod);
+#endif 
                 }
 		ptab[n_t -1]->to_free = obdata; /* free in McSendRtpDataTimeOutCb */
-                if ( offset + s_dchunk >= data_size) {
+                if ( ptab[n_t -1]->offset + s_dchunk >= data_size) {
                         ptab[n_t -1]->is_eod =  1;
+#ifdef DEBUG_MULTICAST                
+                fprintf (stderr,"McSendObjectRepairAnswerCb: pckting (ovewrite) moid %d, offset %d, d_len %d, is_eod %d\n", ptab[n_t -1]->id, ptab[n_t -1]->offset, ptab[n_t -1]->d_len, ptab[n_t -1]->is_eod);
+#endif 
                         ptab[n_t -1]->to_free = obdata; /* free in McSendRtpDataTimeOutCb */
                 }
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr, "offset %d, s_dchunk %d, data_size %d\n",
+			offset , s_dchunk, data_size);
+#endif
 /*voir si on envoie par UNI ou MULTI et si on rearme le timer multicast... */
 /* FIXME: compute something to choose between UNICAST or MULTIUCAST */
                 if ( p->source_count == 1) { /* unicast */
@@ -618,10 +699,13 @@ static void McSendObjectRepairAnswerCb(XtPointer clid, XtIntervalId * id)
                         mc_write_rtp_data_next_time,
                         McSendRtpDataTimeOutCb, NULL);
         }
+#ifdef MULTICAST
+fprintf(stderr, "McSendObjectRepairAnswerCb: DESACTIVATE timer\n");
+#endif
 }
 
 static XtIntervalId mc_queue_object_repair_query_timer_id;
-static int mc_queue_object_repair_query_time = 1000;
+static int mc_queue_object_repair_query_time = 100;
 
 /* for Object, data is in file */
 static void McScheduleObjectRepairAnswer( Source *s, u_int32_t id,
@@ -629,6 +713,7 @@ static void McScheduleObjectRepairAnswer( Source *s, u_int32_t id,
 {
         McQueueObjectRepairQuery *head = mc_queue_object_repair_query;
         McQueueObjectRepairQuery *p, *pp;
+
 
         if (!head) {
                 head = (McQueueObjectRepairQuery *)malloc(
@@ -645,9 +730,15 @@ static void McScheduleObjectRepairAnswer( Source *s, u_int32_t id,
                 mc_queue_object_repair_query_timer_id = XtAppAddTimeOut(
                         mMosaicAppContext, mc_queue_object_repair_query_time,
                         McSendObjectRepairAnswerCb, NULL);
+#ifdef DEBUG_MULTICAST
+fprintf(stderr, "McScheduleObjectRepairAnswer: Activate McSendObjectRepairAnswerCb for id %d, offset %d, len %d\n", id , offset, len);
+#endif
                 return;
         }
 
+#ifdef DEBUG_MULTICAST
+fprintf(stderr, "McScheduleObjectRepairAnswer: QUEUING for id %d, offset %d, len %d\n", id , offset, len);
+#endif
         /* look in queue if query still exist */
         p = head;
         pp = NULL;
