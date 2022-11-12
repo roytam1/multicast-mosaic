@@ -1,4 +1,4 @@
-/*                                            Utilities for the Authorization parts of libwww
+/*                        Utilities for the Authorization parts of libwww
              COMMON PARTS OF AUTHORIZATION MODULE TO BOTH SERVER AND BROWSER
                                              
    This module is the interface to the common parts of Access Authorization (AA) package
@@ -36,49 +36,19 @@
 #include "tcp.h"
 #endif
 
-/*
-
-Default filenames
-
- */
-#ifndef PASSWD_FILE
-#define PASSWD_FILE     "/home2/luotonen/passwd"
-#endif
-
-#ifndef GROUP_FILE
-#define GROUP_FILE      "/home2/luotonen/group"
-#endif
-
-#define ACL_FILE_NAME   ".www_acl"
-
-
-/*
-** Numeric constants
-*/
-#define MAX_USERNAME_LEN        128      /* @@ Longest allowed username    */
-#define MAX_PASSWORD_LEN        3*13    /* @@ Longest allowed password    */
-                                        /* (encrypted, so really only 3*8)*/
 #define MAX_METHODNAME_LEN      128      /* @@ Longest allowed method name */
-#define MAX_FIELDNAME_LEN       128      /* @@ Longest field name in       */
-                                        /* protection setup file          */
-#define MAX_PATHNAME_LEN        128      /* @@ Longest passwd/group file   */
-                                        /* patname to allow               */
 
-/*
-** Helpful macros
-*/
+/* Helpful macros */
+
 #define FREE(x) if (x) {free(x); x=NULL;}
 
-/*
-
-Datatype definitions
+/* Datatype definitions
 
   HTAASCHEME
   
    The enumeration HTAAScheme represents the possible authentication schemes used by the
    WWW Access Authorization.
-   
- */
+*/
 
 typedef enum {
     HTAA_UNKNOWN,
@@ -93,11 +63,7 @@ typedef enum {
     HTAA_LOGIN /*No...this must always be last because it is a FTP hack*/
 } HTAAScheme;
 
-/*
-
-  ENUMERATION TO REPRESENT HTTP METHODS
-  
- */
+/* ENUMERATION TO REPRESENT HTTP METHODS */
 
 typedef enum {
     METHOD_UNKNOWN,
@@ -108,11 +74,7 @@ typedef enum {
 
 #ifndef __SRC__
 
-/*
-
-Authentication Schemes
-
- */
+/* Authentication Schemes */
 
 /* PUBLIC                                               HTAAScheme_enum()
 **              TRANSLATE SCHEME NAME TO A SCHEME ENUMERATION
@@ -137,11 +99,7 @@ PUBLIC HTAAScheme HTAAScheme_enum PARAMS((WWW_CONST char* name));
 */
 PUBLIC char *HTAAScheme_name PARAMS((HTAAScheme scheme));
 
-/*
-
-Methods
-
- */
+/* Methods */
 
 /* PUBLIC                                                   HTAAMethod_enum()
 **              TRANSLATE METHOD NAME INTO AN ENUMERATED VALUE
@@ -155,36 +113,7 @@ Methods
 PUBLIC HTAAMethod HTAAMethod_enum PARAMS((WWW_CONST char * name));
 
 
-/* PUBLIC                                               HTAAMethod_name()
-**                      GET THE NAME OF A GIVEN METHOD
-** ON ENTRY:
-**      method          is one of the method enum values:
-**                      METHOD_GET, METHOD_PUT, ...
-**
-** ON EXIT:
-**      returns         the name of the scheme, i.e.
-**                      "GET", "PUT", ...
-*/
-PUBLIC char *HTAAMethod_name PARAMS((HTAAMethod method));
-
-
-/* PUBLIC                                               HTAAMethod_inList()
-**              IS A METHOD IN A LIST OF METHOD NAMES
-** ON ENTRY:
-**      method          is the method to look for.
-**      list            is a list of method names.
-**
-** ON EXIT:
-**      returns         YES, if method was found.
-**                      NO, if not found.
-*/
-PUBLIC HT_BOOL HTAAMethod_inList PARAMS((HTAAMethod        method,
-                                     HTList *           list));
-/*
-
-Match Template Against Filename
-
- */
+/* Match Template Against Filename */
 
 /* PUBLIC                                               HTAA_templateMatch()
 **              STRING COMPARISON FUNCTION FOR FILE NAMES
@@ -232,11 +161,8 @@ PUBLIC HT_BOOL HTAA_templateMatch PARAMS((WWW_CONST char * tmpl,
 **                              there really isn't any space.
 */
 PUBLIC char *HTAA_makeProtectionTemplate PARAMS((WWW_CONST char * docname));
-/*
 
-MIME Argument List Parser
-
- */
+/* MIME Argument List Parser */
 
 
 /* PUBLIC                                               HTAA_parseArgList()
@@ -267,11 +193,7 @@ MIME Argument List Parser
 */
 PUBLIC HTList *HTAA_parseArgList PARAMS((char * str));
 
-/*
-
-Header Line Reader
-
- */
+/* Header Line Reader */
 
 /* PUBLIC                                               HTAA_setupReader()
 **              SET UP HEADER LINE READER, i.e. give
@@ -297,8 +219,7 @@ PUBLIC void HTAA_setupReader PARAMS((char *     start_of_headers,
                                      int        soc));
 
 
-/* PUBLIC                                               HTAA_getUnfoldedLine()
-**              READ AN UNFOLDED HEADER LINE FROM SOCKET
+/*              READ AN UNFOLDED HEADER LINE FROM SOCKET
 ** ON ENTRY:
 **      HTAA_setupReader must absolutely be called before
 **      this function to set up internal buffer.
@@ -316,13 +237,8 @@ PUBLIC void HTAA_setupReader PARAMS((char *     start_of_headers,
 **              is seen by the caller as:
 **
 **      Field-Name: Blaa-Blaa This-Is-A-Continuation-Line Here-Is_Another
-**
 */
-PUBLIC char *HTAA_getUnfoldedLine NOPARAMS;
+PUBLIC char *HTAA_getUnfoldedLine (caddr_t appd);
 
 #endif /* Not in SRC tree */
 #endif  /* NOT HTAAUTIL_H */
-
-/*
-
-   End of file HTAAUtil.h. */

@@ -14,10 +14,6 @@
 #include "child.h"
 #include "../libhtmlw/list.h"
 
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
-
 static List childProcessList;
 
 typedef struct {

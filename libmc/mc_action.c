@@ -26,6 +26,7 @@
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
 #include "../src/mosaic.h"
+#include "../src/gui-documents.h"
 #define __SRC__
 #include "../libwww2/HTAAUtil.h"
 
@@ -49,8 +50,6 @@ unsigned short 	mc_my_pid;
 unsigned char 	mc_ttl;
 time_t 		mc_init_local_time;
 
-
-extern Widget toplevel;
 
 extern void McUpdateWidgetObject();
 
@@ -192,7 +191,7 @@ void McCheckRcvstimeTimeOutCb(XtPointer clid, XtIntervalId * id)
                 }
         }
 	mc_check_rcvstime_time_out_id = XtAppAddTimeOut(
-		app_context,
+		mMosaicAppContext,
 		MC_CHECK_RCVSTIME_TIME_OUT,
 		McCheckRcvstimeTimeOutCb,
 		NULL);
@@ -220,7 +219,7 @@ void McCheckSenderstimeTimeOutCb(XtPointer clid, XtIntervalId * id)
                 } 
         }
 	mc_check_senderstime_time_out_id = XtAppAddTimeOut(
-		app_context,
+		mMosaicAppContext,
 		MC_CHECK_SENDERSTIME_TIME_OUT,
 		McCheckSenderstimeTimeOutCb,
 		NULL); 
@@ -234,7 +233,7 @@ void McCreateWUserlist(mo_window * win)
 	XtSetArg(args[0], XmNallowShellResize, True);
 	XtSetArg(args[1], XmNtitle, "mMosaic - Members");
 	mc_list_top_w = XtCreatePopupShell("Members",
-				topLevelShellWidgetClass, toplevel, args, 2);
+				topLevelShellWidgetClass, mMosaicToplevelWidget, args, 2);
 	sw = XtVaCreateManagedWidget ("scrolled_w",
 		xmScrolledWindowWidgetClass, mc_list_top_w,
 		XmNwidth,           200,
@@ -300,7 +299,6 @@ void McCreateMoWin(McUser * u)
 	node->expires=NULL;
 	node->ref=NULL;
 	node->text=NULL;
-	node->texthead=NULL;
 	node->position=0;
 	node->annotation_type=0;
 	node->docid=1;
@@ -316,7 +314,6 @@ void McCreateMoWin(McUser * u)
 /* node-> char *expires; */
 /* node-> char *ref; */
 /* node-> char *text; */
-/* node-> char *texthead; */
 /* node-> int position; */
 /* node-> int annotation_type; */
 /* node-> int docid; */
@@ -336,14 +333,13 @@ void PopUpOrDownMosaicMcUser(Widget w, XtPointer clid, XtPointer calld)
 		if (!u->eos) return;
 		if (!u->eos[1]) return;
                 mo_do_window_text(     
-                        u->win,            /* an mo_window */
-                        u->url,      /* url */
-                        u->eos[1],   /* le texte */
-                        "",             /* txthead */
-                        False,           /* register_visit */
+                        u->win,         /* an mo_window */
+                        u->url,      	/* url */
+                        u->eos[1],   	/* le texte */
+                        False,          /* register_visit */
                         NULL,           /* ref */
                         NULL,           /* last_modified */
-                        NULL); 
+                        NULL); 		/* expires */
 	} else {			/* delete the user's mo_window */
 		McRemoveMoWin(u);
 	}
@@ -752,7 +748,6 @@ void McActionAllData(Mcs_alldata* alldata)
 			win,		/* an mo_window */
 			user->url,	/* url */
 			user->eos[1],	/* le texte */
-			"",		/* txthead */
 			False,		/* register_visit */
 			NULL,		/* ref */
 			NULL,		/* last_modified */
@@ -780,7 +775,7 @@ void McActionAllData(Mcs_alldata* alldata)
 		user->pds[num_eo].nalloc = user->pds[num_eo].nbre_rcv = 0;
 		if (!user->rcv_enable) return;
 		mo_do_window_text(win, user->url, user->eos[1], 
-                        "", False, NULL, NULL, NULL);     
+                        False, NULL, NULL, NULL);     
                 break;
 	}
 }

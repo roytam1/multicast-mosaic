@@ -17,18 +17,10 @@
 
 #include <X11/Xos.h>
 
-#define DEF_BLACK       BlackPixel(dsp, DefaultScreen(dsp))
-#define DEF_WHITE       WhitePixel(dsp, DefaultScreen(dsp))
+#define DEF_BLACK       BlackPixel(mMosaicDisplay, DefaultScreen(mMosaicDisplay))
+#define DEF_WHITE       WhitePixel(mMosaicDisplay, DefaultScreen(mMosaicDisplay))
 #define	MAX_LINE	81
 
-
-extern Display *dsp;
-extern int installed_colormap;
-extern Colormap installed_cmap;
-
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
 
 unsigned char nibMask[8] = { 1, 2, 4, 8, 16, 32, 64, 128 };
 
@@ -92,9 +84,7 @@ unsigned char *ReadXpmPixmap( FILE *fp, char *datafile,
 			j++;
 		}
 		line[j] = '\0';
-		XParseColor(dsp, (installed_colormap ? installed_cmap :
-				DefaultColormap(dsp, DefaultScreen(dsp))),
-				line, &tmpcolr);
+		XParseColor(mMosaicDisplay, mMosaicColormap , line, &tmpcolr);
 		colrs[i].red = tmpcolr.red;
 		colrs[i].green = tmpcolr.green;
 		colrs[i].blue = tmpcolr.blue;
@@ -175,11 +165,9 @@ unsigned char *ReadXpmPixmap( FILE *fp, char *datafile,
 				}
 			}
 			if (found == 0) {
-#ifndef DISABLE_TRACE
-				if (srcTrace) {
+				if (mMosaicSrcTrace) {
 					fprintf(stderr, "Invalid Pixel (%2s) in file %s\n", line, datafile);
 				}
-#endif
 				*dataP++ = (unsigned char)0;
 			}
 		}
@@ -199,7 +187,7 @@ unsigned char *ReadXpmPixmap( FILE *fp, char *datafile,
 	return(pixels);
 }
 
-unsigned char *ReadXbmBitmap( FILE *fp, char *datafile,
+unsigned char *ReadXbmBitmap(Widget view, FILE *fp, char *datafile,
 	int *w, int *h, XColor *colrs)
 {
 	char line[MAX_LINE], name_and_type[MAX_LINE];
@@ -212,8 +200,6 @@ unsigned char *ReadXbmBitmap( FILE *fp, char *datafile,
         static unsigned long fg_pixel, bg_pixel;
         static int done_fetch_colors = 0;
         extern XColor fg_color, bg_color;
-        extern Widget view;
-        extern int Vclass;
 	int blackbit;
 	int whitebit;
 
@@ -227,14 +213,8 @@ unsigned char *ReadXbmBitmap( FILE *fp, char *datafile,
             bg_color.pixel = bg_pixel;
             
             /* Now query for the full color info. */
-            XQueryColor (XtDisplay (view), (installed_colormap ? installed_cmap :
-		DefaultColormap (XtDisplay (view),
-                                DefaultScreen (XtDisplay (view)))),
-               &fg_color);
-            XQueryColor (XtDisplay (view), (installed_colormap ? installed_cmap :
-		DefaultColormap (XtDisplay (view),
-                                DefaultScreen (XtDisplay (view)))),
-               &bg_color);
+            XQueryColor (XtDisplay (view), mMosaicColormap , &fg_color);
+            XQueryColor (XtDisplay (view), mMosaicColormap , &bg_color);
 
             done_fetch_colors = 1;
 
@@ -243,26 +223,21 @@ unsigned char *ReadXbmBitmap( FILE *fp, char *datafile,
 	     * the color index because it is > 255.  Arbitrarily assign
 	     * 0 to foreground, and 1 to background.
 	     */
-	    if ((Vclass == TrueColor) ||(Vclass == DirectColor)) {
+	    if ((mMosaicVisualClass == TrueColor) ||(mMosaicVisualClass == DirectColor)) {
 		fg_color.pixel = 0;
 		bg_color.pixel = 1;
 	      }
 
           }
 
-        if (get_pref_boolean(eREVERSE_INLINED_BITMAP_COLORS)) {
-            blackbit = bg_color.pixel;
-            whitebit = fg_color.pixel;
-          } else {
             blackbit = fg_color.pixel;
             whitebit = bg_color.pixel;
-          }
   
 	/*
 	 * Error out here on visuals we can't handle so we won't core dump
 	 * later.
 	 */
-	if (((blackbit > 255)||(whitebit > 255))&&(Vclass != TrueColor))
+	if (((blackbit > 255)||(whitebit > 255))&&(mMosaicVisualClass != TrueColor))
 	  {
 		fprintf(stderr, "Error:  cannot deal with default colormap that is deeper than 8, and not TrueColor\n");
                 fprintf(stderr, "        If you actually have such a system, please notify mosaic-x@ncsa.uiuc.edu.\n");
@@ -270,19 +245,6 @@ unsigned char *ReadXbmBitmap( FILE *fp, char *datafile,
 		exit(1);
 	  }
 
-        if (get_pref_boolean(eREVERSE_INLINED_BITMAP_COLORS)) {
-            colrs[blackbit].red = bg_color.red;
-            colrs[blackbit].green = bg_color.green;
-            colrs[blackbit].blue = bg_color.blue;
-            colrs[blackbit].pixel = bg_color.pixel;
-            colrs[blackbit].flags = DoRed|DoGreen|DoBlue;
-            
-            colrs[whitebit].red = fg_color.red;
-            colrs[whitebit].green = fg_color.green;
-            colrs[whitebit].blue = fg_color.blue;
-            colrs[whitebit].pixel = fg_color.pixel;
-            colrs[whitebit].flags = DoRed|DoGreen|DoBlue;
-          } else {
             colrs[blackbit].red = fg_color.red;
             colrs[blackbit].green = fg_color.green;
             colrs[blackbit].blue = fg_color.blue;
@@ -294,7 +256,6 @@ unsigned char *ReadXbmBitmap( FILE *fp, char *datafile,
             colrs[whitebit].blue = bg_color.blue;
             colrs[whitebit].pixel = bg_color.pixel;
             colrs[whitebit].flags = DoRed|DoGreen|DoBlue;
-          }
 
 	*w = 0;
 	*h = 0;
@@ -305,11 +266,9 @@ unsigned char *ReadXbmBitmap( FILE *fp, char *datafile,
 		if (!(fgets(line, MAX_LINE, fp)))
 			break;
 		if (strlen(line) == (MAX_LINE - 1)) {
-#ifndef DISABLE_TRACE
-			if (srcTrace) {
+			if (mMosaicSrcTrace) {
 				fprintf(stderr, "Line too long.\n");
 			}
-#endif
 			return((unsigned char *)NULL);
 		}
 		if (sscanf(line, "#define %s %d", name_and_type, &value) == 2) {
@@ -386,11 +345,9 @@ unsigned char *ReadXbmBitmap( FILE *fp, char *datafile,
 		int lim = (bytes_per_line - padding) * 8;
 		for (bytes = 0; bytes < raster_length; bytes += 2) {
 			if (fscanf(fp, " 0x%x%*[,}]%*[ \r\n]", &value) != 1) {
-#ifndef DISABLE_TRACE
-				if (srcTrace) {
+				if (mMosaicSrcTrace) {
 					fprintf(stderr, "Error scanning bits item.\n");
 				}
-#endif
 				return((unsigned char *)NULL);
 			}
 			temp = value;
@@ -424,11 +381,9 @@ unsigned char *ReadXbmBitmap( FILE *fp, char *datafile,
 		int lim = bytes_per_line * 8;
 		for (bytes = 0; bytes < raster_length; bytes++) {
 			if (fscanf(fp, " 0x%x%*[,}]%*[ \r\n]", &value) != 1) {
-#ifndef DISABLE_TRACE
-				if (srcTrace) {
+				if (mMosaicSrcTrace) {
 					fprintf(stderr, "Error scanning bits item.\n");
 				}
-#endif
 				return((unsigned char *)NULL);
 			}
 			for (i = 0; i < 8; i++) {
@@ -446,7 +401,7 @@ unsigned char *ReadXbmBitmap( FILE *fp, char *datafile,
 	return(dataP);
 }
 
-unsigned char *ReadBitmap( char *datafile, int *w, int *h,
+unsigned char *ReadBitmap(Widget view, char *datafile, int *w, int *h,
 	XColor *colrs, int *bg)
 {
 	unsigned char *bit_data;
@@ -455,53 +410,53 @@ unsigned char *ReadBitmap( char *datafile, int *w, int *h,
 	*bg = -1;
     
 /* Obviously this isn't going to work. */
-	if ((datafile == NULL)||(datafile[0] == '\0')) {
-		fp = NULL;
-	} else {
-		fp = fopen(datafile, "r");
-	}
+	if ((datafile == NULL)||(datafile[0] == '\0'))
+		return((unsigned char *)NULL);
+
+	fp = fopen(datafile, "r");
+
+	if ( fp == NULL )
+		return((unsigned char *)NULL);
     
-	if (fp != NULL) {
-		bit_data = ReadGIF(fp, w, h, colrs, bg);
-		if (bit_data != NULL) {
-			if (fp != stdin) fclose(fp);
-			return(bit_data);
-		}
-		rewind(fp);
-		bit_data = ReadXbmBitmap(fp, datafile, w, h, colrs);
-		if (bit_data != NULL) {
-			if (fp != stdin) fclose(fp);
-			return(bit_data);
-		}
-		rewind(fp);
-	    
-		bit_data = ReadXpm3Pixmap(fp, datafile, w, h, colrs, bg);
-		if (bit_data != NULL) {
-			if (fp != stdin) fclose(fp);
-			return(bit_data);
-		}
-		rewind(fp);
+	bit_data = ReadGIF(fp, w, h, colrs, bg);
+	if (bit_data != NULL) {
+		fclose(fp);
+		return(bit_data);
+	}
+	rewind(fp);
+	bit_data = ReadXbmBitmap(view, fp, datafile, w, h, colrs);
+	if (bit_data != NULL) {
+		fclose(fp);
+		return(bit_data);
+	}
+	rewind(fp);
+
+	bit_data = ReadXpm3Pixmap(view, fp, datafile, w, h, colrs, bg);
+	if (bit_data != NULL) {
+		fclose(fp);
+		return(bit_data);
+	}
+	rewind(fp);
 
 #ifdef HAVE_PNG
 /* I can't believe Mosaic works this way... - DXP */
 /* I have to put this BEFORE ReadJPEG, because that code */
 /* screws up the file pointer by closing it if there is an error - go fig. */
-		bit_data = ReadPNG(fp, w, h, colrs);
+	bit_data = ReadPNG(fp, w, h, colrs);
 /* ie. it was able to read the image */
-		if (bit_data != NULL) {
-			if (fp != stdin) fclose(fp);
-			return(bit_data);
-		}
-		rewind(fp);
+	if (bit_data != NULL) {
+		fclose(fp);
+		return(bit_data);
+	}
+	rewind(fp);
 #endif
 #ifdef HAVE_JPEG
-		bit_data = ReadJPEG(fp, w, h, colrs);
-		if (bit_data != NULL) {
-			if (fp != stdin) fclose(fp);
-			return(bit_data);
-		}
-#endif
+	bit_data = ReadJPEG(fp, w, h, colrs);
+	if (bit_data != NULL) {
+		fclose(fp);
+		return(bit_data);
 	}
-	if ((fp != NULL) && (fp != stdin)) fclose(fp);
+#endif
+	fclose(fp);
 	return((unsigned char *)NULL);
 }

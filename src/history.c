@@ -6,6 +6,7 @@
 #include "gui.h"
 #include "mo-www.h"
 #include "gui-popup.h"
+#include "gui-documents.h"
 
 #include <time.h>
 #include <sys/types.h>
@@ -13,12 +14,6 @@
 #define __SRC__
 #include "../libwww2/HTAAUtil.h"
 #include <memory.h>
-
-extern Display *dsp;
-
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
 
 /* ----------------------------- HISTORY LIST ----------------------------- */
 
@@ -42,16 +37,11 @@ mo_status mo_free_node_data (mo_node *node)
 		free (node->ref);
 		node->ref = NULL;
 	}
-	if (node->texthead != NULL) {
-		free (node->texthead);
-		node->texthead = NULL;
+	if (node->text != NULL) {
+		free (node->text);
+		node->text = NULL;
 	}
 #endif
-
-	if (node->cached_stuff) {
-		HTMLFreeWidgetInfo (node->cached_stuff);
-		node->cached_stuff = NULL;
-	}
 	return mo_succeed;
 }
 
@@ -117,9 +107,7 @@ static mo_status mo_add_node_to_history (mo_window *win, mo_node *node)
 		win->current_node = node;
 	}
 	if (win->history_list) {
-		XmString xmstr = XmxMakeXmstrFromString( 
-			get_pref_boolean(eDISPLAY_URLS_NOT_TITLES) ?
-			       node->url : node->title);
+		XmString xmstr = XmxMakeXmstrFromString(node->title);
 		XmListAddItemUnselected(win->history_list, xmstr, node->position);
 		XmStringFree (xmstr);
 	}
@@ -273,13 +261,12 @@ extern int securityType;
  * to add the new mo_node to both the window's data structures and
  * to its Motif history list. */
 mo_status mo_record_visit (mo_window *win, char *url, char *newtext, 
-	char *newtexthead, char *ref, char *last_modified, char *expires)
+	char *ref, char *last_modified, char *expires)
 {
 	mo_node *node = (mo_node *)malloc (sizeof (mo_node));
 
 	node->url = url;
-	node->text = newtext;
-	node->texthead = newtexthead;
+	node->text = strdup(newtext);
 	node->ref = ref;
 			/* Figure out what the title is... */
 	node->title = mo_grok_title (win, url, ref);
@@ -288,7 +275,6 @@ mo_status mo_record_visit (mo_window *win, char *url, char *newtext,
 	mo_gui_check_security_icon_in_win(node->authType,win);
 			/* This will be recalc'd when we leave this node. */
 	node->docid = 1;
-	node->cached_stuff = NULL;
 			/* This may or may not be filled in later! (AF) */
 	node->last_modified = 0;
 	if (last_modified)
@@ -310,9 +296,8 @@ mo_status mo_back_node (mo_window *win)
   if (!win->current_node || win->current_node->previous == NULL)
     return mo_fail;
 
-  mo_gui_apply_default_icon();
+  mo_gui_apply_default_icon(win);
   mo_set_win_current_node (win, win->current_node->previous);
-
   return mo_succeed;
 }
 
@@ -323,9 +308,8 @@ mo_status mo_forward_node (mo_window *win)
   if (!win->current_node || win->current_node->next == NULL)
     return mo_fail;
 
-  mo_gui_apply_default_icon();
+  mo_gui_apply_default_icon(win);
   mo_set_win_current_node (win, win->current_node->next);
-
   return mo_succeed;
 }
 
@@ -345,12 +329,10 @@ mo_status mo_visit_position (mo_window *win, int pos)
         }
     }
 
-#ifndef DISABLE_TRACE
-  if (srcTrace) {
+  if (mMosaicSrcTrace) {
 	fprintf (stderr, "UH OH BOSS, asked for position %d, ain't got it.\n",
 		 pos);
   }
-#endif
 
  done:
   return mo_succeed;
@@ -362,8 +344,7 @@ mo_status mo_dump_history (mo_window *win)
 {
   mo_node *node;
 
-#ifndef DISABLE_TRACE
-  if (srcTrace) {
+  if (mMosaicSrcTrace) {
 
   fprintf (stderr, "----------------- history -------------- \n");
   fprintf (stderr, "HISTORY is 0x%08x\n", win->history);
@@ -377,7 +358,6 @@ mo_status mo_dump_history (mo_window *win)
   fprintf (stderr, "----------------- history -------------- \n");
 
   }
-#endif
 
   return mo_succeed;
 }  
@@ -392,8 +372,7 @@ static void mo_load_history_list (mo_window *win, Widget list)
   
   for (node = win->history; node != NULL; node = node->next) {
       XmString xmstr = 
-	XmxMakeXmstrFromString (get_pref_boolean(eDISPLAY_URLS_NOT_TITLES) ?
-                                node->url : node->title);
+	XmxMakeXmstrFromString (node->title);
       XmListAddItemUnselected (list, xmstr, 0);
       XmStringFree (xmstr);
     }
@@ -429,12 +408,12 @@ static XmxCallback (mailhist_win_cb0)
 	mo_node *node;
 
 	XtUnmanageChild (win->mailhist_win);
-	to = XmxTextGetString (win->mailhist_to_text);
+	to = XmTextGetString (win->mailhist_to_text);
 	if (!to)
 		return;
 	if (to[0] == '\0')
 		return;
-	subj = XmxTextGetString (win->mailhist_subj_text);
+	subj = XmTextGetString (win->mailhist_subj_text);
 				/* Open a file descriptor to sendmail. */
 	fp = mo_start_sending_mail_message (to, subj, "text/x-html", NULL);
 	if (fp){
@@ -444,7 +423,7 @@ static XmxCallback (mailhist_win_cb0)
 	}
 	fprintf (fp, "<HTML>\n");
 	fprintf (fp, "<H1>History Path From %s</H1>\n",
-		get_pref_string(eDEFAULT_AUTHOR_NAME));
+		mMosaicAppData.author_full_name);
 	fprintf (fp, "<DL>\n");
 	for (node = win->history; node != NULL; node = node->next) {
 		fprintf (fp, "<DT>%s\n<DD><A HREF=\"%s\">%s</A>\n", 

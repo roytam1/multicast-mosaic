@@ -37,6 +37,7 @@
 **
 */
 
+#include <stdio.h>
 #include <string.h>		/* strchr() */
 
 #include "HTUtils.h"
@@ -48,14 +49,12 @@
 #include "HTAssoc.h"		/* Assoc list			*/
 #include "HTAABrow.h"		/* Implemented here		*/
 #include "HTUU.h"		/* Uuencoding and uudecoding	*/
+#include "HTParams.h"		/* params from X */
 
 #include "../src/md5.h"         /* MD5 code  -- DXP */
 
 /* defined in HTTP.c -- DXP */
 extern int do_post;
-
-extern int httpTrace;
-extern int www2Trace;
 
 int securityType=HTAA_NONE;
 int securityDone=0;
@@ -163,10 +162,8 @@ PUBLIC void HTAAServer_clear ()
 		nn = n->next;
 		s = (HTAAServer *)n->object;
 		if (s) {
-#ifndef DISABLE_TRACE
-			if (www2Trace)
+			if (wWWParams.trace)
 				fprintf(stderr, "Clearing passwd info for %s\n", s->hostname?s->hostname:"NULL");
-#endif
 			HTAARealm_clearall (s->realms);
 			HTAASetup_clearall (s->setups);
 			if (s->hostname)
@@ -295,22 +292,22 @@ PRIVATE HTAASetup *HTAASetup_lookup ARGS3(WWW_CONST char *, hostname,
 	    NULL != (server = HTAAServer_lookup(hostname, portnumber))) {
 		HTList *cur = server->setups;
 
-		if (www2Trace) fprintf(stderr, "%s (%s:%d:%s)\n",
+		if (wWWParams.trace) fprintf(stderr, "%s (%s:%d:%s)\n",
 			"HTAASetup_lookup: resolving setup for",
 			hostname, portnumber, docname);
 
 		while (NULL != (setup = (HTAASetup*)HTList_nextObject(cur))) {
 			if (HTAA_templateMatch(setup->tmplate, docname)) {
-				if (www2Trace) fprintf(stderr, "%s `%s' %s `%s'\n",
+				if (wWWParams.trace) fprintf(stderr, "%s `%s' %s `%s'\n",
 					"HTAASetup_lookup:", docname,
 					"matched template", setup->tmplate);
 				return setup;
-			} else if (www2Trace) fprintf(stderr, "%s `%s' %s `%s'\n",
+			} else if (wWWParams.trace) fprintf(stderr, "%s `%s' %s `%s'\n",
 					"HTAASetup_lookup:", docname,
 					"did NOT match template", setup->tmplate);
 		} /* while setups remain */
 	} /* if valid parameters and server found */
-	if (www2Trace) fprintf(stderr, "%s `%s' %s\n",
+	if (wWWParams.trace) fprintf(stderr, "%s `%s' %s\n",
 			"HTAASetup_lookup: No template matched",
 			(docname ? docname : "(null)"),
 			"(so probably not protected)");
@@ -418,7 +415,7 @@ PUBLIC void HTAARealm_clearall ARGS1(HTList *, realm_table)
 		nn = n->next;
 		r = (HTAARealm *)n->object;
 		if (r) {
-			if (www2Trace)
+			if (wWWParams.trace)
 				fprintf(stderr, "Clearing %s %s:%s\n",
 					r->realmname?r->realmname:"NULL",
 					r->realmname?r->username:"NULL",
@@ -552,8 +549,9 @@ PRIVATE HTAAScheme HTAA_selectScheme ARGS1(HTAASetup *, setup)
 **	returned by AA package needs to (or should) be freed.
 **
 */
-PRIVATE char *compose_auth_string ARGS2(HTAAScheme,	scheme,
-					HTAASetup *,	setup)
+PRIVATE char *compose_auth_string (HTAAScheme scheme,
+				HTAASetup *setup,
+				caddr_t appd)
 {
 	static char *result = NULL;	/* Uuencoded presentation, the result */
 	char *cleartext = NULL;	/* Cleartext presentation */
@@ -586,7 +584,7 @@ PRIVATE char *compose_auth_string ARGS2(HTAAScheme,	scheme,
 		char msg[2048];
 
 		if (!realm) {
-			if (www2Trace) fprintf(stderr, "%s `%s' %s\n",
+			if (wWWParams.trace) fprintf(stderr, "%s `%s' %s\n",
 				"compose_auth_string: realm:", realmname,
 				"not found -- creating");
 			realm = HTAARealm_new(setup->server->realms, realmname, NULL,NULL);
@@ -594,21 +592,21 @@ PRIVATE char *compose_auth_string ARGS2(HTAAScheme,	scheme,
 				"Document is protected.\nEnter username for %s at %s: ",
 				realm->realmname,
 				setup->server->hostname ? setup->server->hostname : "??");
-			realm->username = HTPrompt(msg, realm->username);
+			realm->username = HTPrompt(msg, realm->username, appd);
 /* Added by marca. */
 			if (!realm->username)
 				return "";
 		} else {
 			sprintf(msg,"Enter username for %s at %s: ", realm->realmname,
 				setup->server->hostname ? setup->server->hostname : "??");
-			username = HTPrompt(msg, realm->username);
+			username = HTPrompt(msg, realm->username, appd);
 			FREE(realm->username);
 			realm->username = username;
 /* Added by marca. */
 			if (!realm->username)
 				return "";
 		}
-		password = HTPromptPassword("Enter password to authenticate yourself: ");
+		password = HTPromptPassword("Enter password to authenticate yourself: ", appd);
 		FREE(realm->password);
 		realm->password = password;
 /* Added by marca. */
@@ -749,7 +747,7 @@ erik@sockdev.uni-c.dk (Erik Bertelsen). */
 		HTUU_encode((unsigned char *)cleartext, strlen(cleartext), result);
 		free(cleartext);
 	}
-	if(www2Trace) fprintf(stderr,"sending auth line: %s\n",result);
+	if(wWWParams.trace) fprintf(stderr,"sending auth line: %s\n",result);
 	return result;
 }
 
@@ -772,9 +770,10 @@ erik@sockdev.uni-c.dk (Erik Bertelsen). */
 **
 **		As usual, this string is automatically freed.
 */
-PUBLIC char *HTAA_composeAuth ARGS3(WWW_CONST char *,	hostname,
-				    WWW_CONST int,	portnumber,
-				    WWW_CONST char *,	docname)
+PUBLIC char *HTAA_composeAuth (WWW_CONST char *	hostname,
+			    WWW_CONST int	portnumber,
+			    WWW_CONST char 	*docname,
+				caddr_t		appd)
 {
 	static char *result = NULL;
 	char *auth_string;
@@ -785,7 +784,7 @@ PUBLIC char *HTAA_composeAuth ARGS3(WWW_CONST char *,	hostname,
 	HTAAScheme scheme;
 
 	FREE(result);			/* From previous call */
-	if (www2Trace)
+	if (wWWParams.trace)
 		fprintf(stderr,
 			"Composing Authorization for %s:%d/%s\n",
 			hostname, portnumber, docname);
@@ -809,7 +808,7 @@ PUBLIC char *HTAA_composeAuth ARGS3(WWW_CONST char *,	hostname,
 	case HTAA_BASIC:
 	case HTAA_PUBKEY:
 	case HTAA_MD5: /* DXP */
-		auth_string = compose_auth_string(scheme, current_setup);
+		auth_string = compose_auth_string(scheme, current_setup,appd);
 		break;
 #ifdef KRB5
 	case HTAA_KERBEROS_V5:
@@ -824,7 +823,7 @@ PUBLIC char *HTAA_composeAuth ARGS3(WWW_CONST char *,	hostname,
 			sprintf(msg, "%s %s `%s'",
 				"This client doesn't know how to compose authentication",
 				"information for scheme", HTAAScheme_name(scheme));
-			HTAlert(msg);
+			HTAlert(msg, appd);
 			auth_string = NULL;
 		}
 	} /* switch scheme */
@@ -877,9 +876,8 @@ PUBLIC char *HTAA_composeAuth ARGS3(WWW_CONST char *,	hostname,
 **				  field (in function HTAA_composeAuth()).
 **			NO, otherwise.
 */
-PUBLIC HT_BOOL HTAA_shouldRetryWithAuth ARGS3(char *, start_of_headers,
-					   int,	   length,
-					   int,	   soc)
+PUBLIC HT_BOOL HTAA_shouldRetryWithAuth (char * start_of_headers,
+	int length, int soc, caddr_t appd)
 {
 	HTAAScheme scheme;
 	char *line;
@@ -890,12 +888,12 @@ PUBLIC HT_BOOL HTAA_shouldRetryWithAuth ARGS3(char *, start_of_headers,
 
 /* Read server reply header lines */
 
-	if (www2Trace)
+	if (wWWParams.trace)
 		fprintf(stderr, "Server reply header lines:\n");
 
 	HTAA_setupReader(start_of_headers, length, soc);
-	while (NULL != (line = HTAA_getUnfoldedLine())  &&  *line != (char)0) {
-		if (www2Trace) fprintf(stderr, "%s\n", line);
+	while (NULL != (line = HTAA_getUnfoldedLine(appd))  &&  *line != (char)0) {
+		if (wWWParams.trace) fprintf(stderr, "%s\n", line);
 		if (strchr(line, ':')) {	/* Valid header line */
 			char *p = line;
 			char *fieldname = HTNextField(&p);
@@ -916,17 +914,17 @@ PUBLIC HT_BOOL HTAA_shouldRetryWithAuth ARGS3(char *, start_of_headers,
 					}
 					scheme_specifics[scheme] = HTAA_parseArgList(args);
 					num_schemes++;
-				} else if (www2Trace) {
+				} else if (wWWParams.trace) {
 					fprintf(stderr,"Unknown scheme `%s' %s\n",
 						(arg1 ? arg1 : "(null)"),
 						"in WWW-Authenticate: field");
 				}
 			} else if (0==strcasecomp(fieldname, "WWW-Protection-Template:")) {
-				if (www2Trace)
+				if (wWWParams.trace)
 					fprintf(stderr, "Protection template set to `%s'\n", arg1);
 				StrAllocCopy(tmplate, arg1);
 			}
-		} else if (www2Trace) { /* if a valid header line */
+		} else if (wWWParams.trace) { /* if a valid header line */
 				/* else invalid header line */
 			fprintf(stderr,"Invalid header line `%s' ignored\n",line);
 		} 
@@ -943,7 +941,7 @@ PUBLIC HT_BOOL HTAA_shouldRetryWithAuth ARGS3(char *, start_of_headers,
 /* Update scheme-specific parameters	*/
 /* (in case they have expired by chance).	*/
 		HTAASetup_updateSpecifics(current_setup, scheme_specifics);
-		if (NO == HTConfirm("Authorization failed.  Retry?")) {
+		if (NO == HTConfirm("Authorization failed.  Retry?", appd)) {
 			current_setup = NULL;
 			return NO;
 		} else { /* re-ask username+password (if misspelled) */
@@ -964,7 +962,7 @@ PUBLIC HT_BOOL HTAA_shouldRetryWithAuth ARGS3(char *, start_of_headers,
 			tmplate = HTAA_makeProtectionTemplate(current_docname);
 		current_setup = HTAASetup_new(server, tmplate,
 					valid_schemes, scheme_specifics);
-		HTAlert("Access without authorization denied -- retrying");
+		HTAlert("Access without authorization denied -- retrying", appd);
 		return YES;
 	} /* else current_setup == NULL */
 /* Never reached */

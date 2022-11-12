@@ -7,17 +7,20 @@
 /* |   notice appear in supporting documentation.  This software is    | */
 /* |   provided "as is" without express or implied warranty.           | */
 /* +-------------------------------------------------------------------+ */
+
 /* Please read copyright.ncsa. Don't remove next line */
 #include "copyright.ncsa"
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/time.h>
 #include <X11/Intrinsic.h>
 
-#include <sys/time.h>
+#include "../libhtmlw/HTML.h"
+#include "mosaic.h"
+
 static struct timeval Tv;
 static struct timezone Tz;
-
 
 #define	MAXCOLORMAPSIZE		256
 
@@ -57,7 +60,6 @@ static struct {
 } Gif89 = { -1, -1, -1, 0 };
 
 static int	verbose = FALSE;
-static int	showComment = FALSE;
 
 
 static int ReadColorMap(FILE *, int, unsigned char [3][MAXCOLORMAPSIZE], int *);
@@ -65,28 +67,6 @@ static int DoExtension(FILE *, int);
 static int GetDataBlock(FILE *, unsigned char *);
 static unsigned char *ReadImage(FILE *, int, int, XColor *, int,
                 unsigned char[3][MAXCOLORMAPSIZE], int, int, int);
-/*
-unsigned char *ReadGIF ARGS(( FILE	*fd, int imageNumber, int *bg ));
-static int ReadColorMap ARGS(( FILE *fd, int number, unsigned char buffer[3][MAXCOLORMAPSIZE] ));
-static int DoExtension ARGS(( FILE *fd, int label ));
-static int GetDataBlock ARGS(( FILE *fd, unsigned char  *buf ));
-static int GetCode ARGS(( FILE *fd, int code_size, int flag ));
-static int LWZReadByte ARGS(( FILE *fd, int flag, int input_code_size ));
-static unsigned char *ReadImage ARGS(( FILE *fd, int len, int height, unsigned char cmap[3][MAXCOLORMAPSIZE], int interlace, int ignore ));
-*/
-
-/*
-static int ReadColorMap();
-static int DoExtension();
-static int GetDataBlock();
-static int GetCode();
-static int LWZReadByte();
-static unsigned char *ReadImage();
-*/
-
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
 
 unsigned char * ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 {
@@ -102,61 +82,28 @@ unsigned char * ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 	unsigned char	*image = NULL;
 	int i;
 
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
-		gettimeofday(&Tv, &Tz);
-		fprintf(stderr, "ReadGIF_DK enter (%d.%d)\n", Tv.tv_sec, Tv.tv_usec);
-	}
-#endif
-
 	verbose = FALSE;
-	showComment = FALSE;
 
-	/*
-	 * Initialize GIF89 extensions
-	 */
+/** Initialize GIF89 extensions */
 	Gif89.transparent = -1;
 	Gif89.delayTime = -1;
 	Gif89.inputFlag = -1;
 	Gif89.disposal = 0;
 
-	if (! ReadOK(fd,buf,6)) {
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
-			fprintf(stderr, "error reading magic number\n");
-		}
-#endif
+	if (! ReadOK(fd,buf,6)) /* error reading magic number */
 		return(NULL);
-	}
 
-	if (strncmp((char *)buf,"GIF",3) != 0) {
-#ifndef DISABLE_TRACE
-		if (srcTrace)
-			fprintf(stderr, "not a GIF file\n");
-#endif
+	if (strncmp((char *)buf,"GIF",3) != 0)	/* not a GIF file */
 		return(NULL);
-	}
 
 	strncpy(version, (char *)buf + 3, 3);
 	version[3] = '\0';
 
-	if ((strcmp(version, "87a") != 0) && (strcmp(version, "89a") != 0)) {
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
-			fprintf(stderr, "bad version number, not '87a' or '89a'\n");
-		}
-#endif
-		return(NULL);
-	}
+	if ((strcmp(version, "87a") != 0) && (strcmp(version, "89a") != 0))
+		return(NULL);	/* bad version number, not '87a' or '89a' */
 
-	if (! ReadOK(fd,buf,7)) {
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
-			fprintf(stderr, "failed to read screen descriptor\n");
-		}
-#endif
+	if (! ReadOK(fd,buf,7))		/* failed to read screen descriptor */
 		return(NULL);
-	}
 
 	GifScreen.Width           = LM_to_uint(buf[0],buf[1]);
 	GifScreen.Height          = LM_to_uint(buf[2],buf[3]);
@@ -169,14 +116,9 @@ unsigned char * ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 		int scale = 65536/MAXCOLORMAPSIZE;
 
 		if (ReadColorMap(fd,GifScreen.BitPixel,GifScreen.ColorMap,
-				&GifScreen.xGrayScale)) {
-#ifndef DISABLE_TRACE
-			if (srcTrace) {
-				fprintf(stderr, "error reading global colormap\n");
-			}
-#endif
+		    &GifScreen.xGrayScale))  /* error reading global colormap */
 			return(NULL);
-		}
+
 		for (i=0; i < GifScreen.BitPixel; i++) {
 			colrs[i].red = GifScreen.ColorMap[0][i] * scale;
 			colrs[i].green = GifScreen.ColorMap[1][i] * scale;
@@ -194,74 +136,37 @@ unsigned char * ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 	}
 
 	if (GifScreen.AspectRatio != 0 && GifScreen.AspectRatio != 49) {
-/*		float	r;
-		r = ( (float) GifScreen.AspectRatio + 15.0 ) / 64.0;*/
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
-			fprintf(stderr, "Warning:  non-square pixels!\n");
-		}
-#endif
+/*		float r = ( (float) GifScreen.AspectRatio + 15.0 ) / 64.0;  */
+			/* Warning:  non-square pixels */
 	}
 
 	while (image == NULL) {
-		if (! ReadOK(fd,&c,1)) {
-#ifndef DISABLE_TRACE
-			if (srcTrace) {
-				fprintf(stderr, "EOF / read error on image data\n");
-			}
-#endif
+		if (! ReadOK(fd,&c,1))  /* EOF / read error on image data */
 			return(NULL);
-		}
 
 		if (c == ';') {		/* GIF terminator */
-			if (imageCount < imageNumber) {
-#ifndef DISABLE_TRACE
-				if (srcTrace) {
-					fprintf(stderr, "No images found in file\n");
-				}
-#endif
+			if(imageCount<imageNumber) /* No images found in file */
 				return(NULL);
-			}
 			break;
 		}
 
 		if (c == '!') { 	/* Extension */
-			if (! ReadOK(fd,&c,1)) {
-#ifndef DISABLE_TRACE
-				if (srcTrace) {
-					fprintf(stderr, "EOF / read error on extention function code\n");
-				}
-#endif
+			if (! ReadOK(fd,&c,1)) /* EOF / read error on extention function code */
 				return(NULL);
-			}
 			DoExtension(fd, c);
 			continue;
 		}
 
-		if (c != ',') {		/* Not a valid start character */
-#ifndef DISABLE_TRACE
-			if (srcTrace) {
-				fprintf(stderr, "bogus character 0x%02x, ignoring\n",
-					(int)c);
-			}
-#endif
-			continue;
-		}
+		if (c != ',') 		/* Not a valid start character */
+			continue;	/* bogus character, ignoring */
 
 		++imageCount;
-		if (! ReadOK(fd,buf,9)) {
-#ifndef DISABLE_TRACE
-			if (srcTrace) {
-				fprintf(stderr,"couldn't read left/top/width/height\n");
-			}
-#endif
+		if(! ReadOK(fd,buf,9)) /* can't read left/top/width/height */
 			return(NULL);
-		}
 		useGlobalColormap = ! BitSet(buf[8], LOCALCOLORMAP);
 		bitPixel = 1<<((buf[8]&0x07)+1);
 
-		/*
-		 * We only want to set width and height for the imageNumber
+		/* We only want to set width and height for the imageNumber
 		 * we are requesting.
 		 */
 		if (imageCount == imageNumber) {
@@ -269,17 +174,11 @@ unsigned char * ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 			*h = LM_to_uint(buf[6],buf[7]);
 		}
 		if (! useGlobalColormap) {
-			if (ReadColorMap(fd,bitPixel,localColorMap,&grayScale)) {
-#ifndef DISABLE_TRACE
-				if (srcTrace) {
-					fprintf(stderr, "error reading local colormap\n");
-				}
-#endif
+			if (ReadColorMap(fd,bitPixel,localColorMap,&grayScale))
+					/* error reading local colormap */
 				return(NULL);
-			}
 
-			/*
-			 * We only want to set the data for the
+			/* We only want to set the data for the
 			 * imageNumber we are requesting.
 			 */
 			if (imageCount == imageNumber) {
@@ -296,8 +195,7 @@ unsigned char * ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 				  imageCount != imageNumber);
 			}
 		} else {
-			/*
-			 * We only want to set the data for the
+			/* We only want to set the data for the
 			 * imageNumber we are requesting.
 			 */
 			if (imageCount == imageNumber) {
@@ -319,19 +217,11 @@ unsigned char * ReadGIF(FILE *fd, int *w, int *h, XColor *colrs, int *bg)
 
 	}
 	*bg = Gif89.transparent;
-
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
-		gettimeofday(&Tv, &Tz);
-		fprintf(stderr, "ReadGIF_DK exit (%d.%d)\n", Tv.tv_sec, Tv.tv_usec);
-	}
-#endif
 	return(image);
 }
 
-static int
-ReadColorMap(FILE *fd, int number, unsigned char buffer[3][MAXCOLORMAPSIZE],
-		int *gray)
+static int ReadColorMap(FILE *fd, int number, 
+	unsigned char buffer[3][MAXCOLORMAPSIZE], int *gray)
 {
 	int		i;
 	unsigned char	rgb[3];
@@ -339,14 +229,8 @@ ReadColorMap(FILE *fd, int number, unsigned char buffer[3][MAXCOLORMAPSIZE],
 
 	flag = TRUE;
 	for (i = 0; i < number; ++i) {
-		if (! ReadOK(fd, rgb, sizeof(rgb))) {
-#ifndef DISABLE_TRACE
-			if (srcTrace) {
-				fprintf(stderr, "bad colormap\n");
-			}
-#endif
+		if (! ReadOK(fd, rgb, sizeof(rgb)))  /* bad colormap */
 			return(TRUE);
-		}
 		buffer[CM_RED][i] = rgb[0] ;
 		buffer[CM_GREEN][i] = rgb[1] ;
 		buffer[CM_BLUE][i] = rgb[2] ;
@@ -368,7 +252,6 @@ static int DoExtension(FILE *fd, int label)
 #ifdef notdef
 		if (GetDataBlock(fd, (unsigned char*) buf) <= 0)
 			;
-
 		lpos   = LM_to_uint(buf[0], buf[1]);
 		tpos   = LM_to_uint(buf[2], buf[3]);
 		width  = LM_to_uint(buf[4], buf[5]);
@@ -395,15 +278,8 @@ static int DoExtension(FILE *fd, int label)
 		break;
 	case 0xfe:		/* Comment Extension */
 		strcpy(str,"Comment Extension");
-		while (GetDataBlock(fd, (unsigned char*) buf) > 0) {
-			if (showComment) {
-#ifndef DISABLE_TRACE
-				if (srcTrace) {
-					fprintf(stderr, "gif comment: %s\n", buf);
-				}
-#endif
-			}
-		}
+		while (GetDataBlock(fd, (unsigned char*) buf) > 0) /* comment */
+			;
 		return FALSE;
 	case 0xf9:		/* Graphic Control Extension */
 		strcpy(str,"Graphic Control Extension");
@@ -421,11 +297,6 @@ static int DoExtension(FILE *fd, int label)
 		sprintf(str, "UNKNOWN (0x%02x)", label);
 		break;
 	}
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
-		fprintf(stderr, "got a '%s' extension\n", str);
-	}
-#endif
 
 	while (GetDataBlock(fd, (unsigned char*) buf) > 0)
 		;
@@ -440,25 +311,14 @@ static int GetDataBlock(FILE *fd, unsigned char *buf)
 	unsigned char	count;
 
 	count = 0;
-	if (! ReadOK(fd, &count, 1)) {
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
-			fprintf(stderr, "error in getting DataBlock size\n");
-		}
-#endif
+	if (! ReadOK(fd, &count, 1)) /* error in getting DataBlock size */
 		return -1;
-	}
 
 	ZeroDataBlock = count == 0;
 
-	if ((count != 0) && (! ReadOK(fd, buf, count))) {
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
-			fprintf(stderr, "error in reading DataBlock\n");
-		}
-#endif
+	if ((count != 0) && (! ReadOK(fd, buf, count)))
+			/* error in reading DataBlock */
 		return -1;
-	}
 	return((int)count);
 }
 
@@ -588,12 +448,8 @@ static int nextLWZ(FILE *fd)
 		       while ((count = GetDataBlock(fd, buf)) > 0)
 			       ;
 
-		       if (count != 0) {
-#ifndef DISABLE_TRACE
-				if (srcTrace) {
-					fprintf(stderr,"missing EOD in data stream (common occurence)");
-				}
-#endif
+			if (count != 0) {
+			   /* missing EOD in data stream (common occurence) */
 			}
 		       return -2;
 	       }
@@ -653,27 +509,15 @@ ReadImage(FILE *fd, int len, int height, XColor *colrs, int cmapSize,
 	/*
 	**  Initialize the Compression routines
 	*/
-	if (! ReadOK(fd,&c,1))
-	{
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
-			fprintf(stderr, "EOF / read error on image data\n");
-		}
-#endif
-
+	if (! ReadOK(fd,&c,1))  /* EOF / read error on image data */
 		return(NULL);
-	}
 
 	initLWZ(c);
 
-	/*
-	**  If this is an "uninteresting picture" ignore it.
-	*/
+	/*  If this is an "uninteresting picture" ignore it. */
 	if (ignore) {
-#ifndef DISABLE_TRACE
-		if (srcTrace)
+		if (mMosaicSrcTrace)
 			fprintf(stderr, "skipping image...\n" );
-#endif
 		while (readLWZ(fd) >= 0)
 			;
 		return(NULL);
@@ -681,11 +525,7 @@ ReadImage(FILE *fd, int len, int height, XColor *colrs, int cmapSize,
 
 	image = (unsigned char *)calloc(len * height, sizeof(char));
 	if (image == NULL) {
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
-			fprintf(stderr, "Cannot allocate space for image data\n");
-		}
-#endif
+		fprintf(stderr, "Cannot allocate space for image data\n");
 		return(NULL);
 	}
 	for (v = 0; v < MAXCOLORMAPSIZE; v++) {
@@ -698,11 +538,9 @@ ReadImage(FILE *fd, int len, int height, XColor *colrs, int cmapSize,
 		colrs[v].green = cmap[CM_GREEN][v] * 0x101;
 		colrs[v].blue  = cmap[CM_BLUE][v]  * 0x101;
 	}
-#ifndef DISABLE_TRACE
-	if (srcTrace)
+	if (mMosaicSrcTrace)
 		fprintf(stderr, "reading %d by %d%s GIF image\n",
 			len, height, interlace ? " interlaced" : "" );
-#endif
 	if (interlace) {
 		int     i;
 		int     pass = 0, step = 8;
@@ -736,11 +574,9 @@ ReadImage(FILE *fd, int len, int height, XColor *colrs, int cmapSize,
 	}
 fini:
 	if (readLWZ(fd)>=0) {
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
+		if (mMosaicSrcTrace) {
 			fprintf(stderr,"too much input data, ignoring extra...");
 		}
-#endif
 	}
 	return(image);
 }

@@ -8,7 +8,6 @@
 ** History
 **       8 Jun 92 Telnet hopping prohibited as telnet is not secure (TBL)
 **	26 Jun 92 When over DECnet, suppressed FTP, Gopher and News. (JFG)
-**	 6 Oct 92 Moved HTClientHost and logfile into here. (TBL)
 **	17 Dec 92 Tn3270 added, bug fix. (DD)
 **	 2 Feb 93 Split from HTAccess.c. Registration.(TBL)
 */
@@ -17,28 +16,20 @@
 */
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
 
+#include "HText.h"
 #include "HTTelnet.h"
-
 #include "HTParse.h"
 #include "HTUtils.h"
 #include "HTAnchor.h"
 #include "HTTP.h"
 #include "HTFile.h"
-#include <errno.h>
-#include <stdio.h>
-
 #include "tcp.h"
-#include "HText.h"
-
 #include "HTAccess.h"
 #include "HTAlert.h"
-
-extern void application_user_feedback (char *);
-
-#ifndef DISABLE_TRACE
-extern int www2Trace;
-#endif
+#include "HTParams.h"
 
 /*	make a string secure for passage to the
 **	system() command.  Make it contain only alphanumneric
@@ -135,18 +126,17 @@ PRIVATE void run_a_command ARGS1(char *, command)
 /*	Telnet or "rlogin" access
 **	-------------------------
 */
-PRIVATE int remote_session ARGS2(char *, access, char *, host)
+PRIVATE int remote_session (char * access, char * host, caddr_t appd)
 {
   char *user, *hostname, *port;
   int portnum;
   char command[256];
   char *xterm_str;
   enum _login_protocol { telnet, rlogin, tn3270 } login_protocol;
-  extern char *global_xterm_str;
 
   if (!access || !host) {
-      application_user_feedback 
-        ("Cannot open remote session, because\nURL is malformed.\0");
+      HTapplication_user_feedback 
+        ("Cannot open remote session, because\nURL is malformed.\0",appd);
       return HT_NO_DATA;
     }
 
@@ -182,7 +172,7 @@ PRIVATE int remote_session ARGS2(char *, access, char *, host)
   make_system_secure(user);
   make_system_secure(hostname);
   
-  xterm_str = global_xterm_str;
+  xterm_str = wWWParams.global_xterm_str;
   
   if (login_protocol == rlogin) {
       /* For rlogin, we should use -l user. */
@@ -210,9 +200,7 @@ PRIVATE int remote_session ARGS2(char *, access, char *, host)
 	}
     }
   
-#ifndef DISABLE_TRACE
-  if (www2Trace) fprintf(stderr, "HTaccess: Command is: %s\n", command);
-#endif
+  if (wWWParams.trace) fprintf(stderr, "HTaccess: Command is: %s\n", command);
   run_a_command(command);
   
   /* No need for application feedback if we're rlogging directly
@@ -223,7 +211,7 @@ PRIVATE int remote_session ARGS2(char *, access, char *, host)
          Otherwise, the popup will get buried. */
       sleep (2);
       sprintf (str, "When you are connected, log in as '%s'.", user);
-      application_user_feedback (str);
+      HTapplication_user_feedback (str,appd);
     }
   
   return HT_NO_DATA;		/* Ok - it was done but no data */
@@ -243,14 +231,10 @@ PRIVATE int remote_session ARGS2(char *, access, char *, host)
 **			(See WWW.h)
 **
 */
-PRIVATE int HTLoadTelnet
-ARGS4
-(
- WWW_CONST char *,		addr,
- HTParentAnchor *,	anchor,
- HTFormat,		format_out,
- HTStream *,		sink			/* Ignored */
-)
+PRIVATE int HTLoadTelnet (WWW_CONST char *addr, HTParentAnchor *anchor,
+ 	HTFormat format_out,
+ 	HTStream * sink,		/* Ignored */
+	caddr_t appd)
 {
     char * access;
     
@@ -259,13 +243,13 @@ ARGS4
     
     if (sink) 
       {
-        HTAlert("Can't output a live session -- it has to be interactive");
+        HTAlert("Can't output a live session -- it has to be interactive",appd);
 	return HT_NO_ACCESS;
       }
     access =  HTParse(addr, "file:", PARSE_ACCESS);
     
     host = HTParse(addr, "", PARSE_HOST);
-    status = remote_session(access, host);
+    status = remote_session(access, host, appd);
 
     free(host);	
     free(access);
@@ -273,8 +257,8 @@ ARGS4
 }
 
 
-PUBLIC HTProtocol HTTelnet = { "telnet", HTLoadTelnet, NULL };
-PUBLIC HTProtocol HTRlogin = { "rlogin", HTLoadTelnet, NULL };
-PUBLIC HTProtocol HTTn3270 = { "tn3270", HTLoadTelnet, NULL };
+PUBLIC HTProtocol HTTelnet = { "telnet", HTLoadTelnet };
+PUBLIC HTProtocol HTRlogin = { "rlogin", HTLoadTelnet };
+PUBLIC HTProtocol HTTn3270 = { "tn3270", HTLoadTelnet };
 
 

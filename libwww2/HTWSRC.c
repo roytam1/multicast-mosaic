@@ -1,5 +1,4 @@
 /*			Parse WAIS Source file			HTWSRC.c
-**			======================
 **
 **	This module parses a stream with WAIS source file
 **	format information on it and creates a structured stream.
@@ -8,33 +7,30 @@
 **	3 June 93	Bug fix: Won't crash if no description
 */
 
-#include "HTWSRC.h"
-
+#include <sys/types.h>
 #include <stdio.h>
-#include "HTML.h"
 
+#include "HText.h"
+#include "HTWSRC.h"
+#include "HTML.h"
 #include "HTUtils.h"
 #include "tcp.h"
 #include "HTParse.h"
+#include "HTParams.h"
 
 #define BIG 10000		/* Arbitrary limit to value length */
 #define PARAM_MAX BIG
-
-#ifndef DISABLE_TRACE
-extern int www2Trace;
-#endif
 
 struct _HTStructured {
 	WWW_CONST HTStructuredClass *	isa;
 	/* ... */
 };
 
-#define PUTC(c) (*me->target->isa->put_character)(me->target, c)
-#define PUTS(s) (*me->target->isa->put_string)(me->target, s)
+#define PUTC(c) (*me->target->isa->put_character)(me->target, c,appd)
+#define PUTS(s) (*me->target->isa->put_string)(me->target, s,appd)
 
 
-/*	Here are the parameters which can be specified in a  source file
-*/
+/*	Here are the parameters which can be specified in a  source file */
 PRIVATE WWW_CONST char* par_name[] = {
 	"version", 
 	"ip-address",
@@ -68,7 +64,6 @@ enum tokenstate { beginning, before_tag, colon, before_value,
 
 
 /*		Stream Object
-**		------------
 **
 **	The target is the structured stream down which the
 **	parsed results will go.
@@ -86,13 +81,9 @@ struct _HTStream {
 	int			param_count;
 };
 
-
-
-
 PUBLIC WWW_CONST char * hex = "0123456789ABCDEF";
 
-/*	Decode one hex character
-*/
+/*	Decode one hex character */
 
 PUBLIC char from_hex ARGS1(char, c)
 {
@@ -102,10 +93,7 @@ PUBLIC char from_hex ARGS1(char, c)
 			:		       0;
 }
 
-
 /*			State machine
-**			-------------
-**
 ** On entry,
 **	me->state	is a valid state (see WSRC_init)
 **	c		is the next character
@@ -115,11 +103,8 @@ PUBLIC char from_hex ARGS1(char, c)
 **		-1	Syntax error error
 */
 
-
-/*		Treat One Character
-**		-------------------
-*/
-PRIVATE void WSRCParser_put_character ARGS2(HTStream*, me, char, c)
+/*		Treat One Character */
+PRIVATE void WSRCParser_put_character (HTStream* me, char c, caddr_t appd)
 {
     switch (me->state) {
     case beginning:
@@ -145,11 +130,9 @@ PRIVATE void WSRCParser_put_character ARGS2(HTStream*, me, char, c)
 		}
 	    }
 	    if (!par_name[me->param_number]) {	/* Unknown field */
-#ifndef DISABLE_TRACE
-	        if (www2Trace) fprintf(stderr,
+	        if (wWWParams.trace) fprintf(stderr,
 		    "HTWSRC: Unknown field `%s' in source file\n",
 		    me->param);
-#endif
 		me->param_number = PAR_UNKNOWN;
 		me->state = before_value;	/* Could be better ignore */
 		return;
@@ -222,13 +205,9 @@ PRIVATE void WSRCParser_put_character ARGS2(HTStream*, me, char, c)
     } /* switch me->state */
 }
 
+/*			Output equivalent HTML */
 
-/*			Output equivalent HTML
-**			----------------------
-**
-*/
-
-void give_parameter ARGS2(HTStream *, me, int, p)
+void give_parameter (HTStream *me, int p, caddr_t appd)
 {
     PUTS(par_name[p]);
     if (me->par_value[p]) {
@@ -241,11 +220,8 @@ void give_parameter ARGS2(HTStream *, me, int, p)
 }
 
 
-/*			Generate Outout
-**			===============
-*/
-PRIVATE void WSRC_gen_html ARGS2(HTStream *, me, HT_BOOL, source_file)
-
+/*			Generate Outout */
+PRIVATE void WSRC_gen_html (HTStream * me, HT_BOOL source_file, caddr_t appd)
 {
     if (me->par_value[PAR_DATABASE_NAME]) {
 	char * shortname = 0;
@@ -307,8 +283,8 @@ PRIVATE void WSRC_gen_html ARGS2(HTStream *, me, HT_BOOL, source_file)
 	    free(www_database);
 	    
 	} else {
-	    give_parameter(me, PAR_IP_NAME);
-	    give_parameter(me, PAR_IP_NAME);
+	    give_parameter(me, PAR_IP_NAME, appd);
+	    give_parameter(me, PAR_IP_NAME, appd);
 	}
     
     } /* end if source_file */
@@ -332,36 +308,31 @@ PRIVATE void WSRC_gen_html ARGS2(HTStream *, me, HT_BOOL, source_file)
 	PUTS("</PRE>\n");
     }
     
-    (*me->target->isa->end_document)(me->target);
-    (*me->target->isa->free)(me->target);
+    (*me->target->isa->end_document)(me->target,appd);
+    (*me->target->isa->free)(me->target,appd);
     
     return;
 } /* generate html */
 
-
-PRIVATE void WSRCParser_put_string ARGS2(HTStream *, context, WWW_CONST char*, str)
+PRIVATE void WSRCParser_put_string (HTStream * context, WWW_CONST char* str, caddr_t appd)
 {
     WWW_CONST char *p;
     for(p=str; *p; p++)
-        WSRCParser_put_character(context, *p);
+        WSRCParser_put_character(context, *p, appd);
 }
 
-
-PRIVATE void WSRCParser_write ARGS3(
-		HTStream *, 	context,
-		WWW_CONST char*, 	str,
-		int, 		l)
+PRIVATE void WSRCParser_write (HTStream *context, WWW_CONST char* str,
+	int l,caddr_t appd)
 {
     WWW_CONST char *p;
     WWW_CONST char *e = str+l;
     for(p=str; p<e; p++)
-        WSRCParser_put_character(context, *p);
+        WSRCParser_put_character(context, *p, appd);
 }
 
-
-PRIVATE void WSRCParser_free ARGS1(HTStream *, me)
+PRIVATE void WSRCParser_free (HTStream * me, caddr_t appd)
 {
-    WSRC_gen_html(me, YES);
+    WSRC_gen_html(me, YES, appd);
     {
 	int p;
 	for(p=0; par_name[p]; p++) {	/* Clear out old values */
@@ -373,20 +344,15 @@ PRIVATE void WSRCParser_free ARGS1(HTStream *, me)
     free(me);
 }
 
-PRIVATE void WSRCParser_end_document ARGS1(HTStream *, me)
+PRIVATE void WSRCParser_end_document (HTStream * me, caddr_t appd)
 {
-/* Nothing */
 }
 
-PRIVATE void WSRCParser_handle_interrupt ARGS1(HTStream *, me)
+PRIVATE void WSRCParser_handle_interrupt (HTStream * me, caddr_t appd)
 {
-/* Nothing */
 }
 
-
-/*		Stream subclass		-- method routines
-**		---------------
-*/
+/*		Stream subclass		-- method routines */
 
 HTStreamClass WSRCParserClass = {
 	"WSRCParser",
@@ -399,30 +365,19 @@ HTStreamClass WSRCParserClass = {
 
 };
 
-
-/*		Converter from WAIS Source to whatever
-**		--------------------------------------
-*/
-PUBLIC HTStream* HTWSRCConvert ARGS5(
-	HTPresentation *,	pres,
-	HTParentAnchor *,	anchor,	
-	HTStream *,		sink,
-        HTFormat,                format_in,
-        int,                     compressed)
+/*		Converter from WAIS Source to whatever */
+PUBLIC HTStream* HTWSRCConvert(HTPresentation *pres, HTParentAnchor *anchor,	
+	HTStream *sink, HTFormat format_in, int compressed, caddr_t appd)
 {
     HTStream * me = (HTStream*) malloc(sizeof(*me));
+    int p;
 
     me->isa = &WSRCParserClass;
     me->target = HTML_new(NULL, pres->rep_out, sink);
 
-    {
-	int p;
 	for(p=0; p < PAR_COUNT; p++) {	/* Clear out parameter values */
 	    me->par_value[p] = 0;
 	}
-    }
     me->state = beginning;
-
     return me;
 }
-

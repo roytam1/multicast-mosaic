@@ -2,34 +2,14 @@
                                   MACROS FOR GENERAL USE
 
    Generates: HTUtils.h
-
    See also: the system dependent file "tcp.h"
 
  */
 
-#ifndef DEBUG
-#define DEBUG   /* Noone ever turns this off as trace is too important */
-#endif          /* Keeep option for really small memory applications tho */
-                
 #ifndef HTUTILS_H
 #define HTUTILS_H
 
-/* Debug message control.  */
-#ifndef STDIO_H
-#include <stdio.h>
-#define STDIO_H
-#endif
-
-/*
- * Tracing now works as a boolean from a resource. No, there are no
- *   more if's than before...
- *
- * SWP -- 02/08/96
- */
-
-/*
-Standard C library for malloc() etc
- */
+/* Standard C library for malloc() etc */
 #ifdef vax
 #ifdef unix
 #ifndef ultrix
@@ -55,9 +35,7 @@ Standard C library for malloc() etc
 #include <malloc.h>
 #endif
 
-/*
-Macros for declarations
- */
+/* Macros for declarations */
 #define PUBLIC                  /* Accessible outside this module     */
 #define PRIVATE static          /* Accessible only within this module */
 
@@ -120,15 +98,7 @@ Macros for declarations
         
 #endif /* __STDC__ (ANSI) */
 
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
-
-/*
-
-Booleans
-
- */
+/* Booleans */
 /* Note: GOOD and BAD are already defined (differently) on RS6000 aix */
 /* #define GOOD(status) ((status)38;1)   VMS style status: test bit 0         */
 /* #define BAD(status)  (!GOOD(status))  Bit 0 set if OK, otherwise clear   */
@@ -159,9 +129,7 @@ typedef unsigned char HT_BOOL;
 #define WHITE(c) (((unsigned char)(c)) <= 32)
 
 
-/*
-Sucess (>=0) and failure (<0) codes
- */
+/* Sucess (>=0) and failure (<0) codes */
 
 #define HT_REDIRECTING 29998
 #define HT_LOADED 29999                 /* Instead of a socket */
@@ -182,11 +150,7 @@ Sucess (>=0) and failure (<0) codes
 #include <varargs.h>
 #endif
 
-/*
-
-Out Of Memory checking for malloc() return:
-
- */
+/* Out Of Memory checking for malloc() return: */
 #ifndef __FILE__
 #define __FILE__ ""
 #define __LINE__ ""
@@ -198,7 +162,6 @@ Out Of Memory checking for malloc() return:
 
 
 /*
-
 Upper- and Lowercase macros
 
    The problem here is that toupper(x) is not defined officially unless isupper(x) is.

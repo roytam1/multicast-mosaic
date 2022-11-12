@@ -27,10 +27,6 @@
 
 #define MAX(x,y)  (((x) > (y)) ? (x) : (y))
 
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
-
 unsigned char * ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 {
 	unsigned char *pixmap;
@@ -43,21 +39,19 @@ unsigned char * ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 	int i, j;
 	unsigned int packets;
 	png_color std_color_cube[216];
+	int ret;
+	png_byte buf[8];
 
     
         /* first check to see if its a valid PNG file. If not, return. */
         /* we assume that infile is a valid filepointer */
-	{
-		int ret;
-		png_byte buf[8];
 
-		ret = fread(buf, 1, 8, infile);
-		if(ret != 8)
-			return 0;
-		ret = png_check_sig(buf, 8);
-		if(!ret)
-			return(0);
-	}
+	ret = fread(buf, 1, 8, infile);
+	if(ret != 8)
+		return 0;
+	ret = png_check_sig(buf, 8);
+	if(!ret)
+		return(0);
 
         /* OK, it is a valid PNG file, so let's rewind it, and start 
            decoding it */
@@ -77,11 +71,9 @@ unsigned char * ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
         /* Establish the setjmp return context for png_error to use. */
 	if (setjmp(png_ptr->jmpbuf)) {
         
-#ifndef DISABLE_TRACE
-        	if (srcTrace) {
+        	if (mMosaicSrcTrace) {
             		fprintf(stderr, "\n!!!libpng read error!!!\n");
         	}
-#endif
 		png_read_destroy(png_ptr, info_ptr, (png_info *)0); 
 
 		if(png_pixels != NULL)
@@ -111,8 +103,7 @@ unsigned char * ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 	*width = (int)png_ptr->width;
 	*height = (int)png_ptr->height;
 
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
+	if (mMosaicSrcTrace) {
 		fprintf(stderr,"\n\nBEFORE\nheight = %d\n", (int)png_ptr->width);
 		fprintf(stderr,"width = %d\n", (int)png_ptr->height);
 		fprintf(stderr,"bit depth = %d\n", info_ptr->bit_depth);
@@ -123,7 +114,6 @@ unsigned char * ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 		fprintf(stderr,"num colors = %d\n",info_ptr->num_palette);
 		fprintf(stderr,"rowbytes = %d\n", info_ptr->rowbytes);
 	}
-#endif
 #if 0
         /* This handles alpha and transparency by replacing it with 
            a background value. */
@@ -150,11 +140,9 @@ then dither the image to 256 colors, and make up a palette */
 	    info_ptr->color_type==PNG_COLOR_TYPE_RGB_ALPHA) {
 
 		if(! (info_ptr->valid & PNG_INFO_PLTE)) {
-#ifndef DISABLE_TRACE
-	            	if (srcTrace) {
+	            	if (mMosaicSrcTrace) {
                 		fprintf(stderr,"dithering (RGB->palette)...\n");
             		}
-#endif
                 /* if there is is no valid palette, then we need to make
                    one up */
 			for(i=0;i<216;i++) {	 /* 255.0/5 = 51 */
@@ -167,14 +155,12 @@ then dither the image to 256 colors, and make up a palette */
                    Rdata.colors_per_inlined_image colors */
 			png_set_dither(png_ptr, std_color_cube, 216, 216, NULL, 1);
 		} else {
-#ifndef DISABLE_TRACE
-            		if (srcTrace) {
+            		if (mMosaicSrcTrace) {
                 		fprintf(stderr,"dithering (RGB->file supplied palette)...\n");
             		}
-#endif
 			png_set_dither(png_ptr, info_ptr->palette, 
 					info_ptr->num_palette,
-					get_pref_int(eCOLORS_PER_INLINED_IMAGE), 
+					mMosaicAppData.colors_per_inlined_image,
 					info_ptr->hist, 1);
 		}
 	}
@@ -187,28 +173,22 @@ then dither the image to 256 colors, and make up a palette */
 
 /* have libpng handle the gamma conversion */
 
-	if (get_pref_boolean(eUSE_SCREEN_GAMMA)) { /*SWP*/
+	if (mMosaicAppData.use_screen_gamma) { /*SWP*/
 		if (info_ptr->bit_depth != 16) {  /* temporary .. glennrp */
-			screen_gamma=(double)(get_pref_float(eSCREEN_GAMMA));
+			screen_gamma=(double)(mMosaicAppData.screen_gamma);
             
-#ifndef DISABLE_TRACE
-            if (srcTrace) {
+            if (mMosaicSrcTrace) {
                 fprintf(stderr,"screen gamma=%f\n",screen_gamma);
             }
-#endif
 			if (info_ptr->valid & PNG_INFO_gAMA) {
-#ifndef DISABLE_TRACE
-				if (srcTrace) {
+				if (mMosaicSrcTrace) {
 					printf("setting gamma=%f\n",info_ptr->gamma);
 				}
-#endif
 				png_set_gamma(png_ptr, screen_gamma, (double)info_ptr->gamma);
 			} else {
-#ifndef DISABLE_TRACE
-				if (srcTrace) {
+				if (mMosaicSrcTrace) {
 					fprintf(stderr,"setting gamma=%f\n",0.45);
 				}
-#endif
 				png_set_gamma(png_ptr, screen_gamma, (double)0.45);
 			}
 		}
@@ -219,8 +199,7 @@ then dither the image to 256 colors, and make up a palette */
 
 	png_read_update_info(png_ptr, info_ptr);
     
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
+	if (mMosaicSrcTrace) {
 		fprintf(stderr,"\n\nAFTER\nheight = %d\n", (int)png_ptr->width);
 		fprintf(stderr,"width = %d\n", (int)png_ptr->height);
 		fprintf(stderr,"bit depth = %d\n", info_ptr->bit_depth);
@@ -231,7 +210,6 @@ then dither the image to 256 colors, and make up a palette */
 		fprintf(stderr,"num colors = %d\n",info_ptr->num_palette);
 		fprintf(stderr,"rowbytes = %d\n", info_ptr->rowbytes);
 	}
-#endif
         /* allocate the pixel grid which we will need to send to 
            png_read_image(). */
 	png_pixels = (png_byte *)malloc(info_ptr->rowbytes * 
@@ -279,11 +257,9 @@ to copy the resulting palette to our colormap. */
 /* if there is an alpha channel, we have to get rid of it in the
 pixmap, since I don't do anything with it yet */
 	if (info_ptr->color_type & PNG_COLOR_MASK_ALPHA) {
-#ifndef DISABLE_TRACE
-	        if (srcTrace) {
+	        if (mMosaicSrcTrace) {
             		fprintf(stderr,"Getting rid of alpha channel\n");
         	}
-#endif
 		for(i=0; i<*height; i++) {
 			q = row_pointers[i];
 			for(j=0; j<*width; j++) {
@@ -293,11 +269,9 @@ pixmap, since I don't do anything with it yet */
 		}
 		free((char *)png_pixels);
 	} else {
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
+		if (mMosaicSrcTrace) {
 			fprintf(stderr,"No alpha channel\n");
 		}
-#endif
 		for(i=0; i<*height; i++) {
 			q = row_pointers[i];
 			for(j=0; j<*width; j++) {

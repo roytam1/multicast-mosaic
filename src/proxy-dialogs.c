@@ -57,7 +57,17 @@ struct EditInfo {
 	struct Proxy *proxy_list;
 };
 
-extern struct Proxy *proxy_list, *noproxy_list;
+
+#define BUFLEN 256
+#define BLANKS " \t\n"
+
+struct ProxyDomain *AddProxyDomain();
+
+char * mMosaicProxyFileName = NULL;
+char * mMosaicNoProxyFileName = NULL;
+
+static struct Proxy * noproxy_list =NULL;
+static struct Proxy * proxy_list =NULL;
 static struct ProxyDomain *pdList = NULL;
 
 Widget ProxyDialog, EditProxyDialog, EditNoProxyDialog, EditProxyDomainDialog;
@@ -110,6 +120,253 @@ struct Proxy * FindProxyEntry(struct EditInfo *pEditInfo, char *txt);
 struct ProxyDomain * FindProxyDomainEntry(struct ProxyDomain *pDomain,char *txt);
 
 static mo_window *mo_main_window;
+
+void ReadProxies(char *mmosaic_root_dir)
+{
+	FILE *fp;
+	char buf[BUFLEN], *psb;
+	struct Proxy *head, *cur, *next, *p;
+	struct ProxyDomain *pCurList, *pNewDomain;
+
+	mMosaicProxyFileName = (char*) malloc(strlen (mmosaic_root_dir) +
+                                strlen ("proxy") + 8);
+	sprintf (mMosaicProxyFileName, "%s/proxy", mmosaic_root_dir);
+
+
+	if ((fp = fopen(mMosaicProxyFileName,"r")) == NULL)
+		return; 
+
+	head = NULL;
+	cur = NULL;
+
+	/* read entries from the proxy list
+	** These malloc()s should be checked for returning NULL
+	*/
+	while (fgets(buf, BUFLEN, fp) != 0) {
+
+		p = (struct Proxy *)calloc(1,sizeof(struct Proxy));
+		
+		p->next = NULL;
+		p->prev = NULL;
+
+		/* Read the proxy scheme */
+
+		if ((psb = strtok(buf, BLANKS)) == NULL){
+			proxy_list = head;
+			return ;
+		}
+
+		p->scheme = (char *)malloc(strlen(psb)+1);
+		strcpy(p->scheme, psb);
+
+		/* Read the proxy address */
+
+		if ((psb = strtok(NULL, BLANKS)) == NULL) {
+			proxy_list = head;
+			return ;
+		}
+		p->address = (char *)malloc(strlen(psb)+1);
+		strcpy(p->address, psb);
+
+		/* Read the proxy port */
+
+		if ((psb = strtok(NULL, BLANKS)) == NULL) {
+			proxy_list = head;
+			return ;
+		}
+		p->port = (char *)malloc(strlen(psb)+1);
+		strcpy(p->port, psb);
+
+		/* Read the transport mechanism */
+		if ((psb = strtok(NULL, BLANKS)) == NULL) {
+			proxy_list = head;
+			return ;
+		}
+		p->transport = (char *)malloc(strlen(psb)+1);
+		strcpy(p->transport, psb);
+
+		p->alive = 0;
+
+		if (strcmp(p->transport,"CCI") == 0)
+			p->trans_val = TRANS_CCI;
+		else
+			p->trans_val = TRANS_HTTP;
+
+		/* Read the domain */
+		p->list = NULL;
+
+		if ((psb = strtok(NULL, BLANKS)) != NULL) {
+
+			p->list = NULL;
+			AddProxyDomain(psb, &p->list);
+
+			pCurList = p->list;
+
+			while ((psb = strtok(NULL, BLANKS)) != NULL) {
+				if (psb[0] == '\\') {
+					if (fgets(buf, BUFLEN, fp) == 0) {
+						proxy_list = head;
+						return ;
+					}
+					psb = strtok(buf, BLANKS);
+					if (psb == NULL){
+						proxy_list = head;
+						return ;
+					}
+				}
+				if (AddProxyDomain(psb, &pCurList) == NULL) {
+					proxy_list = head;
+					return ;
+				}
+			}
+		}
+
+		if (cur == NULL) {
+			head = p;
+			cur = p;
+		} else {
+			p->prev = cur;
+			cur->next = p;
+			cur = p;
+		}
+		if (feof(fp) != 0)
+			break;
+	}
+	proxy_list = head;
+}
+
+void ReadNoProxies(char *mmosaic_root_dir)
+{
+	FILE *fp;
+	char buf[BUFLEN], *psb;
+	struct Proxy *head, *cur, *next, *p;
+	extern void FreeProxy();
+		
+	mMosaicNoProxyFileName = (char*) malloc(strlen (mmosaic_root_dir) +
+                                strlen ("noproxy") + 8);
+	sprintf (mMosaicNoProxyFileName, "%s/noproxy", mmosaic_root_dir);
+	if ((fp = fopen(mMosaicNoProxyFileName,"r")) == NULL)
+		return ;
+
+	head = NULL;
+	cur = NULL;
+
+	/* read entries from the proxy list
+	** These malloc()s should be checked for returning NULL
+	*/
+	while (fgets(buf, BUFLEN, fp) != 0) {
+
+		p = (struct Proxy *)calloc(1, sizeof(struct Proxy));
+		
+		p->next = NULL;
+		p->prev = NULL;
+
+/* The proxy protocol, transport, and list are all null for no proxy. */
+		p->scheme = NULL;
+		p->transport = NULL;
+		p->list = NULL;
+
+		/* Read the proxy address */
+
+		if ((psb = strtok(buf, BLANKS)) == NULL) {
+			noproxy_list = head;
+			return ;
+		}
+		p->address = (char *)malloc(strlen(psb)+1);
+		strcpy(p->address, psb);
+
+		/* Read the proxy port */
+
+		if ((psb = strtok(NULL, BLANKS)) == NULL) {
+			p->port = NULL;
+		} else {
+			p->port = (char *)malloc(strlen(psb)+1);
+			strcpy(p->port, psb);
+		}
+
+		if (cur == NULL) {
+			head = p;
+			cur = p;
+		} else {
+			p->prev = cur;
+			cur->next = p;
+			cur = p;
+		}
+		if (feof(fp) != 0)
+			break;
+	}
+	noproxy_list = head;
+}
+
+struct ProxyDomain *
+AddProxyDomain(char *sbDomain, struct ProxyDomain **pdList)
+{
+	struct ProxyDomain *pNewDomain;
+
+	pNewDomain = (struct ProxyDomain *)malloc(sizeof(struct ProxyDomain));
+	if (pNewDomain == NULL)
+		return NULL;
+
+	pNewDomain->domain = (char *)malloc(strlen(sbDomain)+1);
+	strcpy(pNewDomain->domain, sbDomain);
+	if (*pdList == NULL) {
+		*pdList = pNewDomain;
+		(*pdList)->next = NULL;
+		(*pdList)->prev = NULL;
+	} else {
+		struct ProxyDomain *p;
+
+		p = *pdList;
+		while (p->next != NULL)
+			p = p->next;
+		pNewDomain->prev = p;
+		pNewDomain->next = NULL;
+		p->next = pNewDomain;
+	}
+	return pNewDomain;
+}
+
+void DeleteProxyDomain(struct ProxyDomain *p)
+{
+	struct ProxyDomain *cur;
+
+	cur = p;
+	if (cur->next !=NULL)
+		cur->next->prev =  p->prev;
+	if (cur->prev !=NULL)
+		cur->prev->next =  p->next;
+	if (p->domain) {
+		free(p->domain);
+		p->domain = NULL;
+	}
+	free(p);
+	p = NULL;
+}
+
+/* Returns true if there is at least one fallback proxy for the specified
+ * protocol (means more than one proxy server specified).
+ * --SWP
+ */
+int has_fallbacks(char *protocol)
+{
+	int protocol_len;
+	struct Proxy *ptr;
+
+      if (!protocol || !*protocol || !proxy_list)
+              return(0);
+
+      protocol_len=strlen(protocol);
+      ptr=proxy_list;
+
+      while (ptr) {
+              if (ptr->scheme && !strncmp(ptr->scheme,protocol,protocol_len))
+                      return(1);
+              ptr=ptr->next;
+      }
+      return(0);
+}
+
+
 
 void ShowProxyDialog(mo_window *win)
 {
@@ -1692,15 +1949,15 @@ void WriteProxies(Widget w, XtPointer client, XtPointer call)
 	p = pEditInfo->proxy_list;
 
 	if (pEditInfo->fProxy) {
-                if ((fp = fopen(get_pref_string(ePROXY_SPECFILE),"w")) == NULL) {
-                        sprintf(msgbuf,SAVE_ERROR, get_pref_string(ePROXY_SPECFILE));
+                if ((fp = fopen(mMosaicProxyFileName,"w")) == NULL) {
+                        sprintf(msgbuf,SAVE_ERROR, mMosaicProxyFileName);
 			XmxMakeErrorDialog(mo_main_window->base, msgbuf, "Error writing file");
 			XtManageChild (Xmx_w);
 			return;
 		}
 	} else { 
-                if ((fp = fopen(get_pref_string(eNOPROXY_SPECFILE),"w")) == NULL) {
-                        sprintf(msgbuf,SAVE_ERROR, get_pref_string(eNOPROXY_SPECFILE));
+                if ((fp = fopen(mMosaicNoProxyFileName,"w")) == NULL) {
+                        sprintf(msgbuf,SAVE_ERROR, mMosaicNoProxyFileName);
 			XmxMakeErrorDialog(mo_main_window->base, msgbuf, "Error writing file");
 			XtManageChild (Xmx_w);
 			return;
@@ -1733,9 +1990,9 @@ void WriteProxies(Widget w, XtPointer client, XtPointer call)
 		p = p->next;
 	}
 	if (pEditInfo->fProxy)
-                sprintf(msgbuf,SAVED_AOK,get_pref_string(ePROXY_SPECFILE));
+                sprintf(msgbuf,SAVED_AOK,mMosaicProxyFileName);
 	else
-                sprintf(msgbuf,SAVED_AOK,get_pref_string(eNOPROXY_SPECFILE));
+                sprintf(msgbuf,SAVED_AOK,mMosaicNoProxyFileName);
 
 	XmxMakeInfoDialog(mo_main_window->base, msgbuf, "File Saved");
 	XtManageChild (Xmx_w);

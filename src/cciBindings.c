@@ -10,16 +10,13 @@
 #include "accept.h"
 #include "cciServer.h"
 #include "cciBindings2.h"
-#include "pan.h"
 #include "mo-www.h"
+#include "history.h"
+#include "gui-documents.h"
+#include "cache.h"
+#include "globalhist.h"
+
 /* for setting some selections buttons*/
-
-extern mo_window *current_win;
-extern char *home_document;
-
-#ifndef DISABLE_TRACE
-extern int cciTrace;
-#endif
 
 int cci_get = 0;
 int cci_event = 0;
@@ -59,26 +56,26 @@ void MCCIRequestDoCommand( int *retCode,
 	}
 	s = parameter;
 /* got the window id here */
-	if (!current_win) {
+	if (!mo_main_next_window(NULL)) {
 		*retCode = MCCIR_DOCOMMAND_FAILED;
 		strcpy(retText, "Current Window Not Available");
 		return;
 	}
-	win=current_win;
+	win=mo_main_next_window(NULL);
 	if (!strcmp(command, MCCI_BACK))
 		mo_back_node(win);
 	else if (!strcmp(command, MCCI_FORWARD))
 		mo_forward_node(win);	
 	else if (!strcmp(command, MCCI_HOME))
-		mo_access_document (win, home_document);
+		mo_load_window_text (win, mMosaicAppData.home_document,NULL);
 	else if (!strcmp(command, MCCI_RELOAD))
-		mo_reload_window_text (win, 0);
+		mo_reload_window_text (win);
 	else if (!strcmp(command, MCCI_CLONE))
 		mo_duplicate_window (win);
 	else if (!strcmp(command, MCCI_CLOSEWINDOW))
 		mo_delete_window (win);
 	else if (!strcmp(command, MCCI_RELOADIMAGES))
-		mo_reload_window_text (win, 1);
+		mo_reload_window_text (win);
 	else if (!strcmp(command, MCCI_REFRESHCURRENT))
 		mo_refresh_window_text (win);
 	else if (!strcmp(command, MCCI_VIEWSOURCE))
@@ -86,9 +83,9 @@ void MCCIRequestDoCommand( int *retCode,
 	else if (!strcmp(command, MCCI_EDITSOURCE))
 		mo_edit_source(win);
 	else if (!strcmp(command, MCCI_NEWWINDOW))
-		mo_open_another_window (win, home_document, NULL, NULL);
-	else if (!strcmp(command, MCCI_FLUSHIMAGECACHE))
-		mo_flush_image_cache (win);
+		mo_open_another_window (win, mMosaicAppData.home_document, NULL, NULL);
+	else if (!strcmp(command, MCCI_FLUSHCACHE))
+		MMCacheClearCache ();
 	else if (!strcmp(command, MCCI_CLEARGLOBALHISTORY)){
 		mo_window *w = NULL;
 
@@ -245,37 +242,6 @@ void MCCIRequestDoCommand( int *retCode,
 			strcpy(retText, "Unable to print file");
 			return;
 		}
-	} else if (!strcmp(command, MCCI_FANCYSELECTIONS)){
-/* need to get ON|OFF */
-		char *on_off;
-
-		/* s is pointed pass the window id part */
-		GetWordFromString(s,&on_off,&end); /* Get command */
-		if ((!on_off) || (on_off == end)) {
-			*retCode = MCCIR_DOCOMMAND_FAILED;
-			strcpy(retText, "You Need to Specify ON|OFF");
-			return;
-		}
-		on_off = strdup(on_off);
-		sscanf(on_off,"%s", on_off);
-
-		if (!strcmp(on_off, MCCI_ON)){
-			win->pretty = 1;
-			HTMLClearSelection (win->scrolled_win);
-			XmxSetArg (WbNfancySelections, True);
-			XmxSetValues (win->scrolled_win);
-		} else if(!strcmp(on_off, MCCI_OFF)){
-			win->pretty = 0;
-			HTMLClearSelection (win->scrolled_win);
-			XmxSetArg (WbNfancySelections, False);
-			XmxSetValues (win->scrolled_win);
-		} else{
-			*retCode = MCCIR_DOCOMMAND_FAILED;
-			strcpy(retText, "You Need to Specify ON|OFF");
-			if (on_off) free(on_off);
-			return;
-		}
-		if (on_off) free(on_off);
 	} else if (!strcmp(command, MCCI_LOADTOLOCALDISK)){
 /* need to get ON|OFF */
 	char *on_off;
@@ -436,8 +402,7 @@ void MCCIRequestGetURL( int *retCode,
 {
 	mo_status moStatus;
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		if (additionalHeader)
 			fprintf(stderr,"MCCIRequestGetURL(url=\"%s\",output=%d,header=\"%s\")\n",
 				url,output,additionalHeader);
@@ -445,9 +410,8 @@ void MCCIRequestGetURL( int *retCode,
 			fprintf(stderr,"MCCIRequestGetURL(url=\"%s\",output=%d)\n",
 				url,output);
 	}
-#endif
 
-        if (! get_pref_int(eLOAD_LOCAL_FILE))
+        if (! mMosaicAppData.load_local_file)
 		if (!strncasecmp(url,"file:",5)) {
 			*retCode = MCCIR_GET_FAILED;
 			strcpy(retText,
@@ -464,7 +428,7 @@ void MCCIRequestGetURL( int *retCode,
 	case MCCI_OUTPUT_CURRENT:
 		/* turn flag on so mosaic will know to do a get*/
 		cci_get = 1; 	
-		moStatus = mo_load_window_text (current_win, url, NULL);
+		moStatus = mo_load_window_text (mo_main_next_window(NULL), url, NULL);
 		if (moStatus == mo_succeed) {
 			*retCode = MCCIR_GET_OK;
 			strcpy(retText,"Got the URL");
@@ -477,7 +441,7 @@ void MCCIRequestGetURL( int *retCode,
 	case MCCI_OUTPUT_NEW:
 		/* turn flag on so mosaic will know to do a get*/
 		cci_get = 1; 	
-		if (!mo_open_another_window(current_win,url,NULL,NULL)) {
+		if (!mo_open_another_window(mo_main_next_window(NULL),url,NULL,NULL)) {
 			*retCode = MCCIR_GET_FAILED;
 			sprintf(retText,"Couldn't get URL %s",url);
 		} else {
@@ -515,11 +479,9 @@ void MCCIRequestSendAnchor( int *retCode,
 /* anchor replies may be sent back using MCCISendAnchorHistory(client,url)*/
 {
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIRequestSendAnchor(%d)\n",status);
 	}
-#endif
 
 	switch (status) {
 	case MCCI_SEND_BEFORE:
@@ -552,11 +514,9 @@ void MCCIRequestSendOutput( int *retCode,
 	char *type)	/* if null, assume all types */
 {
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIRequestSendOutput(%d,%s)\n",on,type);
 	}
-#endif
 
 	if (on) {
 		MoCCISendOutput(client,1,type);
@@ -576,11 +536,9 @@ void MCCIRequestSendEvent( int *retCode,
 	int on)		/* boolean value....turn on - true, off - false */
 {
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIRequestEvent(%d)\n",on);
 	}
-#endif
 
 	if (on) {
 		cci_event = 1;
@@ -601,11 +559,9 @@ void MCCIRequestSendBrowserView( int *retCode,
 	int on)		/* boolean value....turn on - true, off - false */
 {
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIRequestSendBrowserView(%d)\n",on);
 	}
-#endif
 
 	if (on) {
 		MoCCISendBrowserView(client,1);
@@ -622,18 +578,15 @@ void MCCIRequestPost( MCCIPort client, int *retCode, char *retText,
 	char *url, char *contentType, char *postData, int dataLength,
 	int output)
 {
-	char *textHead;
 	char *response;
 	char buff[256];
 	int length;
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
-		fprintf(stderr,"MCCIRequestPost(): about to mo_post_pull_er_over()\n");
+	if (mMosaicCCITrace) {
+		fprintf(stderr,"MCCIRequestPost(): about to \n");
 		fprintf(stderr,"mo_post_pull_er_over(url=\"%s\",type=\"%s\",postData=\"%s\")\n"
 				,url,contentType,postData);
 	}
-#endif
 
 	*retCode = MCCIR_POST_OK;
 	strcpy(retText,"Post Request ok");
@@ -643,7 +596,7 @@ void MCCIRequestPost( MCCIPort client, int *retCode, char *retText,
 		/* do not display output of post, but send the
 		   output back through the cci to the client */
 		response = mo_post_pull_er_over(url, 
-				contentType, postData, &textHead);
+				contentType, postData,mo_main_next_window(NULL));
 
 		/* send response back through cci */
 		if (response && (length = strlen(response))) {
@@ -671,14 +624,14 @@ void MCCIRequestPost( MCCIPort client, int *retCode, char *retText,
 	default:
 		/* display in current window */
 		response = mo_post_pull_er_over(url, 
-				contentType, postData, &textHead);
+				contentType, postData,mo_main_next_window(NULL));
 		/*mo_decode_internal_reference(url,response,url);*/
 /*#######*/
-		mo_do_window_text(current_win,url, response,response,1,url,0,0);
+		mo_do_window_text(mo_main_next_window(NULL),url, response,1,url,0,0);
 		break;
 	}
 
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"result from mo_post_pull_er_over():\"%s\"\n",response);
 		fprintf(stderr,"MCCIRequestPost(): returning now\n");
 	}
@@ -691,8 +644,8 @@ void MCCIRequestDisplay( MCCIPort client, int *retCode, char *retText, char *url
 	char *new_url;
 
 #ifndef DISABLE_TRACE
-	if (cciTrace) {
-		fprintf(stderr,"MCCIRequestDisplay(): about to mo_post_pull_er_over()\n");
+	if (mMosaicCCITrace) {
+		fprintf(stderr,"MCCIRequestDisplay(): about to \n");
 		fprintf(stderr,"mo_post_pull_er_over(url=\"%s\",type=\"%s\",	\
 						     displayData=\"%s\")\n" ,url,contentType,displayData);
 	}
@@ -717,17 +670,17 @@ void MCCIRequestDisplay( MCCIPort client, int *retCode, char *retText, char *url
 		ref = strdup(url);
 		new_url = strdup(url);
 		if (strcmp(contentType, "text/html") == 0)
-			mo_do_window_text(current_win, new_url, 
-				displayData, displayData, 1, ref, 
-				current_win->current_node->last_modified, 
-				current_win->current_node->expires);
+			mo_do_window_text(mo_main_next_window(NULL), new_url, 
+				displayData, 1, ref, 
+				mo_main_next_window(NULL)->current_node->last_modified, 
+				mo_main_next_window(NULL)->current_node->expires);
 		else
 			strcpy(retText, "Display text/html only");	
 		break;
 	}
 
 #ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIRequestDisplay(): returning now\n");
 	}
 #endif
@@ -736,33 +689,6 @@ void MCCIRequestDisplay( MCCIPort client, int *retCode, char *retText, char *url
 void MCCIRequestQuit() /* time to die */
 {
 	mo_exit();
-}
-
-void MCCIRequestGetAnnotation( int *retCode, char *retText, char **retData,
-	int *retDataLength, char *url, int type)
-{
-	*retDataLength = 0;
-	if ((type == MCCI_PRIVATE_ANNOTATION) || (type == MCCI_ALL_ANNOTATION)) {
-		if ((*retData) = mo_fetch_personal_annotations(url)) {
-			*retCode = MCCIR_PRIVATE_ANNOTATION;
-			strcpy(retText,"Annotation follows");
-			*retDataLength = strlen(*retData);
-		} else {
-			*retData = NULL;
-			*retCode = MCCIR_NO_ANNOTATION;
-			strcpy(retText,"No annotation for this URL");
-		}
-	} else {
-		*retCode = MCCIR_NO_ANNOTATION;
-		strcpy(retText,"Only Private annotations currently supported");
-	}
-}
-
-void MCCIRequestPutAnnotation( int *retCode, char *retText, int type,
-	char *url, char *annotation, int annotationLength)
-{
-	if (type == MCCI_PRIVATE_ANNOTATION)
-		*retCode = mo_new_pan(url, NULL, NULL, annotation);
 }
 
 void MCCIRequestFileToURL( int *retCode, char *retText, char *fileName)

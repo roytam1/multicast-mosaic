@@ -64,6 +64,7 @@ typedef struct PopupItem {
   /* this is for internal uses */
     Widget               _w;
     int                  startup; /* are we sensitive when we start */
+    mo_window 		*win;     /* which mo_window call me ? */
 } PopupItem;
 
 XmxCallbackPrototype (image_cb);
@@ -73,38 +74,24 @@ XmxCallbackPrototype (ftp_rmbm_cb);
 XmxCallbackPrototype (fsb_OKCallback);
 XmxCallbackPrototype (fsb_CancelCallback);
 XmxCallbackPrototype (copy_link_cb);
-XmxCallbackPrototype (session_cb);
 XmxCallbackPrototype (rbm_ballonify);
+extern void mo_make_popup(mo_window * win);
 
 char *getFileName(char *file_src);
-Widget  _PopupMenuBuilder(Widget parent, int type, char *title, 
-				 char mnem, PopupItem *items);
 void _set_eptr_field();
 void mo_popup_set_something(char *what, int to, PopupItem *items);
 PopupItem *popup_build_user_defs();
-extern mo_window *current_win;
 char *my_chop(char *str);
 char *my_strndup(char *str, int num);
 extern char *mo_escape_part();
-
-void mo_make_popup();
-void mo_init_hotmenu();
-void mo_add_to_rbm_history(mo_window *win, char *url, char *title);
-
-static Boolean convert_selection(Widget, Atom *, Atom *, Atom *, XtPointer *,
-				 unsigned long *, int *);
 
 extern Boolean have_popup;
 extern Widget popup ;
 
 extern PopupItem image_menu[];
-extern PopupItem pan_menu[];
-extern PopupItem photo_cd_sub_menu[];
 extern PopupItem file_menu[];
 extern PopupItem popup_items[];
 
-extern void mo_init_hotlist_menu(mo_hotlist *list);
-extern void mo_reinit_hotlist_menu(mo_hotlist *list);
 extern void mo_add_to_rbm_history(mo_window *win, char *url, char *title);
 extern void mo_delete_rbm_history_win(mo_window *win);
 #endif

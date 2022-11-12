@@ -19,13 +19,15 @@
  * Bug report :  dauphin@sig.enst.fr
  */
 
-#include "../libmc/mc_defs.h"
-#include "HTMLP.h"
-#include "HTMLPutil.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "HTMLamp.h"
+
+#include "HTMLmiscdefs.h"
+#include "HTMLparse.h"
+#include "../libmc/mc_defs.h"
+#include "HTMLP.h"
+#include "HTMLPutil.h"
 
 #define SKIPWHITE(s)    while( (((unsigned char)*s) < 128) && (isspace(*s)) ) s++
 #define SKIPNONWHITE(s) while( (((unsigned char)*s) > 127) ||  \
@@ -99,7 +101,6 @@ if (pcc->cw_only) {	/* compute width only , dont create Element*/
 	if( pcc->x  > pcc->max_width_return )
 		pcc->max_width_return = pcc->x ;
 
-	(pcc->line_number)++;
 	pcc->y = pcc->y + pcc->cur_line_height;
 	pcc->have_space_after = 0;
 	pcc->x = pcc->left_margin + pcc->eoffsetx;
@@ -133,7 +134,6 @@ static void Translate_Nbsp( char * t)
 	}
 }
 		
-
 /* remove blank, LF, CR, TAB */
 static char ** split_in_word( char * text, unsigned int * nw,
 		int * hsb4, int * hsa)
@@ -193,9 +193,7 @@ void Set_E_TEXT_Element(HTMLWidget hw,
 
 	len = strlen(text) + 1;
 	eptr->edata = strdup(text);
-	if (eptr->edata == NULL) {
-		MEM_OVERFLOW;
-	}
+	CHECK_OUT_OF_MEM(eptr);
 	eptr->edata_len = len;
 			/* if this is an anchor, puts its href and name */
 			/* values into the element.  */
@@ -257,9 +255,15 @@ void PartOfTextPlace(HTMLWidget hw, 	/* the widget */
 
 	words = split_in_word(text,&nword, &have_space_b4, &have_space_after);
 	if (nword == 0 ){
+		pcc->have_space_after = have_space_after;
 		free(text);
 		return;
 	}
+	if (pcc->have_space_after && !have_space_b4)
+		have_space_b4 = 1;
+	if (is_bol)		/* si on est en begin of line */
+		have_space_b4 = 0;
+
 				/* alloc enought space to compose a line */
 	composed_line = (char*) malloc( strlen(text) + nword*3 + 1);
 	composed_line[0]='\0';
@@ -267,10 +271,6 @@ void PartOfTextPlace(HTMLWidget hw, 	/* the widget */
 	the_word = (char*) malloc( strlen(text) + nword*3 + 1);
 	the_word[0]='\0';
 
-	if (pcc->have_space_after && !have_space_b4)
-		have_space_b4 = 1;
-	if (is_bol)		/* si on est en begin of line */
-		have_space_b4 = 0;
 	for(i = 0; i < nword; i++){	/* remplir la ligne de mots */
 		if(have_space_b4){
 			the_word[0]= ' ';
@@ -574,7 +574,7 @@ void PartialRefresh(HTMLWidget hw, struct ele_rec *eptr,
 	width = all.width;
 
 	if(bg!=hw->html.view->core.background_pixel ||
-	   NoBodyImages((Widget)hw) || !hw->html.bg_image) {
+	   !hw->html.body_images || !hw->html.bg_image) {
 		XSetForeground(XtDisplay(hw), hw->html.drawGC, bg);
 		XSetBackground(XtDisplay(hw), hw->html.drawGC, fg);
 

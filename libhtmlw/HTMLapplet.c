@@ -14,6 +14,54 @@
 #include <stdio.h>
 #include <Xm/XmAll.h>
 
+void _FreeAppletStruct(AppletInfo * ats)
+{
+	int i;
+
+	if(ats->src)
+		free(ats->src);
+	for(i=0 ; i < ats->param_count; i++){
+		free(ats->param_name_t[i]);
+		free(ats->param_value_t[i]);
+	} 
+	free(ats->param_name_t);
+	free(ats->param_value_t);
+	for(i=0 ; i < ats->url_arg_count; i++){
+		free(ats->url_arg[i]);
+		if (ats->ret_filenames[i])
+			free(ats->ret_filenames[i]);
+	} 
+	free(ats->url_arg);
+	free(ats->ret_filenames);
+	free(ats->internal_numeos);     
+	if(ats->frame) {
+		static Atom delete_atom = 0;
+		static Atom proto_atom = 0;
+		XClientMessageEvent ev;
+
+		if (!delete_atom)
+			delete_atom = XInternAtom(XtDisplay(ats->frame),
+				"WM_DELETE_WINDOW", False);
+		if(!proto_atom)
+			proto_atom = XInternAtom(XtDisplay(ats->frame),
+				"WM_PROTOCOLS", False);
+		fprintf(stderr,"****mMosaic*** send WM_DELETE_WINDOW****\n");
+		ev.type = ClientMessage;
+		ev.window = XtWindow(ats->frame);
+		ev.message_type = proto_atom;
+		ev.format = 32;
+		ev.data.l[0] = delete_atom;
+		ev.data.l[1] = CurrentTime;
+		XSendEvent (XtDisplay(ats->frame),
+			XtWindow(ats->frame), True, 0x00ffffff, (XEvent *) &ev);
+		XFlush(XtDisplay(ats->frame));
+		XtSetMappedWhenManaged(ats->frame, False);
+		XFlush(XtDisplay(ats->frame));
+		XtDestroyWidget(ats->frame);
+	}
+	free(ats); 
+}
+
 void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc,
 	Boolean save_obj)
 {
@@ -21,13 +69,13 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 	char * param_valuePtr;
 	struct mark_up * amptr = *mptr;
 	struct mark_up * pmptr ;
-	char * codetypePtr, *srcPtr, *wPtr, *hPtr, *bwPtr, *alignPtr;
+	char  *srcPtr, *wPtr, *hPtr, *bwPtr, *alignPtr;
 	CodeType codetype = CODE_TYPE_APPLET;
 	int border_width;
-	ValignType valignment;
+	AlignType valignment;
 	struct ele_rec * eptr;
 	AppletInfo * ats=NULL;
-	AppletInfo * saved_ats=amptr->saved_ats;
+	AppletInfo * saved_ats=amptr->s_ats;
 	int extra = 0;
 	int argcnt ;
 	Arg arg[10];
@@ -50,6 +98,9 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 	hPtr = ParseMarkTag(amptr->start, MT_APPLET, "HEIGHT"); /* REQUIRED */
 	if ((wPtr == NULL) || (hPtr == NULL)){
 		fprintf(stderr,"WIDTH & HEIGHT required in <APPLET>\n");
+		if (srcPtr) free(srcPtr);
+		if (wPtr) free(wPtr);
+		if (hPtr) free(hPtr);
 		return;
 	}
 	bwPtr = ParseMarkTag(amptr->start, MT_APPLET, "BORDER"); /* IMPLIED */
@@ -59,16 +110,23 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 		if ((border_width=atoi(bwPtr))<0)
 			border_width=0;
 				/* Check if this image will be top aligned */
+	if (bwPtr) free(bwPtr);
 	alignPtr = ParseMarkTag(amptr->start, MT_APPLET, "ALIGN");
 	if (caseless_equal(alignPtr, "TOP")) {
-		valignment = ALIGN_TOP;
+		valignment = VALIGN_TOP;
 	} else if (caseless_equal(alignPtr, "MIDDLE")) {
-		valignment = ALIGN_MIDDLE;
+		valignment = VALIGN_MIDDLE;
 	} else {
-		valignment = ALIGN_BOTTOM;
+		valignment = VALIGN_BOTTOM;
 	}
+	free(alignPtr);
 
 	ats = (AppletInfo *) malloc(sizeof(AppletInfo));
+	ats->height = atoi(hPtr) ;	/* in pixel */
+	ats->width = atoi(wPtr) ;
+	ats->frame = NULL;
+	free(hPtr);
+	free(wPtr);
 
 /*#### on doit avance mptr pour trouver <PARAM name=nnn value="une valeur"> */
 /* boucler tant qu'on a des <PARAM> puis boucler jusqu'a </APPLET> */
@@ -139,14 +197,13 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 		/*### la fin est obligatoire ### */
 		fprintf(stderr,"[TriggerMarkChanges] Tag </APPLET> not seen\n");
 		*mptr = pmptr;
+		_FreeAppletStruct(ats);
 		return;
 	}
 
 /*### mettre a jour mptr. Le mettre sur le tag </APPLET> */
 	*mptr = pmptr;
 
-	ats->height = atoi(hPtr) ;	/* in pixel */
-	ats->width = atoi(wPtr) ;
 	baseline = ats->height;
 
 	if (!pcc->preformat) {	 /* if line too long , add LINEFEED  */
@@ -161,12 +218,12 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
         if (pcc->x + ats->width > pcc->computed_max_x)
                 pcc->computed_max_x = pcc->x + ats->width;
 
-	if (valignment == ALIGN_TOP) {
+	if (valignment == VALIGN_TOP) {
 		baseline = 0;
-	} else if (valignment == ALIGN_MIDDLE) {
+	} else if (valignment == VALIGN_MIDDLE) {
 		baseline = baseline / 2;
 	}else {
-		valignment = ALIGN_BOTTOM;
+		valignment = VALIGN_BOTTOM;
 	}
 
 /* mettre a jour l'element . 'ats' contient toutes les infos: parametres taille */
@@ -177,7 +234,6 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 	ats->y = pcc->y;
 	ats->border_width = border_width;
 	ats->valignment = valignment;
-	ats->frame = NULL;
         if (!pcc->cw_only){            
 		pcc->applet_id++;
                 eptr = CreateElement(hw, E_APPLET, pcc->cur_font,
@@ -187,7 +243,7 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
                 eptr->anchor_tag_ptr = pcc->anchor_tag_ptr;
                 /* check the max line height. */
                 AdjustBaseLine(hw,eptr,pcc); 
-		eptr->applet_struct = ats;
+		eptr->ats = ats;
                 eptr->bwidth=border_width ;  
 		eptr->valignment = valignment;
 		eptr->applet_id = pcc->applet_id;
@@ -204,6 +260,7 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
         pcc->is_bol = False; 
 
 	if (pcc->cw_only) { /* just compute size */
+		_FreeAppletStruct(ats);
 		return;
 	}
 
@@ -333,22 +390,24 @@ void AppletPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pc
 
 			printf("Executing : %s\n",allcmdline);
 			system(allcmdline);
-			amptr->saved_ats = ats ;
+			amptr->s_ats = ats ;
 		}
+		eptr->ats = ats;
 	} else {		/* use the old window. It's a Resize */
 		if (saved_ats == NULL){
 			fprintf(stderr,"Abug in APPLET when resizing\n");
 		} else {
-			ats->frame = saved_ats->frame;
+			eptr->ats = saved_ats;
 			argcnt = 0;
 			XtSetArg(arg[argcnt], XmNx, ats->x); argcnt++;
 			XtSetArg(arg[argcnt], XmNy, ats->y); argcnt++;
 			XtSetArg(arg[argcnt], XmNwidth, ats->width); argcnt++;
 			XtSetArg(arg[argcnt], XmNheight, ats->height); argcnt++;
-			XtSetValues(ats->frame, arg, argcnt);
-			XtSetMappedWhenManaged(ats->frame, False);
-			XtManageChild(ats->frame);
+			XtSetValues(saved_ats->frame, arg, argcnt);
+			XtSetMappedWhenManaged(saved_ats->frame, False);
+			XtManageChild(saved_ats->frame);
 			XFlush(XtDisplay(hw));
+			_FreeAppletStruct(ats);	
 		}
 	}
 
@@ -379,13 +438,14 @@ void AppletRefresh(HTMLWidget hw, struct ele_rec *eptr)
 /*	x = x - hw->html.scroll_x; */
 /*	y = y - hw->html.scroll_y; */
 
-	if(eptr->applet_struct->frame == NULL ) return;
+	if(eptr->ats == NULL ) return;
+	if(eptr->ats->frame == NULL ) return;
 	x = eptr->x;
 	y = eptr->y;
-	px= x = x - hw->html.scroll_x;
-	py= y = y - hw->html.scroll_y;
+	px = x - hw->html.scroll_x;
+	py = y - hw->html.scroll_y;
 	XtSetArg(args[0], XtNx, px);
 	XtSetArg(args[1], XtNy, py);
-	XtSetValues(eptr->applet_struct->frame, args,2);
-	XtSetMappedWhenManaged(eptr->applet_struct->frame, True);
+	XtSetValues(eptr->ats->frame, args,2);
+	XtSetMappedWhenManaged(eptr->ats->frame, True);
 }

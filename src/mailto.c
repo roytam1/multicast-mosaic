@@ -9,17 +9,12 @@
 #include "../libnut/url-utils.h"
 #include "gui-dialogs.h"
 
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
-
 extern int do_post;
 extern char *post_content_type;
 extern char *post_data;
 extern char pre_title[80];
 
-extern mo_window *current_win;
-mo_status mo_post_mailto_form_win (char *to_address, char *subject);
+static mo_status mo_post_mailto_form_win (mo_window *win,char *to_address, char *subject);
 mo_status mo_send_mailto_message (char *text, char *to, char *subj, 
 				  char *content_type, char *url);
 void do_mailto_post(mo_window *win, char *to, char *from, char *subject, 
@@ -101,13 +96,13 @@ static XmxCallback (mailto_win_cb0)		/* send */
 	char *msg, *subj, *to;
       
 	XtUnmanageChild (win->mailto_win);
-	msg = XmxTextGetString (win->mailto_text);
+	msg = XmTextGetString (win->mailto_text);
 	if (!msg)
 		return;
 	if (msg[0] == '\0')
 		return;
-	to = XmxTextGetString (win->mailto_tofield);
-	subj = XmxTextGetString (win->mailto_subfield);
+	to = XmTextGetString (win->mailto_tofield);
+	subj = XmTextGetString (win->mailto_subfield);
 	mo_send_mailto_message(msg,to,subj,"text/plain",win->current_node->url);
 	free (msg);
 	free (to);
@@ -165,9 +160,9 @@ static XmxCallback (mailto_form_win_cb0) 		/* send */
 	char *subj, *to, *namestr;
 
 	XtUnmanageChild (win->mailto_form_win);
-	to = XmxTextGetString (win->mailto_form_tofield);
-	subj = XmxTextGetString (win->mailto_form_subfield);
-	namestr = XmxTextGetString(win->mailto_form_fromfield);
+	to = XmTextGetString (win->mailto_form_tofield);
+	subj = XmTextGetString (win->mailto_form_subfield);
+	namestr = XmTextGetString(win->mailto_form_fromfield);
 	do_mailto_post(win,to,namestr,subj,win->post_data);
 	free (namestr);
 	free (to);
@@ -198,9 +193,8 @@ static XmxCallback (mailto_form_win_cb2)		/* help */
 		NULL, NULL);
 }
 
-mo_status mo_post_mailto_win (char *to_address, char *subject)
+mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject)
 {
-  mo_window *win = current_win;
   FILE *fp;
   long pos;
   char namestr[1024],tmp[1024];
@@ -210,16 +204,13 @@ mo_status mo_post_mailto_win (char *to_address, char *subject)
 		char str[BUFSIZ];
 
 		sprintf(str,"Form Result(s) Posted from %s",pre_title);
-
-		return(mo_post_mailto_form_win(to_address,str));
-	}
-	else {
-		return(mo_post_mailto_form_win(to_address,subject));
+		return(mo_post_mailto_form_win(win,to_address,str));
+	} else {
+		return(mo_post_mailto_form_win(win,to_address,subject));
 	}
   }
 
-  if (!win->mailto_win)
-    {
+  if (!win->mailto_win) {
       Widget dialog_frame;
       Widget dialog_sep, buttons_form;
       Widget mailto_form;
@@ -317,8 +308,8 @@ mo_status mo_post_mailto_win (char *to_address, char *subject)
 
   /* fill in text fields */
 
-  sprintf(namestr, "%s <%s>", get_pref_string(eDEFAULT_AUTHOR_NAME),
-          get_pref_string(eDEFAULT_AUTHOR_EMAIL));
+  sprintf(namestr, "%s <%s>", mMosaicAppData.author_full_name,
+          mMosaicAppData.author_email);
   
   XmxTextSetString (win->mailto_fromfield, namestr);
   XmxTextSetString (win->mailto_tofield, to_address);
@@ -335,11 +326,11 @@ mo_status mo_post_mailto_win (char *to_address, char *subject)
   XmxTextSetString (win->mailto_text, "");
   
       /* tack signature on the end if it exists - code from Martin Hamilton */
-  if (get_pref_string(eSIGNATURE)) {
+  if (mMosaicAppData.signature) {
       XmxTextSetString (win->mailto_text, "\n\n");
           /* leave a gap... */
       XmTextSetInsertionPosition (win->mailto_text, 2);
-      if ((fp = fopen(get_pref_string(eSIGNATURE), "r")) != NULL) {
+      if ((fp = fopen(mMosaicAppData.signature, "r")) != NULL) {
           while(fgets(tmp, sizeof(tmp) - 1, fp)) {
               XmTextInsert(win->mailto_text,
                            pos = XmTextGetInsertionPosition (win->mailto_text),
@@ -424,9 +415,8 @@ char *b=NULL;
 }
 
 
-mo_status mo_post_mailto_form_win (char *to_address, char *subject)
+static mo_status mo_post_mailto_form_win (mo_window *win,char *to_address, char *subject)
 {
-  mo_window *win = current_win;
   char namestr[1024],*buf=NULL;
 
   if (!do_post)
@@ -531,8 +521,8 @@ mo_status mo_post_mailto_form_win (char *to_address, char *subject)
 
   /* fill in text fields */
 
-  sprintf(namestr, "%s <%s>", get_pref_string(eDEFAULT_AUTHOR_NAME),
-          get_pref_string(eDEFAULT_AUTHOR_EMAIL));
+  sprintf(namestr, "%s <%s>", mMosaicAppData.author_full_name,
+          mMosaicAppData.author_email);
   
   XmxTextSetString (win->mailto_form_fromfield, namestr);
   XmxTextSetString (win->mailto_form_tofield, to_address);
@@ -565,21 +555,17 @@ void do_mailto_post(mo_window *win, char *to, char *from, char *subject, char *b
 		char *buf=NULL;
 
 		buf=makeReadable(body,0);
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
+		if (mMosaicSrcTrace) {
 			fprintf(stderr,"To: [%s]\nFrom: [%s]\nSubj: [%s]\nBody: [%s]\n",to,from,subject,buf);
 		}
-#endif
 		mo_send_mailto_message(buf, to, subject, post_content_type, 
 				       win->current_node->url);
 		if (buf)
 			free(buf);
 	} else {
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
+		if (mMosaicSrcTrace) {
 			fprintf(stderr,"To: [%s]\nFrom: [%s]\nSubj: [%s]\nBody: [%s]\n",to,from,subject,body);
 		}
-#endif
 
 		mo_send_mailto_message(body, to, subject, post_content_type, 
 				       win->current_node->url);
@@ -599,11 +585,11 @@ FILE *mo_start_sending_mailto_message (char *to, char *subj,
   if (!to)
     return NULL;
   
-  if (get_pref_string(eMAIL_FILTER_COMMAND)) {
-      sprintf (cmd, "%s | %s", get_pref_string(eMAIL_FILTER_COMMAND), 
-               get_pref_string(eSENDMAIL_COMMAND));
+  if (mMosaicAppData.mail_filter_command) {
+      sprintf (cmd, "%s | %s", mMosaicAppData.mail_filter_command, 
+               mMosaicAppData.sendmail_command);
     } else {
-      sprintf (cmd, "%s", get_pref_string(eSENDMAIL_COMMAND));
+      sprintf (cmd, "%s", mMosaicAppData.sendmail_command);
     }
 
   if ((_fp = popen (cmd, "w")) == NULL)

@@ -1,35 +1,23 @@
-/* Please read copyright.tmpl. Don't remove next line */
+/* Please read copyright.nsca. Don't remove next line */
 #include "copyright.ncsa"
 
-#include <sys/time.h>
+/* Copyright (C) 1997 - G.Dauphin
+ * See the file "license.mMosaic" for information on usage and redistribution
+ * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+ */
+
 #include <stdio.h>
+#include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
 
-#include "../libmc/mc_defs.h"
-#include "HTML.h"
-#include "HTMLamp.h"
-#include "HTMLP.h"
-#include "HTMLPutil.h"
+#include "HTMLmiscdefs.h"
+#include "HTMLparse.h"
 
-static struct timeval Tv;
-static struct timezone Tz;
-
-static MarkType ParseMarkType(char *str);
-
-
-extern int tableSupportEnabled;
-
-extern int htmlwTrace;
-
-#ifdef NOT_ASCII
-#define TOLOWER(x)	(tolower(x))
-#else
-/*
- * A hack to speed up caseless_equal.  Thanks to Quincey Koziol for
+/* A hack to speed up caseless_equal.  Thanks to Quincey Koziol for
  * developing it for me
  */
-unsigned char map_table[256]={
+static unsigned char map_table[256]={
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,
     24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,
     45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,97,98,
@@ -46,34 +34,147 @@ unsigned char map_table[256]={
     239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255};
 
 #define TOLOWER(x)	(map_table[x])
-#endif /* NOT_ASCII */
 
-/*
- * Check if two strings are equal, ignoring case.
- * The strings must be of the same length to be equal.
- * return 1 if equal, 0 otherwise.
+typedef struct amp_esc_rec {
+	char *tag;
+	char value;
+} AmpEsc;
+
+static AmpEsc AmpEscapes[] = {
+	{"lt", '<'},
+	{"LT", '<'},
+	{"gt", '>'},
+	{"GT", '>'},
+	{"amp", '&'},
+	{"AMP", '&'},
+	{"quot", '\"'},
+	{"QUOT", '\"'},
+	{"nbsp", NBSP_CONST},
+	{"iexcl", '\241'},
+	{"cent", '\242'},
+	{"pound", '\243'},
+	{"curren", '\244'},
+	{"yen", '\245'},
+	{"brvbar", '\246'},
+	{"sect", '\247'},
+	{"uml", '\250'},
+	{"copy", '\251'},
+	{"ordf", '\252'},
+	{"laquo", '\253'},
+	{"not", '\254'},
+	{"shy", '\255'},
+	{"reg", '\256'},
+	{"macr", '\257'},
+	{"hibar", '\257'},
+	{"deg", '\260'},
+	{"plusmn", '\261'},
+	{"sup2", '\262'},
+	{"sup3", '\263'},
+	{"acute", '\264'},
+	{"micro", '\265'},
+	{"para", '\266'},
+	{"middot", '\267'},
+	{"cedil", '\270'},
+	{"sup1", '\271'},
+	{"ordm", '\272'},
+	{"raquo", '\273'},
+	{"frac14", '\274'},
+	{"frac12", '\275'},
+	{"frac34", '\276'},
+	{"iquest", '\277'},
+	{"Agrave", '\300'},
+	{"Aacute", '\301'},
+	{"Acirc", '\302'},
+	{"Atilde", '\303'},
+	{"Auml", '\304'},
+	{"Aring", '\305'},
+	{"AElig", '\306'},
+	{"Ccedil", '\307'},
+	{"Egrave", '\310'},
+	{"Eacute", '\311'},
+	{"Ecirc", '\312'},
+	{"Euml", '\313'},
+	{"Igrave", '\314'},
+	{"Iacute", '\315'},
+	{"Icirc", '\316'},
+	{"Iuml", '\317'},
+	{"ETH", '\320'},
+	{"Ntilde", '\321'},
+	{"Ograve", '\322'},
+	{"Oacute", '\323'},
+	{"Ocirc", '\324'},
+	{"Otilde", '\325'},
+	{"Ouml", '\326'},
+	{"times", '\327'}, /* ? */
+	{"Oslash", '\330'},
+	{"Ugrave", '\331'},
+	{"Uacute", '\332'},
+	{"Ucirc", '\333'},
+	{"Uuml", '\334'},
+	{"Yacute", '\335'},
+	{"THORN", '\336'},
+	{"szlig", '\337'},
+	{"agrave", '\340'},
+	{"aacute", '\341'},
+	{"acirc", '\342'},
+	{"atilde", '\343'},
+	{"auml", '\344'},
+	{"aring", '\345'},
+	{"aelig", '\346'},
+	{"ccedil", '\347'},
+	{"egrave", '\350'},
+	{"eacute", '\351'},
+	{"ecirc", '\352'},
+	{"euml", '\353'},
+	{"igrave", '\354'},
+	{"iacute", '\355'},
+	{"icirc", '\356'},
+	{"iuml", '\357'},
+	{"eth", '\360'},
+	{"ntilde", '\361'},
+	{"ograve", '\362'},
+	{"oacute", '\363'},
+	{"ocirc", '\364'},
+	{"otilde", '\365'},
+	{"ouml", '\366'},
+	{"divide", '\367'}, /* ? */
+	{"oslash", '\370'},
+	{"ugrave", '\371'},
+	{"uacute", '\372'},
+	{"ucirc", '\373'},
+	{"uuml", '\374'},
+	{"yacute", '\375'},
+	{"thorn", '\376'},
+	{"yuml", '\377'},
+	{NULL, '\0'},
+};
+
+static MarkType ParseMarkType(char *str);
+
+/* Check if two strings are equal, ignoring case. The strings must be of the
+ * same length to be equal. return 1 if equal, 0 otherwise.
  */
 int caseless_equal(char *str1, char *str2)
 {
 	if ((str1 == NULL)||(str2 == NULL))
 		return(0);
-	while ((*str1 != '\0')&&(*str2 != '\0')) {
+	while ( *str1 && *str2 ) {
 		if (TOLOWER(*str1) != TOLOWER(*str2))
 			return(0);
 		str1++;
 		str2++;
 	}
-	if ((*str1 == '\0')&&(*str2 == '\0'))
+	if ((*str1 == '\0') && (*str2 == '\0'))
 		return(1);
 	return(0);
 }
 
-/*
- * Check if two strings are equal in the first count characters, ignoring case.
+#if 0
+/* Check if two strings are equal in the first count characters, ignoring case.
  * The strings must both be at least of length count to be equal.
  * return 1 if equal, 0 otherwise.
  */
-int caseless_equal_prefix(char *str1, char *str2, int cnt)
+static int caseless_equal_prefix(char *str1, char *str2, int cnt)
 {
 	int i;
 
@@ -89,14 +190,12 @@ int caseless_equal_prefix(char *str1, char *str2, int cnt)
 	}
 	return(1);
 }
+#endif
 
-/*
- * Clean up the white space in a string.
- * Remove all leading and trailing whitespace, and turn all
- * internal whitespace into single spaces separating words.
- * The cleaning is done by rearranging the chars in the passed
- * txt buffer.  The resultant string will probably be shorter,
- * it can never get longer.
+/* Clean up the white space in a string. Remove all leading and trailing
+ * whitespace, and turn all internal whitespace into single spaces separating
+ * words. The cleaning is done by rearranging the chars in the passed txt buffer.
+ * The resultant string will probably be shorter, it can never get longer.
  */
 void clean_white_space(char *txt)
 {
@@ -120,10 +219,8 @@ void clean_white_space(char *txt)
 			ptr++;
 		if (*ptr == '\0')
 			break;
-		/*
-		 * If there are more words, insert a space and if space was 
-		 * removed move up remaining text.
-		 */
+/* If there are more words, insert a space and if space was 
+ * removed move up remaining text. */
 		*start++ = ' ';
 		if (start == ptr) {
 			while ((!isspace((int)*ptr))&&(*ptr != '\0'))
@@ -137,97 +234,64 @@ void clean_white_space(char *txt)
 	*start = '\0';
 }
 
-/*
- * parse an amperstand escape, and return the appropriate character, or
- * '\0' on error.
- * we should really only use caseless_equal_prefix for unterminated, and use
- * caseless_equal otherwise, but since there are so many escapes, and I
- * don't want to type everything twice, I always use caseless_equal_prefix
- * Turns out the escapes are case sensitive, use strncmp.
- * termination states:
- *	0: terminated with a ';'
- *	1: unterminated
- *	2: terminated with whitespace
+/* parse an amperstand escape, and return the appropriate character, or '\0' on
+ * error. Turns out the escapes are case sensitive, use strncmp.
  */
-char ExpandEscapes(char *esc, char **endp, int termination)
-{
-	int cnt;
-	char val;
-	int unterminated;
-
-	unterminated = (termination & 0x01);
-	esc++;
-	if (*esc == '#') {
-		if (unterminated) {
-			char *tptr;
-			char tchar;
-
-			tptr = (char *)(esc + 1);
-			while (isdigit((int)*tptr))
-				tptr++;
-			tchar = *tptr;
-			*tptr = '\0';
-			val = (char)atoi((esc + 1));
-			*tptr = tchar;
-			*endp = tptr;
-		} else {
-			val = (char)atoi((esc + 1));
-			*endp = (char *)(esc + strlen(esc));
-		}
-	} else {
-		int escLen, ampLen;
-		cnt = 0;
-		escLen = strlen(esc);	
-		while (AmpEscapes[cnt].tag != NULL) {
-			ampLen = strlen(AmpEscapes[cnt].tag);
-			if ((escLen == ampLen) && 
-			   (strncmp(esc, AmpEscapes[cnt].tag, ampLen) == 0)) {
-				val = AmpEscapes[cnt].value;
-				*endp = (char *)(esc +
-					strlen(AmpEscapes[cnt].tag));
-				break;
-			}
-			cnt++;
-		}
-		if (AmpEscapes[cnt].tag == NULL) {
-			if (htmlwTrace)
-				fprintf(stderr, "Error bad & string\n");
-			val = '\0';
-			*endp = (char *)NULL;
-		}
-	}
-	return(val);
+static char ExpandEscapes(char *esc)
+{               
+        int cnt;        
+        char val;               
+        char *endc;             
+        int escLen, ampLen;     
+                                
+        esc++;          
+        if (*esc == '#') {
+                val = (char)strtol((esc + 1),&endc,10);
+                if ( *endc != '\0') 
+                        return 0;
+                return val; 
+        }               
+/* other case */ 
+        cnt = 0;
+        escLen = strlen(esc);
+        while (AmpEscapes[cnt].tag != NULL) {
+                ampLen = strlen(AmpEscapes[cnt].tag);
+                if ((escLen == ampLen) &&
+                   (strncmp(esc, AmpEscapes[cnt].tag, ampLen) == 0)) {
+                        val = AmpEscapes[cnt].value;
+                        break;  
+                }       
+                cnt++;
+        }
+        if (AmpEscapes[cnt].tag == NULL)
+                return 0;
+        return(val);
 }
 
-/*
- * Clean the special HTML character escapes out of the text and replace
+/* Clean the special HTML character escapes out of the text and replace
  * them with the appropriate characters "&lt;" = "<", "&gt;" = ">",
  * "&amp;" = "&"
- * GAG:  apperantly &lt etc. can be left unterminated, what a nightmare.
- * Ok, better, they have to be terminated with white-space or ';'.
+ * Ok, better, they have to be terminated with ';'.
  * the '&' character must be immediately followed by a letter to be
  * a valid escape sequence.  Other &'s are left alone.
  * The cleaning is done by rearranging chars in the passed txt buffer.
  * if any escapes are replaced, the string becomes shorter.
+ * We stop the nightmare: strict conformance to HTML3.2. I understand
+ * '<' MUST be ';' terminated.
  */
-void clean_text(char *txt)
+static void clean_text(char *txt)
 {
-	int unterminated;
-	int space_terminated;
 	char *ptr;
 	char *ptr2;
 	char *start;
-	char *text;
-	char *tend;
 	char tchar;
 	char val;
 
 	if (txt == NULL)
 		return;
-	/* Quick scan to find escape sequences.
-	 * Escape is '&' followed by a letter (or a hash mark).
-	 * return if there are none.
-	 */
+/* Quick scan to find escape sequences. Escape is '&' followed by a letter
+ * (or a hash mark). return if there are none.
+ */
 	ptr = txt;
 	while (*ptr != '\0') {
 		if ((*ptr == '&')&&
@@ -237,70 +301,40 @@ void clean_text(char *txt)
 	}
 	if (*ptr == '\0')
 		return;
-	/*
-	 * Loop, replaceing escape sequences, and moving up remaining text.
-	 */
+/* Loop, replaceing escape sequences, and moving up remaining text. */
 	ptr2 = ptr;
 	while (*ptr != '\0') {
-		unterminated = 0;
-		space_terminated = 0;
-		/*
-		 * Extract the escape sequence from start to ptr
-		 */
+/* Extract the escape sequence from start to ptr */
 		start = ptr;
-		while ((*ptr != ';')&&(!isspace((int)*ptr))&&(*ptr != '\0'))
+		while ((*ptr != ';') && (*ptr != '\0'))
 			ptr++;
 		if (*ptr == '\0') {
 			fprintf(stderr,"warning: unterminated & (%s)\n", start);
-			unterminated = 1;
-		} else 
-			if (isspace((int)*ptr))
-				space_terminated = 1;
-		/*
-		 * Copy the escape sequence into a separate buffer.
-		 * Then clean spaces so the "& lt ;" = "&lt;" etc.
-		 * The cleaning should be unnecessary.
-		 */
+			ptr = start;
+			*ptr2++ = *ptr++;
+/* Copy forward remaining text until next escape sequence */
+			while (*ptr != '\0') {
+				if ((*ptr == '&')&&
+				    ((isalpha((int)*(ptr + 1)))||(*(ptr + 1) == '#')))
+					break;
+				*ptr2++ = *ptr++;
+			}
+			continue;
+		} 
+/* ptr is on ';' */
+/* Replace escape sequence with appropriate character */
 		tchar = *ptr;
 		*ptr = '\0';
-		text = (char *)malloc(strlen(start) + 1);
-		if (text == NULL) {
-			fprintf(stderr, "Cannot malloc space for & text\n");
-			*ptr = tchar;
-			return;
-		}
-		strcpy(text, start);
+		val = ExpandEscapes(start);
 		*ptr = tchar;
-		clean_white_space(text);
-
-		/*
-		 * Replace escape sequence with appropriate character
-		 */
-		val = ExpandEscapes(text, &tend,
-			((space_terminated << 1) + unterminated));
 		if (val != '\0') {
-			if (unterminated) {
-				tchar = *tend;
-				*tend = '\0';
-				ptr = (char *)(start + strlen(text) - 1);
-				*tend = tchar;
-			} else 
-				if (space_terminated)
-					ptr--;
 			*ptr2 = val;
-			unterminated = 0;
-			space_terminated = 0;
 		} else { 	/* invalid escape sequence. skip it.  */
 			fprintf(stderr, "Error bad & string\n");
 			ptr = start;
 			*ptr2 = *ptr;
 		}
-		free(text);
-
-		/*
-		 * Copy forward remaining text until you find the next
-		 * escape sequence
-		 */
+/* Copy forward remaining text until  next escape sequence */
 		ptr2++;
 		ptr++;
 		while (*ptr != '\0') {
@@ -313,55 +347,38 @@ void clean_text(char *txt)
 	*ptr2 = '\0';
 }
 
-/* Get a block of text from a HTML document.
- * All text from start to the end, or the first mark
- * (a mark is '<' or '</' followed by any letter or a '!')
- * is returned in a malloced buffer.  Also, endp returns
- * a pointer to the next '<' or '\0'
- * The returned text has already expanded '&' escapes.
+/* Get a block of text from a HTML document. All text from start to the end,
+ * or the first mark (a mark is '<' followed by any char)
+ * is returned in a malloced buffer.  Also, endp returns a pointer to the
+ * next '<' or '\0'. The returned text has already expanded '&' escapes.
  */
-char * get_text(char *start, char **endp)
+static char * get_text(char *start, char **endp, int * is_white)
 {
 	char *ptr;
 	char *text;
 	char tchar;
+	int len;
 
-	if (start == NULL)
-		return(NULL);
-	/*
-	 * Copy text up to beginning of a mark, or the end
-	 */
+	*is_white = 1;
+	len = 0;
+/* Copy text up to beginning of a mark, or the end */
 	ptr = start;
 	while (*ptr != '\0') {
-		if (*ptr == '<') {
-			if (isalpha((int)(*(ptr + 1))))
-				break;
-			if (*(ptr + 1) == '/') {
-				if (isalpha((int)(*(ptr + 2))))
-					break;
-			} else 
-				if (*(ptr + 1) == '!')  /* a comment */
-					break;
-		}
+		if (*ptr == '<')
+			break;
+		if (! isspace(*ptr))
+			*is_white = 0;
 		ptr++;
+		len++;
 	}
 	*endp = ptr;
 	if (ptr == start)
 		return(NULL);
-	/*
-	 * Copy the text into its own buffer, and clean it
-	 * of escape sequences.
-	 */
-	tchar = *ptr;
-	*ptr = '\0';
-	text = (char *)malloc(strlen(start) + 1);
-	if (text == NULL) {
-		fprintf(stderr, "Cannot malloc space for text\n");
-		*ptr = tchar;
-		return(NULL);
-	}
-	strcpy(text, start);
-	*ptr = tchar;
+/* Copy the text into its own buffer, and clean it of escape sequences. */
+	text = (char *)malloc(len + 1);
+	CHECK_OUT_OF_MEM(text);
+	strncpy(text, start, len);
+	text[len] = '\0';
 	clean_text(text);
 	return(text);
 }
@@ -371,7 +388,7 @@ char * get_text(char *start, char **endp)
  * its type, and fill in a mark_up structure to return.  Also returns
  * endp pointing to the ttrailing '>' in the original string.
  */
-struct mark_up * get_mark(char *start, char **endp)
+static struct mark_up * get_mark(char *start, char **endp)
 {
 	char *ptr;
 	char *text;
@@ -388,12 +405,8 @@ struct mark_up * get_mark(char *start, char **endp)
 	if (strncmp (start, "<!--", 4)==0)
 		comment=1;
 	start++;
-	first_gt = NULL;
 	mark = (struct mark_up *)malloc(sizeof(struct mark_up));
-	if (mark == NULL) {
-		fprintf(stderr, "Cannot malloc space for mark_up struct\n");
-		return(NULL);
-	}
+	CHECK_OUT_OF_MEM(mark);
 	ptr = start; 	/* Grab the mark text */
 
 	/* amb - skip over the comment text */
@@ -425,34 +438,30 @@ struct mark_up * get_mark(char *start, char **endp)
 			ptr = first_gt;
 		}
 	} /* end of: if (comment) */
-	while (ptr&&(*ptr != '>')&&(*ptr != '\0'))
+
+	while (*ptr && (*ptr != '>') )
 		ptr++;
-	if (ptr)
+	if (*ptr)		/* is on '>' */
 		*endp=ptr;
-	else
-		return(NULL); /*only if EOF and no close comment -- SWP*/
-	if (*ptr != '>') {
-		if (htmlwTrace)
-			fprintf(stderr, "error: bad mark format\n");
-		return(NULL);
+	else {
+		free(mark);
+		return(NULL); /*only if EOF and no close -- SWP*/
 	}
-	/* Copy the mark text to its own buffer, and
-	 * clean it of escapes, and odd white space.
-	 */
+
+/* Copy the mark text to its own buffer, and
+ * clean it of escapes, and odd white space.
+ */
 	tchar = *ptr;
 	*ptr = '\0';
 	text = (char *)malloc(strlen(start) + 1);
-	if (text == NULL) {
-		fprintf(stderr, "Cannot malloc space for mark\n");
-		*ptr = tchar;
-		return(NULL);
-	}
+	CHECK_OUT_OF_MEM(text);
 	strcpy(text, start);
 	*ptr = tchar;
 	clean_text(text);
-	/* Set whether this is the start or end of a mark
-	 * block, as well as determining its type.
-	 */
+
+/* Set whether this is the start or end of a mark
+ * block, as well as determining its type.
+ */
 	if (*text == '/') {
 		mark->is_end = 1;
 		mark->type = ParseMarkType((char *)(text + 1));
@@ -471,8 +480,7 @@ struct mark_up * get_mark(char *start, char **endp)
 	return(mark);
 }
 
-/*
- * Special version of get_text.  It reads all text up to the
+/* Special version of get_text.  It reads all text up to the
  * end of the plain text mark, or the end of the file.
  */
 static char * get_plain_text(char *start, char **endp)
@@ -483,31 +491,23 @@ static char * get_plain_text(char *start, char **endp)
 
 	if (start == NULL)
 		return(NULL);
-	/*
-	 * Read until stopped by end plain text mark.
-	 */
+/** Read until stopped by end plain text mark. */
 	ptr = start;
 	while (*ptr != '\0') {
-		/*
-		 * Beginning of a mark is '<' followed by any letter,
-		 * or followed by '!' for a comment,
-		 * or '</' followed by any letter.
-		 */
+/* Beginning of a mark is '<' followed by any letter, or followed by '!' for
+ * a comment, or '</' followed by any letter.
+ */
 		if ((*ptr == '<')&&
-		    ((isalpha((int)(*(ptr + 1))))||
-		    (*(ptr + 1) == '!')||
-		    ((*(ptr + 1) == '/')&&(isalpha((int)(*(ptr + 2))))))) {
+		    (isalpha((int)(*(ptr + 1))) ||
+		     (*(ptr + 1) == '!') ||
+		     ((*(ptr + 1) == '/')&&(isalpha((int)(*(ptr + 2))))))) {
 			struct mark_up *mp;
 			char *ep;
 
-			/*
-			 * We think we found a mark.  If it is the
-			 * end of plain text, break out
-			 */
+/* We think we found a mark.  If it is the end of plain text, break out */
 			mp = get_mark(ptr, &ep);
 			if (mp != NULL) {
-				if (((mp->type == M_PLAIN_TEXT)||
-				    (mp->type == M_LISTING_TEXT))&&(mp->is_end)) {
+				if ((mp->type == M_PLAIN_TEXT) && (mp->is_end)) {
 					if (mp->end != NULL)
 						free((char *)mp->end);
 					free((char *)mp);
@@ -525,199 +525,142 @@ static char * get_plain_text(char *start, char **endp)
 	*endp = ptr;
 	if (ptr == start)
 		return(NULL);
-	/*
-	 * Copy text to its own malloced buffer, and clean it of
-	 * HTML escapes.
-	 */
+/* Copy text to its own malloced buffer, and clean it of HTML escapes. */
 	tchar = *ptr;
 	*ptr = '\0';
 	text = (char *)malloc(strlen(start) + 1);
-	if (text == NULL) {
-		fprintf(stderr, "Cannot malloc space for text\n");
-		*ptr = tchar;
-		return(NULL);
-	}
+	CHECK_OUT_OF_MEM(text);
 	strcpy(text, start);
 	*ptr = tchar;
 	clean_text(text);
 	return(text);
 }
 
-static char *atts[]={"text","bgcolor","alink","vlink","link",NULL};
+/* Add an object to the parsed object list. Return a pointer to the
+ * current (end) position in the list. If the object is a normal text object
+ * containing nothing but white space, throw it out, unless we have been
+ * told to keep white space.
+ */
+static struct mark_up * AddObj( struct mark_up **listp, struct mark_up *current,
+	struct mark_up *mark)
+{
+	if (mark == NULL)
+		return(current);
 
-/*
- * Main parser of HTML text.  Takes raw text, and produces a linked
+/* Add object to either the head of the list for a new list,
+ * or at the end after the current pointer.
+ */
+	if (*listp == NULL) {
+		*listp = mark;
+		current = *listp;
+	} else {
+		current->next = mark;
+		current = current->next;
+	}
+	current->next = NULL;
+	return(current);
+}
+
+/* Main parser of HTML text.  Takes raw text, and produces a linked
  * list of mark objects.  Mark objects are either text strings, or
  * starting and ending mark delimiters.
  * The old list is passed in so it can be freed, and in the future we
  * may want to add code to append to the old list.
  */
-struct mark_up * HTMLParse( struct mark_up *old_list, char *str, Widget hw)
+struct mark_up * HTMLParse( char *str)
 {
-	int preformat;
 	char *start, *end;
 	char *text, *tptr;
-	struct mark_up *mark;
-	struct mark_up *list;
-	struct mark_up *current;
+	struct mark_up *mark = NULL;
+	struct mark_up *list = NULL;
+	struct mark_up *current = NULL;
+	int is_white = 0;		/* is a white text ? */
 
-	if (htmlwTrace) {
-		gettimeofday(&Tv, &Tz);
-		fprintf(stderr,"HTMLParse enter (%d.%d)\n",Tv.tv_sec,Tv.tv_usec);
-	}
-	preformat = 0;
-	FreeObjList(old_list); /*Free the previous Object List if one exists */
 	if (str == NULL)
 		return(NULL);
-	list = NULL;
-	current = NULL;
 	start = str;
 	end = str;
-	mark = NULL;
 	while (*start != '\0') {
-		/* Get some text (if any).  If our last mark was
-		 * a begin plain text we call different function
-		 * If last mark was <PLAINTEXT> we lump all the rest of
-		 * the text in.
-		 */
+
+/* Get some text (if any).  If our last mark was a begin plain text we call
+ * different function. If last mark was <PLAINTEXT> we lump all the rest of
+ * the text in. */
+
 		if((mark!=NULL) && (mark->type==M_PLAIN_FILE)&& (!mark->is_end)) {
 			text = start;
 			end = text;
 			while (*end != '\0')
 				end++;
-			/*
-			 * Copy text to its own malloced buffer, and clean it of
-			 * HTML escapes.
-			 */
+/* Copy text to its own malloced buffer, and clean it of HTML escapes. */
 			tptr = (char *)malloc(strlen(text) + 1);
-			if (tptr == NULL) {
-				fprintf(stderr, "Cannot malloc space for text\n");
-				return(list);
-			}
+			CHECK_OUT_OF_MEM(tptr);
 			strcpy(tptr, text);
 			text = tptr;
-		} else 
-			if ((mark != NULL)&& ((mark->type == M_PLAIN_TEXT)||
-			    (mark->type == M_LISTING_TEXT))&& (!mark->is_end)) {
+		} else {
+			if ((mark != NULL)&& (mark->type == M_PLAIN_TEXT)&& 
+			    (!mark->is_end)) {
+				is_white = 0;
 				text = get_plain_text(start, &end);
 			} else {
-				text = get_text(start, &end);
+				text = get_text(start, &end, &is_white);
 			}
-		/*
-		 * If text is OK, put it into a mark structure, and add
-		 * it to the linked list.
-		 */
-		if (text == NULL) {
-			if (start != end) { 
-				fprintf(stderr,
-					"error parsing text,bailing out\n");
-				return(list);
-			}
-		} else {
+		}
+/* If text is OK, put it into a mark structure, and add it to the linked list. */
+		if (text ) {
 			mark = (struct mark_up *)malloc(sizeof(struct mark_up));
-			if (mark == NULL) {
-				fprintf(stderr, "Cannot malloc for mark_up struct\n");
-				return(list);
-			}
+			CHECK_OUT_OF_MEM(mark);
 			mark->type = M_NONE;	/* it's a text */
 			mark->is_end = 0;
 			mark->start = NULL;
 			mark->text = text;
+			mark->is_white_text = is_white;
 			mark->end = NULL;
 			mark->next = NULL;
-			mark->saved_aps = NULL;
-			mark->table_info1 = NULL;
-			current = AddObj(&list, current, mark, preformat);
+			mark->s_aps = NULL;
+			mark->s_ats = NULL;
+			mark->s_picd = NULL;
+			mark->t_p1 = NULL;
+			mark->anc_name = NULL;
+			mark->anc_href = NULL;
+			mark->anc_title = NULL;
+			current = AddObj(&list, current, mark);
 		}
+/* end is on '<' or '\0' */
 		start = end;
 		if (*start == '\0')
-			break;
-		/*
-		 * Get the next mark if any, and if it is
-		 * valid, add it to the linked list.
-		 */
+			break;		/* end html string, parse is done */
+
+/* Get the next mark if any, and if it is valid, add it to the linked list. */
+/* star is on '<' */
 		mark = get_mark(start, &end);
 		if (mark == NULL) {
-			if (start != end) {
-				if (htmlwTrace)
-					fprintf(stderr, "error parsing mark, bailing out\n");
-				return(list);
-			}
-		} else {
-/* WE SUCK.  We're a bunch of pathetic followers. */
-/* ABSOLUTE CHEEZE OF THE FINEST KIND - bjs - 9/21/95 */
-                    if(mark->type==M_DOC_BODY && mark->start){
-			char *tmp=NULL, *tmp_bgname=NULL;
-			int i;
+			fprintf(stderr, "error parsing mark, missing '>'\n");
+			return(list);
+		}
+/* end is on '>' */
 
-			if (!NoBodyImages(hw)) {
-				tmp_bgname=ParseMarkTag(mark->start,
-						 MT_DOC_BODY,"background");
-			}
-			if (!NoBodyColors(hw)) {
-				for(i=0;atts[i];i++) {
-					tmp=ParseMarkTag(mark->start,
-							 MT_DOC_BODY,atts[i]);
-					if (tmp) {
-						hw_do_color(hw,atts[i],tmp);
-						free(tmp);
-						tmp=NULL;
-					}
-				}
-			}
-                        if (tmp_bgname) {
-                                hw_do_bg(hw,tmp_bgname);
-                                free(tmp_bgname);
-                                tmp_bgname=NULL;
-                        }     
-		    }
-		    mark->next = NULL;
-		    mark->table_info1 = NULL;
-		    mark->saved_aps = NULL;
-		    mark->anchor_name = NULL;
-		    mark->anchor_href = NULL;
-		    mark->anchor_title = NULL;
-                    current = AddObj(&list, current, mark, preformat);
-		}
+		mark->is_white_text = is_white = 0;
+		mark->next = NULL;
+		mark->s_aps = NULL;
+		mark->s_ats = NULL;
+		mark->s_picd = NULL;
+		mark->t_p1 = NULL;
+		mark->anc_name = NULL;
+		mark->anc_href = NULL;
+		mark->anc_title = NULL;
+		current = AddObj(&list, current, mark);
 		start = (char *)(end + 1);
-		if ((mark != NULL)&&(mark->type == M_PLAIN_FILE)&&
+/* start is a pointer after the '>' character */
+		if ((mark != NULL)&&
+		    (mark->type == M_PLAIN_FILE || 
+		     mark->type == M_PLAIN_TEXT || mark->type == M_PREFORMAT) &&
 		    (!mark->is_end)) {
-			/* A linefeed immediately after the <PLAINTEXT>
-			 * mark is to be ignored.
-			 */
+/* A linefeed immediately after the <PLAINTEXT> mark is to be ignored. */
+/* A linefeed immediately after the <XMP> mark is to be ignored. */
+/* A linefeed immediately after <PRE> mark is to be ignored. */
 			if (*start == '\n')
 				start++;
-			continue;
 		} 
-		if ((mark != NULL)&&((mark->type == M_PLAIN_TEXT)||
-		    (mark->type == M_LISTING_TEXT))&& (!mark->is_end)) {
-			/* A linefeed immediately after the <XMP>
-		 	* or <LISTING> mark is to be ignored.
-		 	*/
-			if (*start == '\n')
-				start++;
-			continue;
-		} 
-		/*
-		 * If we are parsing pre-formatted text we need to set a
-		 * flag so we don't throw out needed linefeeds.
-		 */
-		if ((mark != NULL)&&(mark->type == M_PREFORMAT)) {
-			if (mark->is_end) {
-				preformat = 0;
-			} else {
-				preformat = 1;
-				/* A linefeed immediately after
-				 * <PRE> mark is to be ignored.
-		 		*/
-				if (*start == '\n')
-					start++;
-			}
-		}
-	}
-	if (htmlwTrace) {
-		gettimeofday(&Tv, &Tz);
-		fprintf(stderr,"HTMLParse exit (%d.%d)\n", Tv.tv_sec, Tv.tv_usec);
 	}
 	return(list);
 }
@@ -785,8 +728,6 @@ static MarkType ParseMarkType(char *str)
 		type = M_ADDRESS;
 	} else if (caseless_equal(str, MT_PLAIN_TEXT)) {
 		type = M_PLAIN_TEXT;
-	} else if (caseless_equal(str, MT_LISTING_TEXT)) {
-		type = M_LISTING_TEXT;
 	} else if (caseless_equal(str, MT_PLAIN_FILE)) {
 		type = M_PLAIN_FILE;
 	} else if (caseless_equal(str, MT_PARAGRAPH)) {
@@ -927,10 +868,7 @@ static char * AnchorTag( char **ptrp, char **startp, char **endp)
 	if (!has_value) {	/* set a tag value of 1. */
 		*ptrp = *endp;
 		tag_val = (char *)malloc(strlen("1") + 1);
-		if (tag_val == NULL) {
-			fprintf(stderr, "can't malloc space for tag value\n");
-			return(NULL);
-		}
+		CHECK_OUT_OF_MEM(tag_val);
 		strcpy(tag_val, "1");
 		return(tag_val);
 	}
@@ -951,12 +889,7 @@ static char * AnchorTag( char **ptrp, char **startp, char **endp)
 	tchar = *ptr;
 	*ptr = '\0';
 	tag_val = (char *)malloc(strlen(start) + 1);
-	if (tag_val == NULL) {
-		fprintf(stderr, "can't malloc space for tag value\n");
-		*ptr = tchar;
-		*ptrp = ptr;
-		return(NULL);
-	}
+	CHECK_OUT_OF_MEM(tag_val);
 	strcpy(tag_val, start);
 	*ptr = tchar;
 

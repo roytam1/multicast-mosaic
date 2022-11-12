@@ -15,15 +15,13 @@
 **
 */
 
+#include <stdio.h>
 #include <string.h>
 
 #include "HTAAUtil.h"
 #include "HTAssoc.h"
 #include "HTString.h"
-
-#ifndef DISABLE_TRACE
-extern int www2Trace;
-#endif
+#include "HTParams.h"		/* params from X resources */
 
 PUBLIC HTAssocList *HTAssocList_new NOARGS
 {
@@ -60,9 +58,7 @@ PUBLIC void HTAssocList_add ARGS3(HTAssocList *,	alist,
 	if (value) StrAllocCopy(assoc->value, value);
 	HTList_addObject(alist, (void*)assoc);
     }
-#ifndef DISABLE_TRACE
-    else if (www2Trace) fprintf(stderr,"HTAssoc_add: ERROR: assoc list NULL!\n");
-#endif
+    else if (wWWParams.trace) fprintf(stderr,"HTAssoc_add: ERROR: assoc list NULL!\n");
 }
 
 

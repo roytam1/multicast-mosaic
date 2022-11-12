@@ -14,7 +14,6 @@
 #  agent following it [no spaces] should be the default agent to use) and
 #  anything else (considered an agent spoof line).
 #
--  This is a seperator...as long as the first thing is a dash
 #  This is a comment line
 #
 # This is the "example" agent. If you don't like it...comment it out.

@@ -9,13 +9,14 @@
 **	Override this module if you are making a new GUI browser.
 **
 */
-#include "HTML.h"
 
+#include <sys/types.h>
 #include <ctype.h>
 #include <stdio.h>
 
+#include "HText.h"
+#include "HTML.h"
 #include "HTAtom.h"
-#include "HTChunk.h"
 #include "HText.h"
 
 #include "HTAlert.h"
@@ -115,7 +116,7 @@ static char * ISO_Latin1[] = {
 /*	Character handling
 **	------------------
 */
-PRIVATE void HTML_put_character ARGS2(HTStructured *, me, char, c)
+PRIVATE void HTML_put_character (HTStructured *me, char c, caddr_t appd)
 {
 	if (!me->text) {
 		me->text = HText_new();
@@ -130,7 +131,7 @@ PRIVATE void HTML_put_character ARGS2(HTStructured *, me, char, c)
 **	This is written separately from put_character becuase the loop can
 **	in some cases be promoted to a higher function call level for speed.
 */
-PRIVATE void HTML_put_string ARGS2(HTStructured *, me, WWW_CONST char*, s)
+PRIVATE void HTML_put_string (HTStructured * me, WWW_CONST char* s, caddr_t appd)
 {
 	if (!me->text) {
 		me->text = HText_new();
@@ -142,13 +143,13 @@ PRIVATE void HTML_put_string ARGS2(HTStructured *, me, WWW_CONST char*, s)
 /*	Buffer write
 **	------------
 */
-PRIVATE void HTML_write ARGS3(HTStructured *, me, WWW_CONST char*, s, int, l)
+PRIVATE void HTML_write (HTStructured * me, WWW_CONST char* s, int l, caddr_t appd)
 {
 	WWW_CONST char* p;
 	WWW_CONST char* e = s+l;
 
 	for (p=s; s<e; p++)
-		HTML_put_character(me, *p);
+		HTML_put_character(me, *p,appd);
 }
 
 /*		Expanding entities
@@ -156,9 +157,9 @@ PRIVATE void HTML_write ARGS3(HTStructured *, me, WWW_CONST char*, s, int, l)
 **	(In fact, they all shrink!)
 */
 
-PRIVATE void HTML_put_entity ARGS2(HTStructured *, me, int, entity_number)
+PRIVATE void HTML_put_entity (HTStructured *me, int entity_number, caddr_t appd)
 {
-    HTML_put_string(me, ISO_Latin1[entity_number]);/* @@ Other representations */
+    HTML_put_string(me, ISO_Latin1[entity_number],appd);/* @@ Other representations */
 }
 
 /*	Free an HTML object
@@ -172,31 +173,31 @@ PRIVATE void HTML_put_entity ARGS2(HTStructured *, me, int, entity_number)
 **	If non-interactive, everything is freed off.   No: crashes -listrefs
 **	Otherwise, the interactive object is left.	
 */
-PRIVATE void HTML_free ARGS1(HTStructured *, me)
+PRIVATE void HTML_free (HTStructured *me, caddr_t appd)
 {
 	if (me->text)
 		HText_endAppend(me->text);
   
 	if (me->target) {
-		(*me->targetClass.end_document)(me->target);
-		(*me->targetClass.free)(me->target);
+		(*me->targetClass.end_document)(me->target,appd);
+		(*me->targetClass.free)(me->target,appd);
 	}
 	free(me);
 }
 
-PRIVATE void HTML_handle_interrupt ARGS1(HTStructured *, me)
+PRIVATE void HTML_handle_interrupt (HTStructured *me, caddr_t appd)
 {
 	if (me->text)
 		HText_doAbort (me->text);
   
 	if (me->target) {
-		(*me->targetClass.handle_interrupt)(me->target);
+		(*me->targetClass.handle_interrupt)(me->target,appd);
 	}
 /* Not necessarily safe... */
 /* free(me); */
 }
 
-PRIVATE void HTML_end_document ARGS1(HTStructured *, me)
+PRIVATE void HTML_end_document (HTStructured * me, caddr_t appd)
 {			/* Obsolete */
 }
 

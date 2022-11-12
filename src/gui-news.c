@@ -1,9 +1,6 @@
 /* Please read copyright.ncsa. Don't remove next line */
 #include "copyright.ncsa"
 
-#include "libhtmlw/HTML.h"
-#include "mosaic.h"
-
 #include <Xm/LabelG.h>
 #include <Xm/PushB.h>
 #include <Xm/ScrolledW.h>
@@ -15,14 +12,19 @@
 #include <Xm/Protocols.h>
 
 #include <pwd.h>
+
+#include "libhtmlw/HTML.h"
+#include "mosaic.h"
+
+#include "../libwww2/HText.h"
 #include "newsrc.h"
 #include "libwww2/HTNews.h"
 #include "libwww2/HTAlert.h"
-#include "prefs.h"
 #include "gui.h"
 #include "gui-news.h"
 #include "libnut/system.h"
 #include "gui-dialogs.h"
+#include "gui-documents.h"
 
 #define MAX_BUF 512
 
@@ -72,7 +74,7 @@ void gui_news_subgroup(mo_window *win)
 		subscribegroup (NewsGroup);
 		newsrc_flush ();
 		sprintf (buf, "%s successfully subscribed", NewsGroup);
-		HTProgress (buf);
+		mo_gui_notify_progress (buf,win);
 	}
 }
 
@@ -83,15 +85,15 @@ void gui_news_unsubgroup(mo_window *win)
 		unsubscribegroup (NewsGroup);
 		newsrc_flush ();
 		sprintf (buf, "%s successfully unsubscribed", NewsGroup);
-		HTProgress (buf);
+		mo_gui_notify_progress (buf,win);
 	}
 }
 
 void gui_news_flush(mo_window *win)
 {
-	HTProgress ("Flushing newsrc data");
+	mo_gui_notify_progress ("Flushing newsrc data",win);
 	newsrc_flush ();
-	HTProgress ("");
+	mo_gui_notify_progress ("",win);
 }
 
 void gui_news_flushgroup(mo_window *win)
@@ -102,9 +104,9 @@ void gui_news_flushgroup(mo_window *win)
 		return;
 	sprintf (buf, "Flushing newsrc data for %s", 
 			NewsGroupS?NewsGroupS->name : "current group");
-	HTProgress (buf);
+	mo_gui_notify_progress (buf,win);
   	newsrc_flush ();
-	HTProgress ("");
+	mo_gui_notify_progress (" ",win);
 }
 
 void gui_news_list(mo_window *win)
@@ -176,7 +178,7 @@ void gui_news_markGroupRead (mo_window *win)
 		return;
 	markrangeread (NewsGroupS, NewsGroupS->minart, NewsGroupS->maxart);
 	sprintf (buf, "All articles in %s marked read", NewsGroupS->name);
-	HTProgress (buf);
+	mo_gui_notify_progress (buf,win);
 
 /* Return to newsgroup list */
 	sprintf (buf, "news:*");
@@ -191,7 +193,7 @@ void gui_news_markGroupUnread (mo_window *win)
 		return;
 	markrangeunread (NewsGroupS, NewsGroupS->minart, NewsGroupS->maxart);
 	sprintf (buf, "All articles in %s marked unread", NewsGroupS->name);
-	HTProgress (buf);
+	mo_gui_notify_progress (buf,win);
 /* Return to newsgroup list */
 	sprintf (buf, "news:*");
 	mo_load_window_text (win, buf, NULL);
@@ -205,7 +207,7 @@ void gui_news_markArticleUnread (mo_window *win)
 		return;
 	markunread (NewsGroupS, CurrentArt->num);
 	sprintf (buf, "Article %s marked unread", CurrentArt->ID);
-	HTProgress (buf);
+	mo_gui_notify_progress (buf,win);
 	sprintf (buf, "news:%s", NewsGroup);
 	mo_load_window_text (win, buf, NULL);
 }
@@ -329,9 +331,10 @@ static XmxCallback (include_button_cb) /* Why is this here ?*/
 
 /* ----------------------- mo_post_news_window -------------------------- */
 
-int NNTPpost(char *from, char *subj, char *ref, char *groups, char *msg);
-int NNTPgetarthdrs(char *art,char **ref, char **grp, char **subj, char **from);
-char *NNTPgetquoteline(char *art);
+int NNTPpost(char *from, char *subj, char *ref, char *groups, char *msg, caddr_t appd);
+int NNTPgetarthdrs(char *art,char **ref, char **grp, char **subj, char **from,
+   caddr_t appd);
+char *NNTPgetquoteline(char *art,caddr_t appd);
 
 static XmxCallback (news_win_cb0)			/* POST */
 {
@@ -339,15 +342,15 @@ static XmxCallback (news_win_cb0)			/* POST */
 	char *msg,*subj,*group,*from;
 
 	XtUnmanageChild (win->news_win);
-	msg = XmxTextGetString (win->news_text);
-	from = XmxTextGetString (win->news_text_from);
-	subj = XmxTextGetString (win->news_text_subj);
-	group = XmxTextGetString (win->news_text_group);
+	msg = XmTextGetString (win->news_text);
+	from = XmTextGetString (win->news_text_from);
+	subj = XmTextGetString (win->news_text_subj);
+	group = XmTextGetString (win->news_text_group);
 	if (!msg)
 		return;
 	if (msg[0] == '\0')
 		return;
-	NNTPpost(from, subj, NULL, group, msg);
+	NNTPpost(from, subj, NULL, group, msg, (caddr_t) win);
 	free(msg);
 	free(from);
 	free(group);
@@ -398,15 +401,15 @@ static XmxCallback (follow_win_cb0)	 	/* POST */
 	char *msg,*subj,*group,*from;
 
 	XtUnmanageChild (win->news_win);
-	msg = XmxTextGetString (win->news_text);
-	from = XmxTextGetString (win->news_text_from);
-	subj = XmxTextGetString (win->news_text_subj);
-	group = XmxTextGetString (win->news_text_group);
+	msg = XmTextGetString (win->news_text);
+	from = XmTextGetString (win->news_text_from);
+	subj = XmTextGetString (win->news_text_subj);
+	group = XmTextGetString (win->news_text_group);
 	if (!msg)
 		return;
 	if (msg[0] == '\0')
 		return;
-	NNTPpost(from, subj, win->newsfollow_ref, group, msg); 
+	NNTPpost(from, subj, win->newsfollow_ref, group, msg, (caddr_t) win); 
 	free(msg);
 	free(from);
 	free(group);
@@ -465,7 +468,7 @@ static XmxCallback (follow_win_cb4)		/* QUOTE */
  * inserting the lines in reverse order */
 	XmTextSetInsertionPosition (win->news_text, pos+strlen(line));
 
-	if(line = NNTPgetquoteline(win->newsfollow_artid)){
+	if(line = NNTPgetquoteline(win->newsfollow_artid, (caddr_t)win)){
 		do {
 			XmTextInsert(win->news_text,
 				pos = XmTextGetInsertionPosition (win->news_text),
@@ -474,7 +477,7 @@ static XmxCallback (follow_win_cb4)		/* QUOTE */
  * inserting the lines in reverse order */
 			XmTextSetInsertionPosition (win->news_text, 
 					pos+strlen(line));
-		} while (line = NNTPgetquoteline(NULL));
+		} while (line = NNTPgetquoteline(NULL, (caddr_t)win));
 	}
 }
 
@@ -495,7 +498,8 @@ mo_status mo_post_follow_win (mo_window *win)
 		   &(win->newsfollow_ref), 
 		   &(win->newsfollow_grp), 
 		   &(win->newsfollow_subj), 
-		   &(win->newsfollow_from));
+		   &(win->newsfollow_from),
+		   (caddr_t) win);
     
     /* add a re: if needed*/
     if(strncmp("Re: ",win->newsfollow_subj,4) && 
@@ -533,8 +537,8 @@ mo_status mo_post_generic_news_win(mo_window *win, int follow)
   long pos;
 
   sprintf (namestr, "%s <%s>", 
-           get_pref_string(eDEFAULT_AUTHOR_NAME),
-           get_pref_string(eDEFAULT_AUTHOR_EMAIL));
+           mMosaicAppData.author_full_name,
+           mMosaicAppData.author_email);
   
   if (!win->news_win) {
       /* Create it for the first time. */
@@ -641,11 +645,11 @@ mo_status mo_post_generic_news_win(mo_window *win, int follow)
       XmxTextSetString (win->news_text, "");
       
           /* tack signature on the end if it exists - code from Martin Hamilton */
-      if (get_pref_string(eSIGNATURE)) {
+      if (mMosaicAppData.signature) {
           XmxTextSetString (win->news_text, "\n\n");
               /* leave a gap... */
           XmTextSetInsertionPosition (win->news_text, 2);
-          if ((fp = fopen(get_pref_string(eSIGNATURE), "r")) != NULL) {
+          if ((fp = fopen(mMosaicAppData.signature, "r")) != NULL) {
               while(fgets(tmp, sizeof(tmp) - 1, fp)) {
                   XmTextInsert(win->news_text,
                                pos = XmTextGetInsertionPosition (win->news_text),

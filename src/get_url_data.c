@@ -16,16 +16,13 @@
 #include "mosaic.h"
 #include "../libmc/mc_dispatch.h"
 #include "../libmc/mc_misc.h"
+#include "mo-www.h"
 
 /* Defined in gui.c */
 extern char *cached_url;
-extern mo_window *current_win;
 
 /* Defined in gui-documents.c */
 extern int interrupted;
-extern int loading_inlined_images;
-extern int installed_colormap;
-extern Colormap installed_cmap;
 
 void GetUrlData(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -52,7 +49,6 @@ void GetUrlData(Widget w, XtPointer clid, XtPointer calld)
 #endif
 	internal_numeo = eods->num_eo;
 
-	mo_set_current_cached_win (win);
 	cached_url = win->cached_url ? win->cached_url : "lose";
 	win->cached_url = cached_url;
 
@@ -87,7 +83,7 @@ void GetUrlData(Widget w, XtPointer clid, XtPointer calld)
 	/* We have to load the data. */
 	fnam = mo_tmpnam(src);
 	interrupted = 0;
-	rc = mo_pull_er_over_virgin (src, fnam);
+	rc = mo_pull_er_over_virgin (src, fnam,win);
 	if (!rc) {
 		free (fnam);
 		return;

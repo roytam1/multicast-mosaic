@@ -8,11 +8,12 @@
 #include "HTStream.h"
 #include "HTAnchor.h"
 
-extern HTStream* HTPlainPresent PARAMS((
+extern HTStream* HTPlainPresent (
         HTPresentation *        pres,
         HTParentAnchor *        anchor,
         HTStream *              sink, 
         HTFormat                format_in,
-        int                     compressed));
+        int                     compressed,
+	caddr_t			appd);
 
 #endif

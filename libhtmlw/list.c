@@ -21,8 +21,6 @@
 #include <stdio.h>
 #include "listP.h"
 
-extern int htmlwTrace;
-
 static void ListPrintErr( char *s)
 {
 	fprintf(stderr,"%s",s);

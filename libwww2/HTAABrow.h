@@ -49,16 +49,9 @@ and HTConfirm() to get the username, password and some confirmation from the use
 HTAA_shouldRetryWithAuth() determines whether to retry the request with AA or 
 with a new AA (in case username or password was misspelled).
 
-HTAA_TryWithAuth() sets up everything for an automatic first try 
-with authentication.
-
-HTAA_ClearAuth() clears the currently allocated authentication record.
-      
 */
 
-/* PUBLIC                                               HTAA_composeAuth()
-**
-**      COMPOSE THE ENTIRE AUTHORIZATION HEADER LINE IF WE
+/*      COMPOSE THE ENTIRE AUTHORIZATION HEADER LINE IF WE
 **      ALREADY KNOW, THAT THE HOST MIGHT REQUIRE AUTHORIZATION
 **
 ** ON ENTRY:
@@ -74,14 +67,13 @@ HTAA_ClearAuth() clears the currently allocated authentication record.
 **
 **              As usual, this string is automatically freed.
 */
-PUBLIC char *HTAA_composeAuth PARAMS((WWW_CONST char * hostname,
-                                      WWW_CONST int   portnumber,
-                                      WWW_CONST char * docname));
+PUBLIC char *HTAA_composeAuth (WWW_CONST char * hostname,
+                               WWW_CONST int   portnumber,
+                               WWW_CONST char * docname,
+				caddr_t		appd);
 
 
-/* BROWSER PUBLIC                               HTAA_shouldRetryWithAuth()
-**
-**              DETERMINES IF WE SHOULD RETRY THE SERVER
+/*              DETERMINES IF WE SHOULD RETRY THE SERVER
 **              WITH AUTHORIZATION
 **              (OR IF ALREADY RETRIED, WITH A DIFFERENT
 **              USERNAME AND/OR PASSWORD (IF MISSPELLED))
@@ -106,60 +98,11 @@ PUBLIC char *HTAA_composeAuth PARAMS((WWW_CONST char * hostname,
 **                                field (in function HTAA_composeAuth()).
 **                      NO, otherwise.
 */
-PUBLIC HT_BOOL HTAA_shouldRetryWithAuth PARAMS((char *     start_of_headers,
+PUBLIC HT_BOOL HTAA_shouldRetryWithAuth (char *     start_of_headers,
                                              int        length,
-                                             int        soc));
+                                             int        soc,
+					caddr_t		appd);
 
-
-#ifdef PEM_AUTH
-/* BROWSER PUBLIC                               HTAA_TryWithAuth()
-**
-**              SAYS WE KNOW WE SHOULD TRY THE SERVER
-**              WITH AUTHORIZATION RIGHT FROM THE START
-** ON ENTRY:
-**      enctype         is the string we were given to determine
-**                      just what type of authorization we should ask for
-**                      from the start.
-**      entity          is the server identifier needed by some
-**                      types of authorization.
-**      action          is the url we are GETing or POSTing to.
-**
-**                      This function should only be called when
-**                      when we are responding to a form with ENCTYPE set.
-** ON EXIT:
-**      returns         YES
-**                           The node containing all the necessary
-**                           information is constructed.
-**			NO
-**			     Client can't do this encryption type.
-*/
-PUBLIC HT_BOOL HTAA_TryWithAuth PARAMS((char *	enctype,
-				     char *	entity,
-				     char *	action));
-
-PUBLIC void HTAA_ClearAuth NOPARAMS;
-#endif /* PEM_AUTH */
-
-#ifdef PEM_AUTH
-/*
- * PUBLIC                                               HTAA_makecommand()
- * 
- *              ENCRYPT AN HTTP REQUEST, AND ENCAPSULATE IT IN
- *              A NEW HTTP PEM AUTHORIZED REQUEST
- * 
- * ON ENTRY:
- *      command         the HTTP request
- * 
- * ON EXIT:
- *      returns         the new HTTP request with PEM
- * 
- * Do not free this string. This function *requires* that the 
- * HTAA_composeAuth function has been called prior to it.
- * 
- */
-PUBLIC char *HTAA_makecommand PARAMS((char * command, char **body, int *bl));
-
-#endif /* PEM_AUTH */
 PUBLIC void HTAAServer_clear ();
 
 #endif  /* NOT HTAABROW_H */

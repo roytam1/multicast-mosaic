@@ -13,17 +13,13 @@
 #ifndef __GLOBALHIST_H__
 #define __GLOBALHIST_H__
 
+extern void MMWriteHistory();
+extern void MMInitHistory(char * rootdir);
+
 mo_status mo_been_here_before_huh_dad (char *);
 mo_status mo_here_we_are_son (char *);
 mo_status mo_init_global_history (void);
 mo_status mo_wipe_global_history (mo_window *);
-mo_status mo_setup_global_history (void);
-mo_status mo_write_global_history (void);
-ImageInfo *mo_fetch_cached_image_data (char *);
-void *mo_fetch_cached_local_name (char *);
 mo_status mo_cache_data (char *, void *, int);
-mo_status mo_zap_cached_images_here (mo_window *);
-mo_status mo_flush_image_cache (mo_window *);
-mo_status mo_set_image_cache_nuke_threshold (void);
 
 #endif

@@ -13,59 +13,58 @@
 #include "gui.h"
 #include "gui-ftp.h"
 #include "gui-dialogs.h"
+#include "gui-documents.h"
 #include "gui-news.h"
 #include "cciBindings2.h"
 #include "history.h"
-#include "pan.h"
 #include "mo-www.h"
 #include "globalhist.h"
 #include "hotlist.h"
+#include "cache.h"
 #include "proxy.h"
+#include "mailto.h"
 
 #define __SRC__
+#include "../libwww2/HText.h"
 #include "../libwww2/HTAAUtil.h"
 #include "../libwww2/HTNews.h"
-
-/* ############
-extern mo_root_hotlist *default_hotlist;
-#########*/
 
 extern int imageViewInternal;
 extern int selectedAgent;		/* SWP -- Spoof Agents Stuff */
 extern int numAgents;
 extern char **agent;
 
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
 
 extern Widget mc_list_top_w;
-extern mo_window *current_win;
-extern char *home_document;
-extern Widget toplevel;
-extern mo_window *current_win;
 
 /* from cciBindings.c */
 extern int cci_event;	/* send window event to application?? */
 
 static Widget exitbox = NULL;
 
-#define MAX_DOCUMENTS_MENU_ITEMS 120
-#define DOCUMENTS_MENU_COUNT_OFFSET 5000
-/* List of URL's matching items in documents menu. */
-static char *urllist[MAX_DOCUMENTS_MENU_ITEMS];
-
 int mc_show_participant_flag = 0;
 
 static XmxCallback (exit_confirm_cb);
 static void mo_post_exitbox (void);
-static long wrapFont (char *name);
 static XmxCallback (clear_history_confirm_cb);
-static mo_status mo_do_delete_annotation (mo_window *win);
-static XmxCallback (delete_annotation_confirm_cb);
 static XmxCallback (agent_menubar_cb);
 static void mo_grok_menubar (char *filename);
 static void mo_try_to_grok_menubar (void);
+
+/* --------------------------- Colleen menubar ---------------------------- */
+static XmxMenubarStruct *file_menuspec;
+static XmxMenubarStruct *fnts_menuspec;
+static XmxMenubarStruct *undr_menuspec;
+static XmxMenubarStruct *agent_menuspec;
+static XmxMenubarStruct *opts_menuspec;
+static XmxMenubarStruct *navi_menuspec;
+static XmxMenubarStruct *help_menuspec;
+static XmxMenubarStruct *newsfmt_menuspec;
+static XmxMenubarStruct *newsgrpfmt_menuspec;
+static XmxMenubarStruct *newsartfmt_menuspec;
+static XmxMenubarStruct *news_menuspec;
+static XmxMenubarStruct *multicast_menuspec;
+static XmxMenubarStruct *menuspec;
 
 
 /* --------------------------- mo_post_exitbox ---------------------------- */
@@ -76,17 +75,16 @@ static XmxCallback (exit_yes_cb)
 }
 static XmxCallback (exit_no_cb)
 {
-	mo_window * win = (mo_window*) client_data;
 	XtUnmanageChild (w);
 }
 
 static void mo_post_exitbox (void)
 {
-	if (get_pref_boolean(eCONFIRM_EXIT)) {
+	if (mMosaicAppData.confirm_exit) {
 		if (exitbox == NULL) {
-			exitbox = XmxMakeQuestionDialog (toplevel, 
-				"Are you sure you want to exit Mosaic?" ,
-				"Mosaic: Exit Confirmation", 
+			exitbox = XmxMakeQuestionDialog (mMosaicToplevelWidget, 
+				"Are you sure you want to exit mMosaic?" ,
+				"mMosaic: Exit Confirmation", 
 				exit_yes_cb, exit_no_cb, 0);
 			XtManageChild (exitbox);
 		} else {
@@ -99,15 +97,15 @@ static void mo_post_exitbox (void)
 
 /* ---------------------------- mo_set_fonts ---------------------------- */
 
-static long wrapFont (char *name)
+static long wrapFont (mo_window * win, char *name)
 {
 	char buf[BUFSIZ];
-	XFontStruct *font = XLoadQueryFont (dsp, name);
+	XFontStruct *font = XLoadQueryFont (mMosaicDisplay, name);
 
 	if (font == NULL) {
 		sprintf(buf,"Could not open font '%s'. Using fixed." , name);
-		XmxMakeErrorDialog(current_win->base,buf,"Load Font Error" );
-		font = XLoadQueryFont (dsp, "fixed");
+		XmxMakeErrorDialog(win->base,buf,"Load Font Error" );
+		font = XLoadQueryFont (mMosaicDisplay, "fixed");
 	}
 	return ((long)font);
 }
@@ -116,260 +114,260 @@ mo_status mo_set_fonts (mo_window *win, int size)
 {
   switch (size) {
     case mo_large_fonts_tkn:
-      XmxSetArg (XtNfont, wrapFont("-adobe-times-medium-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-adobe-times-medium-i-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-adobe-times-bold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-adobe-courier-medium-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-adobe-courier-bold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-adobe-times-bold-r-normal-*-25-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-adobe-times-bold-r-normal-*-24-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-adobe-times-bold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-adobe-times-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-adobe-times-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-adobe-times-medium-i-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-adobe-courier-medium-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-adobe-courier-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-adobe-times-medium-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-adobe-times-medium-i-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-adobe-times-bold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-adobe-times-bold-r-normal-*-25-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-adobe-times-bold-r-normal-*-24-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-adobe-times-bold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-adobe-times-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-adobe-times-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-adobe-times-medium-i-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"));
 
       XmxSetValues (win->scrolled_win);
       win->font_family = 0;
       break;
     case mo_regular_fonts_tkn:
-      XmxSetArg (XtNfont, wrapFont("-adobe-times-medium-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-adobe-times-medium-i-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-adobe-times-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-adobe-courier-medium-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-adobe-courier-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-adobe-times-bold-r-normal-*-24-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-adobe-times-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-adobe-times-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-adobe-times-bold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-adobe-times-bold-r-normal-*-10-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-adobe-times-medium-i-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-adobe-times-medium-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-adobe-times-medium-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-adobe-times-medium-i-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-adobe-times-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-adobe-times-bold-r-normal-*-24-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-adobe-times-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-adobe-times-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-adobe-times-bold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-adobe-times-bold-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-adobe-times-medium-i-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-adobe-times-medium-r-normal-*-10-*-*-*-*-*-*-*"));
       XmxSetValues (win->scrolled_win);
       win->font_family = 0;
       break;
     case mo_small_fonts_tkn:
-      XmxSetArg (XtNfont, wrapFont("-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-adobe-times-medium-i-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-adobe-times-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-adobe-times-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-adobe-times-bold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-adobe-times-bold-r-normal-*-10-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-adobe-times-bold-r-normal-*-8-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-adobe-times-medium-i-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-adobe-courier-medium-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-adobe-courier-bold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-adobe-times-medium-r-normal-*-8-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-adobe-times-medium-i-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-adobe-times-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-adobe-times-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-adobe-times-bold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-adobe-times-bold-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-adobe-times-bold-r-normal-*-8-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-adobe-times-medium-i-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-adobe-times-medium-r-normal-*-8-*-*-*-*-*-*-*"));
 
       XmxSetValues (win->scrolled_win);
       win->font_family = 0;
       break;
     case mo_large_helvetica_tkn:
-      XmxSetArg (XtNfont, wrapFont("-adobe-helvetica-medium-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-adobe-helvetica-medium-o-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-adobe-helvetica-bold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-adobe-courier-medium-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-adobe-courier-bold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-adobe-helvetica-bold-r-normal-*-25-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-adobe-helvetica-bold-r-normal-*-24-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-adobe-helvetica-bold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-adobe-helvetica-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-adobe-helvetica-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-adobe-helvetica-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-adobe-helvetica-medium-o-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-adobe-courier-medium-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-adobe-courier-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-adobe-helvetica-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-adobe-helvetica-medium-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-adobe-helvetica-medium-o-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-25-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-24-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-adobe-helvetica-medium-o-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-adobe-helvetica-medium-r-normal-*-14-*-*-*-*-*-*-*"));
       XmxSetValues (win->scrolled_win);
       win->font_family = 1;
       break;
     case mo_regular_helvetica_tkn:
-      XmxSetArg (XtNfont, wrapFont("-adobe-helvetica-medium-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-adobe-helvetica-medium-o-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-adobe-helvetica-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-adobe-courier-medium-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-adobe-courier-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-adobe-helvetica-bold-r-normal-*-24-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-adobe-helvetica-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-adobe-helvetica-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-adobe-helvetica-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-adobe-helvetica-bold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-adobe-helvetica-bold-r-normal-*-10-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-adobe-helvetica-medium-o-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-adobe-helvetica-medium-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-adobe-helvetica-medium-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-adobe-helvetica-medium-o-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-24-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-adobe-helvetica-medium-o-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-adobe-helvetica-medium-r-normal-*-10-*-*-*-*-*-*-*"));
       XmxSetValues (win->scrolled_win);
       win->font_family = 1;
       break;
     case mo_small_helvetica_tkn:
-      XmxSetArg (XtNfont, wrapFont("-adobe-helvetica-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-adobe-helvetica-medium-o-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-adobe-helvetica-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-adobe-helvetica-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-adobe-helvetica-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-adobe-helvetica-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-adobe-helvetica-bold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-adobe-helvetica-bold-r-normal-*-10-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-adobe-helvetica-bold-r-normal-*-8-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-adobe-helvetica-medium-o-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-adobe-courier-medium-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-adobe-courier-bold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-adobe-helvetica-medium-r-normal-*-8-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-adobe-helvetica-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-adobe-helvetica-medium-o-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-adobe-helvetica-bold-r-normal-*-8-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-adobe-helvetica-medium-o-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-adobe-helvetica-medium-r-normal-*-8-*-*-*-*-*-*-*"));
 
       XmxSetValues (win->scrolled_win);
       win->font_family = 1;
       break;
     case mo_large_newcentury_tkn:
-      XmxSetArg (XtNfont, wrapFont("-adobe-new century schoolbook-medium-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-adobe-new century schoolbook-medium-i-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-adobe-courier-medium-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-adobe-courier-bold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-25-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-24-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-adobe-new century schoolbook-medium-i-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-adobe-courier-medium-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-adobe-courier-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-adobe-new century schoolbook-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-adobe-new century schoolbook-medium-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-adobe-new century schoolbook-medium-i-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-25-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-24-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-adobe-new century schoolbook-medium-i-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-adobe-new century schoolbook-medium-r-normal-*-14-*-*-*-*-*-*-*"));
       XmxSetValues (win->scrolled_win);
       win->font_family = 2;
       break;
     case mo_small_newcentury_tkn:
-      XmxSetArg (XtNfont, wrapFont("-adobe-new century schoolbook-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-adobe-new century schoolbook-medium-i-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-10-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-8-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-adobe-new century schoolbook-medium-i-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-adobe-courier-medium-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-adobe-courier-bold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-adobe-new century schoolbook-medium-r-normal-*-8-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-adobe-new century schoolbook-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-adobe-new century schoolbook-medium-i-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-8-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-adobe-new century schoolbook-medium-i-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-adobe-new century schoolbook-medium-r-normal-*-8-*-*-*-*-*-*-*"));
       XmxSetValues (win->scrolled_win);
       win->font_family = 2;
       break;
     case mo_regular_newcentury_tkn:
-      XmxSetArg (XtNfont, wrapFont("-adobe-new century schoolbook-medium-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-adobe-new century schoolbook-medium-i-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-adobe-courier-medium-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-adobe-courier-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-24-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-adobe-new century schoolbook-bold-r-normal-*-10-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-adobe-new century schoolbook-medium-i-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-adobe-new century schoolbook-medium-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-adobe-new century schoolbook-medium-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-adobe-new century schoolbook-medium-i-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-24-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-adobe-new century schoolbook-bold-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-adobe-new century schoolbook-medium-i-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-adobe-new century schoolbook-medium-r-normal-*-10-*-*-*-*-*-*-*"));
 
       XmxSetValues (win->scrolled_win);
       win->font_family = 2;
       break;
     case mo_large_lucidabright_tkn:
-      XmxSetArg (XtNfont, wrapFont("-b&h-lucidabright-medium-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-b&h-lucidabright-medium-i-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-b&h-lucidabright-demibold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-b&h-lucidatypewriter-medium-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-b&h-lucidatypewriter-bold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-25-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-24-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-b&h-lucidabright-medium-i-normal-*-20-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-b&h-lucidatypewriter-medium-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-b&h-lucidatypewriter-bold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-b&h-lucidabright-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-b&h-lucidabright-medium-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-b&h-lucidabright-medium-i-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-b&h-lucidatypewriter-medium-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-b&h-lucidatypewriter-bold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-25-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-24-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-b&h-lucidabright-medium-i-normal-*-20-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-b&h-lucidatypewriter-medium-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-b&h-lucidatypewriter-bold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-b&h-lucidabright-medium-r-normal-*-14-*-*-*-*-*-*-*"));
 
       XmxSetValues (win->scrolled_win);
       win->font_family = 3;
       break;
     case mo_regular_lucidabright_tkn:
-      XmxSetArg (XtNfont, wrapFont("-b&h-lucidabright-medium-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-b&h-lucidabright-medium-i-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-b&h-lucidabright-demibold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-b&h-lucidatypewriter-medium-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-b&h-lucidatypewriter-bold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-24-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-10-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-b&h-lucidabright-medium-i-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-b&h-lucidatypewriter-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-b&h-lucidatypewriter-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-b&h-lucidabright-medium-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-b&h-lucidabright-medium-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-b&h-lucidabright-medium-i-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-b&h-lucidatypewriter-medium-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-b&h-lucidatypewriter-bold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-24-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-b&h-lucidabright-medium-i-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-b&h-lucidatypewriter-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-b&h-lucidatypewriter-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-b&h-lucidabright-medium-r-normal-*-10-*-*-*-*-*-*-*"));
 
       XmxSetValues (win->scrolled_win);
       win->font_family = 3;
       break;
     case mo_small_lucidabright_tkn:
-      XmxSetArg (XtNfont, wrapFont("-b&h-lucidabright-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNitalicFont, wrapFont("-b&h-lucidabright-medium-i-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNboldFont, wrapFont("-b&h-lucidabright-demibold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedFont, wrapFont("-b&h-lucidatypewriter-medium-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixedboldFont, wrapFont("-b&h-lucidatypewriter-bold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNfixeditalicFont, wrapFont("-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader1Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-18-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader2Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-17-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader3Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader4Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader5Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-11-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNheader6Font, wrapFont("-b&h-lucidabright-demibold-r-normal-*-10-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNaddressFont, wrapFont("-b&h-lucidabright-medium-i-normal-*-14-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainFont, wrapFont("-b&h-lucidatypewriter-medium-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainboldFont, wrapFont("-b&h-lucidatypewriter-bold-r-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNplainitalicFont, wrapFont("-adobe-courier-medium-o-normal-*-12-*-*-*-*-*-*-*"));
-      XmxSetArg (WbNsupSubFont, wrapFont("-b&h-lucidabright-medium-r-normal-*-8-*-*-*-*-*-*-*"));
+      XmxSetArg (XtNfont, wrapFont(win, "-b&h-lucidabright-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNitalicFont, wrapFont(win, "-b&h-lucidabright-medium-i-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNboldFont, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedFont, wrapFont(win, "-b&h-lucidatypewriter-medium-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixedboldFont, wrapFont(win, "-b&h-lucidatypewriter-bold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNfixeditalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader1Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-18-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader2Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-17-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader3Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader4Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader5Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-11-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNheader6Font, wrapFont(win, "-b&h-lucidabright-demibold-r-normal-*-10-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNaddressFont, wrapFont(win, "-b&h-lucidabright-medium-i-normal-*-14-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainFont, wrapFont(win, "-b&h-lucidatypewriter-medium-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainboldFont, wrapFont(win, "-b&h-lucidatypewriter-bold-r-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNplainitalicFont, wrapFont(win, "-adobe-courier-medium-o-normal-*-12-*-*-*-*-*-*-*"));
+      XmxSetArg (WbNsupSubFont, wrapFont(win, "-b&h-lucidabright-medium-r-normal-*-8-*-*-*-*-*-*-*"));
 
       XmxSetValues (win->scrolled_win);
       win->font_family = 3;
@@ -459,80 +457,65 @@ static XmxCallback (clear_history_no_cb)
 	XtUnmanageChild (w);
 }
 
-/* ----------------------- mo_do_delete_annotation ------------------------ */
-
-/* Presumably we're on an annotation. */
-static mo_status mo_do_delete_annotation (mo_window *win)
-{
-	char *author, *title, *text, *fname;
-	int id;
-
-	if (!win->current_node)
-		return mo_fail;
-
-	if (win->current_node->annotation_type == mo_annotation_private) {
-		mo_grok_pan_pieces (win->current_node->url,
-				win->current_node->text,
-				&title, &author, &text, 
-				&id, &fname);
-		mo_delete_annotation (win, id);
-	}else if (win->current_node->annotation_type == mo_annotation_workgroup) {
-		mo_delete_group_annotation (win, win->current_node->url);
-	}
-	return mo_succeed;
-}
-
-static XmxCallback (delete_annotation_yes_cb)
-{
-	mo_window *win= (mo_window*)client_data;
-
-	if (!win->current_node)
-		return;
-	if (!mo_is_editable_annotation (win, win->current_node->text))
-		return;
-	mo_do_delete_annotation (win);
-	return;
-}
-static XmxCallback (delete_annotation_no_cb)
-{
-}
-
 /* --------------------------agent menubar_cb ------------------------------ */
 
 void mo_set_agents(mo_window *win, int which)
 {
-	fprintf(stderr,"[mo_set_agents] agent no implemented\n");
-
-	which = 0+mo_last_entry_tkn;
-/*	XmxRSetToggleState(win->menubar, (XtPointer)win->agent_state, XmxNotSet);
-/*	XmxRSetToggleState(win->menubar, (XtPointer)which, XmxSet);
- */
+	if (win->agent_state_pulldown){
+		XmToggleButtonGadgetSetState(win->agspd_cbd[win->agent_state].w,
+			False , False);
+		XmToggleButtonGadgetSetState(win->agspd_cbd[which].w,
+			True , False);
+	}
 	win->agent_state=which;
-	selectedAgent=which-mo_last_entry_tkn;
+	selectedAgent=which;
 }
 
-static XmxCallback (agent_menubar_cb) 
+static void agent_menubar_cb(Widget w, XtPointer clid, XtPointer calld)
 {
-	mo_window *win = (mo_window*)client_data;
+	AgentSpoofCBStruct * cd = (AgentSpoofCBStruct*)(clid);
+	mo_window *win = cd->win;
+	int i = (int) cd->d;
 
-/*###	mo_set_agents(win,i); ####*/
-	fprintf(stderr,"[agent_menubar_cb] agent no implemented\n");
+	mo_set_agents(win,i);
+}
+static void mo_agent_spoofs(Widget w, XtPointer clid, XtPointer calld)
+{
+	mo_window *win= (mo_window*)clid;
+	Widget menu;
+	int separators = 0;
+	int i;
+	XmString xmstr;
+
+	if (win->agent_state_pulldown)
+		return;
+	XtVaGetValues(w, XmNsubMenuId, &menu, NULL);
+	win->agent_state_pulldown = menu;
+
+	
+	for(i=0; i<numAgents; i++){
+		if (agent_menuspec[i].namestr[0] != '<'){
+			separators++;
+			continue;
+		}
+		Xmx_n = 0;
+		XmxSetArg (XmNindicatorType, (XtArgVal)XmONE_OF_MANY);
+		xmstr = XmxMakeXmstrFromString( &(agent_menuspec[i].namestr[1]));
+		XmxSetArg (XmNlabelString, (XtArgVal)xmstr);
+		win->agspd_cbd[i-separators].w = XtCreateManagedWidget("togglebutton",
+				xmToggleButtonGadgetClass,menu, Xmx_wargs, Xmx_n);
+		win->agspd_cbd[i-separators].d= i-separators;
+		win->agspd_cbd[i-separators].win = win;
+		XmStringFree (xmstr);
+		XtAddCallback(win->agspd_cbd[i-separators].w, 
+			XmNvalueChangedCallback,agent_menubar_cb,
+			(XtPointer) &win->agspd_cbd[i-separators]);
+	}
+	XmToggleButtonGadgetSetState(win->agspd_cbd[win->agent_state].w,
+		True , False);
 }
   
 /* ------------------------------ menubar_cb ------------------------------ */
-/*XmxCallback (menubar_cb)                                                    
-/*{
-/*  struct ele_rec *eptr = NULL;
-/*  int i = XmxExtractToken ((int)client_data);
-/*  int j=0;                                                                  
-/*  char *grp, buf[512];                                                      
-/* 
-/*     /* this may be from the popup menu */
-/*      act_struct *acst = (act_struct *) client_data;
-/*      i = acst->act_code;
-/*      win = current_win;
-/*     eptr = acst->eptr;                                                    
-*/
 
 void mo_clear_passwd_cache(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -540,30 +523,6 @@ void mo_clear_passwd_cache(Widget w, XtPointer clid, XtPointer calld)
 
         if (cci_event) MoCCISendEventOutput(OPTIONS_FLUSH_PASSWD_CACHE);
         mo_flush_passwd_cache (win);
-}
-void mo_all_hotlist_to_rbm(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-/*################################# voir default_hotlist*/
-	printf("[mo_all_hotlist_to_rbm] does not fully work\n");
-/*
-        if (!win->hotlist_win)
-                win->current_hotlist = (mo_hotlist *)default_hotlist;
-        mo_rbm_myself_to_death(win,1);
-*/
-}
-void mo_all_hotlist_from_rbm(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-/*################################# voir default_hotlist*/
-	printf("[mo_all_hotlist_from_rbm] does not fully work\n");
-/*
-        if (!win->hotlist_win)
-                win->current_hotlist = (mo_hotlist *)default_hotlist;
-        mo_rbm_myself_to_death(win,0);
-*/
 }
 void mo_news_sub_anchor(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -581,7 +540,7 @@ void mo_news_sub_anchor(Widget w, XtPointer clid, XtPointer calld)
 	grp = &eptr->anchorHRef[5];
 	subscribegroup (grp);
 	sprintf (buf, "%s successfully subscribed", grp);
-	HTProgress (buf);
+	mo_gui_notify_progress (buf,win);
 */
 }
 
@@ -601,7 +560,7 @@ void mo_news_unsub_anchor(Widget w, XtPointer clid, XtPointer calld)
 	grp = &eptr->anchorHRef[5];
 	unsubscribegroup (grp);
 	sprintf (buf, "%s successfully unsubscribed", grp);
-	HTProgress (buf);
+	mo_gui_notify_progress (buf,win);
 */
 }
 
@@ -622,7 +581,7 @@ void mo_news_mread_anchor(Widget w, XtPointer clid, XtPointer calld)
 		break;
 	markrangeread (NewsGroupS, NewsGroupS->minart, NewsGroupS->maxart);
 	sprintf (buf, "All articles in %s marked read", NewsGroupS->name);
-	HTProgress (buf);
+	mo_gui_notify_progress (buf,win);
 	NewsGroupS = NULL;
 */
 /* Return to newsgroup list */
@@ -651,14 +610,14 @@ void mo_reload_document(Widget w, XtPointer clid, XtPointer calld)
 	mo_window * win = (mo_window*) clid;
 
 	if (cci_event) MoCCISendEventOutput(MOSAIC_RELOAD_CURRENT);
-	mo_reload_window_text (win, 0);
+	mo_reload_window_text (win);
 }
 void mo_home_document(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
 	if (cci_event) MoCCISendEventOutput(MOSAIC_HOME_DOCUMENT);
-	mo_access_document (win, home_document);
+	mo_load_window_text (win, mMosaicAppData.home_document, NULL);
 }
 void mo_history_list(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -699,7 +658,7 @@ void mo_reload_document_and_images(Widget w, XtPointer clid, XtPointer calld)
 	mo_window * win = (mo_window*) clid;
 
 	if (cci_event) MoCCISendEventOutput(FILE_RELOAD_IMAGES);
-	mo_reload_window_text (win, 1);
+	mo_reload_window_text (win);
 }
 void mo_refresh_document(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -720,7 +679,7 @@ void mo_new_window(Widget w, XtPointer clid, XtPointer calld)
 	mo_window * win = (mo_window*) clid;
 
 	if (cci_event) MoCCISendEventOutput(MOSAIC_NEW);
-	mo_open_another_window (win, home_document, NULL, NULL);
+	mo_open_another_window (win, mMosaicAppData.home_document, NULL, NULL);
 }
 void mo_clone_window(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -753,7 +712,7 @@ void mo_network_starting_points(Widget w, XtPointer clid, XtPointer calld)
 
 	if (cci_event)
 		MoCCISendEventOutput(NAVIGATE_INTERNET_STARTING_POINTS);
-	mo_access_document (win, NETWORK_STARTING_POINTS_DEFAULT);
+	mo_load_window_text (win, NETWORK_STARTING_POINTS_DEFAULT, NULL);
 }
 void mo_internet_metaindex(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -762,7 +721,7 @@ void mo_internet_metaindex(Widget w, XtPointer clid, XtPointer calld)
 	if (cci_event) 
 		MoCCISendEventOutput(
 			NAVIGATE_INTERNET_RESOURCES_META_INDEX);
-	mo_access_document (win, INTERNET_METAINDEX_DEFAULT);
+	mo_load_window_text (win, INTERNET_METAINDEX_DEFAULT, NULL);
 }
 void mo_help_about(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -844,73 +803,10 @@ void mo_techsupport(Widget w, XtPointer clid, XtPointer calld)
 	char subj[128];
 		sprintf (subj, "User Feedback -- NCSA Mosaic %s on %s.",
 			MO_VERSION_STRING, MO_MACHINE_TYPE);
-		mo_post_mailto_win(MO_DEVELOPER_ADDRESS,subj);
+		mo_post_mailto_win(win,MO_DEVELOPER_ADDRESS,subj);
 	}
 }
-void mo_annotate(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(ANNOTATE_ANNOTATE);
-	mo_post_annotate_win (win, 0, 0, NULL, NULL, NULL, NULL);
-}
-#ifdef HAVE_AUDIO_ANNOTATIONS
-void mo_audio_annotate(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(ANNOTATE_AUDIO_ANNOTATE);
-	mo_post_audio_annotate_win (win);
-}
-#endif
-void mo_annotate_edit(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	/* Let's be smart. If we get here, we know we're viewing
-	 * an editable annotation. We also know the filename 
-	 * (just strip the leading file: off the URL). We also know 
-	 * the ID, by virtue of the filename (just look for PAN-#.html.
-	 */
-	if(cci_event) MoCCISendEventOutput(ANNOTATE_EDIT_THIS_ANNOTATION);
-	if (win->current_node) {
-		char *author, *title, *text, *fname;
-		int id;
-		if(win->current_node->annotation_type == 
-		   mo_annotation_private) {
-			mo_grok_pan_pieces (win->current_node->url,
-				win->current_node->text,
-				&title, &author, &text, 
-				&id, &fname);
-			mo_post_annotate_win(win, 1, id, title, 
-					author, text, fname);
-		} else if (win->current_node->annotation_type == 
-			   mo_annotation_workgroup) {
-			mo_grok_grpan_pieces (win->current_node->url,
-				win->current_node->text,
-				&title, &author, &text, 
-				&id, &fname);
-			mo_post_annotate_win (win, 1, id, title, 
-				author, text, fname);
-		}
-	}
-}
-void mo_annotate_delete(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	if (cci_event) MoCCISendEventOutput(
-				ANNOTATE_DELETE_THIS_ANNOTATION);
-	if (get_pref_boolean(eCONFIRM_DELETE_ANNOTATION)) {
-		XmxMakeQuestionDialog (win->base, 
-		      "Are you sure you want to delete this annotation?",
-		      "NCSA Mosaic: Delete Annotation",
-			delete_annotation_yes_cb, 
-			delete_annotation_no_cb, (XtPointer)win);
-		XtManageChild (Xmx_w);
-	} else
-		mo_do_delete_annotation (win);
-}
 void mo_news_fmt0(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
@@ -919,7 +815,7 @@ void mo_news_fmt0(Widget w, XtPointer clid, XtPointer calld)
 	HTSetNewsConfig (1,-1,-1,-1,-1,-1,-1,-1);
 	XmxRSetToggleState (win->menubar, (XtPointer)mo_news_fmt1, XmxNotSet);
 	XmxRSetToggleState (win->menubar, (XtPointer)mo_news_fmt0, XmxSet);
-	mo_reload_window_text (win, 0);
+	mo_reload_window_text (win);
 }
 void mo_news_fmt1(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -929,7 +825,7 @@ void mo_news_fmt1(Widget w, XtPointer clid, XtPointer calld)
 	HTSetNewsConfig (0,-1,-1,-1,-1,-1,-1,-1);
 	XmxRSetToggleState (win->menubar, (XtPointer)mo_news_fmt0, XmxNotSet);
 	XmxRSetToggleState (win->menubar, (XtPointer)mo_news_fmt1, XmxSet);
-	mo_reload_window_text (win, 0);
+	mo_reload_window_text (win);
 }
 void mo_search(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -988,7 +884,7 @@ void mo_kerberosv5_login(Widget w, XtPointer clid, XtPointer calld)
 	mo_window * win = (mo_window*) clid;
 
 	if (cci_event) MoCCISendEventOutput(FILE_KERBEROS_V5_LOGIN);
-	scheme_login(HTAA_KERBEROS_V5);
+	scheme_login(HTAA_KERBEROS_V5, win);
 }
 #endif
 void mo_proxy(Widget w, XtPointer clid, XtPointer calld)
@@ -1196,15 +1092,15 @@ void mo_re_init(Widget w, XtPointer clid, XtPointer calld)
 	if (cci_event) MoCCISendEventOutput(OPTIONS_RELOAD_CONFIG_FILES);
 	mo_re_init_formats ();
 }
-void mo_clear_image_cache(Widget w, XtPointer clid, XtPointer calld)
+void mo_clear_cache(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	if (cci_event) MoCCISendEventOutput(OPTIONS_FLUSH_IMAGE_CACHE);
+	if (cci_event) MoCCISendEventOutput(OPTIONS_FLUSH_CACHE);
       XmUpdateDisplay (win->base);
-	mo_flush_image_cache (win);
+	MMCacheClearCache ();
       /* Force a complete reload...nothing else we can do -- SWP */
-      mo_reload_window_text (win, 1);
+      mo_reload_window_text (win);
 }
 void mo_clear_global_history(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -1404,26 +1300,9 @@ void mo_multicast_show_participant(Widget w, XtPointer clid, XtPointer calld)
 #endif
 
 
-/* --------------------------- Colleen menubar ---------------------------- */
-static XmxMenubarStruct *file_menuspec;
-static XmxMenubarStruct *fnts_menuspec;
-static XmxMenubarStruct *undr_menuspec;
-static XmxMenubarStruct *agent_menuspec;
-static XmxMenubarStruct *opts_menuspec;
-static XmxMenubarStruct *navi_menuspec;
-static XmxMenubarStruct *help_menuspec;
-static XmxMenubarStruct *anno_menuspec;
-static XmxMenubarStruct *newsfmt_menuspec;
-static XmxMenubarStruct *newsgrpfmt_menuspec;
-static XmxMenubarStruct *newsartfmt_menuspec;
-static XmxMenubarStruct *news_menuspec;
-static XmxMenubarStruct *multicast_menuspec;
-static XmxMenubarStruct *menuspec;
-
 
 /* --------------------------- format options ----------------------------- */
 extern XmxOptionMenuStruct *format_opts;
-extern XmxOptionMenuStruct *pubpri_opts;	 /*  annotation options  */
 
 /* ----------------------- macros for menubar stuff ----------------------- */
 #define ALLOC_MENUBAR(menuPtr,numEntries) \
@@ -1442,7 +1321,7 @@ extern XmxOptionMenuStruct *pubpri_opts;	 /*  annotation options  */
 	menuCnt=0; \
 	ocurrent=(optPtr); \
 }
-#define DEFINE_MENUBAR(nameStr,mnemonicStr,cb,cbData,subMenu) \
+#define DEFINE_MENUBAR(nameStr,mnemonicStr,cb,subMenu) \
 { \
 	if (menuCnt>=maxMenuCnt) { \
 		fprintf(stderr,"Trying to allocate more option menu entries than allowed!\n\n"); \
@@ -1461,7 +1340,6 @@ extern XmxOptionMenuStruct *pubpri_opts;	 /*  annotation options  */
 	if ((cb)!=NULL) { \
 		current[menuCnt].func=(cb); \
 	} \
-	current[menuCnt].data=(cbData); \
 	current[menuCnt].sub_menu=(subMenu); \
 	menuCnt++; \
 }
@@ -1526,7 +1404,6 @@ extern XmxOptionMenuStruct *pubpri_opts;	 /*  annotation options  */
      nameStr -- char *
      mnemonic -- char *   (only first character is used)
      cb -- void (*func)()
-     cbData -- int
      subMenu -- XmxMenubarStruct *
 
    DEFINE_OPTIONS(nameStr,optData,optState) allows you to
@@ -1562,215 +1439,190 @@ void mo_init_menubar()
 	DEFINE_OPTIONS("HTML",mo_html_cb,XmxNotSet)
 	NULL_OPTIONS()
 
-/* -------------------------- annotation options --------------------------- */
-	ALLOC_OPTIONS(pubpri_opts,4)
-	DEFINE_OPTIONS("Personal Annotation",mo_annotation_private_cb,XmxSet)
-	DEFINE_OPTIONS("Workgroup Annotation",mo_annotation_workgroup_cb,XmxNotSet)
-	DEFINE_OPTIONS("Public Annotation",mo_annotation_public_cb,XmxNotSet)
-	NULL_OPTIONS()
-
 /* ----------------------- full menubar interface -------------------------- */
 	/* File Menu */
 	ALLOC_MENUBAR(file_menuspec,32)
-	DEFINE_MENUBAR("New" ,"N" ,mo_new_window,NULL,NULL)
-	DEFINE_MENUBAR("Clone" ,"C",mo_clone_window,NULL,NULL)
+	DEFINE_MENUBAR("New" ,"N" ,mo_new_window,NULL)
+	DEFINE_MENUBAR("Clone" ,"C",mo_clone_window,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Open URL..." ,"O",mo_open_document,NULL,NULL)
-	DEFINE_MENUBAR("Open Local..." ,"L",mo_open_local_document,NULL,NULL)
+	DEFINE_MENUBAR("Open URL..." ,"O",mo_open_document,NULL)
+	DEFINE_MENUBAR("Open Local..." ,"L",mo_open_local_document,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Reload Current" ,"R",mo_reload_document,NULL,NULL)
-	DEFINE_MENUBAR("Reload Images" ,"a",mo_reload_document_and_images,NULL,NULL)
-	DEFINE_MENUBAR("Refresh Current" ,"f",mo_refresh_document,NULL,NULL)
+	DEFINE_MENUBAR("Reload Current" ,"R",mo_reload_document,NULL)
+	DEFINE_MENUBAR("Reload Images" ,"a",mo_reload_document_and_images,NULL)
+	DEFINE_MENUBAR("Refresh Current" ,"f",mo_refresh_document,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Find In Current" ,"I",mo_search,NULL,NULL)
-	DEFINE_MENUBAR("View Source..." ,"V",mo_document_source,NULL,NULL)
-	DEFINE_MENUBAR("Edit Source..." ,"E",mo_document_edit,NULL,NULL)
+	DEFINE_MENUBAR("Find In Current" ,"I",mo_search,NULL)
+	DEFINE_MENUBAR("View Source..." ,"V",mo_document_source,NULL)
+	DEFINE_MENUBAR("Edit Source..." ,"E",mo_document_edit,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Save As..." ,"S",mo_save_document,NULL,NULL)
-	DEFINE_MENUBAR("Print..." ,"P",mo_print_document,NULL,NULL)
-	DEFINE_MENUBAR("Mail To..." ,"M",mo_mail_document,NULL,NULL)
+	DEFINE_MENUBAR("Save As..." ,"S",mo_save_document,NULL)
+	DEFINE_MENUBAR("Print..." ,"P",mo_print_document,NULL)
+	DEFINE_MENUBAR("Mail To..." ,"M",mo_mail_document,NULL)
 	SPACER()
-	DEFINE_MENUBAR("CCI..." ,"D",mo_cci,NULL,NULL)
+	DEFINE_MENUBAR("CCI..." ,"D",mo_cci,NULL)
 /*SWP -- 7/17/95*/
 #ifdef KRB5
 	SPACER()
-	DEFINE_MENUBAR("Kerberos v5 Login..." ,"5",mo_kerberosv5_login,NULL,NULL)
+	DEFINE_MENUBAR("Kerberos v5 Login..." ,"5",mo_kerberosv5_login,NULL)
 #endif
 	SPACER()
-	DEFINE_MENUBAR("Proxy List..." ,"0",mo_proxy,NULL,NULL)
-	DEFINE_MENUBAR("No Proxy List..." ,"1",mo_no_proxy,NULL,NULL)
+	DEFINE_MENUBAR("Proxy List..." ,"0",mo_proxy,NULL)
+	DEFINE_MENUBAR("No Proxy List..." ,"1",mo_no_proxy,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Close" ,"W",mo_close_window,NULL,NULL)
-	DEFINE_MENUBAR("Exit Program..." ,"x",mo_exit_program,NULL,NULL)
+	DEFINE_MENUBAR("Close" ,"W",mo_close_window,NULL)
+	DEFINE_MENUBAR("Exit Program..." ,"x",mo_exit_program,NULL)
 	NULL_MENUBAR()
 
 	/* Fonts Sub-Menu */
 	ALLOC_MENUBAR(fnts_menuspec,16);
-	DEFINE_MENUBAR("<Times Regular" ,"T",mo_regular_fonts_cb,NULL,NULL)
-	DEFINE_MENUBAR("<Times Small" ,"S",mo_small_fonts_cb,NULL,NULL)
-	DEFINE_MENUBAR("<Times Large" ,"L",mo_large_fonts_cb,NULL,NULL)
+	DEFINE_MENUBAR("<Times Regular" ,"T",mo_regular_fonts_cb,NULL)
+	DEFINE_MENUBAR("<Times Small" ,"S",mo_small_fonts_cb,NULL)
+	DEFINE_MENUBAR("<Times Large" ,"L",mo_large_fonts_cb,NULL)
 	SPACER()
-	DEFINE_MENUBAR("<Helvetica Regular" ,"H",mo_regular_helvetica_cb,NULL,NULL)
-	DEFINE_MENUBAR("<Helvetica Small" ,"e",mo_small_helvetica_cb,NULL,NULL)
-	DEFINE_MENUBAR("<Helvetica Large" ,"v",mo_large_helvetica_cb,NULL,NULL)
+	DEFINE_MENUBAR("<Helvetica Regular" ,"H",mo_regular_helvetica_cb,NULL)
+	DEFINE_MENUBAR("<Helvetica Small" ,"e",mo_small_helvetica_cb,NULL)
+	DEFINE_MENUBAR("<Helvetica Large" ,"v",mo_large_helvetica_cb,NULL)
 	SPACER()
-	DEFINE_MENUBAR("<New Century Regular" ,"N",mo_regular_newcentury_cb,NULL,NULL)
-	DEFINE_MENUBAR("<New Century Small" ,"w",mo_small_newcentury_cb,NULL,NULL)
-	DEFINE_MENUBAR("<New Century Large" ,"C",mo_large_newcentury_cb,NULL,NULL)
+	DEFINE_MENUBAR("<New Century Regular" ,"N",mo_regular_newcentury_cb,NULL)
+	DEFINE_MENUBAR("<New Century Small" ,"w",mo_small_newcentury_cb,NULL)
+	DEFINE_MENUBAR("<New Century Large" ,"C",mo_large_newcentury_cb,NULL)
 	SPACER()
-	DEFINE_MENUBAR("<Lucida Bright Regular" ,"L",mo_regular_lucidabright_cb,NULL,NULL)
-	DEFINE_MENUBAR("<Lucida Bright Small" ,"u",mo_small_lucidabright_cb,NULL,NULL)
-	DEFINE_MENUBAR("<Lucida Bright Large" ,"i",mo_large_lucidabright_cb,NULL,NULL)
+	DEFINE_MENUBAR("<Lucida Bright Regular" ,"L",mo_regular_lucidabright_cb,NULL)
+	DEFINE_MENUBAR("<Lucida Bright Small" ,"u",mo_small_lucidabright_cb,NULL)
+	DEFINE_MENUBAR("<Lucida Bright Large" ,"i",mo_large_lucidabright_cb,NULL)
 	NULL_MENUBAR()
 
 	/* Underline Sub-Menu */
 	ALLOC_MENUBAR(undr_menuspec,6)
-	DEFINE_MENUBAR("<Default Underlines" ,"D",mo_default_underlines_cb,NULL,NULL)
-	DEFINE_MENUBAR("<Light Underlines" ,"L",mo_l1_underlines_cb,NULL,NULL)
-	DEFINE_MENUBAR("<Medium Underlines" ,"M",mo_l2_underlines_cb,NULL,NULL)
-	DEFINE_MENUBAR("<Heavy Underlines" ,"H",mo_l3_underlines_cb,NULL,NULL)
-	DEFINE_MENUBAR("<No Underlines" ,"N",mo_no_underlines_cb,NULL,NULL)
+	DEFINE_MENUBAR("<Default Underlines" ,"D",mo_default_underlines_cb,NULL)
+	DEFINE_MENUBAR("<Light Underlines" ,"L",mo_l1_underlines_cb,NULL)
+	DEFINE_MENUBAR("<Medium Underlines" ,"M",mo_l2_underlines_cb,NULL)
+	DEFINE_MENUBAR("<Heavy Underlines" ,"H",mo_l3_underlines_cb,NULL)
+	DEFINE_MENUBAR("<No Underlines" ,"N",mo_no_underlines_cb,NULL)
 	NULL_MENUBAR()
 
 	/* Agent Spoofing Sub-Menu */
 	loadAgents();
 	ALLOC_MENUBAR(agent_menuspec,numAgents+1);
 	for (i=0; i<numAgents; i++) {
-		if (agent[i][0]=='-') {
-			SPACER()
-		} else {
-			sprintf(buf,"<%s",agent[i]);
-			DEFINE_MENUBAR(buf," ",agent_menubar_cb,(XtPointer)(i+mo_last_entry_tkn),NULL)
-		}
+		sprintf(buf,"<%s",agent[i]);
+		DEFINE_MENUBAR(buf," ",NULL,NULL) /* later callback */
 	}
 	NULL_MENUBAR()
 
 	/* Options Menu */
 	ALLOC_MENUBAR(opts_menuspec,23)
-	DEFINE_MENUBAR("#Load to Local Disk" ,"T",mo_binary_transfer,NULL,NULL)
+	DEFINE_MENUBAR("#Load to Local Disk" ,"T",mo_binary_transfer,NULL)
 	SPACER()
-	DEFINE_MENUBAR("#Body Color" ,"y",mo_body_color,NULL,NULL)
-	DEFINE_MENUBAR("#Body (Background) Images" ,"k",mo_body_images,NULL,NULL)
+	DEFINE_MENUBAR("#Body Color" ,"y",mo_body_color,NULL)
+	DEFINE_MENUBAR("#Body (Background) Images" ,"k",mo_body_images,NULL)
 	SPACER()
-	DEFINE_MENUBAR("#View Images Internally" ,"V",mo_image_view_internal,NULL,NULL)
-	DEFINE_MENUBAR("#Delay Image Loading" ,"D",mo_delay_image_loads,NULL,NULL)
-	DEFINE_MENUBAR("Load Images In Current" ,"L",mo_expand_images_current,NULL,NULL)
+	DEFINE_MENUBAR("#View Images Internally" ,"V",mo_image_view_internal,NULL)
+	DEFINE_MENUBAR("#Delay Image Loading" ,"D",mo_delay_image_loads,NULL)
+	DEFINE_MENUBAR("Load Images In Current" ,"L",mo_expand_images_current,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Reload Config Files" ,"R",mo_re_init,NULL,NULL)
+	DEFINE_MENUBAR("Reload Config Files" ,"R",mo_re_init,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Flush Image Cache" ,"I",mo_clear_image_cache,NULL,NULL)
-        DEFINE_MENUBAR("Flush Password Cache" ,"P",mo_clear_passwd_cache,NULL,NULL)
-	DEFINE_MENUBAR("Clear Global History..." ,"C",mo_clear_global_history,NULL,NULL)
+	DEFINE_MENUBAR("Flush Cache" ,"I",mo_clear_cache,NULL)
+        DEFINE_MENUBAR("Flush Password Cache" ,"P",mo_clear_passwd_cache,NULL)
+	DEFINE_MENUBAR("Clear Global History..." ,"C",mo_clear_global_history,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Fonts" ,"F",NULL,0,fnts_menuspec)
-	DEFINE_MENUBAR("Anchor Underlines" ,"A",NULL,0,undr_menuspec)
-	DEFINE_MENUBAR("Agent Spoofs","g",NULL,0,agent_menuspec)
+	DEFINE_MENUBAR("Fonts" ,"F",NULL,fnts_menuspec)
+	DEFINE_MENUBAR("Anchor Underlines" ,"A",NULL,undr_menuspec)
+	DEFINE_MENUBAR("+Agent Spoofs","g",mo_agent_spoofs,NULL)
 	NULL_MENUBAR()
 
 	/* Navigation Menu */
 	ALLOC_MENUBAR(navi_menuspec,15)
-	DEFINE_MENUBAR("Back" ,"B",mo_back,NULL,NULL)
-	DEFINE_MENUBAR("Forward" ,"F",mo_forward,NULL,NULL)
+	DEFINE_MENUBAR("Back" ,"B",mo_back,NULL)
+	DEFINE_MENUBAR("Forward" ,"F",mo_forward,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Home Document" ,"D",mo_home_document,NULL,NULL)
-	DEFINE_MENUBAR("Window History..." ,"W",mo_history_list,NULL,NULL)
-	DEFINE_MENUBAR("Document Links..." ,"L",mo_links_window,NULL,NULL)
+	DEFINE_MENUBAR("Home Document" ,"D",mo_home_document,NULL)
+	DEFINE_MENUBAR("Window History..." ,"W",mo_history_list,NULL)
+	DEFINE_MENUBAR("Document Links..." ,"L",mo_links_window,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Hotlist..." ,"H",mo_hotlist_postit,NULL,NULL)
-	DEFINE_MENUBAR("Add Current To Hotlist" ,"A",mo_register_node_in_default_hotlist,NULL,NULL)
-        DEFINE_MENUBAR("Add All Hotlist Entries to RBM" ,"E",mo_all_hotlist_to_rbm,NULL,NULL);               
-        DEFINE_MENUBAR("Remove All Hotlist Entries from RBM" ,"R",mo_all_hotlist_from_rbm,NULL,NULL);
+	DEFINE_MENUBAR("Hotlist..." ,"H",mo_hotlist_postit,NULL)
+	DEFINE_MENUBAR("Add Current To Hotlist" ,"A",mo_register_node_in_default_hotlist,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Internet Starting Points" ,"I",mo_network_starting_points,NULL,NULL)
-	DEFINE_MENUBAR("Internet Resource Meta-Index" ,"M",mo_internet_metaindex,NULL,NULL)
+	DEFINE_MENUBAR("Internet Starting Points" ,"I",mo_network_starting_points,NULL)
+	DEFINE_MENUBAR("Internet Resource Meta-Index" ,"M",mo_internet_metaindex,NULL)
 	NULL_MENUBAR()
 
 	/* Help Menu */
 	ALLOC_MENUBAR(help_menuspec,17)
-	DEFINE_MENUBAR("About mMosaic ..." ,"A",mo_help_about,NULL,NULL)
-	DEFINE_MENUBAR("Manual XMosaic..." ,"M",mo_mosaic_manual,NULL,NULL)
+	DEFINE_MENUBAR("About mMosaic ..." ,"A",mo_help_about,NULL)
+	DEFINE_MENUBAR("Manual XMosaic..." ,"M",mo_mosaic_manual,NULL)
 	SPACER()
-	DEFINE_MENUBAR("What's New XMosaic..." ,"W",mo_whats_new,NULL,NULL)
-	DEFINE_MENUBAR("Demo XMosaic..." ,"D",mo_mosaic_demopage,NULL,NULL)
+	DEFINE_MENUBAR("What's New XMosaic..." ,"W",mo_whats_new,NULL)
+	DEFINE_MENUBAR("Demo XMosaic..." ,"D",mo_mosaic_demopage,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Help on Version 2.7b5..." ,"V",mo_help_onversion,NULL,NULL)
-	DEFINE_MENUBAR("On Window XMosaic..." ,"O",mo_help_onwindow,NULL,NULL)
-	DEFINE_MENUBAR("On FAQ XMosaic..." ,"F",mo_help_faq,NULL,NULL)
+	DEFINE_MENUBAR("Help on Version 2.7b5..." ,"V",mo_help_onversion,NULL)
+	DEFINE_MENUBAR("On Window XMosaic..." ,"O",mo_help_onwindow,NULL)
+	DEFINE_MENUBAR("On FAQ XMosaic..." ,"F",mo_help_faq,NULL)
 	SPACER()
-	DEFINE_MENUBAR("On HTML XMosaic..." ,"H",mo_help_html,NULL,NULL)
-	DEFINE_MENUBAR("On URLS XMosaic..." ,"U",mo_help_url,NULL,NULL)
+	DEFINE_MENUBAR("On HTML XMosaic..." ,"H",mo_help_html,NULL)
+	DEFINE_MENUBAR("On URLS XMosaic..." ,"U",mo_help_url,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Mail Tech Support mMosaic..." ,"M",mo_techsupport,NULL,NULL)
-	NULL_MENUBAR()
-
-	/* Annotation Menu */
-	ALLOC_MENUBAR(anno_menuspec,6)
-	DEFINE_MENUBAR("Annotate..." ,"A",mo_annotate,NULL,NULL)
-#ifdef HAVE_AUDIO_ANNOTATIONS
-	DEFINE_MENUBAR("Audio Annotate..." ,"u",mo_audio_annotate,NULL,NULL)
-#endif
-	SPACER()
-	DEFINE_MENUBAR("Edit This Annotation..." ,"E",mo_annotate_edit,NULL,NULL)
-	DEFINE_MENUBAR("Delete This Annotation..." ,"D",mo_annotate_delete,NULL,NULL)
+	DEFINE_MENUBAR("Mail Tech Support mMosaic..." ,"M",mo_techsupport,NULL)
 	NULL_MENUBAR()
 
 	/* News Format Sub-Menu */
 	ALLOC_MENUBAR(newsfmt_menuspec,3)
-	DEFINE_MENUBAR("<Thread View" ,"T",mo_news_fmt0,NULL,NULL)
-	DEFINE_MENUBAR("<Article View" ,"G",mo_news_fmt1,NULL,NULL)
+	DEFINE_MENUBAR("<Thread View" ,"T",mo_news_fmt0,NULL)
+	DEFINE_MENUBAR("<Article View" ,"G",mo_news_fmt1,NULL)
 	NULL_MENUBAR()
 
 	/* News Menu */
 	ALLOC_MENUBAR(news_menuspec,27)
-	DEFINE_MENUBAR("Next" ,"N",mo_news_next,NULL,NULL)
-	DEFINE_MENUBAR("Prev" ,"P",mo_news_prev,NULL,NULL)
-	DEFINE_MENUBAR("Next Thread" ,"t",mo_news_nextt,NULL,NULL)
-	DEFINE_MENUBAR("Prev Thread" ,"v",mo_news_prevt,NULL,NULL)
-	DEFINE_MENUBAR("Article Index" ,"I",mo_news_index,NULL,NULL)
-	DEFINE_MENUBAR("Group Index" ,"G",mo_news_groups,NULL,NULL)
+	DEFINE_MENUBAR("Next" ,"N",mo_news_next,NULL)
+	DEFINE_MENUBAR("Prev" ,"P",mo_news_prev,NULL)
+	DEFINE_MENUBAR("Next Thread" ,"t",mo_news_nextt,NULL)
+	DEFINE_MENUBAR("Prev Thread" ,"v",mo_news_prevt,NULL)
+	DEFINE_MENUBAR("Article Index" ,"I",mo_news_index,NULL)
+	DEFINE_MENUBAR("Group Index" ,"G",mo_news_groups,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Post" ,"o",mo_news_post,NULL,NULL)
-	DEFINE_MENUBAR("Followup" ,"F",mo_news_follow,NULL,NULL)
+	DEFINE_MENUBAR("Post" ,"o",mo_news_post,NULL)
+	DEFINE_MENUBAR("Followup" ,"F",mo_news_follow,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Subscribe to Group" ,"s",mo_news_sub,NULL,NULL)
-	DEFINE_MENUBAR("Unsubscribe Group" ,"u",mo_news_unsub,NULL,NULL)
+	DEFINE_MENUBAR("Subscribe to Group" ,"s",mo_news_sub,NULL)
+	DEFINE_MENUBAR("Unsubscribe Group" ,"u",mo_news_unsub,NULL)
 	SPACER()
-	DEFINE_MENUBAR("<Show All Groups" ,"A",mo_news_grp0,NULL,NULL)
-/*	DEFINE_MENUBAR("<Show Subscribed Groups" ,"S",mo_news_grp1,NULL,NULL)*/
-/*	DEFINE_MENUBAR("<Show Read Groups" ,"R",mo_news_grp2,NULL,NULL)*/
-        DEFINE_MENUBAR("<Show Unread Subscribed Groups" ,"S",mo_news_grp1,NULL,NULL)                         
-        DEFINE_MENUBAR("<Show All Subscribed Groups" ,"R",mo_news_grp2,NULL,NULL)
+	DEFINE_MENUBAR("<Show All Groups" ,"A",mo_news_grp0,NULL)
+/*	DEFINE_MENUBAR("<Show Subscribed Groups" ,"S",mo_news_grp1,NULL)*/
+/*	DEFINE_MENUBAR("<Show Read Groups" ,"R",mo_news_grp2,NULL)*/
+        DEFINE_MENUBAR("<Show Unread Subscribed Groups" ,"S",mo_news_grp1,NULL)
+        DEFINE_MENUBAR("<Show All Subscribed Groups" ,"R",mo_news_grp2,NULL)
 	SPACER()
-	DEFINE_MENUBAR("<Show All Articles" ,"l",mo_news_art0,NULL,NULL)
-/*	DEFINE_MENUBAR("<Show Unread Articles" ,"n",mo_news_art1,NULL,NULL)*/
-        DEFINE_MENUBAR("<Show Only Unread Articles" ,"n",mo_news_art1,NULL,NULL)
+	DEFINE_MENUBAR("<Show All Articles" ,"l",mo_news_art0,NULL)
+/*	DEFINE_MENUBAR("<Show Unread Articles" ,"n",mo_news_art1,NULL)*/
+        DEFINE_MENUBAR("<Show Only Unread Articles" ,"n",mo_news_art1,NULL)
 	SPACER()
-	DEFINE_MENUBAR("Mark Group Read" ,"e",mo_news_mread,NULL,NULL)
-	DEFINE_MENUBAR("Mark Group Unread" ,"d",mo_news_munread,NULL,NULL)
-	DEFINE_MENUBAR("Mark Article Unread" ,"M",mo_news_maunread,NULL,NULL)
+	DEFINE_MENUBAR("Mark Group Read" ,"e",mo_news_mread,NULL)
+	DEFINE_MENUBAR("Mark Group Unread" ,"d",mo_news_munread,NULL)
+	DEFINE_MENUBAR("Mark Article Unread" ,"M",mo_news_maunread,NULL)
 	SPACER()
-/*	DEFINE_MENUBAR("Flush News Data" ,"F",mo_news_flush,NULL,NULL)*/
-	DEFINE_MENUBAR("Flush Group Data" ,"D",mo_news_flushgroup,NULL,NULL)
-	DEFINE_MENUBAR("Thread Style" ,"T",NULL,0,newsfmt_menuspec)
+/*	DEFINE_MENUBAR("Flush News Data" ,"F",mo_news_flush,NULL)*/
+	DEFINE_MENUBAR("Flush Group Data" ,"D",mo_news_flushgroup,NULL)
+	DEFINE_MENUBAR("Thread Style" ,"T",NULL,newsfmt_menuspec)
 	NULL_MENUBAR()
 
 #ifdef MULTICAST
 	/* Muticast Menu */
 	ALLOC_MENUBAR(multicast_menuspec,3)
-	DEFINE_MENUBAR("#Send Enable" ,"S",mo_multicast_send_tog,NULL,NULL)
-	DEFINE_MENUBAR("#Show Particpants" ,"P",mo_multicast_show_participant,NULL,NULL)
+	DEFINE_MENUBAR("#Send Enable" ,"S",mo_multicast_send_tog,NULL)
+	DEFINE_MENUBAR("#Show Particpants" ,"P",mo_multicast_show_participant,NULL)
 	NULL_MENUBAR()
 #endif
 
 	/* The Menubar */
 	ALLOC_MENUBAR(menuspec,9)
-	DEFINE_MENUBAR("File" ,"F",NULL,0,file_menuspec)
-	DEFINE_MENUBAR("Options" ,"O",NULL,0,opts_menuspec)
-	DEFINE_MENUBAR("Navigate" ,"N",NULL,0,navi_menuspec)
-	DEFINE_MENUBAR("Annotate" ,"A",NULL,0,anno_menuspec)
-	DEFINE_MENUBAR("News" ,"w",NULL,0,news_menuspec)
-	DEFINE_MENUBAR("Multicast","M",NULL,0,multicast_menuspec)
-	DEFINE_MENUBAR("Help" ,"H",NULL,0,help_menuspec)
+	DEFINE_MENUBAR("File" ,"F",NULL,file_menuspec)
+	DEFINE_MENUBAR("Options" ,"O",NULL,opts_menuspec)
+	DEFINE_MENUBAR("Navigate" ,"N",NULL,navi_menuspec)
+	DEFINE_MENUBAR("News" ,"w",NULL,news_menuspec)
+	DEFINE_MENUBAR("Multicast","M",NULL,multicast_menuspec)
+	DEFINE_MENUBAR("Help" ,"H",NULL,help_menuspec)
 	/* Dummy submenu. */
 	NULL_MENUBAR()
 	NULL_MENUBAR()
@@ -1783,6 +1635,7 @@ XmxMenuRecord *mo_make_document_view_menubar (Widget form, mo_window * win)
 {
 	XmxMenuRecord *toBeReturned;
 	Widget _menubar;
+	int i;
 
                 	/* Preset resources applied to main menubar only. */
         _menubar = XmCreateMenuBar (form, "menubar", Xmx_wargs, Xmx_n);
@@ -1803,5 +1656,12 @@ XmxMenuRecord *mo_make_document_view_menubar (Widget form, mo_window * win)
                 	XmxNotSensitive);
 	}
 #endif
+	win->agent_state_pulldown = NULL;
+	win->agspd_cbd = (AgentSpoofCBStruct*)malloc(numAgents * sizeof(AgentSpoofCBStruct));
+	for(i=0; i<numAgents; i++){
+		win->agspd_cbd[i].w= NULL; /*widget is create in the first callback */
+		win->agspd_cbd[i].d= 0;
+		win->agspd_cbd[i].win= win;
+	}
 	return toBeReturned;
 }

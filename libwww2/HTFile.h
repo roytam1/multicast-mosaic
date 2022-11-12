@@ -30,55 +30,10 @@ extern int HTDirAccess; /* Directory access level */
 
 #define HT_DIR_ENABLE_FILE      ".www_browsable" /* If exists, can browse */
 
-extern int HTDirReadme;         /* Include readme files in listing? */
-                                        /* Values: */
-#define HT_DIR_README_NONE      0       /* No */
-#define HT_DIR_README_TOP       1       /* Yes, first */
-#define HT_DIR_README_BOTTOM    2       /* Yes, at the end */
-
-#define HT_DIR_README_FILE              "README"
-
 extern HTList *HTSuffixes;
 
-/*
-Convert filenames between local and WWW formats
- */
+/* Convert filenames between local and WWW formats */
 extern char * HTLocalName PARAMS((WWW_CONST char * name));
-
-/*
-Make a WWW name from a full local path name
- */
-extern char * WWW_nameOfFile PARAMS((char * name));
-
-/*
-Generate the name of a cache file
- */
-extern char * HTCacheFileName PARAMS((WWW_CONST char * name));
-
-/*
-Output directory titles
-
-   This is (like the next one) used by HTFTP. It is common code to
-   generate the title and heading 1 and the parent directory link for
-   any anchor.
-   
- */
-extern void HTDirTitles PARAMS((
-        HTStructured *  target,
-        HTAnchor *      anchor));
-
-/*
-
-Output a directory entry
-
-   This is used by HTFTP.c for example -- it is a common routine for
-   generating a linked directory entry.
-   
- */
-extern void HTDirEntry PARAMS((
-        HTStructured *  target,         /* in which to put the linked text */
-        WWW_CONST char *    tail,           /* last part of directory name */
-        WWW_CONST char *    entry));        /* name of this entry */
 
 /*
 
@@ -136,63 +91,38 @@ extern char * HTFileMimeType PARAMS((
                 WWW_CONST char *    default_type));
 extern char *HTDescribeURL (char *);
 
-/*
+/* Determine file value from file name */
 
-Determine file value from file name
-
- */
+extern float HTFileValue PARAMS(( WWW_CONST char * filename));
 
 
-extern float HTFileValue PARAMS((
-                WWW_CONST char * filename));
-
-
-/*
-
-Determine write access to a file
+/* Determine write access to a file
 
   ON EXIT,
   
   return value YES if file can be accessed and can be written to.
                          
- */
-
-/*
-
   BUGS
-  
    Isn't there a quicker way?
-   
  */
-
 
 extern HT_BOOL HTEditable PARAMS((WWW_CONST char * filename));
 
-
-/*
-
-Determine a suitable suffix, given the representation
+/* Determine a suitable suffix, given the representation
 
   ON ENTRY,
-  
   rep                     is the atomized MIME style representation
                          
   ON EXIT,
-  
   returns a pointer to a suitable suffix string if one has been found,
                          else NULL.
-                         
- */
+*/
 extern WWW_CONST char * HTFileSuffix PARAMS((
                 HTAtom* rep));
 
 
 
-/*
-
-The Protocols
-
- */
+/* The Protocols */
 extern HTProtocol HTFTP, HTFile;
 
 #endif /* HTFILE_H */

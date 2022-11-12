@@ -7,7 +7,9 @@
 #include "gui-ftp.h"
 #include "gui-popup.h"
 #include "gui-dialogs.h"
+#include "gui-documents.h"
 #include "libnut/system.h"
+#include "../libwww2/HText.h"
 #include "../libwww2/HTFTP.h"
 
 #define MAX_BUF_LEN 512  /* Length of all of the buffers used for dialog message output */
@@ -65,7 +67,7 @@ static XmxCallback (ftpput_win_cb)
 			XtFree (fname);
 /* Make the url something HTFTPSend will understand */
 			sprintf (tbuf, "%s&%s", win->ftp_site, efname);
-			if ((ret = HTFTPSend (tbuf)) != 0) {   /* !HT_LOADED */
+			if ((ret = HTFTPSend(tbuf, (caddr_t)win)) != 0) {   /* !HT_LOADED */
 				if (ret != -2) { 
 /* If the user interrupted us, forget about telling them */ 
 					sprintf(tbuf, "FTP Send Failed!  The file %s could not be sent.", efname);
@@ -73,7 +75,7 @@ static XmxCallback (ftpput_win_cb)
 				}
 				break;
 			} else {
-				mo_reload_window_text (win,0);
+				mo_reload_window_text (win);
 			}
 		}
 	} else {
@@ -85,14 +87,14 @@ static XmxCallback (ftpput_win_cb)
 		pathEval (efname, fname);        
 		XtFree (fname);                  
 		sprintf (tbuf, "%s&%s", win->ftp_site, efname);
-		if ((ret = HTFTPSend (tbuf)) != 0) {   /* !HT_LOADED */
+		if ((ret = HTFTPSend (tbuf, (caddr_t)win)) != 0) {   /* !HT_LOADED */
 			if (ret != -2) { 
 /* If the user interrupted us, forget about telling them */
 				sprintf(tbuf, "FTP Send Failed!  The file %s could not be sent.", efname);
 				application_user_info_wait(tbuf);
 			}
 		} else {
-			mo_reload_window_text (win,0);
+			mo_reload_window_text (win);
 		}
 	}
 /* Clear out the selections, we have to do this because the XmFSB has no clue 
@@ -157,11 +159,11 @@ static XmxCallback (ftpmkdir_win_cb0) 		/* Create dir */
 	int ret;
 
 	XtUnmanageChild (win->ftpmkdir_win);
-	dirpath = XmxTextGetString (win->ftpmkdir_text);
+	dirpath = XmTextGetString (win->ftpmkdir_text);
 	if (!dirpath || !(*dirpath)) 		/* nothing here so do nothing */
 		return;
 	sprintf (tbuf, "%s&%s", win->ftp_site, dirpath);
-	if( (ret = HTFTPMkDir (tbuf)) != 0) {
+	if( (ret = HTFTPMkDir (tbuf, (caddr_t)win)) != 0) {
 		if (ret != -2) { /* If the user interrupted us, 
 				  * forget about telling them */
 			sprintf(tbuf, 
@@ -169,7 +171,7 @@ static XmxCallback (ftpmkdir_win_cb0) 		/* Create dir */
 			application_user_info_wait(tbuf);
 		}
 	} else {
-		mo_reload_window_text (win, 0);
+		mo_reload_window_text (win);
 	}
 	free(win->ftp_site);
 	win->ftp_site = NULL;
@@ -215,7 +217,8 @@ mo_status mo_post_ftpmkdir_window (mo_window *win)
 		label = XmxMakeLabel (form, "Directory to Create: ");
 		XmxSetArg (XmNwidth, 310);
 		win->ftpmkdir_text = XmxMakeTextField (form);
-		XmxAddCallbackToText (win->ftpmkdir_text, ftpmkdir_win_cb0,(XtPointer) win);
+		XtAddCallback(win->ftpmkdir_text, XmNactivateCallback,
+			ftpmkdir_win_cb0,(XtPointer) win);
 		dialog_sep = XmxMakeHorizontalSeparator (form);
 		buttons_form = XmxMakeFormAndFourButtons(form, 
 			"Create", "Clear", "Dismiss", "Help...", 
@@ -247,14 +250,14 @@ static void mo_handle_ftpremove (mo_window *win, char *urlNsite)
 	int ret;
 	char tbuf[MAX_BUF_LEN+1];
 
-	if ((ret = HTFTPRemove (urlNsite)) != 0) {
+	if ((ret = HTFTPRemove (urlNsite,(caddr_t)win)) != 0) {
 		if (ret != -2) { 
 /* If the user interrupted us, forget about telling them */
 			sprintf(tbuf, "FTP Remove Failed!  The file could not be removed.");
 			application_user_info_wait(tbuf);
 		}
 	} else {
-		mo_reload_window_text (win, 0);
+		mo_reload_window_text (win);
 	}
 }
 
@@ -265,6 +268,7 @@ void ftp_rmbm_cb(Widget w, XtPointer client_data, XtPointer call_data)
 	int which;
 	char *xurl, tbuf[MAX_BUF_LEN+1];
 	struct ele_rec *eptr;
+	mo_window * win = acst->win;
  
 	which = (int) acst->act_code;
 	eptr = acst->eptr;
@@ -272,16 +276,16 @@ void ftp_rmbm_cb(Widget w, XtPointer client_data, XtPointer call_data)
 	switch(which) {
 /* ###################################
 	case mo_ftp_put:
-		mo_handle_ftpput (current_win);
+		mo_handle_ftpput (mMosaicCurrentMoWin);
 		break;
 	case mo_ftp_mkdir:
-		mo_handle_ftpmkdir (current_win);
+		mo_handle_ftpmkdir (mMosaicCurrentMoWin);
 		break;
 */
 	case mo_ftp_remove:
-		xurl = strrchr (eptr->anchor_tag_ptr->anchor_href, '/');
-		sprintf (tbuf, "%s%s", current_win->current_node->url, xurl);
-		mo_handle_ftpremove (current_win, tbuf);
+		xurl = strrchr (eptr->anchor_tag_ptr->anc_href, '/');
+		sprintf (tbuf, "%s%s", win->current_node->url, xurl);
+		mo_handle_ftpremove (win, tbuf);
 		break;
 	}
 }

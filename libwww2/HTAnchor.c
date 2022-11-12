@@ -16,14 +16,14 @@
 #define HASH_SIZE 101		/* Arbitrary prime. Memory/speed tradeoff */
 
 #include <ctype.h>
+#include <stdio.h>
+
 #include "tcp.h"
+#include "HText.h"
 #include "HTAnchor.h"
 #include "HTUtils.h"
 #include "HTParse.h"
-
-#ifndef DISABLE_TRACE
-extern int www2Trace;
-#endif
+#include "HTParams.h"	/* Params from X res. */
 
 PRIVATE HTList **adult_table=0;  /* Point to table of lists of all parents */
 
@@ -84,9 +84,7 @@ PUBLIC HTChildAnchor * HTAnchor_findChild
 	HTList *kids;
 
 	if (! parent) {
-#ifndef DISABLE_TRACE
-		if (www2Trace) printf ("HTAnchor_findChild called with NULL parent.\n");
-#endif
+		if (wWWParams.trace) printf ("HTAnchor_findChild called with NULL parent.\n");
 		return NULL;
 	}
 	if (kids = parent->children) {  /* parent has children : search them */
@@ -94,11 +92,9 @@ PUBLIC HTChildAnchor * HTAnchor_findChild
 			while(child = (HTChildAnchor *)HTList_nextObject (kids)) {
 				if (equivalent(child->tag, tag)) {
 					 /* Case sensitive 920226 */
-#ifndef DISABLE_TRACE
-		if (www2Trace) fprintf (stderr,
+		if (wWWParams.trace) fprintf (stderr,
 	       "Child anchor %p of parent %p with name `%s' already exists.\n",
 		    (void*)child, (void*)parent, tag);
-#endif
 return child;
 				}
 			}
@@ -106,10 +102,8 @@ return child;
 	} else  /* parent doesn't have any children yet : create family */
 		parent->children = HTList_new ();
 	child = HTChildAnchor_new ();
-#ifndef DISABLE_TRACE
-  if (www2Trace) fprintf(stderr, "new Anchor %p named `%s' is child of %p\n",
+  if (wWWParams.trace) fprintf(stderr, "new Anchor %p named `%s' is child of %p\n",
        (void*)child, (int)tag ? tag : (WWW_CONST char *)"" , (void*)parent); /* int for apollo */
-#endif
 	HTList_addObject (parent->children, child);
 	child->parent = parent;
 	StrAllocCopy(child->tag, tag);
@@ -193,20 +187,16 @@ HTAnchor * HTAnchor_findAddress
     grownups = adults;
     while (foundAnchor = (HTParentAnchor*)HTList_nextObject (grownups)) {
        if (equivalent(foundAnchor->address, address)) {
-#ifndef DISABLE_TRACE
-	if (www2Trace) fprintf(stderr, "Anchor %p with address `%s' already exists.\n",
+	if (wWWParams.trace) fprintf(stderr, "Anchor %p with address `%s' already exists.\n",
 			  (void*) foundAnchor, address);
-#endif
 	return (HTAnchor *) foundAnchor;
       }
     }
     
     /* Node not found : create new anchor */
     foundAnchor = HTParentAnchor_new ();
-#ifndef DISABLE_TRACE
-    if (www2Trace) fprintf(stderr, "New anchor %p has hash %d and address `%s'\n",
+    if (wWWParams.trace) fprintf(stderr, "New anchor %p has hash %d and address `%s'\n",
     	(void*)foundAnchor, hash, address);
-#endif
     StrAllocCopy(foundAnchor->address, address);
     HTList_addObject (adults, foundAnchor);
     return (HTAnchor *) foundAnchor;
@@ -400,9 +390,7 @@ HT_BOOL HTAnchor_link
 {
   if (! (source && destination))
     return NO;  /* Can't link to/from non-existing anchor */
-#ifndef DISABLE_TRACE
-  if (www2Trace) printf ("Linking anchor %p to anchor %p\n", source, destination);
-#endif
+  if (wWWParams.trace) printf ("Linking anchor %p to anchor %p\n", source, destination);
   if (! source->mainLink.dest) {
     source->mainLink.dest = destination;
     source->mainLink.type = type;

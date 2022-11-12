@@ -10,6 +10,9 @@
 #include <sys/time.h>
 #include <stdio.h>
 #include <ctype.h>
+
+#include "HTMLmiscdefs.h"
+#include "HTMLparse.h"
 #include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
@@ -25,7 +28,7 @@
 
 extern unsigned int mc_global_eo_count; /*### from mc_dispatch ###*/
 
-struct mark_up NULL_ANCHOR = {
+static struct mark_up NULL_ANCHOR = {
 	M_ANCHOR,		/* MarkType */
 	1,			/* is_end */
 	NULL,			/* start */
@@ -38,16 +41,7 @@ struct mark_up NULL_ANCHOR = {
 	NULL			/* anchor_title */
 };
 
-struct mark_up * NULL_ANCHOR_PTR = &NULL_ANCHOR ;
-
-static struct timeval Tv;
-static struct timezone Tz;
-
-/* I need my own is ispunct function because I need a closing paren
- * immediately after a word to act like punctuation.
- */
-#define	MY_ISPUNCT(val)	(ispunct((int)(val)) || ((val) == ')'))
-#define INDENT_SPACES	2
+static struct mark_up * NULL_ANCHOR_PTR = &NULL_ANCHOR ;
 
 /* ############## This is may be as global ####*/
 static FontRec FontBase;
@@ -76,17 +70,13 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
 
 	if (pcc->cw_only)
 		return NULL;	/* just for check ######## */
-	/*
-	 * There is not pre-allocated format list, or we have reached
-	 * the end of the pre-allocated list.  Create a new element, and
-	 * add it.
-	 */
+/* There is not pre-allocated format list, or we have reached
+ * the end of the pre-allocated list.  Create a new element, and add it.
+ */
 	if (hw->html.formatted_elements == NULL){ /* the first element */
 						/* create it */
 		eptr = (struct ele_rec *) malloc( sizeof(struct ele_rec));
-		if (eptr == NULL){
-			MEM_OVERFLOW;
-		}
+		CHECK_OUT_OF_MEM(eptr);
 		hw->html.formatted_elements = eptr;
 		memset(eptr, 0, sizeof(struct ele_rec)); /* initialize */
 		eptr->next =NULL;
@@ -98,9 +88,7 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
 	eptr = hw->html.cur_elem_to_format;
 	if ( eptr == NULL) { /* no current element , add one at end */
 		eptr = (struct ele_rec *) malloc( sizeof(struct ele_rec));
-		if (eptr == NULL){
-			MEM_OVERFLOW;			
-		}
+		CHECK_OUT_OF_MEM(eptr);
 		eptr->next = NULL;
 		eptr->prev = hw->html.last_formatted_elem;
 		hw->html.last_formatted_elem->next = eptr;
@@ -117,21 +105,20 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
 	eptr->width = width;
 	eptr->height = height;
 	eptr->baseline = baseline;
-	eptr->line_number = pcc->line_number;
 	eptr->ele_id = ++(pcc->element_id);
 
 	eptr->pic_data = NULL;
+	eptr->aps = NULL;
 	eptr->widget_data = NULL;
 	eptr->table_data = NULL;
-	eptr->aprog_struct = NULL;
-	eptr->applet_struct = NULL;
+	eptr->ats = NULL;
 
 	eptr->line_next = NULL;
 
         eptr->wtype = MC_MO_TYPE_UNICAST;
         eptr->internal_numeo = 0;
-	eptr->valignment = ALIGN_BOTTOM;
-	eptr->halignment = ALIGN_LEFT;
+	eptr->valignment = VALIGN_BOTTOM;
+	eptr->halignment = HALIGN_LEFT;
 	eptr->selected = False;
 	eptr->indent_level = pcc->indent_level;
 	eptr->start_pos = 0;
@@ -147,6 +134,8 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
         eptr->edata_len = 0;
         		/* eptr->next is set when allocate */
         		/* eptr->prev is set when allocate */
+
+	eptr->is_in_form = 0;
 	return eptr;
 }
 /* end GD ###### */
@@ -270,10 +259,7 @@ static void PushFont( XFontStruct *font)
 	FontRec *fptr;
 
 	fptr = (FontRec *)malloc(sizeof(FontRec));
-	if (fptr == NULL) {
-		fprintf(stderr, "No memory to expand font stack!\n");
-		return;
-	}
+	CHECK_OUT_OF_MEM(fptr);
 	fptr->font = font;
 	fptr->next = FontStack;
 	FontStack = fptr;
@@ -320,8 +306,7 @@ char * TextAreaAddValue( char *value, char *text)
 	}
 
 	buf = (char *)malloc(strlen(value) + strlen(text) + extra + 1);
-	if (buf == NULL)
-		return(value);
+	CHECK_OUT_OF_MEM(buf);
 	strcpy(buf, value);
 
 	tptr = text;
@@ -579,7 +564,37 @@ char * TextAreaAddValue( char *value, char *text)
 		}
 		break;
 	case M_DOC_BODY:
+
+/* WE SUCK.  We're a bunch of pathetic followers. */
+/* ABSOLUTE CHEEZE OF THE FINEST KIND - bjs - 9/21/95 */
+
 		if (!mark->is_end) {
+/*##### */
+			static char *atts[]={"text","bgcolor","alink","vlink","link",NULL};
+			char *tmp=NULL, *tmp_bgname=NULL;
+			int i;
+
+			if (hw->html.body_images) {
+				tmp_bgname=ParseMarkTag(mark->start,
+				MT_DOC_BODY,"background");
+			}
+			if (hw->html.body_colors) {
+				for(i=0;atts[i];i++) {
+					tmp=ParseMarkTag(mark->start,
+						MT_DOC_BODY,atts[i]);
+					if (tmp) {
+						hw_do_color(hw,atts[i],tmp,pcc);
+						free(tmp);
+						tmp=NULL;
+					}
+				}
+			}
+			if (tmp_bgname) {
+				hw_do_bg(hw,tmp_bgname);
+				free(tmp_bgname);
+				tmp_bgname=NULL;
+			}
+/*##### */
 		        InDocHead = 0;   /* end <head> section */
 			pcc->ignore = 0;
 		}
@@ -683,23 +698,12 @@ char * TextAreaAddValue( char *value, char *text)
  * because other anchors are not active.
  */
 		pcc->anchor_tag_ptr = *mptr;
-		tptr = (*mptr)->anchor_href = ParseMarkTag(mark->start, 
+		tptr = (*mptr)->anc_href = ParseMarkTag(mark->start, 
 					MT_ANCHOR, AT_HREF);
-		(*mptr)->anchor_name = ParseMarkTag(mark->start, 
+		(*mptr)->anc_name = ParseMarkTag(mark->start, 
 					MT_ANCHOR, AT_NAME);
-		(*mptr)->anchor_title = ParseMarkTag(mark->start, 
+		(*mptr)->anc_title = ParseMarkTag(mark->start, 
 					MT_ANCHOR, AT_TITLE);
-
-/*
-########## faire une liste d'anchor et liberer a la fin #########
-if(pcc->anchor_tag_ptr->anchor_href)
-	free(pcc->anchor_tag_ptr->anchor_href);
-if(pcc->anchor_tag_ptr->anchor_name)
-	free(pcc->anchor_tag_ptr->anchor_name);
-if(pcc->anchor_tag_ptr->anchor_title)
-	free(pcc->anchor_tag_ptr->anchor_title);
-###################################
-*/
 
 		if (tptr != NULL) { 
 		    	pcc->fg = hw->html.anchor_fg;
@@ -724,7 +728,6 @@ if(pcc->anchor_tag_ptr->anchor_title)
 			    pcc->dashed_underlines = hw->html.dashed_anchor_lines;
 		    }
 		}
-		/* amb 2 */
 		if (pcc->in_underlined) {
 		    pcc->dashed_underlines = False;
 		    if (!pcc->underline_number)
@@ -804,7 +807,6 @@ if(pcc->anchor_tag_ptr->anchor_title)
  * in its own font.
  */
 	case M_PREFORMAT:
-	case M_LISTING_TEXT:
 	case M_PLAIN_TEXT:
 	case M_PLAIN_FILE:
 		tmp_font = hw->html.listing_font;
@@ -1045,8 +1047,10 @@ if(pcc->anchor_tag_ptr->anchor_title)
 	case M_LINEBREAK:
 		LinefeedPlace(hw,*mptr,pcc); /* miss named break!!! */
 		break;
+	case M_BUGGY_TABLE:
+		break;
 	case M_TABLE:
-		TablePlace(hw, mptr, pcc);
+		TablePlace(hw, mptr, pcc, save_obj);
 		break;
 	case M_FIGURE:
 	case M_IMAGE:		/* Just insert the image for now */
@@ -1110,7 +1114,6 @@ if(pcc->anchor_tag_ptr->anchor_title)
 /* GD ######### */
 /*############# */
 	/* copy and push the state */
-	/* cur_hst = *(chst); */
 	/* now pop PhotoComposeContext */
 /*#############*/
 /* Format all the objects in the passed Widget's parsed object list to fit
@@ -1157,10 +1160,6 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 	PhotoComposeContext pcc;
 	int WidthOfViewablePart;
 
-	if (htmlwTrace) {
-		gettimeofday(&Tv, &Tz);
-		fprintf(stderr,"FormatAll enter (%d.%d)\n",Tv.tv_sec,Tv.tv_usec);
-	}
 	saved_width = *Fwidth;
 	hw->html.is_index = False;	 /* Clear the is_index flag */
 
@@ -1189,7 +1188,6 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 				/* donne la top line de la ligne suivante */
 	pcc.cur_line_height = 0;
 	pcc.element_id = 0;	/* to get unique number */
-	pcc.line_number = 1;  /* current line_number */
 	pcc.is_bol = True;	/* we are at begin of line */
 	pcc.have_space_after = False;	/* remember if a word have a space after*/
 	pcc.cur_font = hw->html.font;
@@ -1218,7 +1216,6 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
         pcc.subscript = 0;
 	pcc.indent_level = 0;
 	pcc.internal_mc_eo = 0;
-	pcc.parent_html_object_desc = NULL;
 	pcc.text_area_buf = NULL;
 	pcc.ignore = 0;
 	pcc.current_select = NULL;
@@ -1260,27 +1257,11 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 /* Set up a starting font, and starting x, y, position */
 	FontStack = &FontBase;
 	FontStack->font = hw->html.font;
-/*If we have parsed special header text, fill it in now.*/
-	if (hw->html.html_header_objects != NULL) {
-		FormatChunk(hw, hw->html.html_header_objects,
-			NULL, &pcc,save_obj);
-		pcc.cur_font = hw->html.font;
-		LinefeedPlace(hw,NULL,&pcc);
-	}
 
  					/* Format all objects for width */
 	FormatChunk(hw,hw->html.html_objects,NULL,&pcc,save_obj);
 
-		/*If we have parsed special footer text, fill it in now.*/
-	if (hw->html.html_footer_objects != NULL) {
-		pcc.cur_font = hw->html.font;
-		pcc.preformat = 0;
-		pcc.have_space_after = 0;
-		LinefeedPlace(hw,NULL,&pcc);
-		FormatChunk(hw, hw->html.html_footer_objects,
-			NULL, &pcc,save_obj);
-	}
-			/* Ensure a linefeed after the final element. */
+/* Ensure a linefeed after the final element. */
 	LinefeedPlace(hw,NULL,&pcc);
 			/* Add the bottom margin to the max height. */
 	pcc.y = pcc.y + hw->html.margin_height;
@@ -1296,10 +1277,6 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 		hw->html.use_vbar = False;
 	}
 	
-	if (htmlwTrace) {
-		gettimeofday(&Tv, &Tz);
-		fprintf(stderr,"FormatAll exit (%d.%d)\n", Tv.tv_sec, Tv.tv_usec);
-	}
 	return(pcc.y);
 }
 
@@ -1484,8 +1461,7 @@ void strcpy_or_grow( char **str, int *slen, int *blen, char *add)
 	 */
 	if (*str == NULL) {
 		*str = (char *)malloc(1024 * sizeof(char));
-		if (*str == NULL)
-			return;
+		CHECK_OUT_OF_MEM(*str);
 		*blen = 1024;
 		strcpy(*str, "");
 		*slen = 0;
@@ -1498,8 +1474,7 @@ void strcpy_or_grow( char **str, int *slen, int *blen, char *add)
 	if (newlen >= *blen) {
 		newlen = ((newlen / 1024) + 1) * 1024;
 		buf = (char *)malloc(newlen * sizeof(char));
-		if (buf == NULL)
-			return;
+		CHECK_OUT_OF_MEM(buf);
 		memcpy(buf, *str, *blen);
 		free((char *)*str);
 		*str = buf;
@@ -1622,7 +1597,6 @@ char * ParseTextToPrettyString( HTMLWidget hw, struct ele_rec * elist,
 	int start_pos, int end_pos,
 	int space_width, int lmargin)
 {
-	int line;
 	int newline;
 	int lead_spaces;
 	int epos;
@@ -1653,19 +1627,17 @@ char * ParseTextToPrettyString( HTMLWidget hw, struct ele_rec * elist,
 	text = NULL;
 	line_buf = NULL;
 
-	/*
-	 * We need to know if we should consider the indentation or bullet
-	 * that might be just before the first selected element to also be
-	 * selected.  This current hack looks to see if they selected the
-	 * Whole line, and assumes if they did, they also wanted the beginning.
-	 *
-	 * If we are at the beginning of the list, or the beginning of
-	 * a line, or just behind a bullett, assume this is the start of
-	 * a line that we may want to include the indent for.
-	 */
-	if ((start_pos == 0)&&
-	    ((start->prev == NULL)||(start->prev->type == E_BULLET)||
-	    (start->prev->line_number != start->line_number))) {
+/* We need to know if we should consider the indentation or bullet
+ * that might be just before the first selected element to also be
+ * selected.  This current hack looks to see if they selected the
+ * Whole line, and assumes if they did, they also wanted the beginning.
+ *
+ * If we are at the beginning of the list, or the beginning of
+ * a line, or just behind a bullett, assume this is the start of
+ * a line that we may want to include the indent for.
+ */
+	if( (start_pos == 0) && 
+	    ((start->prev == NULL) || (start->prev->type == E_BULLET)) ) {
 		eptr = start;
 		while((eptr != NULL)&&(eptr != end)&&(eptr->type != E_LINEFEED))
 			eptr = eptr->next;
@@ -1682,7 +1654,6 @@ char * ParseTextToPrettyString( HTMLWidget hw, struct ele_rec * elist,
 	lead_spaces = 0;
 	last = start;
 	eptr = start;
-	line = eptr->line_number;
 	while ((eptr != NULL)&&(eptr != end)) {
 		if (eptr->type == E_BULLET) {
 			int i, spaces;
@@ -1923,19 +1894,15 @@ int DocumentWidth(HTMLWidget hw, struct mark_up *list)
 {
 	struct mark_up *mptr;
 	int plain_text;
-	int listing_text;
-	int pcnt, lcnt, pwidth, lwidth;
+	int pcnt, pwidth;
 	int width;
 	char *ptr;
 
-	/* Loop through object list looking at the plain, preformatted,
-	 * and listing text
+	/* Loop through object list looking at the plain, preformatted text
 	 */
 	width = 0;
 	pwidth = 0;
-	lwidth = 0;
 	plain_text = 0;
-	listing_text = 0;
 	mptr = list;
 	while (mptr != NULL) {
 		/* All text blocks between the starting and ending
@@ -1951,20 +1918,6 @@ int DocumentWidth(HTMLWidget hw, struct mark_up *list)
 			} else
 				plain_text++;
 			pcnt = 0;
-			lcnt = 0;
-		}
-		/* All text blocks between the starting and ending
-		 * listing markers are listing text blocks.
-		 */
-		else if (mptr->type == M_LISTING_TEXT) {
-			if (mptr->is_end) {
-				listing_text--;
-				if (listing_text < 0)
-					listing_text = 0;
-			} else
-				listing_text++;
-			lcnt = 0;
-			pcnt = 0;
 		}
 		/* If this is a plain text block, add to line length.
 		 * Find the Max of all line lengths.
@@ -1977,23 +1930,8 @@ int DocumentWidth(HTMLWidget hw, struct mark_up *list)
 					pwidth = pcnt;
 			}
 		}
-		/*
-		 * If this is a listing text block, add to line length.
-		 * Find the Max of all line lengths.
-		 */
-		else if ((listing_text)&&(mptr->type == M_NONE)) {
-			ptr = mptr->text;
-			while ((ptr != NULL)&&(*ptr != '\0')) {
-				ptr = MaxTextWidth(ptr, &lcnt);
-				if (lcnt > lwidth)
-					lwidth = lcnt;
-			}
-		}
 		mptr = mptr->next;
 	} /* while */
 	width = pwidth * hw->html.plain_font->max_bounds.width;
-	lwidth = lwidth * hw->html.listing_font->max_bounds.width;
-	if (lwidth > width)
-		width = lwidth;
 	return(width);
 }

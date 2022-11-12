@@ -40,8 +40,8 @@
 
 extern WWW_CONST char * HTHostName NOPARAMS;
 
-extern int HTDoConnect (char *, char *, int, int *);
+extern int HTDoConnect (char *, char *, int, int *, caddr_t);
 
-extern int HTDoRead (int, void *, unsigned);
+extern int HTDoRead (int, void *, unsigned, caddr_t);
 
 #endif   /* HTTCP_H */

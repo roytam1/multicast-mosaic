@@ -19,10 +19,6 @@
 #include "HTUtils.h"
 #include "tcp.h"
 
-#ifndef DISABLE_TRACE
-extern int www2Trace;
-#endif
-
 PRIVATE HTAtom * hash_table[HASH_SIZE];
 PRIVATE HT_BOOL initialised = NO;
 

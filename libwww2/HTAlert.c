@@ -15,63 +15,66 @@
 #include <ctype.h> 		/* for toupper - should be in tcp.h */
 #include "../libhtmlw/HTML.h"
 #include "../src/mosaic.h"
+#include "../src/gui.h"
+#include "../src/gui-dialogs.h"
+#include "../src/mo-www.h"
 
-extern void mo_gui_notify_progress (char *);
-extern int mo_gui_check_icon (int);
-extern void mo_gui_clear_icon (void);
-extern void mo_gui_update_meter(int,char *);
-extern int prompt_for_yes_or_no (char *);
-extern char *prompt_for_string (char *);
-extern char *prompt_for_password (char *);
-
-PUBLIC void HTAlert ARGS1(WWW_CONST char *, Msg)
+PUBLIC void HTAlert (char *Msg, caddr_t appd)
 {
-	mo_gui_notify_progress (Msg);
+	mo_gui_notify_progress (Msg, (mo_window *)appd);
 }
 
-PUBLIC void HTProgress ARGS1(WWW_CONST char *, Msg)
+PUBLIC void HTProgress (char *Msg, caddr_t appd)
 {
-	mo_gui_notify_progress (Msg);
+	mo_gui_notify_progress (Msg, (mo_window *)appd);
 }
 
-PUBLIC void HTMeter ARGS2(WWW_CONST int, level, WWW_CONST char *, text)
+PUBLIC void HTMeter(int level, char *text, caddr_t appd)
 {
-	mo_gui_update_meter(level,text);
+	mo_gui_update_meter(level,text, (mo_window *)appd);
 }
 
-PUBLIC int HTCheckActiveIcon ARGS1(int, twirl)
+PUBLIC int HTCheckActiveIcon (int twirl, caddr_t appd)
 {
-	return ( mo_gui_check_icon (twirl));
+	return ( mo_gui_check_icon (twirl, (mo_window *)appd));
 }
 
-PUBLIC void HTClearActiveIcon NOARGS
+PUBLIC void HTClearActiveIcon(caddr_t appd)
 {
-	mo_gui_clear_icon ();
+	mo_gui_clear_icon ((mo_window *)appd);
 }
 
-PUBLIC void HTDoneWithIcon NOARGS
+PUBLIC void HTDoneWithIcon(caddr_t appd)
 {
-	mo_gui_done_with_icon (NULL);
+	mo_gui_done_with_icon ((mo_window*)appd);
 }
 
-PUBLIC HT_BOOL HTConfirm ARGS1(WWW_CONST char *, Msg)
+PUBLIC HT_BOOL HTConfirm (char *Msg, caddr_t appd)
 {
-	if (prompt_for_yes_or_no (Msg))
+	if (prompt_for_yes_or_no (Msg,(mo_window *)appd))
 		return(YES);
-	else
-		return(NO);
+	return(NO);
 }
 
-PUBLIC char * HTPrompt ARGS2(WWW_CONST char *, Msg, WWW_CONST char *, deflt)
+PUBLIC char * HTPrompt (char *Msg, char *deflt, caddr_t appd)
 {
-	char *Tmp = prompt_for_string (Msg);
+	char *Tmp = prompt_for_string (Msg,(mo_window *)appd);
 	char *rep = 0;
 
 	StrAllocCopy (rep, (Tmp && *Tmp) ? Tmp : deflt);
 	return rep;
 }
 
-PUBLIC char * HTPromptPassword ARGS1(WWW_CONST char *, Msg)
+PUBLIC char * HTPromptPassword (char *Msg, caddr_t appd)
 {
-	return ( prompt_for_password (Msg));
+	return ( prompt_for_password (Msg,(mo_window *)appd));
+}
+
+PUBLIC void HTrename_binary_file( caddr_t appd, char * fnam)
+{
+	mo_rename_binary_file( (mo_window *) appd, fnam);
+}
+PUBLIC void HTapplication_user_feedback (char * s, caddr_t appd)
+{
+	application_user_feedback (s, (mo_window*) appd);
 }

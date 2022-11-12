@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <sys/wait.h>
 #include <sys/time.h>
 #ifndef __QNX__
@@ -5,29 +6,25 @@
 #endif
 #include <unistd.h>
 
-
+#include "HText.h"
 #include "HTFormat.h"
 #include "HTFile.h"
 #include "HTUtils.h"
 #include "tcp.h"
 #include "HTML.h"
-#include "HText.h"
 #include "HTAlert.h"
 #include "HTList.h"
 #include "HTInit.h"
 #include "HTFWriter.h"
 #include "HTPlain.h"
 #include "SGML.h"
+#include "HTParams.h"		/* params from X resources */
 
 
 #include "../libhtmlw/HTML.h"
 #include "../src/mosaic.h"
 
 #include "../libnut/system.h"
-
-#ifndef DISABLE_TRACE
-extern int www2Trace;
-#endif
 
 struct _HTStream 
 {
@@ -38,16 +35,12 @@ struct _HTStream
 int is_uncompressed=0;
 
 extern char *mo_tmpnam (char *);
-extern void application_user_feedback (char *);
-extern char *uncompress_program, *gunzip_program;
-
-extern void HTFileCopyToText (FILE *fp, HText *text);
 
 /* Given a filename of a local compressed file, compress it in place.
    We assume that the file does not already have a .Z or .z extension
    at this point -- this is a little weird but it's convenient. */
 
-void HTCompressedFileToFile (char *fnam, int compressed)
+void HTCompressedFileToFile (char *fnam, int compressed, caddr_t appd)
 {
 	char *znam;
 	char *cmd;
@@ -58,18 +51,16 @@ void HTCompressedFileToFile (char *fnam, int compressed)
 
 	cmd=NULL;
 
-#ifndef DISABLE_TRACE
-	if (www2Trace)
+	if (wWWParams.trace)
 		fprintf 
 		(stderr, "[HTCompressedFileToFile] Entered; fnam '%s', compressed %d\n",
 		fnam, compressed);
-#endif
 
 /* Punt if we can't handle it. */
 	if (compressed != COMPRESSED_BIGZ && compressed != COMPRESSED_GNUZIP)
 		return;
 
-	HTProgress ("Preparing to uncompress data.");
+	HTProgress ("Preparing to uncompress data.",appd);
 	znam = (char *)malloc (sizeof (char) * (strlen (fnam) + 8));
 
 /* Either compressed or gzipped. */
@@ -86,19 +77,17 @@ void HTCompressedFileToFile (char *fnam, int compressed)
 		free (znam);
 		return;
 	}
-#ifndef DISABLE_TRACE
-	if (www2Trace)
+	if (wWWParams.trace)
 		fprintf (stderr, "[HTCompressedFileToFile] Moved '%s' to '%s'\n",
 			fnam, znam);
-#endif
 	if (compressed == COMPRESSED_BIGZ) {
-		cmd = (char *)malloc(strlen(uncompress_program)+strlen(znam)+8);
-		sprintf (cmd, "%s %s", uncompress_program, znam);
+		cmd = (char *)malloc(strlen(wWWParams.uncompress_program)+strlen(znam)+8);
+		sprintf (cmd, "%s %s", wWWParams.uncompress_program, znam);
 	} else {
-		cmd =(char *)malloc (strlen (gunzip_program) + strlen (znam) + 8);
-		sprintf (cmd, "%s %s", gunzip_program, znam);
+		cmd =(char *)malloc (strlen (wWWParams.gunzip_program) + strlen (znam) + 8);
+		sprintf (cmd, "%s %s", wWWParams.gunzip_program, znam);
 	}
-	HTProgress ("Uncompressing data.");
+	HTProgress ("Uncompressing data.",appd);
 
 	*retBuf='\0';
 	*final='\0';
@@ -136,34 +125,30 @@ void HTCompressedFileToFile (char *fnam, int compressed)
 		application_user_info_wait(final);
 		free (cmd);
 		free (znam);
-		HTProgress ("Uncompress failed.");
+		HTProgress ("Uncompress failed.",appd);
 		return;
 	}
-	HTProgress ("Data uncompressed.");
+	HTProgress ("Data uncompressed.",appd);
 	is_uncompressed=1;  
-#ifndef DISABLE_TRACE
-	if (www2Trace)
+	if (wWWParams.trace)
 		fprintf 
 	(stderr, "[HTCompressedFileToFile] Uncompressed '%s' with command '%s'\n",
 		znam, cmd);
-#endif
 	free (cmd);
 	free (znam);
 	return;
 }
 
-void HTCompressedHText (HText *text, int compressed, int plain)
+void HTCompressedHText (HText *text, int compressed, int plain, caddr_t appd)
 {
 	char *fnam;
 	FILE *fp;
 	int rv, size_of_data;
   
-#ifndef DISABLE_TRACE
-	if (www2Trace)
+	if (wWWParams.trace)
 		fprintf 
 		(stderr, "[HTCompressedHText] Entered; compressed %d\n",
 		compressed);
-#endif
 
 /* Punt if we can't handle it. */
 	if (compressed != COMPRESSED_BIGZ && compressed != COMPRESSED_GNUZIP)
@@ -180,59 +165,45 @@ void HTCompressedHText (HText *text, int compressed, int plain)
 	fnam = mo_tmpnam ((char *) 0);
 	fp = fopen (fnam, "w");
 	if (!fp) {
-#ifndef DISABLE_TRACE
-		if (www2Trace)
+		if (wWWParams.trace)
 		fprintf (stderr, "COULD NOT OPEN TMP FILE '%s'\n", fnam);
-#endif
-		application_user_feedback("Unable to uncompress compressed data;\nresults may be in error.");
+		HTapplication_user_feedback("Unable to uncompress compressed data;\nresults may be in error.",appd);
 		free (fnam);
 		return;
 	}
 
-#ifndef DISABLE_TRACE
-	if (www2Trace)
+	if (wWWParams.trace)
 		fprintf (stderr, "[HTCmopressedHText] Going to write %d bytes.\n",
 			size_of_data);
-#endif
 	rv = fwrite (HText_getText (text), sizeof (char), size_of_data, fp);
 	if (rv != size_of_data) {
-#ifndef DISABLE_TRACE
-		if (www2Trace)
+		if (wWWParams.trace)
 			fprintf (stderr, "ONLY WROTE %d bytes\n", rv);
-#endif
-		application_user_feedback("Unable to write compressed data to local disk;\nresults may be in error.");
+		HTapplication_user_feedback("Unable to write compressed data to local disk;\nresults may be in error.",appd);
 	}
 	fclose (fp);
-#ifndef DISABLE_TRACE
-	if (www2Trace)
+	if (wWWParams.trace)
 		fprintf (stderr, "HTCompressedHText: Calling CompressedFileToFile\n");
-#endif
-	HTCompressedFileToFile (fnam, compressed);
+	HTCompressedFileToFile (fnam, compressed, appd);
 	HText_doAbort (text);
 	HText_beginAppend (text);
  
 	if (plain) {
-#ifndef DISABLE_TRACE
-		if (www2Trace)
+		if (wWWParams.trace)
 			fprintf (stderr, "[HTCompressedHText] Throwing in PLAINTEXT token...\n");
-#endif
 		HText_appendText(text, "<PLAINTEXT>\n");
 	}
 	fp = fopen (fnam, "r");
 	if (!fp) {
-#ifndef DISABLE_TRACE
-		if (www2Trace)
+		if (wWWParams.trace)
 			fprintf (stderr, "COULD NOT OPEN TMP FILE FOR READING '%s'\n", fnam);
-#endif
 /* We already get error dialog up above. */
 		free (fnam);
 		return;
 	}
 	HTFileCopyToText (fp, text);
-#ifndef DISABLE_TRACE
-	if (www2Trace)
+	if (wWWParams.trace)
 		fprintf (stderr, "[HTCompressedHText] I think we're done...\n");
-#endif
 	unlink(fnam);
 	return;
 }

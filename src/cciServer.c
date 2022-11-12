@@ -15,10 +15,6 @@ static ListenAddress listenPort;
 
 int MCCIanchorcached = 0;       /* another ugly ADC hack ZZZZ */
 
-#ifndef DISABLE_TRACE
-extern int cciTrace;
-#endif
-
 int MCCIReturnListenPortSocketDescriptor()
 {
 	return(listenPort);
@@ -26,11 +22,9 @@ int MCCIReturnListenPortSocketDescriptor()
 
 void MCCICloseConnection( MCCIPort clientPort)
 {
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"CloseConnection(): I've been called\n");
 	}
-#endif
 	MoCCITerminateAConnection(clientPort);
 	NetCloseConnection(clientPort);
 
@@ -96,18 +90,16 @@ MCCIPort MCCICheckAndAcceptConnection()
 		return(NULL);
 	}
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"Current cci connections: max number=%d, currentNumber=%d\n",
-				MoCCIMaxNumberOfConnectionsAllowed(),
+				mMosaicAppData.max_num_of_cci_connections,
 				MoCCICurrentNumberOfConnections());
 	}
-#endif
 
-	if (client && MoCCIMaxNumberOfConnectionsAllowed()) {
+	if (client && mMosaicAppData.max_num_of_cci_connections) {
 		/* if maxNumConnections == 0, then no limit */
 		if ((MoCCICurrentNumberOfConnections() + 1) >
-		    MoCCIMaxNumberOfConnectionsAllowed()) {
+		    mMosaicAppData.max_num_of_cci_connections) {
 			MCCISendResponseLine(client,MCCIR_MAX_CONNECTIONS,
 			"Maximum number of allowed CCI connections exceeded");
 			MCCICloseConnection(client);
@@ -138,18 +130,14 @@ int MCCIReadContent( MCCIPort client, char **content)
 	char *line;
 	int x;
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIReadContent(): Just entered...about to GetLine()\n");
 	}
-#endif
 	*content = (char *) 0;
 	line = GetLine(client);
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIReadContent(): read line \"%s\"\n",line);
 	}
-#endif
 
 	/* read content length */
 	s = strchr(line,':'); /* skip to length */
@@ -174,11 +162,9 @@ int MCCIReadContent( MCCIPort client, char **content)
 		}
 		return(0);
 	}
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"ReadContent(): about to read %d bytes\n",length);
 	}
-#endif
 	length = ReadBuffer(client,*content,length);
 	(*content)[length]='\0';
 	return(length);
@@ -322,11 +308,9 @@ int MCCIHandlePost( MCCIPort client,
 	char *tmpend;
 	char *next;
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIHandlePost(): parsing line: \"%s\"\n",line);
 	}
-#endif
 
 	if (!(s = strchr(line,' '))){ /* skip over POST */
 		strcpy(retText,"Error in protocol");
@@ -345,11 +329,9 @@ int MCCIHandlePost( MCCIPort client,
 
 	url = strdup(url);
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIHandlePost(): extracted url: \"%s\"\n",url);
 	}
-#endif
 
 	GetWordFromString(s,&mimeType,&end); /* Get Content Type*/
 	if ((!mimeType) || (mimeType == end)) {
@@ -364,11 +346,9 @@ int MCCIHandlePost( MCCIPort client,
 	*tmpend = '\0'; /* terminate the content-type */
 	mimeType = strdup(mimeType);
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIHandlePost(): mimeType: \"%s\"\n",mimeType);
 	}
-#endif
 
 	output = MCCI_DEFAULT;
 	if (next && (next != end)) {
@@ -394,12 +374,10 @@ int MCCIHandlePost( MCCIPort client,
 		output = MCCI_DEFAULT; 
 	}
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"POST url = \"%s\",mimeType=\"%s\",output=%d\n",
 					url,mimeType,output);
 	}
-#endif
 
 	postDataLength = MCCIReadContent(client,&postData);
 	if (postDataLength < 1) {
@@ -407,11 +385,9 @@ int MCCIHandlePost( MCCIPort client,
 		return(MCCIR_ERROR);
 	}
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"Got the data, datalength = %d\n",postDataLength);
 	}
-#endif
 
 	MCCIRequestPost(client,&retCode, retText, url, mimeType, 
 				postData, postDataLength, output);
@@ -438,11 +414,9 @@ int MCCIHandleDisplay( MCCIPort client,
 	char *tmpend;
 	char *next;
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIHandleDisplay(): parsing line: \"%s\"\n",line);
 	}
-#endif
 
 	if (!(s = strchr(line,' '))){ /* skip over DISPLAY */
 		strcpy(retText,"Error in protocol");
@@ -461,11 +435,9 @@ int MCCIHandleDisplay( MCCIPort client,
 
 	url = strdup(url);
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIHandleDisplay(): extracted url: \"%s\"\n",url);
 	}
-#endif
 
 	GetWordFromString(s,&mimeType,&end); /* Get Content Type*/
 	if ((!mimeType) || (mimeType == end)) {
@@ -480,11 +452,9 @@ int MCCIHandleDisplay( MCCIPort client,
 	*tmpend = '\0'; /* terminate the content-type */
 	mimeType = strdup(mimeType);
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIHandleDisplay(): mimeType: \"%s\"\n",mimeType);
 	}
-#endif
 
 	output = MCCI_DEFAULT;
 	if (next && (next != end)) {
@@ -510,12 +480,10 @@ int MCCIHandleDisplay( MCCIPort client,
 		output = MCCI_DEFAULT; 
 	}
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"Display url = \"%s\",mimeType=\"%s\",output=%d\n",
 					url,mimeType,output);
 	}
-#endif
 
 	/* MCCIReadContent will malloc space for displayData */
 	displayDataLength = MCCIReadContent(client,&displayData);
@@ -524,11 +492,9 @@ int MCCIHandleDisplay( MCCIPort client,
 		return(MCCIR_ERROR);
 	}
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"Got the data, datalength = %d\n",displayDataLength);
 	}
-#endif
 
 	MCCIRequestDisplay(client, &retCode, retText, url, mimeType, 
 				displayData, displayDataLength, output);
@@ -576,11 +542,9 @@ int MCCIHandleGet( MCCIPort client,
 	*end = '\0'; /* terminate url */
 
 	url = strdup(url);
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"GetURL: URL=\"%s\"\n",url);
 	}
-#endif
 
 	GetWordFromString(s,&next,&end);
 	if (next && (next != end)) {
@@ -603,11 +567,9 @@ int MCCIHandleGet( MCCIPort client,
 			}
 		}
 	}
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"pt #2 GetURL: URL=\"%s\"\n",url);
 	}
-#endif
 
 	if (next && (next != end)) {
 	    if (!strncasecmp(next,MCCI_S_HEADER,strlen(MCCI_S_HEADER))) {
@@ -615,11 +577,9 @@ int MCCIHandleGet( MCCIPort client,
 		    headerExtLength = MCCIReadContent(client,&headerExt);
 	    }
 	}
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"pt #3 GetURL: URL=\"%s\"\n",url);
 	}
-#endif
         /* set flag to be caught in MoCCISendAnchorToCCI */
 	cciStatPreventSendAnchor(client, url); 
 	MCCIRequestGetURL(&retCode,retText,url,output,headerExt);
@@ -644,11 +604,9 @@ int MCCIHandleDoCommand( MCCIPort client,
 	int retCode;
 
 	/* expected line, DOCOMMAND command parameters... */
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"line is %s\n", line);
 	}
-#endif
 
 	if (!(s = strchr(line,' '))){ /* skip over DOCOMMAND */
 		strcpy(retText,"Error in protocol");
@@ -663,22 +621,18 @@ int MCCIHandleDoCommand( MCCIPort client,
 	s = end;
 	tmpend = end;
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIHandleDisplay(): extracted command: \"%s\"\n",command);
 	}
-#endif
 	parameter = strdup(s);
 
 	*tmpend = '\0';
 	command = strdup(command);
 
 	MCCIRequestDoCommand(&retCode,retText,command, parameter);
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MCCIHandleDisplay(): retCode: %d -- retText: [%s]\n",retCode,retText);
 	}
-#endif
 	return(retCode);
 }
 
@@ -708,11 +662,9 @@ int MCCIHandleForm( MCCIPort client,
 	tmp = strchr(actionID, ' ');
 	*tmp = '\0';
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"GetURL: actionID=[%s]\n",actionID);
 	}
-#endif
 
 	GetWordFromString(s,&next,&end);
 	if (next && (next != end)) {
@@ -729,11 +681,9 @@ int MCCIHandleForm( MCCIPort client,
 	} else
 		return(MCCIR_ERROR);
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"  actionID=\"%s\"\n",actionID);
 	}
-#endif
 
         /* set flag to be caught in MoCCISendAnchorToCCI */
 /*
@@ -743,150 +693,6 @@ int MCCIHandleForm( MCCIPort client,
 		
 /*  	free(actionID);
 */
-	return(retCode);
-}
-
-#ifdef NEW
-#define NUM_ANNO_CODES 3
-static int annoCodes[NUM_ANNO_CODES] = {MCCI_PUBLIC_ANNOTATION, MCCI_GROUP_ANNOTATION, MCCI_PRIVATE_ANNOTATION};
-static char* annoStrings[NUM_ANNO_CODES] = {MCCI_S_PUBLIC_ANN, MCCI_S_GROUP_ANN, MCCI_S_PRIVATE_ANN};
-#else /* NEW */
-
-#endif /* NEW */
-int MCCIHandleGetAnnotation( MCCIPort client,
-	char *line, 	/* GET request line */
-	char *retText,	/* text to be returned to cci client */
-	char **retData,
-	int *retDataLength)
-{
-	char *s;
-	char *end;
-	char *type;
-	char *url;
-	int annotationType;
-	int retCode;
-
-	if (!(s = strchr(line,' '))){ /* skip over GET */
-		strcpy(retText,"Error in protocol");
-		return(MCCIR_ERROR);
-	}
-
-	annotationType = 0;
-	GetWordFromString(s,&type,&end); /* Get type (pub,priv,group)*/
-	if (!strncasecmp(type,MCCI_S_PUBLIC_ANN,strlen(MCCI_S_PUBLIC_ANN))) {
-		annotationType = MCCI_PUBLIC_ANNOTATION;
-	} else if (!strncasecmp(type,MCCI_S_GROUP_ANN,
-					strlen(MCCI_S_GROUP_ANN))) {
-		annotationType = MCCI_GROUP_ANNOTATION;
-	} else if (!strncasecmp(type,MCCI_S_PRIVATE_ANN,
-					strlen(MCCI_S_PRIVATE_ANN))) {
-		annotationType = MCCI_PRIVATE_ANNOTATION;
-	} else if (!strncasecmp(type,MCCI_S_ALL_ANN,
-					strlen(MCCI_S_ALL_ANN))) {
-		annotationType = MCCI_ALL_ANNOTATION;
-	} else {
-		strcpy(retText,"PUBLIC, PRIVATE, GROUP or ALL annotation requests only");
-		return(MCCIR_ERROR);
-	}
-	s = end;
-	GetWordFromString(s,&url,&end); /* actual <url> */
-	if ((!url) || (url == end)) {
-		strcpy(retText,"Hey bud, where's the URL?");
-		return(MCCIR_ERROR);
-	}
-	s = end;
-	url++; /* skip over '<' */
-	end--; /* backup over '>' */
-	*end = '\0'; /* terminate url */
-
-	url = strdup(url);
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
-		fprintf(stderr,"GetAnnotation: URL=\"%s\"\n",url);
-	}
-#endif
-
-#ifdef NEW
-       MCCISendResponseLine(client,retCode,retText);
-       for (int index = 0; index < NUM_ANNO_CODES; ++index) {
-	 if (!strncasecmp(type,annoStrings[index],
-			  strlen(annoStrings[index])) ||
-	     !strncasecmp(type,MCCI_S_ALL_ANN,
-					strlen(MCCI_S_ALL_ANN))) {
-	   MCCIRequestGetAnnotation(&retCode,retText,retData,retDataLength,
-			url,annoCodes[index]);
-	 } else
-	   MCCIGetAnnotationDummyLine(&retCode,retText,retData,retDataLength,annoCodes[index]);
-
-		if (retDataLength != 
-		    NetServerWrite(client,retData,retDataLength)) {
-		  return(MCCI_FAIL);
-		}
-#else /* NEW */
-	MCCIRequestGetAnnotation(&retCode,retText,retData,retDataLength,
-			url,annotationType);
-
-#endif /* NEW */
-	free(url);
-	return(retCode);
-}
-
-int MCCIHandlePutAnnotation( MCCIPort client,
-	char *line, 	/* PUT request line */
-	char *retText)	/* text to be returned to cci client */
-{
-	char *s;
-	char *end;
-	char *type;
-	char *url;
-	char *annotation;
-	int annotationLength;
-	int retCode;
-	int annotationType;
-
-	if (!(s = strchr(line,' '))){ /* skip over GET */
-		strcpy(retText,"Error in protocol");
-		return(MCCIR_ERROR);
-	}
-	annotationType = 0;
-	GetWordFromString(s,&type,&end); /* Get type (pub,priv,group)*/
-	if (!strncasecmp(type,MCCI_S_PUBLIC_ANN,strlen(MCCI_S_PUBLIC_ANN))) {
-		annotationType = MCCI_PUBLIC_ANNOTATION;
-	} else if (!strncasecmp(type,MCCI_S_GROUP_ANN,
-					strlen(MCCI_S_GROUP_ANN))) {
-		annotationType = MCCI_GROUP_ANNOTATION;
-	} else if (!strncasecmp(type,MCCI_S_PRIVATE_ANN,
-					strlen(MCCI_S_PRIVATE_ANN))) {
-		annotationType = MCCI_PRIVATE_ANNOTATION;
-	} else {
-		strcpy(retText,"PUBLIC, PRIVATE or GROUP put annotations only");
-		return(MCCIR_ERROR);
-	}
-
-	s = end;
-	GetWordFromString(s,&url,&end); /* actual <url> */
-	if ((!url) || (url == end)) {
-		strcpy(retText,"Hey bud, where's the URL?");
-		return(MCCIR_ERROR);
-	}
-	s = end;
-	url++; /* skip over '<' */
-	end--; /* backup over '>' */
-	*end = '\0'; /* terminate url */
-
-	url = strdup(url);
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
-		fprintf(stderr,"GetURL: URL=\"%s\"\n",url);
-	}
-#endif
-	annotationLength = MCCIReadContent(client,&annotation);
-	if (annotationLength < 1) {
-		strcpy(retText,"No annotation data");
-		return(MCCIR_ERROR);
-	}
-	MCCIRequestPutAnnotation(&retCode,retText,annotationType,url,
-						annotation,annotationLength);
 	return(retCode);
 }
 
@@ -929,14 +735,12 @@ int MCCIHandleInput( MCCIPort client)
 
 	line = GetLine(client);
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		if (line)
 			fprintf(stderr,"Server Read: %s\n",line);
 		else
 			fprintf(stderr,"Server Read: NULL line\n");
 	}
-#endif
 
 	if (!line) {
 		/* error or disconnect */
@@ -951,37 +755,6 @@ int MCCIHandleInput( MCCIPort client)
                 MCCISendResponseLine(client,MCCIR_DISCONNECT_OK,
                         "DISCONNECT request received");
 		return(0);
-	}
-/* This has to go ahead of the simple get or else it gets snagged */
-	else if (!strncasecmp(line,MCCI_S_GETANNOTATION,
-					strlen(MCCI_S_GETANNOTATION))) {
-		retDataLength = 0;
-
-/*SWP -- 7/11/95
- * In the Original line, &retData is passed. retData is a char * to begin with
- * and it eventually gets assigned the value from mo_fetch_personal_annotations
- * which sends back all of the annotations for the specified url in one char
- * * string. Not an array of strings.
- */
-		retCode = MCCIHandleGetAnnotation(client,line,retText,retData,
-				&retDataLength);
-/*Original
-		retCode = MCCIHandleGetAnnotation(client,line,retText,&retData,
-				&retDataLength);
-*/
-		MCCISendResponseLine(client,retCode,retText);
-		if (retDataLength != 
-		    NetServerWrite(client,*retData,retDataLength)) {
-		  return(MCCI_FAIL);
-		}
-
-/* FINISHME */	/**** if retDataLength, send data */
-		/*** if retDataLength, free retData?? */
-
-		if (retDataLength>0) {
-			free(*retData);
-		}
-
 	} else if (!strncasecmp(line,MCCI_S_GET,strlen(MCCI_S_GET))) {
 		retCode = MCCIHandleGet(client,line,retText);
 		MCCISendResponseLine(client,retCode,retText);
@@ -1005,10 +778,6 @@ int MCCIHandleInput( MCCIPort client)
                 MCCISendResponseLine(client,retCode,retText);
 	} else if (!strncasecmp(line,MCCI_S_POST,strlen(MCCI_S_POST))) {
 		retCode = MCCIHandlePost(client,line,retText);
-		MCCISendResponseLine(client,retCode,retText);
-	} else if (!strncasecmp(line,MCCI_S_PUTANNOTATION,
-					strlen(MCCI_S_PUTANNOTATION))) {
-		retCode = MCCIHandlePutAnnotation(client,line,retText);
 		MCCISendResponseLine(client,retCode,retText);
 	} else if (!strncasecmp(line,MCCI_S_FILE_TO_URL,
 					strlen(MCCI_S_FILE_TO_URL))) {

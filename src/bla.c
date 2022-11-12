@@ -2,14 +2,14 @@
 #include "copyright.ncsa"
 
 /*		CCI redirect object	 */
+
 #include <stdio.h>
 
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
-
 #include "cciServer.h"
 #include "../libhtmlw/list.h"
-
+#include "HText.h"
 #include "HTPlain.h"
 #include "HTUtils.h"
 #include "HText.h"
@@ -18,11 +18,6 @@
 #include "bla.h"
 
 extern void MoCCISendOutputToClient();
-extern void HTCompressedFileToFile (char *fnam, int compressed);
-
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
 
 /*		HTML Object	 */
 
@@ -37,18 +32,18 @@ struct _HTStream {
 /*			A C T I O N 	R O U T I N E S		 */
 
 /*	Character handling */
-PRIVATE void CCI_put_character ARGS2(HTStream *, me, char, c)
+PRIVATE void CCI_put_character (HTStream * me, char c, caddr_t appd)
 {
 	fputc(c,me->fp);
 }
 
 /*	String handling */
-PRIVATE void CCI_put_string ARGS2(HTStream *, me, WWW_CONST char*, s)
+PRIVATE void CCI_put_string (HTStream * me, WWW_CONST char* s, caddr_t appd)
 {
 	fwrite(s,1,strlen(s),me->fp);
 }
 
-PRIVATE void CCI_write ARGS3(HTStream *, me, WWW_CONST char*, s, int, l)
+PRIVATE void CCI_write (HTStream * me, WWW_CONST char* s, int l, caddr_t appd)
 {
 	fwrite(s,1,l,me->fp);
 }
@@ -58,28 +53,23 @@ PRIVATE void CCI_write ARGS3(HTStream *, me, WWW_CONST char*, s, int, l)
 ** Note that the SGML parsing context is freed, but the created object is not,
 ** as it takes on an existence of its own unless explicitly freed.
 */
-PRIVATE void CCI_free ARGS1(HTStream *, me)
+PRIVATE void CCI_free (HTStream * me, caddr_t appd)
 {
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
-		fprintf(stderr,"CCI_free()\n");
-	}
-#endif
 }
 
 /*	End writing */
 
-PRIVATE void CCI_end_document ARGS1(HTStream *, me)
+PRIVATE void CCI_end_document (HTStream * me, caddr_t appd)
 {
 
 	fclose(me->fp);
 /* ship it */
 	if ( me->compressed != COMPRESSED_NOT)
-		HTCompressedFileToFile (me->fileName, me->compressed);	
+		HTCompressedFileToFile (me->fileName, me->compressed,(caddr_t)mo_main_next_window(NULL));	
 	MoCCISendOutputToClient(HTAtom_name(me->dataType),me->fileName);
 }
 
-PRIVATE void CCI_handle_interrupt ARGS1(HTStream *, me)
+PRIVATE void CCI_handle_interrupt (HTStream * me, caddr_t appd)
 {
 	fclose(me->fp);
 	unlink(me->fileName);
@@ -98,12 +88,13 @@ PUBLIC WWW_CONST HTStreamClass CCIout =
 
 
 /*		New object */
-PUBLIC HTStream* CCIPresent ARGS5(
-	HTPresentation *,	pres,
-	HTParentAnchor *,	anchor,	
-	HTStream *,		sink,
-        HTFormat,               format_in,
-        int,                    compressed)
+PUBLIC HTStream* CCIPresent (
+	HTPresentation *	pres,
+	HTParentAnchor *	anchor,	
+	HTStream *		sink,
+        HTFormat               format_in,
+        int                    compressed,
+	caddr_t			appd)
 {
 	HTStream* me = (HTStream*)malloc(sizeof(HTStream));
 

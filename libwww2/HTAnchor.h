@@ -14,9 +14,7 @@
 #include "HTList.h"
 #include "HTAtom.h"
 
-/*                      Main definition of anchor
-**                      =========================
-*/
+/*                      Main definition of anchor */
 
 typedef struct _HyperDoc HyperDoc;  /* Ready for forward references */
 typedef struct _HTAnchor HTAnchor;
@@ -78,8 +76,7 @@ typedef struct {
 **      document. The parent anchor must already exist.
 */
 
-extern HTChildAnchor * HTAnchor_findChild
-  PARAMS(
+extern HTChildAnchor * HTAnchor_findChild PARAMS(
      (HTParentAnchor *parent,
       WWW_CONST char *tag)
   );
@@ -109,8 +106,7 @@ extern HTChildAnchor * HTAnchor_findChildAndLink
 **      like with fonts.
 */
 
-extern HTAnchor * HTAnchor_findAddress
-  PARAMS(
+extern HTAnchor * HTAnchor_findAddress PARAMS(
      (WWW_CONST char * address)
      );
 
@@ -125,8 +121,7 @@ extern HTAnchor * HTAnchor_findAddress
 **      If this anchor's source list is empty, we delete it and its children.
 */
 
-extern HT_BOOL HTAnchor_delete
-  PARAMS(
+extern HT_BOOL HTAnchor_delete PARAMS(
      (HTParentAnchor *me)
      );
 
@@ -138,8 +133,7 @@ extern HT_BOOL HTAnchor_delete
 **      is put in the correct order as we load the document.
 */
 
-extern void HTAnchor_makeLastChild
-  PARAMS(
+extern void HTAnchor_makeLastChild PARAMS(
      (HTChildAnchor *me)
      );
 
@@ -147,23 +141,19 @@ extern void HTAnchor_makeLastChild
 **      ---------------------
 */
 
-extern HTParentAnchor * HTAnchor_parent
-  PARAMS(
+extern HTParentAnchor * HTAnchor_parent PARAMS(
      (HTAnchor *me)
      );
 
-extern void HTAnchor_setDocument
-  PARAMS(
+extern void HTAnchor_setDocument PARAMS(
      (HTParentAnchor *me, HyperDoc *doc)
      );
 
-extern HyperDoc * HTAnchor_document
-  PARAMS(
+extern HyperDoc * HTAnchor_document PARAMS(
      (HTParentAnchor *me)
      );
 /* We don't want code to change an address after anchor creation... yet ?
-extern void HTAnchor_setAddress
-  PARAMS(
+extern void HTAnchor_setAddress PARAMS(
      (HTAnchor *me, char *addr)
      );
 */
@@ -171,50 +161,40 @@ extern void HTAnchor_setAddress
 /*      Returns the full URI of the anchor, child or parent
 **      as a malloc'd string to be freed by the caller.
 */
-extern char * HTAnchor_address
-  PARAMS(
+extern char * HTAnchor_address PARAMS(
      (HTAnchor *me)
      );
 
-extern void HTAnchor_setFormat
-  PARAMS(
+extern void HTAnchor_setFormat PARAMS(
      (HTParentAnchor *me, HTFormat form)
      );
 
-extern HTFormat HTAnchor_format
-  PARAMS(
+extern HTFormat HTAnchor_format PARAMS(
      (HTParentAnchor *me)
      );
 
-extern void HTAnchor_setIndex
-  PARAMS(
+extern void HTAnchor_setIndex PARAMS(
      (HTParentAnchor *me)
      );
 
-extern HT_BOOL HTAnchor_isIndex
-  PARAMS(
+extern HT_BOOL HTAnchor_isIndex PARAMS(
      (HTParentAnchor *me)
      );
 
-extern HT_BOOL HTAnchor_hasChildren
-  PARAMS(
+extern HT_BOOL HTAnchor_hasChildren PARAMS(
      (HTParentAnchor *me)
      );
 
-/*      Title handling
-*/
-extern WWW_CONST char * HTAnchor_title
-  PARAMS(
+/*      Title handling */
+extern WWW_CONST char * HTAnchor_title PARAMS(
      (HTParentAnchor *me)
      );
 
-extern void HTAnchor_setTitle
-  PARAMS(
+extern void HTAnchor_setTitle PARAMS(
      (HTParentAnchor *me, WWW_CONST char * title)
      );
 
-extern void HTAnchor_appendTitle
-  PARAMS(
+extern void HTAnchor_appendTitle PARAMS(
      (HTParentAnchor *me, WWW_CONST char * title)
      );
 
@@ -222,8 +202,7 @@ extern void HTAnchor_appendTitle
 **      -------------------------------------
 */
 
-extern HT_BOOL HTAnchor_link
-  PARAMS(
+extern HT_BOOL HTAnchor_link PARAMS(
      (HTAnchor *source, HTAnchor *destination, HTLinkType *type)
      );
 
@@ -231,18 +210,15 @@ extern HT_BOOL HTAnchor_link
 **      ---------------------
 */
 
-extern HTAnchor * HTAnchor_followMainLink
-  PARAMS(
+extern HTAnchor * HTAnchor_followMainLink PARAMS(
      (HTAnchor *me)
      );
 
-extern HTAnchor * HTAnchor_followTypedLink
-  PARAMS(
+extern HTAnchor * HTAnchor_followTypedLink PARAMS(
      (HTAnchor *me, HTLinkType *type)
      );
 
-extern HT_BOOL HTAnchor_makeMainLink
-  PARAMS(
+extern HT_BOOL HTAnchor_makeMainLink PARAMS(
      (HTAnchor *me, HTLink *movingLink)
      );
 

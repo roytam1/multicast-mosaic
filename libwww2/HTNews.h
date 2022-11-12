@@ -1,12 +1,10 @@
-/*                                  Network News Transfer protocol module for the WWW library
-                                          HTNEWS
-                                             
+/*             Network News Transfer protocol module for the WWW library
+                                       HTNEWS
  */
 /* History:
-**      26 Sep 90       Written TBL in Objective-C
-**      29 Nov 91       Downgraded to C, for portable implementation.
-**         Mar 96       Moved NewsArt here.  Upgraded back to C from Objectionable-C
-**
+**      26 Sep 90   Written TBL in Objective-C
+**      29 Nov 91   Downgraded to C, for portable implementation.
+**         Mar 96   Moved NewsArt here.  Upgraded back to C from Objectionable-C
 */
 
 #ifndef HTNEWS_H
@@ -17,9 +15,7 @@
 #include "../src/newsrc.h"
 extern HTProtocol HTNews;
 
-extern void HTSetNewsHost PARAMS((WWW_CONST char *value));
 void news_status(char *url, int *prevt, int *nextt, int *prev, int *next, int *follow);
-extern WWW_CONST char * HTGetNewsHost NOPARAMS;
 
 extern char * HTNewsHost;
 extern int newsShowAllGroups;
@@ -46,7 +42,4 @@ typedef struct NEWSART {
 
 extern NewsArt *CurrentArt;
 
-
 #endif /* HTNEWS_H */
-
-

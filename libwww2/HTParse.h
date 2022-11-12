@@ -2,9 +2,8 @@
                                          HTPARSE
 
    This module of the WWW library contains code to parse URLs and various related things.
-   Implemented by HTParse.c .
-
  */
+
 #ifndef HTPARSE_H
 #define HTPARSE_H
 #include "HTUtils.h"
@@ -20,30 +19,21 @@ The following are flag bits which may be ORed together to form a number to give 
 #define PARSE_PUNCTUATION        1
 #define PARSE_ALL               31
 
-
-/*
-
-HTParse:  Parse a URL relative to another URL
+/* HTParse:  Parse a URL relative to another URL
 
    This returns those parts of a name which are given (and requested) substituting bits
    from the related name where necessary.
    
   ON ENTRY
-  
   aName                   A filename given
-                         
   relatedName             A name relative to which aName is to be parsed
-                         
   wanted                  A mask for the bits which are wanted.
                          
   ON EXIT,
-  
   returns                 A pointer to a malloc'd string which MUST BE FREED
-                         
  */
 
 extern char * HTParse  PARAMS((char * aName, char * relatedName, int wanted));
-
 
 /*
 HTStrip: Strip white space off a string
@@ -53,8 +43,7 @@ HTStrip: Strip white space off a string
  */
 extern char * HTStrip(char * s);
 
-/*
-HTSimplify: Simplify a UTL
+/* HTSimplify: Simplify a UTL
    A URL is allowed to contain the seqeunce xxx/../ which may be replaced by "" , and the
    seqeunce "/./" which may be replaced by "/". Simplification helps us recognize
    duplicate filenames. It doesn't deal with soft links, though. The new (shorter)
@@ -67,8 +56,7 @@ HTSimplify: Simplify a UTL
 */
 extern void HTSimplify(char * filename);
 
-/*
-HTRelative:  Make Relative (Partial) URL
+/* HTRelative:  Make Relative (Partial) URL
 
    This function creates and returns a string which gives an expression of one address as
    related to another. Where there is no relation, an absolute address is retured.

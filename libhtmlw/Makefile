@@ -2,10 +2,12 @@ LIBTARGET = libhtmlw.a
 
 all: $(LIBTARGET)
 
-CFILES = HTMLtext.c HTML.c HTMLlists.c HTMLformat.c HTMLparse.c HTMLtable.c HTMLimages.c HTMLwidgets.c HTML-PSformat.c list.c HTMLmc.c HTMLaprog.c HTMLapplet.c HTMLform.c
+CFILES = HTMLparse.c HTML.c HTMLformat.c HTMLtext.c HTMLlists.c \
+	 HTMLtable.c HTMLimages.c HTMLwidgets.c HTML-PSformat.c \
+	 list.c HTMLmc.c HTMLaprog.c HTMLapplet.c HTMLform.c HTMLframe.c
 
 OBJS = $(CFILES:.c=.o)
-$(OBJS): HTML.h HTMLP.h HTMLimages.h HTMLPutil.h HTMLamp.h
+$(OBJS): HTML.h HTMLP.h HTMLPutil.h HTMLparse.h HTMLmiscdefs.h
 
 
 $(LIBTARGET): $(OBJS)

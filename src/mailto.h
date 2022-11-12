@@ -7,9 +7,4 @@
  *
  */
 
-/* this file contains stuff from the old "mosaic.h" file. I am breaking
-   that file up because it was too big, and required a re-compile of all
-   the source whenever something changed. */
-
-
-
+extern mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject);

@@ -1,36 +1,10 @@
 Some code was add to NCSA Mocaic to enable multicast.
-The actual 'm9' version multicast hyper-text and image.
+mMosaic multicast hyper-text and image.
 This code is *INSIDE* Mosaic.
 
-This work is based on 2.7b4 and is called mMosaic-2.7b4mX.
-where X is the version number of mMosaic.
+Quick install and info at:
 
-Quick install :
-- get binary or source
-   ftp://sig.enst.fr/pub/multicast/mMosaic/mMosaic-2.7b4mX-bin-solaris-25.gz
-   ftp://sig.enst.fr/pub/multicast/mMosaic/mMosaic-2.7b4mX.tar.gz
-   ftp://ftp.enst.fr/pub/mbone/mMosaic-2.7b4mX-bin-sunos.gz
-
-
-- gunzip and copy in /usr/local/bin/mMosaic
-
-- add a sdr plugins ~/.sdr/plugins/sdr2.plugin.S53.html.udp.mMosaic
-		media:html
-		proto:udp
-		tool:mMosaic
-		icon:tools
-		fmt:Mosaic
-		{
-    		fmtname:Mosaic
-    		flags:-M mMosaic
-		}
-		flags:-S $(SESSNAME)
-		flags:-t $(TTL)
-		flags:-mcDest $(ADDRESS)/$(PORT)
-		flags:http://some.web.server/~yourpage/
-
-- quit and restart sdr.
-
+	http://sig.enst.fr/~dauphin/mMosaic/index.html
 
 This multicast version is typed *INTERACTIVE* : multi-sender multi-receiver
 

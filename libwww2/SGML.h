@@ -50,18 +50,13 @@ typedef struct _HTStructured HTStructured;
 
 typedef struct _HTStructuredClass{
         char*  name;                            /* Just for diagnostics */
-        void (*free) PARAMS(( HTStructured*   me));
-        void (*end_document) PARAMS(( HTStructured*   me));
-        void (*handle_interrupt) PARAMS(( HTStructured*   me));
-        void (*put_character) PARAMS(( HTStructured*   me, char ch));
-        void (*put_string) PARAMS(( HTStructured* me, WWW_CONST char * str));
-        void (*write) PARAMS((
-                HTStructured*   me,
-                WWW_CONST char *    str,
-                int             len));
-        void (*put_entity) PARAMS((
-                HTStructured*   me,
-                int             entity_number));
+        void (*free) (HTStructured*   me, caddr_t appd);
+        void (*end_document) (HTStructured*   me, caddr_t appd);
+        void (*handle_interrupt) (HTStructured*   me, caddr_t appd);
+        void (*put_character) (HTStructured*   me, char ch, caddr_t appd);
+        void (*put_string) (HTStructured* me, WWW_CONST char * str, caddr_t appd);
+        void (*write) (HTStructured* me, WWW_CONST char *str, int len, caddr_t appd);
+        void (*put_entity) (HTStructured* me, int entity_number, caddr_t appd);
 }HTStructuredClass;
 
 #endif  /* SGML_H */

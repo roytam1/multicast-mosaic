@@ -60,7 +60,6 @@
  */
 
 #include <stdarg.h>
-
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -73,6 +72,9 @@
 #include <time.h>
 #include <sys/types.h>
 #include <time.h>
+
+#include "HTMLmiscdefs.h"
+#include "HTMLparse.h"
 #include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
@@ -84,10 +86,6 @@
 
 #define CR '\015'
 #define LF '\012'
-
-#ifndef DISABLE_TRACE
-extern int htmlwTrace;
-#endif
 
 #define USLETTER 	0
 #define A4 		1
@@ -235,10 +233,8 @@ static int PSprintf(format, va_alist)
 
     if (PS_size - PS_len < 1024) {
 	PS_size += 1024;
-	if ((s = (char *) realloc(PS_string, PS_size)) == NULL) {
-		fprintf(stderr, "PSprintf malloc failed\n");
-		return(EOF);
-	}
+	s = (char *) realloc(PS_string, PS_size);
+	CHECK_OUT_OF_MEM(s);
 	PS_string = s;
     }
     va_start(ap);
@@ -260,10 +256,8 @@ static int PSprintf(char *format, ...)
   
     if (PS_size - PS_len < 1024) {
         PS_size += 1024;
-        if ((s = (char *) realloc(PS_string, PS_size)) == NULL) {
-		fprintf(stderr, "PSprintf malloc failed\n");
-                return(EOF);
-        }
+        s = (char *) realloc(PS_string, PS_size);
+	CHECK_OUT_OF_MEM(s);
         PS_string = s;
     }           
     len = vsprintf(PS_string+PS_len, format, args);
@@ -786,7 +780,7 @@ static int has_footnote(struct ele_rec *el)
     if (el == NULL)
 	return 0;
 
-    anchorHRef = el->anchor_tag_ptr->anchor_href;
+    anchorHRef = el->anchor_tag_ptr->anc_href;
     if (anchorHRef != NULL) {
 	switch (el->type) {
 	case E_TEXT:
@@ -795,10 +789,10 @@ static int has_footnote(struct ele_rec *el)
 		if (next == NULL) {
 		    rc = 1;
 		    break;
-		} else if (next->anchor_tag_ptr->anchor_href == NULL) {
+		} else if (next->anchor_tag_ptr->anc_href == NULL) {
 			rc = 1;
 			break;
-		} else if (!STREQ(next->anchor_tag_ptr->anchor_href, anchorHRef)){
+		} else if (!STREQ(next->anchor_tag_ptr->anc_href, anchorHRef)){
 		    rc = 1;
 		    break;
 		} else if (   (next->type == E_TEXT) || (next->type == E_IMAGE)) {
@@ -834,10 +828,7 @@ static void PSfootnote(char *href, double height)
 		footnotes = (char **)realloc((void *)footnotes,
 				     (ftn_array_size * sizeof(char *)));
 	}
-	if (footnotes == NULL) {
-		fprintf(stderr, "PSfootnote realloc failed\n");
-		return;
-	}
+	CHECK_OUT_OF_MEM(footnotes);
     }
     footnotes[n_saved_ftns++] = href;
 }
@@ -866,10 +857,7 @@ static void PStext(HTMLWidget hw, struct ele_rec *eptr, int fontfamily, String s
        every character stored as an octal escape (worst case scenario). */
 
     s2 = (String) malloc(strlen(s) * 4 + 1);
-    if (s2 == NULL) {
-	fprintf(stderr, "PStext malloc failed\n");
-	return;
-    }
+	CHECK_OUT_OF_MEM(s2);
 
     /*  For each char in s, if it is a special char, insert "\"
      *  into the new string s2, then insert the actual char
@@ -891,7 +879,7 @@ static void PStext(HTMLWidget hw, struct ele_rec *eptr, int fontfamily, String s
     *(stmp) = '\0';
     PSprintf("(%s)%c\n", s2, (underline)?'U':'S');
     if (HTML_Print_Footers && has_footnote(eptr)) 
-	PSfootnote(eptr->anchor_tag_ptr->anchor_href, 0.7 * ascent);
+	PSfootnote(eptr->anchor_tag_ptr->anc_href, 0.7 * ascent);
     free(s2);
 }
 
@@ -947,7 +935,7 @@ static void PShrule(HTMLWidget hw, struct ele_rec *eptr, int fontfamily)
  */
 static void PStable(HTMLWidget hw, struct ele_rec *eptr, int fontfamily)
 {
-    struct table_rec	*tptr = eptr->table_data;
+    struct _TableRec	*tptr = eptr->table_data;
     int width  = tptr->width;
     int height = tptr->height;
 
@@ -1156,7 +1144,7 @@ static void PScolor_image(void)
  * spits out code for the colormap of the following image
  * if !color, it spits out a mono-ized graymap
 */
-static void PScolormap(int color, int nc, int *rmap, int *gmap, int *bmap) 
+static void PScolormap(int color, int nc, XColor *cmap) 
 {
     int i;
 
@@ -1168,10 +1156,10 @@ static void PScolormap(int color, int nc, int *rmap, int *gmap, int *bmap)
 
     for (i=0; i<nc; i++) {
 	if (color)  
-	    PSprintf("%02x%02x%02x ", rmap[i]>>8,
-		     gmap[i]>>8, bmap[i]>>8);
+	    PSprintf("%02x%02x%02x ", cmap[i].red>>8,
+		     cmap[i].green>>8, cmap[i].blue>>8);
 	else  
-	    PSprintf("%02x ", MONO(rmap[i], gmap[i], bmap[i]));
+	    PSprintf("%02x ", MONO(cmap[i].red, cmap[i].green, cmap[i].blue));
 	if ((i%10) == 9)
 	    PSprintf("\n");
     }
@@ -1291,7 +1279,7 @@ static void PSimage(HTMLWidget hw, struct ele_rec *eptr, int fontfamily)
 {
     ImageInfo 		*img = eptr->pic_data;
     unsigned char 	*imgp = img->image_data;
-    int 		anchor = (eptr->anchor_tag_ptr->anchor_href != NULL); 	
+    int 		anchor = (eptr->anchor_tag_ptr->anc_href != NULL); 	
     int 		ncolors = img->num_colors;
     int 		i, j;
     int 		w = img->width;
@@ -1302,13 +1290,13 @@ static void PSimage(HTMLWidget hw, struct ele_rec *eptr, int fontfamily)
 
 
     /* Isgray returns true if the nth color index is a gray value */
-#define Isgray(i,n) (i->reds[n]==i->greens[n] && i->reds[n]==i->blues[n])
+#define Isgray(i,n) (i->colrs[n].red==i->colrs[n].green && i->colrs[n].red==i->colrs[n].blue)
     /* Is_bg returns true if the nth color index is the screen background */
-#define Is_bg(i,n)  (i->reds[n]==bg_color.red &&			\
-		i->greens[n]==bg_color.green && i->blues[n]==bg_color.blue)
+#define Is_bg(i,n)  (i->colrs[n].red==bg_color.red &&			\
+		i->colrs[n].green==bg_color.green && i->colrs[n].blue==bg_color.blue)
     /* Is_fg returns true if the nth color index is the screen foreground */
-#define Is_fg(i,n)  (i->reds[n]==fg_color.red &&			\
-		i->greens[n]==fg_color.green && i->blues[n]==fg_color.blue)
+#define Is_fg(i,n)  (i->colrs[n].red==fg_color.red &&			\
+		i->colrs[n].green==fg_color.green && i->colrs[n].blue==fg_color.blue)
 
 
     PSmove_offset(eptr->baseline);
@@ -1394,10 +1382,10 @@ static void PSimage(HTMLWidget hw, struct ele_rec *eptr, int fontfamily)
 	
 	/*  set if color#0 is 'white' */
 	if ((ncolors == 2 &&
-	     MONO(img->reds[0], img->greens[0],img->blues[0]) >
-	     MONO(img->reds[1], img->greens[1], img->blues[1])) ||
+	     MONO(img->colrs[0].red, img->colrs[0].green,img->colrs[0].blue) >
+	     MONO(img->colrs[1].red, img->colrs[1].green, img->colrs[1].blue)) ||
 	    (ncolors == 1 && 
-	     MONO(img->reds[0], img->greens[0],img->blues[0]) >
+	     MONO(img->colrs[0].red, img->colrs[0].green,img->colrs[0].blue) >
 	     MONO(127, 127, 127) ))
 	{
 	    flipbw=1; 
@@ -1423,7 +1411,7 @@ static void PSimage(HTMLWidget hw, struct ele_rec *eptr, int fontfamily)
 	if (colorps)
 	    PScolor_image();
 	
-	PScolormap(colorps, ncolors, img->reds, img->greens, img->blues);
+	PScolormap(colorps, ncolors, img->colrs);
 	PSrle_cmapimage(colorps);
 
 	/*  dimensions of data */
@@ -1433,10 +1421,7 @@ static void PSimage(HTMLWidget hw, struct ele_rec *eptr, int fontfamily)
 	PSprintf("rlecmapimage\n");
 	
 	rleline = (unsigned char *) malloc(w * 2);
-	if (!rleline) {
-		fprintf(stderr,"failed to malloc space for rleline\n");
-		return;
-	}
+	CHECK_OUT_OF_MEM(rleline);
 
 	for (i=0; i<h && err != EOF; i++) {
 	    rlen = PSrle_encode(imgp, rleline, w);
@@ -1456,7 +1441,7 @@ static void PSimage(HTMLWidget hw, struct ele_rec *eptr, int fontfamily)
     PSprintf("%d 0 R\n", w + extra); 
     if (HTML_Print_Footers && has_footnote(eptr)) {
 	PSmove_offset(0);
-	PSfootnote(eptr->anchor_tag_ptr->anchor_href, 2.0);
+	PSfootnote(eptr->anchor_tag_ptr->anc_href, 2.0);
     }
 
     /* forget about the macro's */
@@ -1503,7 +1488,6 @@ String ParseTextToPSString(HTMLWidget	 	hw,
     int			xpos, ypos, epos;
     int			height;
     double		pagewidth;
-    int			line = -1;
     struct		ele_rec	*eptr;
     struct		ele_rec	*start;
     struct		ele_rec	*end;
@@ -1598,13 +1582,14 @@ String ParseTextToPSString(HTMLWidget	 	hw,
 
     while ((eptr != NULL) && (eptr != end)) {
 	/* check if this is a newline */
-	if (line != eptr->line_number) {
+/*
+/* ##################
+*/
 	    /* calculate max height */
 	    height = 0;
 	    footnotes_this_line = 0;
-	    line = eptr->line_number;
 	    tmpptr = eptr;
-	    while (tmpptr != NULL && tmpptr->line_number == line) {
+	    while (tmpptr != NULL && tmpptr->type != E_LINEFEED) {
 		if (tmpptr->height > height)
 		    height = tmpptr->height;
 		tmpptr = tmpptr->next;
@@ -1634,8 +1619,10 @@ String ParseTextToPSString(HTMLWidget	 	hw,
 	    }
 	    footnotes_this_page += footnotes_this_line;
 	    PSmoveto( xpos, ypos);
-	}
 
+/*
+/* #########
+*/
 	switch (eptr->type) {
 	case E_TEXT:
 	    PStext(hw, eptr, fontfamily,

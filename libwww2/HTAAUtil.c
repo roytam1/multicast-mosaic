@@ -36,14 +36,15 @@
 ** HISTORY:
 **
 */
+
+#include <stdio.h>
 #include <string.h>
 #include "HTUtils.h"
 #include "tcp.h"	/* NETREAD() etc.	*/
 #include "HTTCP.h"
 #include "HTAAUtil.h"	/* Implemented here	*/
 #include "HTAssoc.h"	/* Assoc list		*/
-
-extern int www2Trace;
+#include "HTParams.h"	/* params from X resources */
 
 /* PUBLIC						HTAAScheme_enum()
 **		TRANSLATE SCHEME NAME INTO
@@ -140,52 +141,6 @@ PUBLIC HTAAMethod HTAAMethod_enum ARGS1(WWW_CONST char *, name)
 		return METHOD_UNKNOWN;
 }
 
-/* PUBLIC						HTAAMethod_name()
-**			GET THE NAME OF A GIVEN METHOD
-** ON ENTRY:
-**	method		is one of the method enum values:
-**			METHOD_GET, METHOD_PUT, ...
-**
-** ON EXIT:
-**	returns		the name of the scheme, i.e.
-**			"GET", "PUT", ...
-*/
-PUBLIC char *HTAAMethod_name ARGS1(HTAAMethod, method)
-{
-    switch (method) {
-      case METHOD_GET:		return "GET";
-      case METHOD_PUT:		return "PUT";
-      case METHOD_META:         return "META";
-      case METHOD_UNKNOWN:	return "UNKNOWN";
-      default:			return "THIS-IS-A-BUG";
-    }
-}
-
-
-/* PUBLIC						HTAAMethod_inList()
-**		IS A METHOD IN A LIST OF METHOD NAMES
-** ON ENTRY:
-**	method		is the method to look for.
-**	list		is a list of method names.
-**
-** ON EXIT:
-**	returns		YES, if method was found.
-**			NO, if not found.
-*/
-PUBLIC HT_BOOL HTAAMethod_inList ARGS2(HTAAMethod,	method,
-				    HTList *,	list)
-{
-	HTList *cur = list;
-	char *item;
-
-	while (NULL != (item = (char*)HTList_nextObject(cur))) {
-		if (www2Trace)
-			fprintf(stderr, " %s", item);
-		if (method == HTAAMethod_enum(item))
-			return YES;
-	}
-	return NO;	/* Not found */
-}
 /* PUBLIC						HTAA_templateMatch()
 **		STRING COMPARISON FUNCTION FOR FILE NAMES
 **		   WITH ONE WILDCARD * IN THE TEMPLATE
@@ -269,7 +224,7 @@ PUBLIC char *HTAA_makeProtectionTemplate ARGS1(WWW_CONST char *, docname)
 		StrAllocCat(tmplate, "*");
 	} else 
 		StrAllocCopy(tmplate, "*");
-	if (www2Trace) 
+	if (wWWParams.trace) 
 		fprintf(stderr,"make_template:made template `%s' for file `%s'\n",
 				tmplate, docname);
 	return tmplate;
@@ -412,8 +367,7 @@ PUBLIC void HTAA_setupReader ARGS3(char *,	start_of_headers,
 }
 
 
-/* PUBLIC						HTAA_getUnfoldedLine()
-**		READ AN UNFOLDED HEADER LINE FROM SOCKET
+/*		READ AN UNFOLDED HEADER LINE FROM SOCKET
 ** ON ENTRY:
 **	HTAA_setupReader must absolutely be called before
 **	this function to set up internal buffer.
@@ -431,9 +385,8 @@ PUBLIC void HTAA_setupReader ARGS3(char *,	start_of_headers,
 **		is seen by the caller as:
 **
 **	Field-Name: Blaa-Blaa This-Is-A-Continuation-Line Here-Is_Another
-**
 */
-PUBLIC char *HTAA_getUnfoldedLine NOARGS
+PUBLIC char *HTAA_getUnfoldedLine (caddr_t appd)
 {
     char *line = NULL;
     char *cur;
@@ -450,7 +403,7 @@ PUBLIC char *HTAA_getUnfoldedLine NOARGS
     for(;;) {			 /* Reading from socket */
 
 	if (start_pointer >= end_pointer) {/*Read the next block and continue*/
-	    count = NETREAD(in_soc, buffer, BUFFER_SIZE);
+	    count = HTDoRead(in_soc, buffer, BUFFER_SIZE,appd);
 	    if (count <= 0) {
 		in_soc = -1;
 		return line;
@@ -458,13 +411,6 @@ PUBLIC char *HTAA_getUnfoldedLine NOARGS
 	    start_pointer = buffer;
 	    end_pointer = buffer + count;
 	    *end_pointer = (char)0;
-#ifdef NOT_ASCII
-	    cur = start_pointer;
-	    while (cur < end_pointer) {
-		*cur = TOASCII(*cur);
-		cur++;
-	    }
-#endif /*NOT_ASCII*/
 	}
 	cur = start_pointer;
 

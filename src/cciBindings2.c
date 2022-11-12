@@ -4,15 +4,17 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <X11/Intrinsic.h>
+
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
-#include <X11/Intrinsic.h>
 #include "gui.h"
 #include "cci.h"
 #include "cciBindings2.h"
 
 #include "cciServer.h"
 #include "../libhtmlw/list.h"
+#include "HText.h"
 #include "HTFormat.h"
 #include "accept.h"
 #include "bla.h"
@@ -33,15 +35,8 @@ extern int CCIprotocol_handler_found;
 extern int MCCIanchorcached; 
 
 
-extern XtAppContext app_context;
-extern char *machine_with_domain; /* host name */
-
 /* from cciBindings.c */
 extern int cci_event;
-
-#ifndef DISABLE_TRACE
-extern int cciTrace;
-#endif
 
 struct Connection {
 	XtInputId inputId;
@@ -325,8 +320,7 @@ void MoCCIForm(MCCIPort client, char *actionID, int status, int close_connection
 			}
 		}
 	}
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		sendForm = (struct FormSubmit *) ListHead(listOfForm);
 		fprintf(stderr,"***** begin mosaic list *****\n");
 		while(sendForm){
@@ -335,7 +329,6 @@ void MoCCIForm(MCCIPort client, char *actionID, int status, int close_connection
 			sendForm = (struct FormSubmit *) ListNext(listOfForm);
 		}
 	}
-#endif
 }
 
 void MoCCIPreInitialize()
@@ -358,20 +351,17 @@ void MoCCIPreInitialize()
 int MoCCIInitialize(int portNumber)
 {
 	int retVal;
+    	FILE *fp;
+	char * fnam;
 
 	MoCCIPreInitialize();
 	retVal = MCCIServerInitialize(portNumber);
 	if (retVal) {		/* Write port number to .mosaiccciport */
-    		char *home = getenv ("HOME"), *fnam;
-    		FILE *fp;
-		
-    		if (!home)
-      			home = "/tmp";
-    		fnam = (char *)malloc (strlen (home) + 32);
-    		sprintf (fnam, "%s/.mosaiccciport", home);
+    		fnam = (char *)malloc (strlen (mMosaicRootDirName) + 32);
+    		sprintf (fnam, "%s/.mosaiccciport", mMosaicRootDirName);
     		fp = fopen (fnam, "w");
     		if (fp) {
-			fprintf(fp,"%s:%d\n",machine_with_domain,portNumber);
+			fprintf(fp,"%s:%d\n",mMosaicMachineWithDomain,portNumber);
         		fclose (fp);
       		}
     		free (fnam);
@@ -455,33 +445,28 @@ void MoCCIHandleInput(MCCIPort client, int source)
 
 void MoCCINewConnection(XtPointer clid, int *source, XtInputId *inputID)
 {
-	XtAppContext app_context = (XtAppContext) clid;
 	MCCIPort client;
 	struct Connection *con;
 
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MoCCINewConnection(): I've been called\n");
 	}
-#endif
 	client = MCCICheckAndAcceptConnection();
 	if (!client)  /* nothing here */
 		return;
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"Mosaic: got a CCI connection\n");
 	}
-#endif
 /*	
 	this determines wether there is one or many cci clients connecting 
 	XtRemoveInput(*inputID);
 */
 
-	MCCISendResponseLine(client,MCCIR_OK,"VERSION 01 mMosaic 3.2.0");
+	MCCISendResponseLine(client,MCCIR_OK,"VERSION 01 mMosaic 3.2.1");
 
 	con = (struct Connection *) malloc(sizeof(struct Connection));
 	con->client = client;
-	con->inputId = XtAppAddInput(app_context,
+	con->inputId = XtAppAddInput(mMosaicAppContext,
 		MCCIGetSocketDescriptor(client),
 		(XtPointer)  XtInputReadMask,
 		(XtInputCallbackProc) MoCCIHandleInput, (XtPointer) client);
@@ -535,7 +520,7 @@ static void MoCCIWindowCallBackDoit(Boolean newState, mo_window * win)
 		cciAccepting = newState;
 		if (cciAccepting) {
 			newPort = 0;
-			portString= XmxTextGetString (win->cci_win_text);
+			portString= XmTextGetString (win->cci_win_text);
 			if (portString)
 				newPort = atoi(portString);
 			if ((newPort < 1024) || (newPort > 65535)) {
@@ -553,11 +538,11 @@ static void MoCCIWindowCallBackDoit(Boolean newState, mo_window * win)
 			}
 			if (MoCCIInitialize(newPort)) {
 				listenPortNumber = newPort;
-				connectInputID = XtAppAddInput(app_context,
+				connectInputID = XtAppAddInput(mMosaicAppContext,
 					MCCIReturnListenPortSocketDescriptor(),
 					(XtPointer) XtInputReadMask,
 					(XtInputCallbackProc) MoCCINewConnection,
-					app_context);
+					NULL);
 				sprintf(buff,"%s %d","CCI Now listening on port" ,newPort);
 				XmxMakeInfoDialog(win->cci_win,buff,"CCI port status" );
 				XtManageChild(Xmx_w);
@@ -608,7 +593,7 @@ mo_status MoDisplayCCIWindow( mo_window *win)
 		label = XmxMakeLabel(cciForm, "CCI Port Address: " );
 		XmxSetArg(XmNcolumns, 25);
 		win->cci_win_text= XmxMakeText (cciForm);
-		XmxAddCallbackToText(win->cci_win_text, 
+		XtAddCallback(win->cci_win_text, XmNactivateCallback,
 			MoCCIWindowCallBack0,(XtPointer)win);
 		toggleBox = XmxMakeRadioBox(cciForm);
 		win->cci_accept_toggle = XmxMakeToggleButton(toggleBox, 
@@ -668,12 +653,10 @@ void MoCCISendOutputToClient( char *contentType, /* string name of data type */
 	sendOutput=(struct SendWhatToWhom *)ListHead(listOfSendOutput);
 	while(sendOutput){
 		if (!strcmp(sendOutput->contentType,contentType)) {
-#ifndef DISABLE_TRACE
-			if (cciTrace) {
+			if (mMosaicCCITrace) {
 				fprintf(stderr,"Sending output through cci of type %s\n",
 						sendOutput->contentType);
 			}
-#endif
 
 			/* prep data for sending here */
 
@@ -765,11 +748,11 @@ void MoCCIStartListening( Widget w, int port)
 /*int listenPort;*/
 
         if (MoCCIInitialize(port)) {
-		connectInputID = XtAppAddInput(app_context,
+		connectInputID = XtAppAddInput(mMosaicAppContext,
                         MCCIReturnListenPortSocketDescriptor(),
                         (XtPointer) XtInputReadMask,
                         (XtInputCallbackProc) MoCCINewConnection,
-			app_context);
+			NULL);
 		cciAccepting = True; 
 		listenPortNumber = port;
         } else {
@@ -862,14 +845,6 @@ int MoCCISendBrowserViewFile( char *url, char *contentType, char *filename)
 	return(MCCI_OK);
 }
 
-int MoCCIMaxNumberOfConnectionsAllowed()
-/* return number of connections allowed.  This is set in the X resources.
- * if it's zero, then treat it as unlimited.
- */
-{
-    return(get_pref_int(eMAX_NUM_OF_CCI_CONNECTIONS));
-}
-
 int MoCCICurrentNumberOfConnections()
 {
     return(ListCount(listOfConnections));
@@ -883,11 +858,9 @@ void MoCCIAddFileURLToList( char *fileName, char *url)
 {
 struct FileURL *fileURL;
 	
-#ifndef DISABLE_TRACE
-	if (cciTrace) {
+	if (mMosaicCCITrace) {
 		fprintf(stderr,"MoCCIAddFileURLToList():fileName=\"%s\", url=\"%s\"\n",(fileName?fileName:"NULL"),(url?url:"NULL"));
 	}
-#endif
 	if ((!fileName) || (!url))
 		return;
 

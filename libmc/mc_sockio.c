@@ -51,8 +51,8 @@ struct ip_mreq {
 #include "../libnut/mipcf.h"
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
-#include "../src/mo-www.h"
 #include "../src/mosaic.h"
+#include "../src/mo-www.h"
 
 #include "mc_rtp.h"
 #include "mc_defs.h"

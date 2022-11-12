@@ -2,9 +2,12 @@
 **		================================
 */
 
+#include <stdio.h>
+
 #include "HTUtils.h"
 #include "HTParse.h"
 #include "tcp.h"
+#include "HTParams.h"		/* params from X resources */
 
 #define HEX_ESCAPE '%'
 
@@ -15,10 +18,6 @@ struct struct_parts {
 	char * relative;
 	char * anchor;
 };
-
-#ifndef DISABLE_TRACE
-extern int www2Trace;
-#endif
 
 /*	Strip white space off a string
 **	------------------------------
@@ -200,10 +199,8 @@ char * HTParse(char * aName, char * relatedName, int wanted)
             p--;				/* End of hostname */
             if (strlen (tail) > 3 && (*p == '.')) 
               {
-#ifndef DISABLE_TRACE
-                if (www2Trace)
+                if (wWWParams.trace)
                   fprintf (stderr, "[Parse] tail '%s' p '%s'\n", tail, p);
-#endif
                 *p = (char)0; /* chop final . */
                 
                 /* OK, at this point we know that *(p+1) exists,
@@ -217,26 +214,20 @@ char * HTParse(char * aName, char * relatedName, int wanted)
                    Let's try to use a bcopy... */
                 if (*(p+1) != '\0')
                   {
-#ifndef DISABLE_TRACE
-                    if (www2Trace)
+                    if (wWWParams.trace)
                       fprintf (stderr, "[Parse] Copying '%s' to '%s', %d bytes\n", 
                                p+1, p, strlen (p+1));
-#endif
 /*
                     bcopy (p+1, p, strlen(p+1));
 */
                     memcpy (p, p+1, strlen(p+1));
-#ifndef DISABLE_TRACE
-                    if (www2Trace)
+                    if (wWWParams.trace)
                       fprintf (stderr, "[Parse] Setting '%c' to 0...\n",
                                *(p + strlen (p+1)));
-#endif
                     *(p + strlen (p+1)) = '\0';
                   }
-#ifndef DISABLE_TRACE
-                if (www2Trace)
+                if (wWWParams.trace)
                   fprintf (stderr, "[Parse] tail '%s' p '%s'\n", tail, p);
-#endif
               }
             {
               char *tmp;
@@ -392,11 +383,9 @@ char * HTRelative(char * aName, char *relatedName)
 	for(;levels; levels--)strcat(result, "../");
 	strcat(result, last_slash+1);
     }
-#ifndef DISABLE_TRACE
-    if (www2Trace) 
+    if (wWWParams.trace) 
       fprintf(stderr, "HT: `%s' expressed relative to\n    `%s' is\n   `%s'.",
               aName, relatedName, result);
-#endif
     return result;
 }
 

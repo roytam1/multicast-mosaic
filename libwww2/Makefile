@@ -11,7 +11,6 @@ HTAlert.c \
 HTAnchor.c \
 HTAssoc.c \
 HTAtom.c \
-HTChunk.c \
 HTCompressed.c \
 HTFile.c \
 HTFTP.c \

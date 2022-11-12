@@ -37,9 +37,6 @@ int          newsrc_timer = 0;
 int          newsrc_flushit = 0;             /* Do we need to flush? */
 int newsrc_smask; 
 
-extern int newsUseNewsRC;
-int newsNoNewsRC = 0;
-
 /* Article functions */
 
 /* isread ()
@@ -763,7 +760,7 @@ int newsrc_flush ()
   char b[2*MAX_BUF+1], seq[MAX_BUF+1];
   long del;                           
                                       
-  if (!newsrc_flushit || !newsUseNewsRC)
+  if (!newsrc_flushit )
     return 0;                         
                                       
   if (newsrc_timer)                   
@@ -771,8 +768,7 @@ int newsrc_flush ()
                                       
   newsrc_backup ();                   
   if ((nw = fopen (newsrc_filename, "w+")) == NULL) {
-    HTProgress ("Could not open newsrc file");
-                                      
+    fprintf(stderr, "Could not open newsrc file");
     return 1;                         
   }                                   
                                       
@@ -788,11 +784,10 @@ int newsrc_flush ()
                                       
   fclose (nw);                       
   newsrc_flushit = 0;                 
-  newsNoNewsRC = 0;                                      
 
   if (newsrc_timer) {                 
-    del = get_pref_int (eBACKGROUNDFLUSHTIME);
-    newsrc_ti = XtAppAddTimeOut (app_context, 1000L*del, newsrc_flushcb, NULL);
+    del = mMosaicAppData.newsBackgroundFlushTime;
+    newsrc_ti = XtAppAddTimeOut (mMosaicAppContext, 1000L*del, newsrc_flushcb, NULL);
   }                                   
   return 0;
 }
@@ -810,19 +805,18 @@ void newsrc_flushcb (XtPointer cld, XtIntervalId *id)
   int del;                            
                                       
   newsrc_flush ();                    
-  del = get_pref_int (eBACKGROUNDFLUSHTIME);
-  newsrc_ti = XtAppAddTimeOut (app_context, 1000L*del, newsrc_flushcb, NULL);
+  del = mMosaicAppData.newsBackgroundFlushTime;
+  newsrc_ti = XtAppAddTimeOut (mMosaicAppContext, 1000L*del, newsrc_flushcb, NULL);
   newsrc_timer = 1;
 }
 
 void newsrc_initflush ()
 {
-  int del = get_pref_int (eBACKGROUNDFLUSHTIME);
+  int del = mMosaicAppData.newsBackgroundFlushTime;
   int i = 1;
 
-  newsrc_ti = XtAppAddTimeOut (app_context, 1000L*del, newsrc_flushcb, NULL);
+  newsrc_ti = XtAppAddTimeOut (mMosaicAppContext, 1000L*del, newsrc_flushcb, NULL);
   newsrc_timer = 1;
-  set_pref (eUSEBACKGROUNDFLUSH, &i);
 }
 
 /* newsrc_kill ()
@@ -875,10 +869,7 @@ int newsrc_init (char *newshost)
   newsgroup_t *n, *n2;                
   char *nntp, buf[MAX_BUF+1];         
   long lo, hi;                        
-  char *home = getenv ("HOME");       
-  char *npref = NULL;                 
-  int spref = 1;                      
-                                      
+
   if (newshost == NULL)               
     return 1;                         
                                       
@@ -887,31 +878,17 @@ int newsrc_init (char *newshost)
   if (newsrc_active)
     return 0;                         
                                       
-  sprintf (buf, "Initializing newsrc for %s", newshost);
-  HTProgress (buf);                   
-                                      
+  fprintf (stderr, "Initializing newsrc for %s", newshost);
+
   for (i=0; i<ACTIVE_BINS; i++) {     
     newsrc_groups[i] = NULL;          
   }                                   
                                       
-  newsUseNewsRC = get_pref_boolean (eUSENEWSRC);
-  if (!newsUseNewsRC) {               
-    newsNoNewsRC = 1;                 
-    newsrc_active = 0; 
-    return 0;                         
-  }                                   
-                                      
-  npref = get_pref_string (eNEWSRCPREFIX); 
-  spref = get_pref_boolean (eUSESHORTNEWSRC);
-  sprintf (newsrc_filename, "%s/%s%s%s", home, npref, spref?"":"-",spref?"":newshost);                                
+  sprintf (newsrc_filename, "%s/.newsrc-%s", mMosaicRootDirName, newshost);                                
   if ((newsrc_fp = fopen (newsrc_filename, "r")) == NULL) {
-    sprintf (buf, "News file %s/%s%s%s does not exist",
-             home, npref, spref?"":"-",spref?"":newshost);
-    HTProgress (buf);                 
-    newsNoNewsRC = 1;                 
     newsrc_active = 1;                
     return 0;                         
-  }                                   
+  }
                                       
   newsrc_line = 0;                    
   while (newsrc_readline (buf) == 0) {
@@ -920,9 +897,9 @@ int newsrc_init (char *newshost)
   }                                   
   fclose (newsrc_fp);                 
                                       
-  if (get_pref_boolean (eUSEBACKGROUNDFLUSH)) {
-    newsrc_ti = XtAppAddTimeOut (app_context,
-                               1000L*get_pref_int (eBACKGROUNDFLUSHTIME),
+  if (newsrc_timer) {
+    newsrc_ti = XtAppAddTimeOut (mMosaicAppContext,
+                               1000L*mMosaicAppData.newsBackgroundFlushTime,
                                newsrc_flushcb, NULL);
     newsrc_timer = 1;                 
   }                                   

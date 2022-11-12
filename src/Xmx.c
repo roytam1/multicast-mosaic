@@ -1,8 +1,11 @@
 /* Please read copyright.tmpl. Don't remove next line */
 #include "copyright.ncsa"
-#include "XmxP.h"
 
-XmString xwt_str_array_to_xmstr(char *normal_string[], int numargs);
+#include <stdlib.h>
+#include <assert.h>
+#include <Xm/XmAll.h>
+
+#include "Xmx.h"
 
 /* Kludge for broken linux */
 extern Pixmap dialogError, dialogInformation, dialogQuestion, dialogWarning;
@@ -23,15 +26,6 @@ static XmxCallback (_XmxCancelCallback)
 }
 
 /* -------------------------- UTILITY FUNCTIONS --------------------------- */
-
-/* resets args */
-void XmxStartup (void)
-{
-	Xmx_n = 0;
-#ifdef MOTIF1_2
-	XmRepTypeInstallTearOffModelConverter();
-#endif
-}
 
 /* sets an arg */
 void XmxSetArg (String arg, XtArgVal val)
@@ -85,54 +79,6 @@ Widget XmxMakePushButton (Widget parent, String name, XtCallbackProc cb,
 	return Xmx_w;
 }
 
-/* args work */
-Widget XmxMakeNamedPushButton (Widget parent, String name, String wname, 
-                               XtCallbackProc cb,
-                               XtPointer cb_data)
-{
-  XmString label;
-  
-  if (name) {
-      label = XmStringCreateLtoR (name, XmSTRING_DEFAULT_CHARSET);
-      XmxSetArg (XmNlabelString, (XtArgVal)label);
-    }
-  Xmx_w = XtCreateManagedWidget (wname, xmPushButtonWidgetClass,
-                                 parent, Xmx_wargs, Xmx_n);
-  XtAddCallback (Xmx_w, XmNactivateCallback, cb, cb_data);
-  if (name)
-    XmStringFree (label);
-
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args work */
-Widget XmxMakeBlankButton (Widget parent, XtCallbackProc cb, XtPointer cb_data)
-{
-  Xmx_w = XtCreateManagedWidget ("blankbutton", xmPushButtonWidgetClass,
-                                 parent, Xmx_wargs, Xmx_n);
-  XtAddCallback (Xmx_w, XmNactivateCallback, cb, (XtPointer)cb_data);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* ------------------------------- COMMAND -------------------------------- */
-
-/* args work */
-Widget XmxMakeCommand(Widget parent, String prompt, 
-	XtCallbackProc cb, XtPointer cb_data)
-{
-  XmString xmstr = XmxMakeXmstrFromString (prompt);
-
-  XmxSetArg (XmNpromptString, (XtArgVal)xmstr);
-  Xmx_w = XtCreateManagedWidget ("command", xmCommandWidgetClass, parent,
-				 Xmx_wargs, Xmx_n);
-  XtAddCallback (Xmx_w, XmNcommandEnteredCallback, cb, cb_data);
-  XmStringFree (xmstr);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
 /* ---------------------------- SCROLLED LIST ----------------------------- */
 
 /* args work */
@@ -142,19 +88,6 @@ Widget XmxMakeScrolledList (Widget parent, XtCallbackProc cb, XtPointer cb_data)
   XtManageChild (Xmx_w);
 /* defaultAction gets triggered on double click and sends item along with it... */
   XtAddCallback (Xmx_w, XmNdefaultActionCallback, cb, cb_data);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* ----------------------------- DRAWING AREA ----------------------------- */
-
-/* args work */
-Widget XmxMakeDrawingArea (Widget parent, int width, int height)
-{
-  XmxSetArg (XmNwidth, (XtArgVal)width);
-  XmxSetArg (XmNheight, (XtArgVal)height);
-  Xmx_w = XtCreateManagedWidget ("drawingarea", xmDrawingAreaWidgetClass,
-				 parent, Xmx_wargs, Xmx_n);
   Xmx_n = 0;
   return Xmx_w;
 }
@@ -170,17 +103,6 @@ Widget XmxMakeRadioBox (Widget parent)
   XmxSetArg (XmNentryClass, (XtArgVal)xmToggleButtonGadgetClass);
   Xmx_w = XmCreateRadioBox (parent, "radiobox", Xmx_wargs, Xmx_n);
   XtManageChild (Xmx_w);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args work */
-Widget XmxMakeOptionBox (Widget parent)
-{
-  XmxSetArg (XmNentryClass, (XtArgVal)xmToggleButtonGadgetClass);
-  XmxSetArg (XmNisHomogeneous, (XtArgVal)True);
-  Xmx_w = XtCreateManagedWidget ("optionbox", xmRowColumnWidgetClass,
-                                 parent, Xmx_wargs, Xmx_n);
   Xmx_n = 0;
   return Xmx_w;
 }
@@ -212,40 +134,6 @@ void XmxSetToggleButton (Widget button, int set_state)
 }
 
 /* -------------------------------- SCALES -------------------------------- */
-
-/* args ignored if label is non-NULL, otherwise args work */
-Widget XmxMakeScale(Widget parent, XtCallbackProc cb, XtPointer cb_data,
-                     String label, int min, int max, int start, int dec_adj)
-{
-  if (label) {
-      Xmx_n = 0;
-      XmxMakeLabel (parent, label);
-  }
-  XmxSetArg (XmNminimum, (XtArgVal)min);
-  XmxSetArg (XmNmaximum, (XtArgVal)max);
-  XmxSetArg (XmNvalue, (XtArgVal)start);
-  XmxSetArg (XmNorientation, (XtArgVal)XmHORIZONTAL);
-  XmxSetArg (XmNprocessingDirection, (XtArgVal)XmMAX_ON_RIGHT);
-  if (dec_adj != XmxNotDisplayed) {
-      XmxSetArg (XmNshowValue, (XtArgVal)True);
-      XmxSetArg (XmNdecimalPoints, (XtArgVal)dec_adj);
-  }
-  Xmx_w = XtCreateManagedWidget ("scale", xmScaleWidgetClass, parent,
-                                 Xmx_wargs, Xmx_n);
-
-  XtAddCallback (Xmx_w, XmNvalueChangedCallback, cb, cb_data);
-  XtAddCallback (Xmx_w, XmNdragCallback, cb, cb_data);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args work */
-void XmxAdjustScale (Widget scale, int val)
-{
-  XmxSetArg (XmNvalue, (XtArgVal)val);
-  XtSetValues (scale, Xmx_wargs, Xmx_n);
-  Xmx_n = 0;
-}
 
 /* args work */
 Widget XmxMakeFrame (Widget parent, int shadow)
@@ -349,82 +237,6 @@ void XmxSetConstraints (Widget w, int top, int bottom, int left, int right,
   return;
 }
 
-/* ------------------------------ ROWCOLUMNS ------------------------------ */
-
-/* args work */
-Widget XmxMakeVerticalRowColumn (Widget parent)
-{
-  Xmx_w = XtCreateManagedWidget ("rowcolumn", xmRowColumnWidgetClass,
-                                 parent, Xmx_wargs, Xmx_n);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args work */
-Widget XmxMakeHorizontalRowColumn (Widget parent)
-{
-  XmxSetArg (XmNorientation, (XtArgVal)XmHORIZONTAL);
-  Xmx_w = XtCreateManagedWidget ("rowcolumn", xmRowColumnWidgetClass,
-                                 parent, Xmx_wargs, Xmx_n);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args work */
-Widget XmxMakeNColumnRowColumn (Widget parent, int ncolumns)
-{
-  XmxSetArg (XmNorientation, (XtArgVal)XmVERTICAL);
-  XmxSetArg (XmNpacking, (XtArgVal)XmPACK_COLUMN);
-  XmxSetArg (XmNnumColumns, (XtArgVal)ncolumns);
-  Xmx_w = XtCreateManagedWidget ("rowcolumn", xmRowColumnWidgetClass,
-                                 parent, Xmx_wargs, Xmx_n);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* --------------------------- BULLETIN BOARDS ---------------------------- */
-
-/* args work */
-Widget XmxMakeVerticalBboard (Widget parent)
-{
-  Xmx_w = XtCreateManagedWidget ("bboard", xmBulletinBoardWidgetClass,
-                                 parent, Xmx_wargs, Xmx_n);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args work */
-Widget XmxMakeVerticalBboardWithFont (Widget parent, String fontname)
-{
-  XFontStruct *_font;
-  XmFontList _fontlist;
-
-  _font = XLoadQueryFont (XtDisplay (parent), fontname);
-  if (_font != (XFontStruct *)NULL) {
-      _fontlist = XmFontListCreate (_font, XmSTRING_DEFAULT_CHARSET);
-      XmxSetArg (XmNbuttonFontList, (XtArgVal)_fontlist);
-      XmxSetArg (XmNlabelFontList, (XtArgVal)_fontlist);
-      XmxSetArg (XmNtextFontList,(XtArgVal) _fontlist);
-    }
-  XmxSetArg (XmNmarginWidth, (XtArgVal)0);
-  XmxSetArg (XmNmarginHeight, (XtArgVal)0);
-  Xmx_w = XtCreateManagedWidget ("bboard", xmBulletinBoardWidgetClass,
-                                 parent, Xmx_wargs, Xmx_n);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args work */
-Widget XmxMakeHorizontalBboard (Widget parent)
-{
-  XmxSetArg (XmNorientation, (XtArgVal)XmHORIZONTAL);
-  Xmx_w = XtCreateManagedWidget ("bboard", xmBulletinBoardWidgetClass,
-                              parent, Xmx_wargs, Xmx_n);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-
 /* -------------------------------- LABELS -------------------------------- */
 
 /* args work */
@@ -445,27 +257,6 @@ Widget XmxMakeLabel (Widget parent, String name)
   Xmx_w = XtCreateManagedWidget ("label", xmLabelWidgetClass,
                                  parent, Xmx_wargs, Xmx_n);
   XmStringFree (xmstr);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args work */
-Widget XmxMakeNamedLabel (Widget parent, String name, String wname)
-{
-  XmString xmstr = XmStringCreateLtoR (name, XmSTRING_DEFAULT_CHARSET);
-  XmxSetArg (XmNlabelString, (XtArgVal)xmstr);
-  Xmx_w = XtCreateManagedWidget (wname, xmLabelWidgetClass,
-                                 parent, Xmx_wargs, Xmx_n);
-  XmStringFree (xmstr);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args work */
-Widget XmxMakeBlankLabel (Widget parent)
-{
-  Xmx_w = XtCreateManagedWidget ("label", xmLabelWidgetClass,
-                                 parent, Xmx_wargs, Xmx_n);
   Xmx_n = 0;
   return Xmx_w;
 }
@@ -541,53 +332,12 @@ Widget XmxMakeQuestionDialog (Widget parent, String question, String title,
 /* ----------------------------- STRING UTILS ----------------------------- */
 
 /* args do nothing */
-XmString XmxMakeXmstrFromFile (String filename)
-{
-  FILE *_f;
-  char _mstr[81];
-  XmString _xmstr;
-
-  _f = fopen (filename, "r");
-  assert (_f != (FILE *)NULL);
-
-  _xmstr = (XmString)NULL;
-  while (!feof (_f)) {
-      if (fgets (_mstr, 80, _f) == (char *)NULL)
-        break;
-      _mstr[strlen (_mstr)-1] = '\0';
-      if (_xmstr != (XmString)NULL)
-        _xmstr = XmStringConcat (_xmstr, XmStringSeparatorCreate ());
-      /* Used to be XmStringCreate; changed to standard call. */
-      _xmstr = XmStringConcat
-        (_xmstr, XmStringCreateLtoR (_mstr, XmSTRING_DEFAULT_CHARSET));
-    }
-
-  fclose (_f);
-  return _xmstr;
-}
-
-/* args do nothing */
 XmString XmxMakeXmstrFromString (String mstr)
 {
   XmString _xmstr;
 
   _xmstr = XmStringCreateLtoR (mstr, XmSTRING_DEFAULT_CHARSET);
   return _xmstr;
-}
-
-/* args work */
-Widget XmxMakeBboardDialog (Widget parent, String title)
-{
-  XmString xmstr = XmStringCreateLtoR (title, XmSTRING_DEFAULT_CHARSET);
-  XmxSetArg (XmNdialogTitle, (XtArgVal)xmstr);
-  XmxSetArg (XmNautoUnmanage, (XtArgVal)False);
-  XmxSetArg (XmNmarginWidth, (XtArgVal)0);
-  XmxSetArg (XmNmarginHeight, (XtArgVal)0);
-
-  Xmx_w = XmCreateBulletinBoardDialog (parent, "bbdialog", Xmx_wargs, Xmx_n);
-  XmStringFree (xmstr);
-  Xmx_n = 0;
-  return Xmx_w;
 }
 
 /* args work */
@@ -638,106 +388,12 @@ Widget XmxMakeFileSBDialog (Widget parent, String title, String selection_txt,
 	return Xmx_w;
 }
 
-/* args work */
-Widget XmxMakeHelpDialog (Widget parent, XmString xmstr, String title)
-{
-  XmString dialog_title = XmStringCreateLtoR (title, XmSTRING_DEFAULT_CHARSET);
-
-  XmxSetArg (XmNmessageString, (XtArgVal)xmstr);
-  XmxSetArg (XmNdialogTitle, (XtArgVal)dialog_title);
-
-  Xmx_w = XmCreateMessageDialog (parent, "helpdialog", Xmx_wargs, Xmx_n);
-  XtUnmanageChild (XmMessageBoxGetChild (Xmx_w, XmDIALOG_CANCEL_BUTTON));
-  XtUnmanageChild (XmMessageBoxGetChild (Xmx_w, XmDIALOG_HELP_BUTTON));
-
-  XmStringFree (dialog_title);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
 /* Boy, this is a hack. */
 static XmxCallback(_XmxHelpTextCancelCallback)
 {
 	/* This is highly dependent on the button being four layers
 	 * below the dialog shell... what a ridiculous hack. */
 	XtUnmanageChild (XtParent (XtParent (XtParent (XtParent (w)))));
-}
-
-/* args work */
-Widget XmxMakeHelpTextDialog (Widget parent, String str, 
-	String title, Widget *text_w)
-{
-  Widget _box, _outer_frame, _form;
-  Widget _scr_text, _sep, _buttons_form;
-
-  /* Create the dialog box. */
-  _box = XmxMakeFormDialog (parent, title);
-
-  /* Make it 3D. */
-  _outer_frame = XmxMakeFrame (_box, XmxShadowOut);
-  XmxSetConstraints(_outer_frame, XmATTACH_FORM, XmATTACH_FORM, XmATTACH_FORM, 
-	XmATTACH_FORM, NULL, NULL, NULL, NULL);
-
-  /* Put form inside that, then frame for text window. */
-  _form = XmxMakeForm (_outer_frame);
-
-  /* Make multiline non-editable text window, with scrollbars. */
-  XmxSetArg (XmNscrolledWindowMarginWidth, (XtArgVal)10);
-  XmxSetArg (XmNscrolledWindowMarginHeight, (XtArgVal)10);
-  XmxSetArg (XmNcursorPositionVisible, (XtArgVal)False);
-  XmxSetArg (XmNeditable, (XtArgVal)False);
-  XmxSetArg (XmNeditMode, (XtArgVal)XmMULTI_LINE_EDIT);
-  XmxSetArg (XmNrows, (XtArgVal)20);
-  XmxSetArg (XmNcolumns, (XtArgVal)60);
-  XmxSetArg (XmNwordWrap, (XtArgVal)True);
-  XmxSetArg (XmNscrollHorizontal, (XtArgVal)False);
-  _scr_text = XmxMakeScrolledText (_form);
-  XmTextSetString (_scr_text, str);
-
-  /* Separate the text window/frame and the OK button. */
-  XmxSetArg (XmNtopOffset, (XtArgVal)10);
-  _sep = XmxMakeHorizontalSeparator (_form);
-
-  /* Make an OK button. */
-  _buttons_form = XmxMakeFormAndOneButton(_form,
-			_XmxHelpTextCancelCallback, "OK", 0);
-
-  /* Constraints for _form. */
-  XmxSetConstraints (XtParent (_scr_text), XmATTACH_FORM, XmATTACH_WIDGET, 
-	XmATTACH_FORM, XmATTACH_FORM, NULL, _sep, NULL, NULL);
-  XmxSetConstraints (_sep, XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_FORM, 
-		XmATTACH_FORM, NULL, _buttons_form, NULL, NULL);
-  XmxSetConstraints (_buttons_form, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_FORM, 
-		XmATTACH_FORM, NULL, NULL, NULL, NULL);
-
-  /* Return _scr_text in text_w argument. */
-  *text_w = _scr_text;
-  Xmx_w = _box;
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args work */
-void XmxAdjustHelpDialogText (Widget dialog, XmString message, String title)
-{
-  XmString dialog_title = XmStringCreateLtoR (title, XmSTRING_DEFAULT_CHARSET);
-
-  XmxSetArg (XmNdialogTitle, (XtArgVal)dialog_title);
-  XmxSetArg (XmNmessageString, (XtArgVal)message);
-  XtSetValues (dialog, Xmx_wargs, Xmx_n);
-  XmStringFree (dialog_title);
-  Xmx_n = 0;
-}
-
-/* args work */
-void XmxAdjustDialogTitle (Widget dialog, String title)
-{
-  XmString dialog_title = XmStringCreateLtoR (title, XmSTRING_DEFAULT_CHARSET);
-
-  XmxSetArg (XmNdialogTitle, (XtArgVal)dialog_title);
-  XmxSetValues (dialog);
-  XmStringFree (dialog_title);
-  Xmx_n = 0;
 }
 
 /* ------------------------------ SEPARATORS ------------------------------ */
@@ -747,32 +403,6 @@ Widget XmxMakeHorizontalSeparator (Widget parent)
 {
   Xmx_w = XmCreateSeparatorGadget (parent, "separator", Xmx_wargs, Xmx_n);
   XtManageChild (Xmx_w);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args work */
-Widget XmxMakeHorizontalSpacer (Widget parent)
-{
-  XmString label = XmStringCreateLtoR (" ", XmSTRING_DEFAULT_CHARSET);
-
-  XmxSetArg (XmNlabelString, (XtArgVal)label);
-  Xmx_w = XtCreateManagedWidget ("label", xmLabelGadgetClass, parent, 
-                                 Xmx_wargs, Xmx_n);
-  XmStringFree (label);
-  Xmx_n = 0;
-  return Xmx_w;
-}
-
-/* args do nothing */
-Widget XmxMakeHorizontalBoundary (Widget parent)
-{
-  /* To avoid confusion, nullify preloaded resources first. */
-  Xmx_n = 0;
-  XmxMakeHorizontalSpacer (parent);
-  XmxMakeHorizontalSeparator (parent);
-  XmxMakeHorizontalSpacer (parent);
-
   Xmx_n = 0;
   return Xmx_w;
 }
@@ -823,18 +453,6 @@ void XmxTextInsertString (Widget text, String str)
 {
   XmTextInsert(text, XmTextGetInsertionPosition(text), str);
   XmTextShowPosition (text, 0);
-}
-
-/* args do nothing */
-String XmxTextGetString (Widget text)
-{
-  return XmTextGetString (text);
-}
-
-/* args do nothing */
-void XmxAddCallbackToText (Widget text, XtCallbackProc cb, XtPointer cb_data)
-{
-  XtAddCallback (text, XmNactivateCallback, cb, (XtPointer)cb_data);
 }
 
 /* ----------------------------- BITMAP UTILS ----------------------------- */
@@ -1452,3 +1070,278 @@ char *XmxModalPromptForPassword (Widget parent, XtAppContext app,
     return strdup (_passwd);
 }
 
+
+/* --------------------------- PRIVATE ROUTINES --------------------------- */
+
+/* Create a new MenuEntry and add it to the head of a MenuRecord list. */
+static void _XmxMenuAddEntryToRecord (XmxMenuRecord *rec, Widget w, 
+	XtPointer token)
+{
+	XmxMenuEntry *_ent;
+
+	_ent = (XmxMenuEntry *)malloc (sizeof (XmxMenuEntry));
+	_ent->w = w;
+	_ent->token = token;
+	_ent->next = rec->first_entry; /*Add rest of list to tail of this entry.*/
+	rec->first_entry = _ent;	/* Make this entry head of list. */
+}
+
+
+/* Given token, fetch the corresponding entry. */
+static XmxMenuEntry * _XmxMenuGetEntryFromRecord (XmxMenuRecord *rec, 
+	XtPointer token)
+{
+	XmxMenuEntry *_ent = NULL;
+	int _done;
+
+			/* Search the linked list. */
+	_ent = rec->first_entry;
+	_done = 0;
+	while (_ent != NULL && !_done) {
+		if (_ent->token == token)
+			_done = 1;
+		else
+			_ent = _ent->next;
+	}
+	/* Punish the application for asking for a nonexistent entry. */
+	/* assert (_done); */
+	return _ent;
+}
+
+void _XmxRDestroyMenubar(XmxMenuRecord * rec)
+{
+	XmxMenuEntry *_ent = NULL;
+	XmxMenuEntry *_next = NULL;
+
+	_ent = rec->first_entry;
+	while (_ent != NULL){
+		_next = _ent->next;
+		free(_ent);
+		_ent = _next;
+	}
+}
+
+/* ------------------------- _XmxMenuCreateRecord ------------------------- */
+
+/* Create a new MenuRecord and clear out its list. */
+XmxMenuRecord * _XmxMenuCreateRecord (Widget base)
+{
+  XmxMenuRecord *_rec;
+
+  /* Create the new XmxMenuRecord. */
+  _rec = (XmxMenuRecord *)malloc (sizeof (XmxMenuRecord));
+  _rec->base = base;
+  _rec->first_entry = NULL;
+  return _rec;
+}
+
+/* --------------------------- PUBLIC ROUTINES ---------------------------- */
+
+void XmxRSetSensitive (XmxMenuRecord *rec, XtPointer token, int state)
+{
+	XmxMenuEntry *_entry;
+
+	assert (state == XmxSensitive || state == XmxUnsensitive);
+	_entry = _XmxMenuGetEntryFromRecord (rec, token);
+	/* XtSetSensitive propagates down Widget hierarchy. */
+	if (_entry)
+		XtSetSensitive(_entry->w, (state == XmxSensitive) ? True : False);
+}
+
+void XmxRSetToggleState (XmxMenuRecord *rec, XtPointer token, int state)
+{
+	XmxMenuEntry *_entry;
+
+	assert (state == XmxSet || state == XmxUnset);
+	_entry = _XmxMenuGetEntryFromRecord (rec, token);
+	if (_entry)
+		XmToggleButtonGadgetSetState(_entry->w, 
+			(state == XmxSet) ? True : False, False);
+}
+
+/* args apply to pulldown menu */
+XmxMenuRecord * XmxRMakeOptionMenu(Widget parent, String name, 
+	XmxOptionMenuStruct *opts)
+{
+	XmxMenuRecord *_rec;
+	Widget _pulldown, _button, _menuhist = (Widget)NULL;
+	int _i;
+
+/* Create a pulldown menupane to attach to the option menu;
+ * preloaded wargs affect this. */
+	_pulldown = XmCreatePulldownMenu(parent,"pulldownmenu",Xmx_wargs, Xmx_n);
+
+/* menuHistory will not be applied to _pulldown, so we'll modify
+ * _rec directly after creating the option menu. */
+	_rec = _XmxMenuCreateRecord (_pulldown);
+
+/* Create pushbutton gadgets as childen of the pulldown menu. */
+	_i = 0;
+	while (opts[_i].namestr) {
+		Xmx_n = 0;
+		XmxSetArg (XmNlabelString,
+			(XtArgVal)XmStringCreateLtoR (opts[_i].namestr,
+			XmSTRING_DEFAULT_CHARSET));
+		_button = XmCreatePushButtonGadget (_pulldown, "pushbutton",
+			Xmx_wargs, Xmx_n);
+		XtManageChild (_button);
+		XtAddCallback (_button, XmNactivateCallback, opts[_i].data ,
+			(XtPointer)opts[_i].win);
+		if (opts[_i].set_state == XmxSet)
+			_menuhist = _button;
+		_XmxMenuAddEntryToRecord (_rec, _button, (XtPointer)opts[_i].data);
+		_i++;
+	}
+/* Create the option menu itself; tie in the pulldown menu. */
+	Xmx_n = 0;
+	XmxSetArg (XmNsubMenuId, (XtArgVal)_pulldown);
+	if (_menuhist != (Widget)NULL)
+		XmxSetArg (XmNmenuHistory, (XtArgVal)_menuhist);
+	Xmx_w = XmCreateOptionMenu (parent, "optionmenu", Xmx_wargs, Xmx_n);
+	XtManageChild (Xmx_w);
+
+	XmxSetArg (XmNalignment, (XtArgVal)XmALIGNMENT_BEGINNING);
+	XmxSetValues (XmOptionButtonGadget (Xmx_w));
+	if (name) {
+		XmxSetArg (XmNlabelString,
+			(XtArgVal)XmStringCreateLtoR(name, 
+					XmSTRING_DEFAULT_CHARSET));
+		XmxSetValues (XmOptionLabelGadget (Xmx_w));
+	} else {
+		XmxSetArg (XmNspacing, (XtArgVal)0);
+		XmxSetArg (XmNmarginWidth, (XtArgVal)0);
+		XmxSetValues (Xmx_w);
+		XmxSetArg (XmNlabelString, (XtArgVal)NULL);
+		XmxSetValues (XmOptionLabelGadget (Xmx_w));
+	}
+	_rec->base = Xmx_w;	/* Explicitly set base Widget of record. */
+	Xmx_n = 0;
+	return _rec;
+}
+
+/* Possible deficiency: will not be able to grey out a submenu (cascade button).*/
+void _XmxRCreateMenubar (Widget menu, XmxMenubarStruct *menulist, 
+                    XmxMenuRecord *rec, struct mo_window * win)
+{
+	int _i;
+	Widget *_buttons;
+	int _separators = 0, _nitems;
+	Widget _sub_menu;
+	XmString xmstr;
+
+	_nitems = 0;
+	while (menulist[_nitems].namestr)
+		_nitems++;
+	_buttons = (Widget *)XtMalloc (_nitems * sizeof (Widget));
+
+	for (_i = 0; _i < _nitems; _i++) {
+		if (strcmp(menulist[_i].namestr, "----") == 0) {
+/* Name of "----" means make a separator. */
+			XtCreateManagedWidget("separator",
+				xmSeparatorGadgetClass, menu, NULL, 0);
+			_separators++;
+			continue;
+		}
+		if (menulist[_i].func) {
+/* A function means it's an ordinary entry with callback. */
+			Xmx_n = 0;
+			if (menulist[_i].mnemonic)
+				XmxSetArg(XmNmnemonic, 
+					(XtArgVal)(menulist[_i].mnemonic));
+			menulist[_i].data =  (XtPointer)win;
+			if (menulist[_i].namestr[0] == '#' ||
+			    menulist[_i].namestr[0] == '<') {
+					/* option/toggle button */
+              				/* A toggle button is diamond-shaped. */
+				if (menulist[_i].namestr[0] == '<')
+					XmxSetArg (XmNindicatorType, 
+						(XtArgVal)XmONE_OF_MANY);
+/* Make sure the button shows up even when toggled off. */
+				if (menulist[_i].namestr[0] == '#')
+					XmxSetArg(XmNvisibleWhenOff, 
+						(XtArgVal)True);
+              /* Ignore first character of label. */
+				xmstr = XmxMakeXmstrFromString(
+						&(menulist[_i].namestr[1]));
+				XmxSetArg (XmNlabelString, (XtArgVal)xmstr);
+				_buttons[_i - _separators] = XtCreateManagedWidget
+					("togglebutton",xmToggleButtonGadgetClass,
+					menu, Xmx_wargs, Xmx_n);
+				XmStringFree (xmstr);
+				XtAddCallback(_buttons[_i - _separators], 
+					XmNvalueChangedCallback,menulist[_i].func,
+					(XtPointer) menulist[_i].data);
+			} else if (menulist[_i].namestr[0] == '+') { /* cascade for a pulldown menu*/
+				/* the pulldown is fulled later by the callback func */
+				_sub_menu = XmCreatePulldownMenu(menu, "pulldownmenu",
+                                        NULL, 0);
+				Xmx_n = 0;
+				XmxSetArg (XmNsubMenuId, (XtArgVal)_sub_menu);
+				if (menulist[_i].mnemonic)
+					XmxSetArg(XmNmnemonic, (XtArgVal)(menulist[_i].mnemonic));
+				xmstr = XmStringCreateLtoR (&(menulist[_i].namestr[1]),
+						XmSTRING_DEFAULT_CHARSET);
+				XmxSetArg (XmNlabelString, (XtArgVal)xmstr);
+				_buttons[_i - _separators] = XtCreateWidget(
+				      "cascadebutton", xmCascadeButtonGadgetClass,
+					menu, Xmx_wargs, Xmx_n);
+				XmStringFree (xmstr);
+				XtAddCallback(_buttons[_i - _separators],
+					XmNcascadingCallback,menulist[_i].func,
+					(XtPointer)menulist[_i].data);
+				continue;
+			} else { /* regular button */
+				XmString xmstr = XmStringCreateLtoR
+					(menulist[_i].namestr, 
+					XmSTRING_DEFAULT_CHARSET);
+				XmxSetArg (XmNlabelString, (XtArgVal)xmstr);
+				_buttons[_i - _separators] = XtCreateManagedWidget
+					("pushbutton", xmPushButtonGadgetClass,
+					menu, Xmx_wargs, Xmx_n);
+				XmStringFree (xmstr);
+				XtAddCallback(_buttons[_i - _separators], 
+					XmNactivateCallback, menulist[_i].func, 
+					(XtPointer)menulist[_i].data);
+			}
+/* Add thie button to the menu record. */
+			_XmxMenuAddEntryToRecord(rec, _buttons[_i - _separators], 
+					(XtPointer)menulist[_i].func);
+			continue;
+		}
+		if (menulist[_i].sub_menu == (XmxMenubarStruct *)NULL) {
+/* No function and no submenu entry means it's just a label. */
+			Xmx_n = 0;
+			XmxSetArg (XmNlabelString, (XtArgVal)XmStringCreateLtoR
+				(menulist[_i].namestr, XmSTRING_DEFAULT_CHARSET));
+			_buttons[_i - _separators] = XtCreateManagedWidget
+				("label", xmLabelGadgetClass, menu, 
+				Xmx_wargs, Xmx_n);
+			continue;
+		}
+/* If all if fails, it's a submenu. */
+		_sub_menu = XmCreatePulldownMenu(menu, "pulldownmenu", 
+					NULL, 0);
+		Xmx_n = 0;
+		XmxSetArg (XmNsubMenuId, (XtArgVal)_sub_menu);
+		if (menulist[_i].mnemonic)
+			XmxSetArg(XmNmnemonic, (XtArgVal)(menulist[_i].mnemonic));
+		xmstr = XmStringCreateLtoR
+				(menulist[_i].namestr, XmSTRING_DEFAULT_CHARSET);
+		XmxSetArg (XmNlabelString, (XtArgVal)xmstr);
+		_buttons[_i - _separators] = XtCreateWidget("cascadebutton", 
+				xmCascadeButtonGadgetClass,
+				menu, Xmx_wargs, Xmx_n);
+		XmStringFree (xmstr);
+				/* If name is "Help", put on far right. */
+		if (strcmp (menulist[_i].namestr, "Help") == 0) {
+			Xmx_n = 0;
+			XmxSetArg (XmNmenuHelpWidget, 
+					(XtArgVal)_buttons[_i - _separators]);
+			XtSetValues (menu, Xmx_wargs, Xmx_n);
+		}
+/* Recursively create new submenu. */
+		_XmxRCreateMenubar(_sub_menu, menulist[_i].sub_menu, rec,win);
+	}
+	XtManageChildren (_buttons, _nitems - _separators);
+	XtFree ((char *)_buttons);
+}

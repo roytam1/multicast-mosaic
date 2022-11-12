@@ -15,14 +15,13 @@
 mo_status mo_back_impossible (mo_window *win);
 mo_status mo_forward_impossible (mo_window *win);
 mo_status mo_set_win_current_node (mo_window *, mo_node *);
-mo_status mo_reload_window_text (mo_window *, int);
+mo_status mo_reload_window_text (mo_window *);
 mo_status mo_refresh_window_text (mo_window *);
 mo_status mo_load_window_text (mo_window *, char *, char *);
 mo_status mo_duplicate_window_text (mo_window *, mo_window *);
-mo_status mo_access_document (mo_window *, char *);
 
 mo_status mo_do_window_text (mo_window *win, char *url, char *txt,
-                             char *txthead, int register_visit,
+                             int register_visit,
                              char *ref, char *last_modified, char *expires);
 mo_status mo_post_access_document (mo_window *win, char *url,
                                    char *content_type, char *post_data);

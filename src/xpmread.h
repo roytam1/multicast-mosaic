@@ -12,7 +12,7 @@
 #ifndef __XPMREAD_H__
 #define __XPMREAD_H__
 
-unsigned char *ReadXpm3Pixmap(FILE *fp, char *datafile, int *w, int *h,
+unsigned char *ReadXpm3Pixmap(Widget view, FILE *fp,char *datafile, int *w, int *h,
                               XColor *colrs, int *bg);
 unsigned char *ProcessXpm3Data(Widget wid, char **xpmdata, int *w,
                                int *h, XColor *colrs, int *bg);

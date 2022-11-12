@@ -1,54 +1,59 @@
 /* Please read copyright.ncsa. Don't remove next line */
 #include "copyright.ncsa"
 
+#include <stdio.h>
 #include <time.h>
 #include <Xm/List.h>
 #include <Xm/TextF.h>
 #include <Xm/ToggleBG.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
+#include "../libhtmlw/HTMLP.h"
+#include "../libhtmlw/HTMLPutil.h"
 #include "bitmaps/hotlist.xbm"
 #include "../libnut/system.h"
 #include "hotlist.h"
-#include "hotfile.h"
 #include "gui.h"
 #include "mo-www.h"
 #include "gui-popup.h"
 #include "gui-dialogs.h"
+#include "gui-documents.h"
 
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
+/* ####Prendre le format netscape: Voir ~/.netscape/bookmark.html##### */
+/* <!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!-- This is an automatically generated file.
+It will be read and overwritten.
+Do Not Edit! -->
+<TITLE>Gilles Dauphin's Bookmarks</TITLE>
+<H1>Gilles Dauphin's Bookmarks</H1>
 
-
-void mo_reinit_hotmenu();
-
-/* This file provides support for hotlists of interesting
-   documents within the browser.
-   
-   Initially there will be a single hotlist, 'Default'.
-
-   The old hotlist file format look like this:
-   
-   ncsa-mosaic-hotlist-format-1            [identifying string]
-   Default                                 [title]
-   url Fri Sep 13 00:00:00 1986            [first word is url;
-                                            subsequent words are
-                                            last-accessed date (GMT)]
-   document title cached here              [cached title for above]
-   [2-line sequence for single document repeated as necessary]
-   ...
-   
-   Turns out this format is bad for two reasons:
-   (1) Document titles can have embedded carriage returns (usually
-       on purpose).
-   (2) URL's can have embedded carriage returns (usually on accident).
-
-   Also, we should just be using an HTML-derived format for hotlists.
+<DD>primarybook
+<DL><p>
+    <DT><A HREF="http://sig.enst.fr/" ADD_DATE="790876892" LAST_VISIT="874571973" LAST_MODIFIED="869758245">Télécom Paris WWW Server</A>
+    <DT><A HREF="http://www.ensta.fr/" ADD_DATE="790962869" LAST_VISIT="869757049" LAST_MODIFIED="869559368">Serveur WWW de l'ENSTA</A>
+<DD>Oh le beau serveur de l'ENSTA
+    <DT><H3 FOLDED ADD_DATE="842436201">java tool</H3>
+<DD>Different site java
+    <DL><p>
+        <DT><A HREF="http://www.kaffe.org/" ADD_DATE="861286867" LAST_VISIT="869757074" LAST_MODIFIED="869680045">KAFFE - A virtual machine to run Java(tm)* code</A>
+    </DL><p>
+    <DT><H3 FOLDED ADD_DATE="842434326">midi</H3>
+<DD>midi pointers                      
+    <DL><p>                            
+        <DT><A HREF="http://www.hut.fi/~titoivon/" ADD_DATE="863770674" LAST_VISIT="869756961" LAST_MODIFIED="861537900">Tuukka Toivonen / TiMidity</A>
+    </DL><p>
+    <DT><A HREF="http://www.netstore.de/Supply/http-analyze/" ADD_DATE="872183226" LAST_VISIT="872183437" LAST_MODIFIED="872183206">http-analyze - A fast Log Analyzer for web servers</A>
+</DL><p>
+          
 */
 
+#define CHK_OUT_OF_MEM(x) { if ( x == NULL) {\
+                                fprintf(stderr,"Out of memory\n");\
+                                exit(1);\
+                             }}
 
 #define LISTINDIC "-> "
 
@@ -60,41 +65,24 @@ void mo_reinit_hotmenu();
         break;							\
     } while(0)
 
-typedef struct edit_or_insert_hot_info {
-  Widget title_text;
-  int pos;
-  Widget url_lab;
-  Widget url_text;
-  Widget tog_url;
-  Widget tog_list;
-  Widget insert_tog;
+typedef struct _edit_or_insert_hot_info {
+	Widget title_text;
+	int pos;
+	Widget url_lab;
+	Widget url_text;
+	Widget comment_text;
+	Widget tog_url;
+	Widget tog_list;
+	Widget insert_tog;
 } edit_or_insert_hot_info;
 
+mo_hotlist *mMosaicHotList = NULL;
  
-void URL_Include_Set(mo_window *win, int togval, int sensitive)
-{           
-        if (!win) {
-                win=current_win;
-                if (!win)
-                        return;
-        }
-        XmxSetToggleButton(win->hotlist_rbm_toggle, togval);
-        XtVaSetValues(win->hotlist_rbm_toggle,
-                      XmNsensitive, sensitive,
-                      NULL);
-        return;                       
-}                                     
+static char * lhot_file_name = NULL;
 
-mo_root_hotlist *default_hotlist = NULL;
-
-
-/*
- * Given a hotlist and a hotnode, append the node
- * to the hotlist.
- * Change fields nodelist and nodelist_last in the hotlist,
- * and fields next and previous in the hotnode.
- * Also fill in field position in the hotnode.
- * Return nothing.
+/* Given a hotlist and a hotnode, append the node to the hotlist.
+ * Change fields nodelist and nodelist_last in the hotlist, and fields next
+ * and previous in the hotnode. Also fill in field position in the hotnode.
  */
 void mo_append_item_to_hotlist (mo_hotlist *list, mo_hot_item *node)
 {
@@ -126,171 +114,154 @@ void mo_append_item_to_hotlist (mo_hotlist *list, mo_hot_item *node)
 static void mo_remove_hotnode_from_hotlist (mo_hotlist *list,
                                             mo_hot_item *hotnode)
 {
-  if (hotnode->any.previous == NULL) {
-      /* Node was the first member of the list. */
-      if (hotnode->any.next != NULL) {
-          /* Node was the first member of the list and had
-             a next node. */
-          /* The next node is now the first node in the list. */
-          hotnode->any.next->any.previous = NULL;
-          list->nodelist = hotnode->any.next;
-        } else {
-          /* Node was the first member of the list and
-             didn't have a next node. */
-          /* The list is now empty. */
-          list->nodelist = NULL;
-          list->nodelist_last = NULL;
-        }
-    } else {
-      /* Node had a previous. */
-      if (hotnode->any.next != NULL) {
-          /* Node had a previous and a next. */
-          hotnode->any.previous->any.next = hotnode->any.next;
-          hotnode->any.next->any.previous = hotnode->any.previous;
-        } else {
-          /* Node had a previous but no next. */
-          hotnode->any.previous->any.next = NULL;
-          list->nodelist_last = hotnode->any.previous;
-        }
-    }
-
-  if (hotnode->type == mo_t_list) {
-      mo_hot_item *item, *prev;
-      for (item = hotnode->list.nodelist; item; free(prev)) {
-	  mo_remove_hotnode_from_hotlist (&(hotnode->list), item);
-	  prev = item; item = hotnode->list.nodelist;
+	if (hotnode->any.previous == NULL) {
+/* Node was the first member of the list. */
+		if (hotnode->any.next != NULL) {
+/* Node was the first member of the list and had a next node. */
+/* The next node is now the first node in the list. */
+			hotnode->any.next->any.previous = NULL;
+			list->nodelist = hotnode->any.next;
+		} else {
+/* Node was the first member of the list and didn't have a next node. */
+/* The list is now empty. */
+			list->nodelist = NULL;
+			list->nodelist_last = NULL;
+		}
+	} else {	 /* Node had a previous. */
+		if (hotnode->any.next != NULL) {
+/* Node had a previous and a next. */
+			hotnode->any.previous->any.next = hotnode->any.next;
+			hotnode->any.next->any.previous = hotnode->any.previous;
+		} else { /* Node had a previous but no next. */
+			hotnode->any.previous->any.next = NULL;
+			list->nodelist_last = hotnode->any.previous;
+		}
 	}
-    }
-
-  return;
+	if (hotnode->type == mo_t_list) {
+		mo_hot_item *item, *prev;
+		for (item = hotnode->list.nodelist; item; free(prev)) {
+			mo_remove_hotnode_from_hotlist (&(hotnode->list), item);
+			prev = item; item = hotnode->list.nodelist;
+		}
+	}
 }
 
-/* Go through a hotlist (sequence of hotnodes) and assign position
-   numbers for all of 'em. */
+/* Go through a hotlist  and assign position numbers for all of 'em. */
 static void mo_recalculate_hotlist_positions (mo_hotlist *list)
 {
-  mo_hot_item *hotnode;
-  int count = 1;
-  
-  for (hotnode = list->nodelist; hotnode != NULL;
-       hotnode = hotnode->any.next)
-    hotnode->any.position = count++;
-  
-  return;
+	mo_hot_item *hotnode;
+	int count = 1;
+
+	for(hotnode=list->nodelist; hotnode != NULL; hotnode=hotnode->any.next)
+		hotnode->any.position = count++;
 }
 
-/* Insert an item in a list at a given position.
-   if position is 0, then append it (at end of list). */
-static void mo_insert_item_in_hotlist (mo_hotlist *list, mo_hot_item *node,
-				       int position)
+/* Insert item in list at given position. If position is 0, then append it */
+
+static void mo_insert_item_in_hotlist(mo_window * win,
+	mo_hotlist *list, mo_hot_item *node, int position)
 {
-  if (!position) {
-      mo_append_item_to_hotlist (list, node);
-    } else {
-      if (node->type == mo_t_list)
-	node->list.parent = list;
-      if (list->nodelist == 0) {
-	  /* Nothing yet. */
-	  list->nodelist = node;
-	  list->nodelist_last = node;
-	  node->any.next = 0;
-	  node->any.previous = 0;
-	  node->any.position = 1;
+	if (!position) {
+		mo_append_item_to_hotlist (list, node);
 	} else {
-	  mo_hot_item *item, **prevNextPtr = &list->nodelist;
-	  /* search the item at position 'position' */
-	  for (item = list->nodelist; item != NULL; item = item->any.next) {
-	      if (item->any.position == position)
-		break;
-	      prevNextPtr = &item->any.next;
-	    }
-
-	  if (item == NULL)	/* item not found */
-	    mo_append_item_to_hotlist (list, node);
-	  else {
-	      *prevNextPtr = node;
-	      node->any.previous = item->any.previous;
-	      node->any.next = item;
-	      item->any.previous = node;
-	      mo_recalculate_hotlist_positions (list);
-	    }
+		if (node->type == mo_t_list)
+			node->list.parent = list;
+		if (list->nodelist == 0) { /* Nothing yet. */
+			list->nodelist = node;
+			list->nodelist_last = node;
+			node->any.next = 0;
+			node->any.previous = 0;
+			node->any.position = 1;
+		} else {
+			mo_hot_item *item, **prevNextPtr = &list->nodelist;
+/* search the item at position 'position' */
+			for (item = list->nodelist; item != NULL; item = item->any.next) {
+				if (item->any.position == position)
+					break;
+				prevNextPtr = &item->any.next;
+			}
+			if (item == NULL)	/* item not found */
+				mo_append_item_to_hotlist (list, node);
+			else {
+				*prevNextPtr = node;
+				node->any.previous = item->any.previous;
+				node->any.next = item;
+				item->any.previous = node;
+				mo_recalculate_hotlist_positions (list);
+			}
+		}
 	}
-    }
-    mo_reinit_hotmenu();
 }
 
-/* Go Up The tree to check if a list is the ancestor of an item
- */
+/* Go Up The tree to check if a list is the ancestor of an item */
+
 static int mo_is_ancestor (mo_hotlist *list, mo_hotlist *item)
 {
-  while (item && item != list)
-    item = item->parent;
-
-  return item == list;
+	while (item && item != list)
+		item = item->parent;
+	return item == list;
 }
 
 /* recursive function that copy a hierarchy of hotlist */
 static mo_hotlist *mo_copy_hot_hier (mo_hotlist *list)
 {
-  mo_hot_item *item;
-  mo_hotnode *hot;
-  mo_hotlist *hotlist = (mo_hotlist *)malloc(sizeof(mo_hotlist));
+	mo_hot_item *item;
+	mo_hotnode *hot;
+	mo_hotlist *hotlist = (mo_hotlist *)malloc(sizeof(mo_hotlist));
 
-  hotlist->name = strdup(list->name);
-  hotlist->type = mo_t_list;
-  hotlist->nodelist = hotlist->nodelist_last = 0;
-  for (item = list->nodelist; item; item = item->any.next)
-    if (item->type == mo_t_url) {
-	hot = (mo_hotnode *)malloc(sizeof(mo_hotnode));
-	hot->type = mo_t_url;
-	hot->title = strdup(item->hot.title);
-	hot->url = strdup(item->hot.url);
-	/*hot->lastdate = strdup(item->hot.lastdate);*/
-	hot->lastdate = (char *) 0;
-	mo_append_item_to_hotlist(hotlist, (mo_hot_item *)hot);
-      } else {
-	mo_append_item_to_hotlist
-	  (hotlist, (mo_hot_item *)mo_copy_hot_hier((mo_hotlist *)item));
-      }
-  return hotlist;
+	hotlist->title = strdup(list->title);
+	hotlist->desc = list->desc? strdup(list->desc):NULL;
+	hotlist->type = mo_t_list;
+	hotlist->nodelist = hotlist->nodelist_last = 0;
+	for (item = list->nodelist; item; item = item->any.next)
+		if (item->type == mo_t_url) {
+			hot = (mo_hotnode *)malloc(sizeof(mo_hotnode));
+			hot->type = mo_t_url;
+			hot->title = strdup(item->hot.title);
+			hot->url = strdup(item->hot.url);
+			hot->desc = item->hot.desc? strdup(item->hot.desc):NULL;
+/*hot->lastdate = strdup(item->hot.lastdate);*/
+			hot->lastdate = (char *) 0;
+			mo_append_item_to_hotlist(hotlist, (mo_hot_item *)hot);
+		} else {
+			mo_append_item_to_hotlist(hotlist,
+				(mo_hot_item *)mo_copy_hot_hier((mo_hotlist *)item));
+		}
+	return hotlist;
 }
 
 static char * mo_compute_hot_path (mo_hotlist *curr)
 {
-  char *str;
-  char *prev = curr->parent ? strdup(curr->name) : strdup("/");
+	char *str;
+	char *prev = curr->parent ? strdup(curr->title) : strdup("/");
 
-  for (str = prev, curr = curr->parent; curr; curr = curr->parent) {
-      if (curr->parent) {
-	  str = (char *)malloc(strlen(prev)+strlen(curr->name)+2);
-	  strcat(strcat(strcpy(str, curr->name), "/"),prev);
-	} else {
-	  str = (char *)malloc(strlen(prev)+2);
-	  strcat(strcpy(str, "/"), prev);
+	for (str = prev, curr = curr->parent; curr; curr = curr->parent) {
+		if (curr->parent) {
+			str = (char *)malloc(strlen(prev)+strlen(curr->title)+2);
+			strcat(strcat(strcpy(str, curr->title), "/"),prev);
+		} else {
+			str = (char *)malloc(strlen(prev)+2);
+			strcat(strcpy(str, "/"), prev);
+		}
+		free(prev);
+		prev = str;
 	}
-      free(prev);
-      prev = str;
-    }
-  return str;
+	return str;
 }
 
 static void mo_copy_hotlist_position (mo_window *win, int position)
 {
-  mo_hot_item *item;
+	mo_hot_item *item;
 
-  for (item = win->current_hotlist->nodelist;
-       item != NULL && item->any.position != position;
-       item = item->any.next) ;
-
-  if (item)
-    win->hot_cut_buffer = item;
+	for (item = win->current_hotlist->nodelist; item != NULL && item->any.position != position; item = item->any.next) ;
+		if (item)
+			win->hot_cut_buffer = item;
 }
 
 static char * mo_highlight_hotlist (mo_hotlist *list)
 {
-  char *str = (char *)malloc(strlen(list->name)+strlen(LISTINDIC)+1);
-  return
-    strcat(strcpy(str,LISTINDIC), list->name);
+	char *str = (char *)malloc(strlen(list->title)+strlen(LISTINDIC)+1);
+	return strcat(strcpy(str,LISTINDIC), list->title);
 }
 
 static void mo_gui_add_hot_item (mo_hotlist *list, mo_hot_item *item)
@@ -303,8 +274,7 @@ static void mo_gui_add_hot_item (mo_hotlist *list, mo_hot_item *item)
 			char *highlight = NULL;
 
 			XmString xmstr = XmxMakeXmstrFromString(
-				item->type == mo_t_url ?
-(get_pref_boolean(eDISPLAY_URLS_NOT_TITLES)?item->hot.url:item->hot.title) :
+				item->type == mo_t_url ? item->hot.title :
 				(highlight = mo_highlight_hotlist(&item->list)));
 			if (item->type == mo_t_list && highlight)
 				free(highlight);
@@ -313,60 +283,404 @@ static void mo_gui_add_hot_item (mo_hotlist *list, mo_hot_item *item)
 			XmStringFree (xmstr);
 			XmListSetBottomPos (win->hotlist_list, 0);
 		}
-	mo_reinit_hotmenu();
 }
 
 mo_status mo_add_item_to_hotlist (mo_hotlist *list, mo_item_type type,
-           char *title, char *url, int position,int rbm)
+           char *title, char *url, char* desc, int position)
 {
-  mo_hot_item *item;
-  mo_window *win = NULL;
+	mo_hot_item *item;
+	mo_window *win = NULL;
 
-  if ((title == NULL || title[0] == '\0') && (url == NULL || url[0] == '\0'))
-    return mo_fail;
+	if((title == NULL || title[0] == '\0') && (url == NULL || url[0] == '\0'))
+		return mo_fail;
+	if (desc == NULL || *desc == '\0')
+		desc = NULL;
+	if (type == mo_t_url) {
+		mo_hotnode *hotnode = (mo_hotnode *)malloc (sizeof (mo_hotnode));
+		time_t foo = time (NULL);
+		char *ts = ctime (&foo);
 
-  if (type == mo_t_url) {
-      mo_hotnode *hotnode = (mo_hotnode *)malloc (sizeof (mo_hotnode));
-      time_t foo = time (NULL);
-      char *ts = ctime (&foo);
+		item = (mo_hot_item *)hotnode;
+		ts[strlen(ts)-1] = '\0';
+		hotnode->type = mo_t_url;
+		if (title)
+			hotnode->title = strdup (title);
+		else
+			hotnode->title = strdup ("Unnamed");
+		hotnode->desc = desc ? strdup(desc):NULL;
+		mo_convert_newlines_to_spaces (hotnode->title);
+		mo_convert_newlines_to_spaces (hotnode->desc);
+		hotnode->url = strdup (url);
+		mo_convert_newlines_to_spaces (hotnode->url);
+		hotnode->lastdate = strdup (ts);
+	} else {
+		mo_hotlist *hotlist = (mo_hotlist *)malloc(sizeof(mo_hotlist));
 
-      item = (mo_hot_item *)hotnode;
-      ts[strlen(ts)-1] = '\0';
+		item = (mo_hot_item *)hotlist;
+		hotlist->type = mo_t_list;
+		if (title)
+			hotlist->title = strdup (title);
+		else
+			hotlist->title = strdup ("Unnamed");
+		hotlist->desc = desc ? strdup(desc):NULL;
+		mo_convert_newlines_to_spaces (hotlist->title);
+		mo_convert_newlines_to_spaces (hotlist->desc);
+		hotlist->nodelist = hotlist->nodelist_last = 0;
+	}
+	if (position)
+		mo_insert_item_in_hotlist(win, list, item, position);
+	else
+		mo_append_item_to_hotlist (list,  item);
+	mo_gui_add_hot_item (list, item);
+	return mo_succeed;
+}
 
-      hotnode->type = mo_t_url;
-      if (title)
-	hotnode->title = strdup (title);
-      else
-	hotnode->title = strdup ("Unnamed");
-      mo_convert_newlines_to_spaces (hotnode->title);
+static int notSpacesOrNewLine(char *s)
+{
+	int retc = 0;
 
-      hotnode->url = strdup (url);
-      mo_convert_newlines_to_spaces (hotnode->url);
+	for (;*s && !retc; s++)
+		if (!isspace(*s)) retc = 1;
+	return retc;
+}
 
-      hotnode->lastdate = strdup (ts);
-      hotnode->rbm=rbm;
-    } else {
-      mo_hotlist *hotlist = (mo_hotlist *)malloc(sizeof(mo_hotlist));
+/* extract an hotlist from any HTML document */
+static void mo_extract_anchors(mo_hotlist *list, struct mark_up *mptr)
+{
+	mo_hotnode *node;
+	char *name = NULL;
+	char *last_text = NULL;
+	char *url = NULL, *title = NULL;
 
-      item = (mo_hot_item *)hotlist;
-      hotlist->type = mo_t_list;
-      if (title)
-	hotlist->name = strdup (title);
-      else
-	hotlist->name = strdup ("Unnamed");
-      mo_convert_newlines_to_spaces (hotlist->name);
-      hotlist->nodelist = hotlist->nodelist_last = 0;
-      hotlist->rbm=rbm;
-    }
+	for (; mptr != NULL; mptr = mptr->next)
+	switch (mptr->type) {
+	case M_TITLE:		/* title tag */
+		if (mptr->is_end && last_text)
+/* if this is the end tag, take the last text as name */
+			name = mo_convert_newlines_to_spaces (strdup(last_text));
+		break;
+	case M_NONE:		/* text, not tag */
+		if (notSpacesOrNewLine(mptr->text))
+			last_text = mptr->text;
+		break;
+	case M_ANCHOR:
+		if (!mptr->is_end) {			/* start anchor tag */
+			last_text = NULL;
+			url = ParseMarkTag(mptr->start, MT_ANCHOR, AT_HREF);
+			title = ParseMarkTag(mptr->start, MT_ANCHOR, "title");
+		} else {			/* end anchor tag */
+			node = (mo_hotnode *)malloc (sizeof (mo_hotnode));
+			node->type = mo_t_url;
+			node->url = url;
+/* if there is a title attribute in the anchor, take it,
+ * otherwise take the last text */
+			node->title = title ? title :
+				(last_text ? strdup(last_text):strdup("Unnamed"));
+			mo_convert_newlines_to_spaces (node->title);
+			mo_append_item_to_hotlist (list, (mo_hot_item *)node);
+			url = title = last_text = NULL;
+		}
+	default:
+		break;
+	}
+	if(!name)
+		name = strdup("Unnamed");
+	list->title = name;
+}
 
-  if (position)
-    mo_insert_item_in_hotlist(list, item, position);
-  else
-    mo_append_item_to_hotlist (list,  item);
+/* parse a structured hotlist file recursively. We are pointing just after
+ * a <DL> tag. So we can have:
+ *	</DL>	empty list
+ *	<DT>	an entry of type anchor or list
+ * we must parse until </DL> tag
+*/
+static void mo_parse_hotlist_list(mo_hotlist *list, struct mark_up  **current)
+{
+	mo_hotlist *hotlist;
+	mo_hotnode *node;
+	char *last_text = NULL;
+	char *url = NULL, *url_title = NULL, *url_desc=NULL;
+	char * fold_title = NULL, *fold_desc = NULL;
+	struct mark_up *mptr;
+	int done = 0;
+	mo_item_type entry_type = mo_t_none;
+	int have_dd = 0;
   
-  mo_gui_add_hot_item (list, item);
-  
-  return mo_succeed;
+	for (mptr = *current; mptr && !done; mptr = mptr->next)
+	switch (mptr->type) {
+	case M_DESC_TITLE:		/* dt tag */
+/* a DT tag ends a previous anchor entry */
+		if (entry_type == mo_t_url) {	/* add an url entry */
+			node = (mo_hotnode *)malloc (sizeof (mo_hotnode));
+			node->type = mo_t_url;
+			node->url = url;
+/* if there is a title attribute in the anchor, take it,
+ * otherwise take the last text */
+			node->title = url_title ;
+			node->desc = url_desc ? strdup(url_desc) : NULL;
+			mo_convert_newlines_to_spaces (node->title);
+			mo_convert_newlines_to_spaces (node->desc);
+			mo_append_item_to_hotlist (list, (mo_hot_item *)node);
+		}
+		last_text = url = url_title = url_desc = NULL;
+		fold_title = fold_desc = NULL;
+		have_dd = 0;
+		entry_type = mo_t_none;
+		break;
+	case M_ANCHOR:
+		if (!mptr->is_end) {			/* start anchor tag */
+			entry_type = mo_t_url;
+			fold_title = fold_desc = NULL;
+			last_text = NULL;
+			url = ParseMarkTag(mptr->start, MT_ANCHOR, AT_HREF);
+			url_title = ParseMarkTag(mptr->start, MT_ANCHOR, "title");
+		} else {			/* </A> tag */
+			if (entry_type != mo_t_url)	/* connard! */
+				break;
+			url_title = url_title ? url_title :
+				(last_text? strdup(last_text) :strdup("Unnamed"));
+		}
+		have_dd = 0;
+		break;
+	case M_HEADER_3:
+		if ( ! mptr->is_end) { 	/* start */
+			entry_type = mo_t_list;
+			fold_title = NULL;
+		} else {		/* end */
+			fold_title = last_text? strdup(last_text) :strdup("Unnamed");
+		}
+		fold_desc = last_text = url = url_title = url_desc = NULL;
+		have_dd = 0;
+		break;
+	case M_NONE:		/* text, not tag */
+		if (notSpacesOrNewLine(mptr->text)){
+			last_text = mptr->text;
+			switch (entry_type){
+			case mo_t_none:
+				url_desc = fold_desc = NULL;
+				break;
+			case mo_t_url:
+				url_desc = have_dd ? last_text : NULL;
+				fold_desc = NULL;
+				break;
+			case mo_t_list:
+				url_desc = NULL;
+				fold_desc = have_dd ? last_text : NULL;
+				break;
+			}
+		}
+		have_dd = 0;
+		break;
+	case M_DESC_LIST:
+		if (!mptr->is_end) {			/* start dl tag */
+			hotlist = (mo_hotlist *)malloc(sizeof(mo_hotlist));
+			hotlist->type = mo_t_list;
+			hotlist->nodelist = hotlist->nodelist_last = 0;
+			hotlist->parent = list;
+			hotlist->title = fold_title;
+			hotlist->desc = fold_desc ? strdup(fold_desc): NULL;
+			mo_convert_newlines_to_spaces (hotlist->title);
+			mo_convert_newlines_to_spaces (hotlist->desc);
+			mo_append_item_to_hotlist(list, (mo_hot_item *)hotlist);
+			mptr = mptr->next;
+			mo_parse_hotlist_list(hotlist, &mptr);
+/* after this call, mptr is positionned on the end dl tag */
+		} else{			/* end dl tag */
+/* a /DL tag ends a previous anchor entry */
+			if (entry_type == mo_t_url) {	/* add an url entry */
+				node = (mo_hotnode *)malloc (sizeof (mo_hotnode));
+				node->type = mo_t_url;
+				node->url = url;
+/* if there is a title attribute in the anchor, take it,
+ * otherwise take the last text */
+				node->title = url_title ;
+				node->desc = url_desc ? strdup(url_desc) : NULL;
+				mo_convert_newlines_to_spaces (node->title);
+				mo_convert_newlines_to_spaces (node->desc);
+				mo_append_item_to_hotlist (list, (mo_hot_item *)node);
+			}
+			*current = mptr, done = 1;
+		}
+		last_text = url = url_title = url_desc = NULL;
+		fold_title = fold_desc = NULL;
+		have_dd = 0;
+		entry_type = mo_t_none;
+		break;
+	case M_DESC_TEXT:		/* dd tag */
+		have_dd = 1;
+		break;
+	default:
+		break;
+	} /* end switch and for */
+	if (!done)
+		*current = NULL;
+}
+
+/* Read a hotlist from a file. fill the hotlist list given as parameter */
+static void mo_read_hotlist(mo_hotlist *list, FILE *fp)
+{
+	char *ptr;
+	int done, normal, has_list, depth;
+	long size;
+	struct mark_up *hot_mark_up, *mptr;
+	char *text;
+
+	fseek(fp, 0L, SEEK_END);
+	size = ftell(fp);
+	text = (char*)malloc(size+1);
+	CHK_OUT_OF_MEM(text);
+	fseek(fp, 0L, SEEK_SET);
+	fread(text, (size_t)1, (size_t)size, fp);
+	text[size] = '\0';
+
+/* parse the HTML document */
+	hot_mark_up = HTMLParse(text);
+	free(text);
+
+/* some pre-processing to see if this is in hotlist format or if this is a
+ * normal document. The algo is as follow:
+ * if an anchor is outside a list or if there are more than one top level list,
+ * then it is not in hotlist format. The 'normal' flag at the end of the
+ * pre-processing tells if it is a normal document or a hotlist.
+*/
+	done = 0;
+	normal = 0;
+	has_list = 0;
+	depth = 0;
+	for (mptr = hot_mark_up; mptr != NULL && !done; mptr = mptr->next) {
+		switch (mptr->type) {
+		case M_ANCHOR:
+			if (!depth)
+				done = 1, normal = 1;
+			break;
+		case M_DESC_LIST:
+			if (!mptr->is_end)	/* start dl list tag */
+				if (!depth && has_list)
+					done = 1, normal = 1;
+				else
+					depth++, has_list = 1;
+			else			/* end unum list tag */
+				depth--;
+		default:
+			break;
+		}
+		if (done)
+			break;
+	}
+	if ( depth ) 
+		normal = 1;
+/* now we know what kind of file we are dealing with */
+	if (normal) {
+		mo_extract_anchors(list, hot_mark_up);
+	} else {
+		char *last_text = NULL;
+		char *title = NULL;
+		char *desc = NULL;
+		int have_dd = 0;
+
+		done = 0;
+		for(mptr = hot_mark_up; mptr != NULL && !done; mptr=mptr->next) {
+			switch (mptr->type) {
+			case M_NONE:		/* text, not tag */
+				if (notSpacesOrNewLine(mptr->text)) {
+					last_text = mptr->text;
+					desc = have_dd ? last_text : NULL;
+				}
+				have_dd = 0;
+				break;
+			case M_DESC_LIST:
+				desc = desc ? strdup(desc) : NULL;
+				done = 1;
+				break;
+			case M_TITLE:
+				if(mptr->is_end){
+					title = last_text ?
+						strdup(last_text): NULL;
+				}
+				have_dd = 0;
+				break;
+			case M_DESC_TEXT:
+				have_dd =1;
+				break;
+			default:
+				have_dd = 0;
+				break;
+			}
+		}
+/* after this loop, mptr is positionned just after the dl tag */
+		desc = mo_convert_newlines_to_spaces(desc);
+		title = title ? mo_convert_newlines_to_spaces(title) : NULL;
+		list->title = title;
+		list->desc = desc;
+		mo_parse_hotlist_list(list, &mptr);
+	}
+	FreeMarkUpList(hot_mark_up);
+	return;
+}
+
+/* This function replace '>', '<' and '&' by their entity references
+ * and output them.
+ */
+static void fputExpanded(char *s, FILE *fp)
+{
+	for (;*s;s++)
+		if (*s == '<')
+			fputs("&lt;", fp);
+		else if (*s == '>')
+			fputs("&gt;", fp);
+		else if (*s == '&')
+			fputs("&amp;", fp);
+		else
+			putc(*s, fp);
+}
+
+/* recursive function called to write a hotlist out to a file */
+static void mo_write_list_r(mo_hotlist *list, FILE *fp)
+{
+	mo_hot_item *item;
+
+	if (! list->nodelist)
+		return;
+	for (item = list->nodelist; item != NULL; item = item->any.next)
+		if (item->type == mo_t_url)  {   /* URL item */
+			if (!(item->hot.url)) {       
+				continue;             
+			}                             
+			fputs("<DT><A HREF=\"", fp);
+			fputExpanded(item->hot.url, fp);
+			fputs("\"> ", fp);
+			fputExpanded(item->hot.title, fp);
+			fputs("</A>", fp);
+			if (item->hot.desc) {
+				fputs("<DD>",fp);
+				fputExpanded(item->hot.desc, fp);
+			}
+			fputs("\n",fp);
+		} else {		/* list item */
+			fputs("<DT><H3>",fp);
+			fputExpanded(item->list.title,fp);
+			fputs("</H3>", fp);
+			if(item->list.desc) {
+				fputs("<DD>",fp);
+				fputExpanded(item->list.desc, fp);
+			}
+			fputs("\n<DL>\n",fp);
+			mo_write_list_r(&(item->list), fp);
+			fputs("\n</DL>\n",fp);
+		}
+}
+
+/* Write a hotlist out to a file.
+ * Return mo_succeed if everything goes OK; mo_fail else.
+ */
+mo_status mo_write_hotlist (mo_hotlist *list, FILE *fp)
+{
+	fprintf(fp,"<HTML>\n<TITLE>Hotlist from user %s</TITLE>\n<BODY>\n",mMosaicAppData.author_full_name);
+	fprintf(fp,"<H1>Hotlist from user %s</H1>\n",mMosaicAppData.author_full_name);
+	fprintf(fp,"<DD>primaryhotlist\n<DL>\n");
+	mo_write_list_r(list, fp);
+	fprintf(fp,"</DL>\n</BODY>\n</HTML>\n");
+	return mo_succeed;
 }
 
 /* ------------------------- gui support routines ------------------------- */
@@ -375,51 +689,43 @@ mo_status mo_add_item_to_hotlist (mo_hotlist *list, mo_item_type type,
    hotlist and load 'er up. */
 static void mo_load_hotlist_list (mo_window *win, Widget list)
 {
-  mo_hot_item *node;
+	mo_hot_item *node;
   
-  if (win->edithot_win && XtIsManaged(win->edithot_win))
-    XtUnmanageChild (win->edithot_win);
-  for (node = win->current_hotlist->nodelist; node != NULL;
-       node = node->any.next) {
-      char *highlight = NULL;
-      XmString xmstr = 
-        XmxMakeXmstrFromString (node->type == mo_t_url ?
-	   (get_pref_boolean(eDISPLAY_URLS_NOT_TITLES) ? node->hot.url : node->hot.title) :
-	   (highlight = mo_highlight_hotlist(&node->list)));
-      if (node->type == mo_t_list && highlight)
-	free(highlight);
-      XmListAddItemUnselected 
-        (list, xmstr, 0);
-      XmStringFree (xmstr);
-    }
+	if (win->edithot_win && XtIsManaged(win->edithot_win))
+		XtUnmanageChild (win->edithot_win);
+	for (node = win->current_hotlist->nodelist; node != NULL; node = node->any.next) {
+		char *highlight = NULL;
+		XmString xmstr = XmxMakeXmstrFromString (node->type == mo_t_url ?
+				( node->hot.title) :
+				(highlight = mo_highlight_hotlist(&node->list)));
 
-  return;
+		if (node->type == mo_t_list && highlight)
+			free(highlight);
+		XmListAddItemUnselected (list, xmstr, 0);
+		XmStringFree (xmstr);
+	}
 }
 
 static void mo_visit_hotlist_position (mo_window *win, int position)
 {
-  mo_hot_item *hotnode;
+	mo_hot_item *hotnode;
 
-  for (hotnode = win->current_hotlist->nodelist; hotnode != NULL;
-       hotnode = hotnode->any.next) {
-      if (hotnode->any.position == position)
-	if (hotnode->type == mo_t_url)
-	  mo_access_document (win, hotnode->hot.url);
-	else {
-	    char *path = mo_compute_hot_path(&(hotnode->list));
+	for (hotnode = win->current_hotlist->nodelist; hotnode != NULL; hotnode = hotnode->any.next) {
+		if (hotnode->any.position == position)
+			if (hotnode->type == mo_t_url)
+				mo_load_window_text (win, hotnode->hot.url,NULL);
+			else {
+				char *path =mo_compute_hot_path(&(hotnode->list));
 
-	    win->current_hotlist = &(hotnode->list);
-	    XmListDeleteAllItems(win->hotlist_list);
-	    XmxTextSetString(win->hotlist_label, path);
-	    free(path);
-	    mo_load_hotlist_list(win, win->hotlist_list);
-	    URL_Include_Set(win,0,0);
-	  }
-    }
+				win->current_hotlist = &(hotnode->list);
+				XmListDeleteAllItems(win->hotlist_list);
+				XmxTextSetString(win->hotlist_label, path);
+				free(path);
+				mo_load_hotlist_list(win, win->hotlist_list);
+			}
+	}
 }
 /* ----------- This part deals with the Edit and Insert features ---------- */
-
-/* ----------------------- edit_or_insert_hot_cb -------------------------- */
 
 static XmxCallback (edit_or_insert_hot_cb1)		/* Dismiss Edit */
 {
@@ -432,8 +738,7 @@ static XmxCallback (edit_or_insert_hot_cb2) 		/* Help... (Edit) */
 	mo_window *win = (mo_window*)client_data;
 
 	mo_open_another_window (win, 
-		mo_assemble_help_url ("help-on-hotlist-view.html"), 
-		NULL, NULL);
+		mo_assemble_help_url ("help-on-hotlist-view.html"), NULL, NULL);
 }
 static XmxCallback (edit_or_insert_hot_cb4) 		/* Dismiss Insert */
 {
@@ -447,54 +752,60 @@ static XmxCallback (edit_or_insert_hot_cb5)		/* Help... (Insert) */
 	mo_window *win = (mo_window*)client_data;
 
 	mo_open_another_window (win, 
-		mo_assemble_help_url ("help-on-hotlist-view.html"), 
-		NULL, NULL);
+		mo_assemble_help_url ("help-on-hotlist-view.html"), NULL, NULL);
 }
 static XmxCallback (edit_or_insert_hot_cb0)		/* Commit Edit */
 {
 	mo_window *win = (mo_window*)client_data;
-	char *title;
+	char *title, *comment;
 	edit_or_insert_hot_info *eht_info;
 	mo_hotlist *list = win->current_hotlist;
 	mo_hot_item *hotnode;
 	mo_window *ww = NULL;
 	XmString xmstr ;
 
-	URL_Include_Set(win,0,0);
 	XmxSetArg (XmNuserData, (XtArgVal)&eht_info);
 	XtGetValues (win->edithot_win, Xmx_wargs, Xmx_n);
 	Xmx_n = 0;
 	XtUnmanageChild (win->edithot_win);
-	title = XmxTextGetString (eht_info->title_text);
+	title = XmTextGetString (eht_info->title_text);
+/*####Commit#####
+	char *txt;
+	txt = XmTextGetString (win->annotate_text);
+	mo_modify_pan (win->editing_id,
+			XmTextGetString (win->annotate_title), 
+			XmTextGetString (win->annotate_author), 
+			txt);
+#####
+*/
+	comment = XmTextGetString(eht_info->comment_text);
 /* OK,now position is still cached in win->edithot_pos. */
 	FindHotFromPos(hotnode, list, eht_info->pos);
 	if (hotnode == NULL)
 		return;
 /* OK, now we have the hotnode. */
 	if (hotnode->type == mo_t_url)
-		hotnode->hot.url = XmxTextGetString( eht_info->url_text);
+		hotnode->hot.url = XmTextGetString( eht_info->url_text);
 	else 
-		if (!strcmp(hotnode->any.name, title))
+		if (!strcmp(hotnode->any.title, title))
 			return;
-	hotnode->any.name = title;
+	hotnode->any.title = title;
 /*Save the hotlist before we screw something up.*/
 	mo_write_default_hotlist ();
 	while (ww = mo_main_next_window (ww)) { /* Change the extant hotlists. */
 		if(ww->hotlist_list && ww->current_hotlist ==win->current_hotlist) {
 			char *highlight = NULL;
 			xmstr = XmxMakeXmstrFromString(hotnode->type == mo_t_url ?
-	(get_pref_boolean(eDISPLAY_URLS_NOT_TITLES)?hotnode->hot.url:title) :
+	(title) :
 	(highlight = mo_highlight_hotlist(&hotnode->list)));
 			if(hotnode->type==mo_t_list && highlight)
 				free(highlight);
 			XmListDeletePos (ww->hotlist_list, hotnode->any.position);
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
+	if (mMosaicSrcTrace) {
 		fprintf (stderr, 
 		   "ww->hotlist_list 0x%08x, xmstr 0x%08x, hotnode->position %d\n",
 			ww->hotlist_list, xmstr, hotnode->any.position);
 	}
-#endif
 /* There is what appears to be a Motif UMR here... */
 			XmListAddItemUnselected (ww->hotlist_list, xmstr, 
 					hotnode->any.position);
@@ -512,7 +823,7 @@ static XmxCallback (edit_or_insert_hot_cb0)		/* Commit Edit */
 static XmxCallback (edit_or_insert_hot_cb3)		/* Commit Insert */
 {
 	mo_window *win = (mo_window*)client_data;
-	char *title;
+	char *title, *comment;
 	edit_or_insert_hot_info *eht_info;
 	Boolean isUrl ;
 	Boolean useIns;
@@ -520,14 +831,24 @@ static XmxCallback (edit_or_insert_hot_cb3)		/* Commit Insert */
 	int pos_cnt, posi = 0;
 	mo_status addOk = mo_succeed;
 
-	URL_Include_Set(win,0,0);
 	XmxSetArg (XmNuserData, (XtArgVal)&eht_info);
 	XtGetValues (win->inserthot_win, Xmx_wargs, Xmx_n);
 	Xmx_n = 0;
 	isUrl = XmToggleButtonGadgetGetState(eht_info->tog_url);
 	useIns = XmToggleButtonGadgetGetState(eht_info->insert_tog);
 	XtUnmanageChild (win->inserthot_win);
-	title = XmxTextGetString (eht_info->title_text);
+	title = XmTextGetString (eht_info->title_text);
+/*
+####Commit#####
+	char *txt;
+	txt = XmTextGetString (win->annotate_text);
+	mo_modify_pan (win->editing_id,
+			XmTextGetString (win->annotate_title), 
+			XmTextGetString (win->annotate_author), 
+			txt);
+#####
+*/
+	comment = XmTextGetString (eht_info->comment_text);
 	if (useIns)
 		if(XmListGetSelectedPos(win->hotlist_list, &pos_list,&pos_cnt) &&
 		   pos_cnt) {
@@ -536,14 +857,15 @@ static XmxCallback (edit_or_insert_hot_cb3)		/* Commit Insert */
 
 	if (isUrl)
 		addOk=mo_add_item_to_hotlist(win->current_hotlist,mo_t_url, title,
-				XmxTextGetString(eht_info->url_text), posi,
-				get_pref_boolean(eADD_HOTLIST_ADDS_RBM));
+				XmTextGetString(eht_info->url_text), 
+				XmTextGetString(eht_info->comment_text),
+				posi);
 	else {
 		if(win->hot_cut_buffer && win->hot_cut_buffer->type==mo_t_list &&
-		   (!strcmp(title, win->hot_cut_buffer->any.name)) &&
+		   (!strcmp(title, win->hot_cut_buffer->any.title)) &&
 		   (!mo_is_ancestor((mo_hotlist *)win->hot_cut_buffer,
 		   win->current_hotlist))) {
-			mo_insert_item_in_hotlist (win->current_hotlist,
+			mo_insert_item_in_hotlist (win, win->current_hotlist,
 				(mo_hot_item *)mo_copy_hot_hier
 				((mo_hotlist *)win->hot_cut_buffer), posi);
 /* Now we've got to update all active hotlist_list's. */
@@ -551,8 +873,9 @@ static XmxCallback (edit_or_insert_hot_cb3)		/* Commit Insert */
 				win->current_hotlist->nodelist_last);
 		} else
 			addOk = mo_add_item_to_hotlist(win->current_hotlist, 
-					mo_t_list, title, NULL, posi,
-					get_pref_boolean(eADD_HOTLIST_ADDS_RBM));
+					mo_t_list, title, NULL, 
+					XmTextGetString(eht_info->comment_text),
+					posi);
 	}
 	if (addOk == mo_succeed)
 		mo_write_default_hotlist ();
@@ -572,14 +895,14 @@ static XmxCallback (mo_destroy_hot)
 /* show or hide the url info with respect to the URL toggle */
 static XmxCallback (url_or_list_cb)
 {
-  edit_or_insert_hot_info *eht_info = (edit_or_insert_hot_info *)client_data;
-  if (((XmToggleButtonCallbackStruct *)call_data)->set) {
-      XtManageChild(eht_info->url_lab);
-      XtManageChild(eht_info->url_text);
-    } else {
-      XtUnmanageChild(eht_info->url_lab);
-      XtUnmanageChild(eht_info->url_text);
-    }
+edit_or_insert_hot_info *eht_info = (edit_or_insert_hot_info *)client_data;
+if (((XmToggleButtonCallbackStruct *)call_data)->set) {
+XtManageChild(eht_info->url_lab);
+XtManageChild(eht_info->url_text);
+} else {
+XtUnmanageChild(eht_info->url_lab);
+XtUnmanageChild(eht_info->url_text);
+}
 }
 
 /* If it don't exist, make it...
@@ -589,75 +912,86 @@ static mo_status mo_create_ed_or_ins_hot_win (mo_window *win, int isInsert)
 {
 	Widget ed_or_ins_w, dialog_frame;
 	Widget dialog_sep, buttons_form;
-	Widget eht_form, title_label, url_label, url_val, sep2;
+	Widget eht_form, title_label, url_label, comment_label, url_val,
+		comment_val, sep2;
 	edit_or_insert_hot_info *eht_info;
 	Widget togm, togm2, insert_tog, append_tog;
+
+	eht_info = (edit_or_insert_hot_info *) malloc(
+				sizeof(edit_or_insert_hot_info));
+	XmxSetArg (XmNuserData, (XtArgVal)eht_info);
+/*	XmxSetArg (XmNresizePolicy, XmRESIZE_GROW); */
+	ed_or_ins_w = XmxMakeFormDialog(win->hotlist_win,
+		isInsert ? "Insert Hotlist Entry" : "Edit Hotlist Entry");
+  	XtAddCallback(ed_or_ins_w, XmNdestroyCallback,mo_destroy_hot, eht_info);
+
+	if (isInsert)
+		win->inserthot_win = ed_or_ins_w;
+	else
+		win->edithot_win = ed_or_ins_w;
+	dialog_frame = XmxMakeFrame (ed_or_ins_w, XmxShadowOut);
+
+/* Constraints for ed_or_ins_w. */
+	XmxSetConstraints (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
+		XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
   
-  eht_info = (edit_or_insert_hot_info *) malloc(sizeof(edit_or_insert_hot_info));
-  XmxSetArg (XmNuserData, (XtArgVal)eht_info);
-  ed_or_ins_w = XmxMakeFormDialog 
-    (win->hotlist_win, isInsert ? "NCSA Mosaic: Insert Hotlist Entry"  :
-     "NCSA Mosaic: Edit Hotlist Entry" );
-  XtAddCallback(ed_or_ins_w, XmNdestroyCallback, mo_destroy_hot, eht_info);
-
-  if (isInsert)
-    win->inserthot_win = ed_or_ins_w;
-  else
-    win->edithot_win = ed_or_ins_w;
-
-  dialog_frame = XmxMakeFrame (ed_or_ins_w, XmxShadowOut);
-
-  /* Constraints for ed_or_ins_w. */
-  XmxSetConstraints (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
-     XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
+/* Main form. */
+	eht_form = XmxMakeForm (dialog_frame);
   
-  /* Main form. */
-  eht_form = XmxMakeForm (dialog_frame);
-  
-  title_label = XmxMakeLabel (eht_form, "Entry Title:" );
-  XmxSetArg (XmNwidth, 335);
-  eht_info->title_text = XmxMakeTextField (eht_form);
-  if (isInsert){	
-  	XmxAddCallbackToText (eht_info->title_text, edit_or_insert_hot_cb3,
-			(XtPointer)win);
-  } else {
-  	XmxAddCallbackToText (eht_info->title_text, edit_or_insert_hot_cb0,
-			(XtPointer)win);
-  }
-  eht_info->url_lab = url_label = XmxMakeLabel (eht_form, "URL:" );
-  XmxSetArg (XmNwidth, 335);
-  eht_info->url_text = url_val = XmxMakeTextField(eht_form);
-  dialog_sep = XmxMakeHorizontalSeparator (eht_form);
+	title_label = XmxMakeLabel (eht_form, "Title:" );
+	XmxSetArg (XmNwidth, 335);
+	eht_info->title_text = XmxMakeTextField (eht_form);
+	if (isInsert){	
+  		XtAddCallback(eht_info->title_text, XmNactivateCallback,
+			edit_or_insert_hot_cb3, (XtPointer)win);
+	} else {
+		XtAddCallback(eht_info->title_text, XmNactivateCallback,
+			edit_or_insert_hot_cb0, (XtPointer)win);
+	}
+	eht_info->url_lab = url_label = XmxMakeLabel (eht_form, "URL:" );
+	XmxSetArg (XmNwidth, 335);
+	eht_info->url_text = url_val = XmxMakeTextField(eht_form);
+	comment_label = XmxMakeLabel (eht_form, "Comments:" );
+	XmxSetArg (XmNwidth, 335);
+	XmxSetArg (XmNscrolledWindowMarginWidth, 8);
+	XmxSetArg (XmNscrolledWindowMarginHeight, 8);
+	XmxSetArg (XmNcursorPositionVisible, True);
+	XmxSetArg (XmNeditable, True);
+	XmxSetArg (XmNeditMode, XmMULTI_LINE_EDIT);
+	XmxSetArg (XmNrows, 10);
+	XmxSetArg (XmNcolumns, 40);
+	eht_info->comment_text = comment_val = XmxMakeScrolledText(eht_form);
+	dialog_sep = XmxMakeHorizontalSeparator (eht_form);
 
-  if (isInsert) {
-      togm = XmxMakeRadioBox(eht_form);
-      eht_info->tog_url =
-	XtVaCreateManagedWidget("toggle", xmToggleButtonGadgetClass, togm,
-				XtVaTypedArg, XmNlabelString,
-				XtRString, "URL" , strlen("URL" )+1,
-				XmNmarginHeight, 0,
-				XmNset, True, NULL);
-      XtAddCallback(eht_info->tog_url, XmNvalueChangedCallback, url_or_list_cb,
-		    (XtPointer)eht_info);
-      eht_info->tog_list =
-	XtVaCreateManagedWidget("toggle", xmToggleButtonGadgetClass, togm,
-				XtVaTypedArg, XmNlabelString,
-				XtRString, "List" , strlen("List" )+1,
-				XmNmarginHeight, 0, NULL);
-      togm2 = XmxMakeRadioBox(eht_form);
-      eht_info->insert_tog = insert_tog =
-	XtVaCreateManagedWidget("toggle", xmToggleButtonGadgetClass, togm2,
-				XtVaTypedArg, XmNlabelString,
-				XtRString, "Insert" , strlen("Insert" )+1,
-				XmNmarginHeight, 0, NULL);
-      append_tog =
-	XtVaCreateManagedWidget("toggle", xmToggleButtonGadgetClass, togm2,
-				XtVaTypedArg, XmNlabelString,
-				XtRString, "Append" , strlen("Append" )+1,
-				XmNmarginHeight, 0,
-				XmNset, True, NULL);
-      sep2 = XmxMakeHorizontalSeparator (eht_form);
-    }
+	if (isInsert) {
+		togm = XmxMakeRadioBox(eht_form);
+		eht_info->tog_url = XtVaCreateManagedWidget("toggle",
+			xmToggleButtonGadgetClass, togm,
+			XtVaTypedArg, XmNlabelString,
+			XtRString, "URL" , strlen("URL")+1,
+			XmNmarginHeight, 0,
+			XmNset, True, NULL);
+		XtAddCallback(eht_info->tog_url, XmNvalueChangedCallback,
+			url_or_list_cb, (XtPointer)eht_info);
+		eht_info->tog_list = XtVaCreateManagedWidget("toggle",
+			xmToggleButtonGadgetClass, togm,
+			XtVaTypedArg, XmNlabelString,
+			XtRString, "List", strlen("List")+1,
+			XmNmarginHeight, 0, NULL);
+		togm2 = XmxMakeRadioBox(eht_form);
+		eht_info->insert_tog = insert_tog = XtVaCreateManagedWidget(
+			"toggle", xmToggleButtonGadgetClass, togm2,
+			XtVaTypedArg, XmNlabelString,
+			XtRString, "Insert" , strlen("Insert" )+1,
+			XmNmarginHeight, 0, NULL);
+		append_tog = XtVaCreateManagedWidget("toggle",
+			xmToggleButtonGadgetClass, togm2,
+			XtVaTypedArg, XmNlabelString,
+			XtRString, "Append" , strlen("Append" )+1,
+			XmNmarginHeight, 0,
+			XmNset, True, NULL);
+		sep2 = XmxMakeHorizontalSeparator (eht_form);
+	}
   
 	if( isInsert){	/* isInsert is 0 or 1 */
 		buttons_form = XmxMakeFormAndThreeButtons(eht_form, 
@@ -672,82 +1006,85 @@ static mo_status mo_create_ed_or_ins_hot_win (mo_window *win, int isInsert)
 			edit_or_insert_hot_cb1, 
 			edit_or_insert_hot_cb2, (XtPointer)win);
 	}
+/* Constraints for eht_form. */
+	XmxSetOffsets (title_label, 14, 0, 10, 0);
+	XmxSetConstraints(title_label, XmATTACH_FORM, XmATTACH_NONE,
+		XmATTACH_FORM, XmATTACH_NONE, NULL, NULL, NULL, NULL);
+	XmxSetOffsets (eht_info->title_text, 10, 0, 5, 10);
+	XmxSetConstraints(eht_info->title_text, XmATTACH_FORM, XmATTACH_NONE, 
+		XmATTACH_WIDGET, XmATTACH_FORM, NULL, NULL, title_label, NULL);
   
-  /* Constraints for eht_form. */
-  XmxSetOffsets (title_label, 14, 0, 10, 0);
-  XmxSetConstraints(title_label, XmATTACH_FORM, XmATTACH_NONE, XmATTACH_FORM, 
-	XmATTACH_NONE, NULL, NULL, NULL, NULL);
-  XmxSetOffsets (eht_info->title_text, 10, 0, 5, 10);
-  XmxSetConstraints(eht_info->title_text, XmATTACH_FORM, XmATTACH_NONE, 
-	XmATTACH_WIDGET, XmATTACH_FORM, NULL, NULL, title_label, NULL);
-  
-  XmxSetOffsets (url_label, 12, 0, 10, 0);
-  XmxSetConstraints(url_label, XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, 
-	XmATTACH_NONE, title_label, NULL, NULL, NULL);
-  XmxSetOffsets (url_val, 8, 10, 5, 10);
-  XmxSetConstraints (url_val, XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_WIDGET,
-     XmATTACH_FORM, title_label, NULL, url_label, NULL);
+	XmxSetOffsets (url_label, 12, 0, 10, 0);
+	XmxSetConstraints(url_label, XmATTACH_WIDGET, XmATTACH_NONE,
+		XmATTACH_FORM, XmATTACH_NONE, title_label, NULL, NULL, NULL);
+	XmxSetOffsets (url_val, 8, 10, 5, 10);
+	XmxSetConstraints (url_val, XmATTACH_WIDGET, XmATTACH_NONE,
+		XmATTACH_WIDGET, XmATTACH_FORM, title_label, NULL, url_label, NULL);
 
-  XmxSetArg (XmNtopOffset, 10);
-  XmxSetConstraints (dialog_sep, XmATTACH_WIDGET, XmATTACH_WIDGET, XmATTACH_FORM, 
-     XmATTACH_FORM, url_val, isInsert ? togm : buttons_form, NULL, NULL);
-  if (isInsert) {
-      XmxSetConstraints (togm, XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_FORM,
-	 XmATTACH_NONE, NULL, sep2, NULL, NULL);
-      XmxSetPositions (togm, XmxNoPosition, XmxNoPosition, XmxNoPosition, 50);
-      XmxSetConstraints (togm2, XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_NONE,
-	 XmATTACH_FORM, NULL, sep2, NULL, NULL);
-      XmxSetPositions (togm2, XmxNoPosition, XmxNoPosition, 50, XmxNoPosition);
-      XmxSetConstraints (sep2, XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_FORM,
-	 XmATTACH_FORM, NULL, buttons_form, NULL, NULL);
-    }
-  XmxSetConstraints (buttons_form, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_FORM, 
-     XmATTACH_FORM, NULL, NULL, NULL, NULL);
-  
-  return mo_succeed;
+/* text_label: top url, bottom nothing, left form, right nothing */
+	XmxSetOffsets (comment_label, 12, 0, 10, 0);
+	XmxSetConstraints(comment_label, XmATTACH_WIDGET, XmATTACH_NONE,
+		XmATTACH_FORM, XmATTACH_NONE, url_label, NULL, NULL, NULL);
+
+	XmxSetOffsets (XtParent(eht_info->comment_text), 8, 10, 5, 10);
+	XmxSetConstraints (XtParent(eht_info->comment_text), 
+		XmATTACH_WIDGET, XmATTACH_NONE, 
+		XmATTACH_WIDGET, XmATTACH_FORM,
+		url_label, NULL, comment_label, NULL);
+
+	XmxSetArg (XmNtopOffset, 10);
+	XmxSetConstraints (dialog_sep, XmATTACH_WIDGET, XmATTACH_WIDGET,
+		XmATTACH_FORM, XmATTACH_FORM, 
+		XtParent(eht_info->comment_text),
+		isInsert ? togm : buttons_form, NULL, NULL);
+	if (isInsert) {
+		XmxSetConstraints(togm, XmATTACH_NONE, XmATTACH_WIDGET,
+			XmATTACH_FORM, XmATTACH_NONE, NULL, sep2, NULL, NULL);
+		XmxSetPositions(togm, XmxNoPosition, XmxNoPosition, XmxNoPosition, 50);
+		XmxSetConstraints(togm2, XmATTACH_NONE, XmATTACH_WIDGET,
+			XmATTACH_NONE, XmATTACH_FORM, NULL, sep2, NULL, NULL);
+		XmxSetPositions (togm2, XmxNoPosition, XmxNoPosition, 50, XmxNoPosition);
+		XmxSetConstraints(sep2, XmATTACH_NONE, XmATTACH_WIDGET,
+			XmATTACH_FORM, XmATTACH_FORM, NULL, buttons_form, NULL, NULL);
+	}
+	XmxSetConstraints(buttons_form, XmATTACH_NONE, XmATTACH_FORM,
+		XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
+	return mo_succeed;
 }
 
-  
 static mo_status mo_do_edit_hotnode_title_win (mo_window *win, mo_hot_item
 					       *item, int position)
 {
-  edit_or_insert_hot_info *eht_info;
+	edit_or_insert_hot_info *eht_info;
 
-  /* This shouldn't happen. */
-  if (!win->hotlist_win)
-    return mo_fail;
-  
-  if (!win->edithot_win)
-    mo_create_ed_or_ins_hot_win (win, 0);
-
-  XmxSetArg (XmNuserData, (XtArgVal)&eht_info);
-  XtGetValues (win->edithot_win, Xmx_wargs, Xmx_n);
-  Xmx_n = 0;
-  /* Cache the position. */
-  eht_info->pos = position;
-
-  /* Manage the little sucker. */
-  XmxManageRemanage (win->edithot_win);
-  
-  /* Insert this title as a starting point. */
-  XmxTextSetString (eht_info->title_text, item->hot.title);
-
-  if (item->type == mo_t_url) {
-      /* Insert URL */
-      XmxTextSetString (eht_info->url_text, item->hot.url);
-      XtManageChild(eht_info->url_lab);
-      XtManageChild(eht_info->url_text);
-    } else {
-      XtUnmanageChild(eht_info->url_lab);
-      XtUnmanageChild(eht_info->url_text);
-    }
-
-  return mo_succeed;
+/* This shouldn't happen. */
+	if (!win->hotlist_win)
+		return mo_fail;
+	if (!win->edithot_win)
+		mo_create_ed_or_ins_hot_win (win, 0);
+	XmxSetArg (XmNuserData, (XtArgVal)&eht_info);
+	XtGetValues (win->edithot_win, Xmx_wargs, Xmx_n);
+	Xmx_n = 0;
+/* Cache the position. */
+	eht_info->pos = position;
+/* Manage the little sucker. */
+	XmxManageRemanage (win->edithot_win);
+/* Insert this title as a starting point. */
+	XmxTextSetString (eht_info->title_text, item->hot.title);
+	XmxTextSetString (eht_info->comment_text, item->hot.desc);
+	if (item->type == mo_t_url) {
+/* Insert URL */
+		XmxTextSetString (eht_info->url_text, item->hot.url);
+		XtManageChild(eht_info->url_lab);
+		XtManageChild(eht_info->url_text);
+	} else {
+		XtUnmanageChild(eht_info->url_lab);
+		XtUnmanageChild(eht_info->url_text);
+	}
+	return mo_succeed;
 }
 
-
-/*
- * Edit the title of an element of the current hotlist.
+/* Edit the title of an element of the current hotlist.
  * The element is referenced by its position.
  * Algorithm for edit:
  *   Find hotnode with the position.
@@ -772,62 +1109,6 @@ static mo_status mo_edit_title_in_current_hotlist (mo_window *win,
      mo_fail);
 }
 
-     
-void RecursiveSetList(mo_window *win, mo_hotlist *list, int val, int force)
-{
-static char *add="Do you wish to add all items in this list to the RBM?";
-static char *remove="Do you wish to remove all items in this list from the RBM?";    
-mo_hot_item *item;
-  
-        if (force || prompt_for_yes_or_no((val?add:remove))) {
-                for (item=list->nodelist; item; item=item->any.next) {
-                        if (item->type==mo_t_url) {
-                                item->hot.rbm=val;
-                        } else {
-                                item->list.rbm=val;
-                                RecursiveSetList(win,&(item->list),val,1);
-                        }
-                }                     
-        }                             
-        return;                       
-}
-
-/*                                    
- * Either add or remove this entry from the RBM.
- * The element is referenced by its position.
- * Algorithm:                         
- *   Find hotnode with the position.  
- *   Change the RBM status.           
- *   Cause rebuild of RBM.            
- * Return status.                     
- */                                   
-static mo_status mo_rbm_toggle_in_hotlist(mo_window *win,int position)
-{
-	mo_hotlist *list = win->current_hotlist;
-	mo_hot_item *hotnode;                 
-                                      
-        FindHotFromPos(hotnode, list, position);
-        if (!hotnode) { /* How did this happen? */
-                return(mo_fail);      
-        }                             
-        /*                            
-         * Set the new rbm value.     
-         * Redisplay and rebuild the RBM.  
-         */                           
-        if (hotnode->type==mo_t_url) {
-                hotnode->hot.rbm=(!hotnode->hot.rbm);
-        } else {                        
-                hotnode->list.rbm=(!hotnode->list.rbm);
-                RecursiveSetList(win,&hotnode->list,hotnode->list.rbm,0);
-        }
-        XmxSetToggleButton(win->hotlist_rbm_toggle,
-                           (hotnode->type==mo_t_url?
-                            hotnode->hot.rbm:
-                            hotnode->list.rbm));
-        mo_reinit_hotmenu();          
-        return(mo_succeed);           
-}
-
 static void mo_insert_item_in_current_hotlist(mo_window *win)
 {
   if (win->hotlist_win) {
@@ -844,8 +1125,8 @@ static void mo_insert_item_in_current_hotlist(mo_window *win)
 
       if (win->hot_cut_buffer) {
 	  /* Insert this title as a starting point. */
-	  XmxTextSetString (eht_info->title_text,
-			    win->hot_cut_buffer->any.name);
+	  XmxTextSetString(eht_info->title_text,win->hot_cut_buffer->any.title);
+	  XmxTextSetString(eht_info->comment_text,win->hot_cut_buffer->any.desc);
 	  if (win->hot_cut_buffer->type == mo_t_url) {
 	      /* Insert URL */
 	      XmxTextSetString (eht_info->url_text,
@@ -864,294 +1145,77 @@ static void mo_insert_item_in_current_hotlist(mo_window *win)
 	} else {
 	  XmTextFieldSetString(eht_info->title_text, "");
 	  XmTextFieldSetString(eht_info->url_text, "");
+	  XmTextFieldSetString(eht_info->comment_text, "");
 	}
     }
-    mo_reinit_hotmenu();
-}
-
-/*
- * Create a new mo_root_hotlist.
- * Pass in the new filename and the new title.
- */
-static mo_root_hotlist *mo_new_root_hotlist (char *filename, char *title)
-{
-  mo_root_hotlist *list;
-  
-  list = (mo_root_hotlist *)malloc (sizeof (mo_root_hotlist));
-  list->type = mo_t_list;
-  list->nodelist = list->nodelist_last = 0;
-  list->filename = filename;
-  list->modified = 1;
-  list->next = list->previous = 0;
-  list->parent = 0;
-  list->name = title ? strdup (title) : title;
-  return list;
-}
-
-/* --------------------------- mo_read_hotlist ---------------------------- */
-
-/*
- * Read a hotlist from a file.
- * Return pointer to a mo_hotlist structure, fully loaded
- * and ready to go.
- * Return NULL if file does not exist or is not readable.
- */
-static mo_root_hotlist *mo_read_hotlist (char *filename, char *home)
-{
-	mo_root_hotlist *list = NULL;
-	FILE *fp;
-	char line[MO_LINE_LENGTH];
-	char *status, *name;
-	int isnew;
-	char *oldfilename;
-	char *hotname;                     
-	char *tmp=get_pref_string(eDEFAULT_HOT_FILE);
-
-	hotname=(char *)calloc(strlen(home)+strlen(tmp)+5,sizeof(char));
-	sprintf(hotname,"%s/%s",home,tmp); 
- 
-	oldfilename = filename;
-	if (! (filename= (char*)malloc(strlen(filename) + 10)))
-		return list;
-	sprintf(filename,"%s.html",oldfilename);
-
-/* for backward compatibility */
-  
-/* oldfilename: cookie 1
-   filename: cookie 2
-   hotname: cookie 3 */
-
-/* cookie 2 and cookie 3 are very similar, but format 2 browsers cannot
-   read format 3 without damaging them.  
-   The cool thing is if we only have format 2, format 3 will automatically
-   be written out to the format 3 filename...so we don't have to worry
-   about converting anything. Groovy. --SWP */
-
-	if (!(fp=fopen(hotname,"r"))) {
-		free(hotname);
-		fp = fopen (filename, "r");
-		if (!fp) {
-			free(filename);
-			fp = fopen (oldfilename, "r");
-			if (!fp) {
-				return list;
-			} else if (get_pref_boolean(eBACKUP_FILES)) {
-				char *tf=NULL,retBuf[BUFSIZ];
-
-				tf=(char *)calloc(
-					strlen(oldfilename)+
-					strlen(".backup")+5,sizeof(char));
-					sprintf(tf,"%s.backup",oldfilename);
-				if(my_copy(oldfilename,tf,retBuf,BUFSIZ-1,1)!=SYS_SUCCESS) {                                 
-					fprintf(stderr,"%s\n",retBuf);
-				}
-				free(tf);     
-			}
-		} else if (get_pref_boolean(eBACKUP_FILES)) {
-			char *tf=NULL,retBuf[BUFSIZ];
-
-			tf=(char *)calloc(strlen(filename)+strlen(".backup")+5,sizeof(char));                                 
-			sprintf(tf,"%s.backup",filename);
-			if(my_copy(filename,tf,retBuf,BUFSIZ-1,1)!=SYS_SUCCESS){
-				fprintf(stderr,"%s\n",retBuf);
-			}
-			free(tf);             
-		}
-	} else if (get_pref_boolean(eBACKUP_FILES)) {
-		char *tf=NULL,retBuf[BUFSIZ]; 
-
-		tf=(char *)calloc(strlen(hotname)+strlen(".backup")+5,sizeof(char));
-		sprintf(tf,"%s.backup",hotname);
-		if (my_copy(hotname,tf,retBuf,BUFSIZ-1,1)!=SYS_SUCCESS) {
-			fprintf(stderr,"%s\n",retBuf);
-		}
-		free(tf);
-		free(filename);
-		filename = NULL;
-	}
-	status = fgets (line, MO_LINE_LENGTH, fp);
-	if (!status || !(*line)) {
-		fclose (fp);
-		return list;
-	}
-
-/* See if it's our format. */
-	if (!strncmp (line, NCSA_HOTLIST_FORMAT_COOKIE_ONE,
-		strlen (NCSA_HOTLIST_FORMAT_COOKIE_ONE))) {
-		isnew = 0;
-	} else {
-		status = fgets (line, MO_LINE_LENGTH, fp);
-        	if (!status || !(*line)) {
-			fclose (fp);
-			return list;
-        	}
-
-        	if (!strncmp(line, NCSA_HOTLIST_FORMAT_COOKIE_TWO,
-                     strlen (NCSA_HOTLIST_FORMAT_COOKIE_TWO))) {
-                	isnew = 1;
-        	} else if (!strncmp(line, NCSA_HOTLIST_FORMAT_COOKIE_THREE,
-                          strlen (NCSA_HOTLIST_FORMAT_COOKIE_THREE))) {
-                	isnew = 2;
-        	} else {
-                	fprintf(stderr,"Unknown hotlist format. Attempting to parse. This\n  could result in damage to this file.\n");
-                	isnew = 2;
-        	}
-        	rewind(fp);
-        	status = fgets (line, MO_LINE_LENGTH, fp);
-        	if (!status || !(*line)) {
-			fclose (fp);
-			return list;
-        	}
-  	}
-
-  	if (isnew) {
-      		list = mo_new_root_hotlist(hotname, NULL);
-      		list->name = mo_read_new_hotlist((mo_hotlist *)list, fp);
-      		if (isnew==1) {
-        		fprintf(stderr,"Your hotlist has been updated to a new format!\n  It is now called '.mosaic-hot.html'.\n");
-      		}
-		fclose (fp);
-		return list;
-    	}
-/* Go fetch the name on the next line. */
-	status = fgets (line, MO_LINE_LENGTH, fp);
-	if (!status || (!*line)){
-		fclose (fp);
-		return list;
-	}
-	name = strtok (line, "\n");
-	if (!name){
-		fclose (fp);
-		return list;
-	}
-/* amb - display update message for 2.4 users */
-	fputs("Your hotlist file has been updated and is now saved as:\n",
-			stderr);
-	fputs(filename, stderr);
-	putc('\n', stderr);
-/* Hey, whaddaya know, it is. */
-	list = mo_new_root_hotlist (filename, name);
-/* Start grabbing documents. */
-	while (1) {
-		mo_hotnode *node;
-
-		status = fgets (line, MO_LINE_LENGTH, fp);
-      		if (!status || !(*line)){
-			fclose (fp);
-			return list;
-		}
-
-/* We've got a new node. */
-		node = (mo_hotnode *)malloc (sizeof (mo_hotnode));
-		node->type = mo_t_url;
-		node->url = strtok (line, " ");
-		if (!node->url){
-			fclose (fp);
-			return list;
-		}
-		node->url = strdup (node->url);
-		mo_convert_newlines_to_spaces (node->url);
-
-		node->lastdate = strtok (NULL, "\n");
-		if (!node->lastdate) {
-			fclose (fp);
-			return list;
-		}
-		node->lastdate = strdup (node->lastdate);
-
-		status = fgets (line, MO_LINE_LENGTH, fp);
-		if (!status || !(*line)) {
-/* Oops, something went wrong. */
-			free (node->url);
-			if (node->lastdate) {
-				free (node->lastdate);
-			}
-			free (node);
-			fclose (fp);
-			return list;
-		}
-
-		node->title = strtok (line, "\n");
-		if (!node->title){
-			fclose (fp);
-			return list;
-		}
-		node->title = strdup (node->title);
-		mo_convert_newlines_to_spaces (node->title);
-		mo_append_item_to_hotlist((mo_hotlist *)list,
-			(mo_hot_item *)node);
-	}
-	fclose (fp);
-	return list;
 }
 
 /* ----------------------------- HOTLIST GUI ------------------------------ */
 
 /* Initial GUI support for hotlist will work like this:
-
-   There will be a single hotlist, called 'Default'.
-   It will be persistent across all windows.
-
-   Upon program startup an attempt will be made to load it out
-   of its file; if this attempt isn't successful, it just plain
-   doesn't exist yet.  Bummer.
-   
-   Upon program exit it will be stored to its file.
+ *
+ * There will be a single hotlist. It will be persistent across all windows.
+ * Upon program startup an attempt will be made to load it out
+ * of its file; if this attempt isn't successful, it is created
+ * Upon program exit it will be stored to its file.
+ * Called on initialization. Tries to load the default hotlist.
 */
 
-/*
- * Called on initialization.  
- * Tries to load the default hotlist.
- */
-mo_status mo_setup_default_hotlist (void)
+void MMHotlistInit (char * mmosaic_root_dir)
 {
-	char *home = getenv ("HOME");
-	char *default_filename = get_pref_string(eDEFAULT_HOTLIST_FILE);
-	char *hot_filename = get_pref_string(eDEFAULT_HOT_FILE);
-	char *filename;
-  
-/* This shouldn't happen. */
-	if (!home)
-		home = "/tmp";
-  
-	filename = (char *)malloc((strlen (home) + 
-				strlen (default_filename) + 8) * sizeof (char));
-	sprintf (filename, "%s/%s", home, default_filename);
+	char *tf=NULL,retBuf[BUFSIZ]; 
+	char *hot_filename = "hot.html";
+	struct stat s;
+	FILE * fp;
+ 
+	lhot_file_name = (char *)malloc(strlen (mmosaic_root_dir) + 
+				strlen (hot_filename) + 8);
+	sprintf (lhot_file_name, "%s/%s", mmosaic_root_dir, hot_filename);
 
-/* Try to load the default hotlist. */
-	default_hotlist = mo_read_hotlist (filename,home);
-	free(filename);
-/* Doesn't exist?  Bummer.  Make a new one. */
-	if (!default_hotlist) {
-		fprintf(stderr,"Could not find a hotlit. Creating new one.\n");
-/* amb - doesn't have any hotlist, add the .html extension (ugh) */
-/*      sprintf(filename, "%s/%s.html", home, default_filename); */
-/* New hotlist format... SWP */
-		filename = (char *)malloc((strlen (home) + 
-			strlen (hot_filename) + 8) * sizeof (char));
-		sprintf (filename, "%s/%s", home, hot_filename);
-		default_hotlist = mo_new_root_hotlist (filename, "Default");
+	if ( stat(lhot_file_name,&s) !=0 ) { /* create empty file */
+		fp = fopen(lhot_file_name, "w");
+		fprintf(fp,"<HTML>\n<HEAD><TITLE>Hotlist from user %s</TITLE></HEAD>\n<BODY>\n<DD>primaryhotlist\n<DL>\n</DL></BODY>\n</HTML>\n",mMosaicAppData.author_full_name);
+		fclose(fp);
+	} else {		/* do a backup */
+		tf=(char *)malloc(strlen(lhot_file_name)+13);
+		sprintf(tf,"%s.backup",lhot_file_name);
+		if (my_copy(lhot_file_name,tf,retBuf,BUFSIZ-1,1)!=SYS_SUCCESS) {
+			fprintf(stderr,"%s\n",retBuf);
+		}
+		free(tf);
 	}
-	return mo_succeed;
+/* Try to load the default hotlist. */
+	if (!(fp=fopen(lhot_file_name,"r"))) {
+		mMosaicHotList = NULL;
+		fprintf(stderr,"Fail to read Hotlist %s\n",lhot_file_name);
+		return ;
+	}
+	mMosaicHotList = (mo_hotlist *)malloc (sizeof (mo_hotlist));
+	mMosaicHotList->type = mo_t_list;
+	mMosaicHotList->title = NULL;
+	mMosaicHotList->desc = NULL;
+	mMosaicHotList->position = 1;
+	mMosaicHotList->next = mMosaicHotList->previous = 0;
+	mMosaicHotList->parent = 0;
+	mMosaicHotList->nodelist = mMosaicHotList->nodelist_last = 0;
+	mMosaicHotList->modified = 1;
+      	mo_read_hotlist(mMosaicHotList, fp);
+	fclose (fp);
 }
 
-/*
- * Called on program exit.
- * Tries to write the default hotlist.
- */
+/* Called on program exit. Tries to write the default hotlist. */
+
 mo_status mo_write_default_hotlist (void)
 {
-  FILE *fp = fopen (default_hotlist->filename, "w");
+	FILE *fp = fopen (lhot_file_name, "w");
 
-  if (!fp)
-    return mo_fail;
-
-  mo_write_hotlist ((mo_hotlist *)default_hotlist, fp);
-  if (fclose (fp))
-    return mo_fail;
-
-  default_hotlist->modified = 0;
-  return mo_succeed;
+	if (!fp)
+		return mo_fail;
+	mo_write_hotlist (mMosaicHotList, fp);
+	if (fclose (fp))
+		return mo_fail;
+	mMosaicHotList->modified = 0;
+	return mo_succeed;
 }
 
 static XmxCallback (save_hot_cb)
@@ -1238,14 +1302,15 @@ static XmxCallback (load_hot_cb)
 
 			list->type = mo_t_list;
 			list->nodelist = list->nodelist_last = 0;
-			list->name = mo_read_new_hotlist (list, fp);
-			if (list->name == NULL)
-				list->name = strdup("Unnamed" );
+			list->title = NULL;
+			mo_read_hotlist (list, fp);
+			if (list->title == NULL)
+				list->title = strdup("Unnamed" );
 			mo_append_item_to_hotlist(win->current_hotlist, (mo_hot_item *)list);
 			mo_gui_add_hot_item (win->current_hotlist, (mo_hot_item *)list);
 		} else {
 			mo_hot_item *item = win->current_hotlist->nodelist_last;
-			mo_read_new_hotlist (win->current_hotlist, fp);
+			mo_read_hotlist (win->current_hotlist, fp);
 			if (item == NULL)
 				item = win->current_hotlist->nodelist;
 			else
@@ -1254,9 +1319,8 @@ static XmxCallback (load_hot_cb)
 				mo_gui_add_hot_item (win->current_hotlist, item);
 		}
 		fclose (fp);
-		default_hotlist->modified = 1;
+		mMosaicHotList->modified = 1;
 		mo_write_default_hotlist ();
-		URL_Include_Set(win,0,0);
 	}
 	free (fname);
 }
@@ -1307,7 +1371,6 @@ static void delete_hot_from_list (mo_hotlist *list, mo_hot_item *hotnode,
 		if (win->hot_cut_buffer == hotnode)
 			win->hot_cut_buffer = NULL;
 	}
-	mo_reinit_hotmenu();
 }
 
 static XmxCallback (remove_yes_cb)
@@ -1319,7 +1382,6 @@ static XmxCallback (remove_yes_cb)
 		mo_hot_item *hotnode;
 		FindHotFromPos(hotnode, win->current_hotlist, position);
 		delete_hot_from_list(win->current_hotlist, hotnode, position);
-		URL_Include_Set(win,0,0);
 	}
 	XtDestroyWidget(w);
 }
@@ -1345,8 +1407,8 @@ static mo_status mo_delete_position_from_current_hotlist (mo_window *win,
 		question=strdup("Are you sure you want to remove the \"" );
 		endquestion=strdup("\" list?" );
 		buff = (char *)malloc(strlen(question)+
-				strlen(hotnode->list.name)+strlen(endquestion)+1);
-		strcat(strcat(strcpy(buff, question), hotnode->list.name), 
+				strlen(hotnode->list.title)+strlen(endquestion)+1);
+		strcat(strcat(strcpy(buff, question), hotnode->list.title), 
 				endquestion);
 		win->delete_position_from_current_hotlist = position;
 		XmxMakeQuestionDialog(win->hotlist_win, buff, 
@@ -1358,9 +1420,7 @@ static mo_status mo_delete_position_from_current_hotlist (mo_window *win,
 		XtManageChild (Xmx_w);
 	} else {
 		delete_hot_from_list(list, hotnode, position);
-		URL_Include_Set(win,0,0);         
   	}
-	mo_reinit_hotmenu();
 	return mo_succeed;
 }
 
@@ -1387,12 +1447,22 @@ static XmxCallback (mailhot_win_cb0)
 	FILE *fp;
 
 	XtUnmanageChild (win->mailhot_win);
-	to = XmxTextGetString (win->mailhot_to_text);
+	to = XmTextGetString (win->mailhot_to_text);
+/*
+####Commit#####
+	char *txt;
+	txt = XmTextGetString (win->annotate_text);
+	mo_modify_pan (win->editing_id,
+			XmTextGetString (win->annotate_title), 
+			XmTextGetString (win->annotate_author), 
+			txt);
+#####
+*/
 	if (!to)
 		return;
 	if (to[0] == '\0')
 		return;
-	subj = XmxTextGetString (win->mailhot_subj_text);
+	subj = XmTextGetString (win->mailhot_subj_text);
 /* Open a file descriptor to sendmail. */
 	fp = mo_start_sending_mail_message (to, subj, "text/x-html", NULL);
 	if (!fp)
@@ -1406,6 +1476,18 @@ oops:
 
 static mo_status mo_post_mailhot_win (mo_window *win)
 {
+/*
+############
+	if (!win->annotate_win) make_annotate_win (win);
+	XmxTextSetString (win->annotate_author, author);
+	XmxTextSetString (win->annotate_title, title);
+	XmxTextSetString (win->annotate_text, text);
+	XmTextSetTopCharacter (win->annotate_text, 0);
+/* Finally, we manage. */
+/*
+	XmxManageRemanage (win->annotate_win);
+###########
+*/
   /* This shouldn't happen. */
   if (!win->hotlist_win)
     return mo_fail;
@@ -1472,28 +1554,19 @@ static mo_status mo_post_mailhot_win (mo_window *win)
 
 static XmxCallback(hotlist_rbm_toggle_cb) 
 {
-	mo_window *win;
+	mo_window *win = (mo_window*)client_data;
 	Boolean rv;
 	int *pos_list;
 	int pos_cnt;
 	mo_hotlist *list;
 	mo_hot_item *hotnode;
-      
-        win=current_win;
-        if (!win)
-                return;
-        
+
         list=win->current_hotlist;    
         rv = XmListGetSelectedPos (win->hotlist_list, &pos_list, &pos_cnt);
         if (rv && pos_cnt) {          
                 FindHotFromPos(hotnode, list, pos_list[0]);
                 if (!hotnode)       
                         return;       
-                URL_Include_Set(win,  
-                                (hotnode->type==mo_t_url?
-                                 hotnode->hot.rbm:
-                                 hotnode->list.rbm),
-                                1);   
         } else {                        
                 XmxMakeErrorDialog    
                         (win->hotlist_win, "No entry in the hotlist is currently selected.\n\nTo go to an entry in the hotlist,\nselect it with a single mouse click\nand press the Go To button again." , "Error: Nothing Selected" );
@@ -1531,7 +1604,6 @@ static XmxCallback (hotlist_win_cb3)
 	if (win->current_node) {		 /* Add current. */
 		mo_add_node_to_current_hotlist (win);
 		mo_write_default_hotlist ();
-		URL_Include_Set(win,0,0);
 	}
 }
 static XmxCallback (hotlist_win_cb4)		 /* Goto selected. */
@@ -1619,7 +1691,6 @@ static XmxCallback (hotlist_win_cb9)	 /* Go Up one level */
 		XmxTextSetString(win->hotlist_label, path);
 		free(path);
 		mo_load_hotlist_list(win, win->hotlist_list);
-		URL_Include_Set(win,0,0);
 	}
 }
 static XmxCallback (hotlist_win_cb10)		 /* Save in a file */
@@ -1672,42 +1743,33 @@ static XmxCallback (hotlist_win_cb11)	 /* Load a hotlist file */
 		XmFileSelectionDoSearch (win->load_hotlist_win, NULL);
 	XmxManageRemanage (win->load_hotlist_win);
 }
-static XmxCallback (hotlist_win_cb12)/*Add selected to RBM or take it away...*/
-{
-	mo_window *win = (mo_window*)client_data;
-        Boolean rv;                   
-        int *pos_list;                
-        int pos_cnt;                  
-
-        rv = XmListGetSelectedPos (win->hotlist_list, &pos_list, &pos_cnt);
-        if (rv && pos_cnt) {                           
-                mo_rbm_toggle_in_hotlist(win,pos_list[0]);
-                XtFree((char *)pos_list); /* DXP */
-                mo_write_default_hotlist(); 
-        } else {                           
-            XmxMakeErrorDialog        
-              (win->hotlist_win, "No entry in the hotlist is currently selected.\n\nTo edit an entry in the hotlist,\nselect it with a single mouse click\nand press the Edit button again." , "Error: Nothing Selected" );
-            XtManageChild (Xmx_w);
-        }
-}
 
 static XmxCallback (hotlist_list_cb)
 {
 	mo_window *win = (mo_window*)client_data;
 	XmListCallbackStruct *cs = (XmListCallbackStruct *)call_data;
   
-	URL_Include_Set(win,0,0);
 	mo_visit_hotlist_position (win, cs->item_position);
 	/* Don't unmanage the list. */
 }
 
 /* ------------------------- mo_post_hotlist_win -------------------------- */
 
-/*
- * Pop up a hotlist window for an mo_window.
- */
+/* Pop up a hotlist window for an mo_window.  */
 mo_status mo_post_hotlist_win (mo_window *win)
 {
+/*
+############
+	if (!win->annotate_win) make_annotate_win (win);
+	XmxTextSetString (win->annotate_author, author);
+	XmxTextSetString (win->annotate_title, title);
+	XmxTextSetString (win->annotate_text, text);
+	XmTextSetTopCharacter (win->annotate_text, 0);
+/* Finally, we manage. */
+/*
+	XmxManageRemanage (win->annotate_win);
+###########
+*/
   if (!win->hotlist_win) {
       Widget dialog_frame/*, toto*/;
       Widget dialog_sep, buttons_form, buttons1_form, buttons2_form;
@@ -1723,19 +1785,17 @@ mo_status mo_post_hotlist_win (mo_window *win)
       /* Create it for the first time. */
       XmxSetArg (XmNwidth, 475);
       XmxSetArg (XmNheight, 342);
-      win->hotlist_win = XmxMakeFormDialog 
-        (win->base, "NCSA Mosaic: Hotlist View" );
+      win->hotlist_win = XmxMakeFormDialog(win->base, "mMosaic: Hotlist View" );
       dialog_frame = XmxMakeFrame (win->hotlist_win, XmxShadowOut);
       
       /* Constraints for base. */
-      XmxSetConstraints 
-        (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
+      XmxSetConstraints(dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
          XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
       
       /* Main form. */
       hotlist_form = XmxMakeForm (dialog_frame);
 
-      win->current_hotlist = (mo_hotlist *)default_hotlist;
+      win->current_hotlist = (mo_hotlist *)mMosaicHotList;
       XmxSetArg (XmNcursorPositionVisible, False);
       XmxSetArg (XmNeditable, False);
       XmxSetArg (XmNvalue, (XtArgVal)"/");
@@ -1761,14 +1821,7 @@ mo_status mo_post_hotlist_win (mo_window *win)
       XtAugmentTranslations (win->hotlist_list, listTable);
       XtAddCallback(win->hotlist_list,
                     XmNbrowseSelectionCallback, hotlist_rbm_toggle_cb,
-                    0);
-      win->hotlist_rbm_toggle=XmxMakeToggleButton(hotlist_form,
-                                                  "Include On Right Button Menu",
-                                                  hotlist_win_cb12,
-                                                  (XtPointer)win);
-      URL_Include_Set(win,0,0);
-
-
+                    win);
       dialog_sep = XmxMakeHorizontalSeparator (hotlist_form);
       
       buttons_form = XmxMakeFormAndFiveButtons(hotlist_form, 
@@ -1781,9 +1834,8 @@ mo_status mo_post_hotlist_win (mo_window *win)
       /* buttons1_form: top to nothing, bottom to hotlist_list,
          left to form, right to form. */
       XmxSetOffsets (win->hotlist_label,  4, 0, 2, 2);
-      XmxSetConstraints
-	(win->hotlist_label, XmATTACH_FORM,  XmATTACH_NONE, XmATTACH_FORM,
-	 XmATTACH_FORM, NULL, NULL, NULL, NULL);
+      XmxSetConstraints(win->hotlist_label, XmATTACH_FORM,  XmATTACH_NONE,
+	XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
       XmxSetOffsets (buttons1_form, 0, 0, 0, 0);
       XmxSetConstraints (buttons1_form, 
          XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_FORM, 
@@ -1792,17 +1844,12 @@ mo_status mo_post_hotlist_win (mo_window *win)
       XmxSetConstraints (buttons2_form, 
          XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_FORM, 
 	 buttons1_form, NULL, NULL, NULL);
-      /* list: top to form, bottom to rbm_toggle,
-         etc... */
+/* list: top to form, bottom to rbm_toggle, etc... */
       XmxSetOffsets (XtParent (win->hotlist_list), 10, 10, 8, 8);
-      XmxSetConstraints (XtParent (win->hotlist_list), 
+      XmxSetConstraints(XtParent (win->hotlist_list), 
          XmATTACH_WIDGET, XmATTACH_WIDGET, XmATTACH_FORM, XmATTACH_FORM, 
-         buttons2_form, win->hotlist_rbm_toggle, NULL, NULL);
-      XmxSetOffsets (win->hotlist_rbm_toggle, 0, 10, 6, 6);
-      XmxSetConstraints              
-        (win->hotlist_rbm_toggle,    
-         XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_FORM, XmATTACH_NONE,
-         NULL, dialog_sep, NULL, NULL);
+         buttons2_form, dialog_sep, NULL, NULL);
+
       XmxSetConstraints (dialog_sep, 
          XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_FORM, XmATTACH_FORM,
          NULL, buttons_form, NULL, NULL);
@@ -1826,25 +1873,9 @@ mo_status mo_post_hotlist_win (mo_window *win)
 mo_status mo_add_node_to_current_hotlist (mo_window *win)
 {
   if (!win->hotlist_win)
-    win->current_hotlist = (mo_hotlist *)default_hotlist;
+    win->current_hotlist = (mo_hotlist *)mMosaicHotList;
   return mo_add_item_to_hotlist (win->current_hotlist, mo_t_url,
 				 win->current_node->title,
-				 win->current_node->url, 0,
-				get_pref_boolean(eADD_HOTLIST_ADDS_RBM));
-}
-
-void mo_init_hotmenu()
-{
-    mo_init_hotlist_menu((mo_hotlist *) default_hotlist);
-}
-
-void mo_reinit_hotmenu()
-{
-    mo_reinit_hotlist_menu((mo_hotlist *) default_hotlist);
-}
-
-void mo_rbm_myself_to_death(mo_window *win, int val)
-{
-        RecursiveSetList(win,(mo_hotlist *)default_hotlist,val,1);
-        mo_reinit_hotmenu();         
+				 win->current_node->url,
+				 NULL, 0);
 }

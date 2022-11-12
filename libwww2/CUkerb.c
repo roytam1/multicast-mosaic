@@ -28,7 +28,6 @@ char *getenv(), *getlogin();
 struct passwd *getpwnam(), *getpwuid();
 static char *envariables[] = { "USER", "LOGNAME" };
 
-extern int useAFS;		/* perhaps change name */
 
 int doing_kerb_auth = 0;
 char phost[1024];
@@ -56,7 +55,7 @@ static char dec[256] = {
  * Returns 0 on success
  * Returns 1 on failure (after reporting error to user)
  ***************************************************************************/
-int scheme_login( int scheme)
+int scheme_login( int scheme, caddr_t appd)
 {
 	char *username, *password, buf[BUFSIZ], erbuf[BUFSIZ];
 	int code;
@@ -68,7 +67,7 @@ int scheme_login( int scheme)
 		return 1;
 	}
 	sprintf(buf, "Password for %s:", username);
-	password = (char *) prompt_for_password(buf);
+	password = (char *) prompt_for_password(buf,appd);
 	if (!password || !*password) {
 		application_user_info_wait("You did not enter a Password.\nCannot obtain ticket-granting ticket\n");
 		return 1;
@@ -361,7 +360,7 @@ char *compose_kerberos_auth_string(scheme, hostname)
 	    if (!prompt_for_yes_or_no(buf)) {
 		return (char *) NULL;
 	    } else {
-		if (scheme_login(scheme))
+		if (scheme_login(scheme, appd))
 		    return (char *) NULL;
 	    }
 	} 		/* if (code)    */

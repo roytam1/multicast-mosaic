@@ -12,10 +12,6 @@
 #include "accept.h"
 #include "support.h"
 
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
-
 /* this routine reads from the specified port, but also considers contents
  * read and in buffer from the GetLine() routine.
  * return the number of chars read */
@@ -67,11 +63,9 @@ char *GetLine(MCCIPort s) /****** this routine needs an overhaul.... */
 			DisconnectFromServer(s);
 */
 
-#ifndef DISABLE_TRACE
-			if (srcTrace) {
+			if (mMosaicSrcTrace) {
 				fprintf(stderr,"GetLine: End of Connection\n");
 			}
-#endif
 			return(0);
 		}
 		s->numInBuffer = numBytes;
@@ -81,22 +75,18 @@ char *GetLine(MCCIPort s) /****** this routine needs an overhaul.... */
 		/* There is no <CRLF> in s->buffer */
 /*
 		if (!connectedToServer) {
-#ifndef DISABLE_TRACE
-			if (srcTrace) {
+			if (mMosaicSrcTrace) {
 				fprintf(stderr,"GetLine: return 0 at point 3\n");
 			}
-#endif
 
 			return(0);
 		}
 */
 /*
 		if (! NetIsThereInput(s)) {
-#ifndef DISABLE_TRACE
-			if (srcTrace) {
+			if (mMosaicSrcTrace) {
 				fprintf(stderr,"GetLine: return 0 at point 4\n");
 			}
-#endif
 			return(0);
 		}
 */
@@ -106,11 +96,9 @@ char *GetLine(MCCIPort s) /****** this routine needs an overhaul.... */
 /*
 			NNTPDisconnectFromServer(s);
 */
-#ifndef DISABLE_TRACE
-			if (srcTrace) {
+			if (mMosaicSrcTrace) {
 				fprintf(stderr,"GetLine: return 0 at point 5\n");
 			}
-#endif
 			return(0);
 		}
 		memcpy(&(s->buffer[s->numInBuffer]),buf2,numBytes);
@@ -120,11 +108,9 @@ char *GetLine(MCCIPort s) /****** this routine needs an overhaul.... */
 			/* protocol error on server end 
 			   Everything sent should be terminated with
 			   a <CRLF>... just return for now */
-#ifndef DISABLE_TRACE
-			if (srcTrace) {
+			if (mMosaicSrcTrace) {
 				fprintf(stderr,"GetLine: return NULL at point 6\n");
 			}
-#endif
 			return(NULL);
 		}
 	}

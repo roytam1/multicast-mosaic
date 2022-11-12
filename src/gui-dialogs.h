@@ -14,7 +14,7 @@
 
 mo_status mo_post_save_window (mo_window *);
 /* called from libwww */
-void rename_binary_file (char *);
+extern mo_status mo_rename_binary_file (mo_window *, char *);
 mo_status mo_post_open_local_window (mo_window *);
 mo_status mo_post_open_window (mo_window *);
 #ifdef HAVE_DTM

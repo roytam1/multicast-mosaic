@@ -9,8 +9,6 @@
 
 #include "HTUtils.h"
 
-extern int WWW_TraceFlag;       /* Global flag for all W3 trace */
-
 extern WWW_CONST char * HTLibraryVersion;   /* String for help screen etc */
 
 /*

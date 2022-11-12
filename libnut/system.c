@@ -28,10 +28,6 @@ extern int sys_nerr;
 extern char *sys_errlist[];
 extern int errno;
 
-#ifndef DISABLE_TRACE
-int nutTrace=0;
-#endif
-
 int sleep_interrupt=0;
 
 int my_system(char *cmd, char *retBuf, int bufsize);
@@ -119,10 +115,7 @@ int my_system(char *cmd, char *retBuf, int bufsize)
 		return(SYS_NO_COMMAND);
 	pipe(fds);
 	if (fcntl(fds[0],F_SETFL,O_NONBLOCK)==(-1)) {
-#ifndef DISABLE_TRACE
-		if (nutTrace)
-			perror("fcntl-nonblock");
-#endif
+		perror("fcntl-nonblock");
 		return(SYS_FCNTL_FAILED);
 	}
 	if ((pid=fork())==(-1))
@@ -139,17 +132,10 @@ int my_system(char *cmd, char *retBuf, int bufsize)
 				path=findProgram(sys_argv[0],userPath);
 			}
 			execv(path,sys_argv);
-#ifndef DISABLE_TRACE
-			if (nutTrace) {
-				fprintf(stderr,"Exec of %s failed!\n",cmd);
-				perror("exec");
-			}
-#endif
+			fprintf(stderr,"Exec of %s failed!\n",cmd);
+			perror("exec");
 		} else {
-#ifndef DISABLE_TRACE
-			if (nutTrace)
-				fprintf(stderr,"Could not build argv for [%s].\n",cmd);
-#endif
+			fprintf(stderr,"Could not build argv for [%s].\n",cmd);
 		}
 		exit(1); /*child*/
 	} else {
@@ -459,7 +445,7 @@ int my_copy(char *src, char *dest, char *retBuf, int bufsize, int overwrite)
 		free(copy_error);
 		return(SYS_SRC_OPEN_FAIL);
 	}
-	if ((fd_dest=open(dest,O_WRONLY|O_CREAT,0644))==(-1)) {
+	if ((fd_dest=open(dest,O_WRONLY|O_CREAT|O_TRUNC,0644))==(-1)) {
 		copy_error=strdup(my_strerror(errno));
 		if (!copy_error) {
 			strcpy(retBuf,"There was not enough memory allocate.\n");

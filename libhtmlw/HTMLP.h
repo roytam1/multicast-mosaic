@@ -32,6 +32,8 @@ typedef struct _HTMLClassRec
 extern HTMLClassRec htmlClassRec;
 
 #define IMAGE_DEFAULT_BORDER	2
+#define DEF_IMAGE_HSPACE	2
+#define DEF_IMAGE_VSPACE	2
 #define D_INDENT_SPACES		40
 
 #define D_NONE          0
@@ -95,7 +97,6 @@ typedef struct _PhotoComposeContext {
 				/* donne la top line de la ligne suivante */
 	int cur_line_height;
 	int element_id;    	/* to get unique number */
-	int line_number;	/*	LineNumber  */
 	char is_bol;      	/* we are at begin of line if True */
 	char have_space_after;  /* remember if a word have a space after*/
 	XFontStruct *cur_font;
@@ -120,7 +121,6 @@ typedef struct _PhotoComposeContext {
 	int		superscript ;
 	int		subscript ;
 	int		indent_level ;
-	ParentHTMLObjectDesc * parent_html_object_desc; /* for TABLE */
 	char *		text_area_buf ; /* buffer pour Form TextArea */
 	int		ignore ;	/* ignore some tag when formating */
 	SelectInfo *	current_select ; /* SELECT in FORM */
@@ -154,8 +154,6 @@ typedef struct _HTMLPart {
 
 	char			*title;
 	char			*raw_text;
-	char			*header_text;
-	char			*footer_text;
 /*
  * Without motif we have to define our own forground resource
  * instead of using the manager's
@@ -168,6 +166,7 @@ typedef struct _HTMLPart {
         Boolean                 body_colors;
         Boolean                 body_images;
 
+	int			max_colors_in_image;
 	int			bg_image;
 
 	Pixmap			bgmap_SAVE;
@@ -188,7 +187,6 @@ typedef struct _HTMLPart {
 	int			num_visitedAnchor_underlines;
 	Boolean			dashed_anchor_lines;
 	Boolean			dashed_visitedAnchor_lines;
-	Boolean			fancy_selections;
 	Boolean			is_index;
 	int			percent_vert_space;
 
@@ -217,6 +215,7 @@ typedef struct _HTMLPart {
 
         XtPointer		previously_visited_test;
 	XtCallbackList		image_callback;
+	Boolean			delay_image_loads;
 	XtCallbackList		get_url_data_cb;
         XtCallbackList		pointer_motion_callback;
 
@@ -246,14 +245,9 @@ typedef struct _HTMLPart {
 	Time			but_press_time;
 	Time			selection_time;
 	struct mark_up		*html_objects;
-	struct mark_up		*html_header_objects;
-	struct mark_up		*html_footer_objects;
-	struct ref_rec		*my_visited_hrefs;
-	struct delay_rec	*my_delayed_images;
 	WidgetInfo		*widget_list;
 	FormInfo		*form_list;
 	MapInfo                 *map_list;
-        Boolean                 focus_follows_mouse;
         Boolean                 obscured;
 	struct ele_rec		*last_formatted_elem;
 	struct ele_rec		*cur_elem_to_format;
@@ -286,5 +280,9 @@ extern int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj);
 extern void FreeLineList( struct ele_rec *list, Widget w, Boolean save_obj);
 extern void RefreshElement(HTMLWidget hw,struct ele_rec *eptr);
 extern void LineBreak(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc);
+
+extern void _FreeAprogStruct(AprogInfo * aps);
+extern void _FreeAppletStruct(AppletInfo * ats);
+extern void _FreeTableStruct(TableInfo * t);
 
 #endif /* HTMLP_H */

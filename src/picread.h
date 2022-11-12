@@ -12,6 +12,6 @@
 #ifndef __PICREAD_H__
 #define __PICREAD_H__
 
-unsigned char *ReadBitmap (char *, int *, int *, XColor *, int *);
+unsigned char *ReadBitmap (Widget w, char *, int *, int *, XColor *, int *);
 
 #endif

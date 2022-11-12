@@ -28,6 +28,9 @@ struct Proxy {
 	struct ProxyDomain *list;
 };
 
+extern char * mMosaicProxyFileName;
+extern char * mMosaicNoProxyFileName;
+
 /* added function prototypes - DXP */
 
 void AddProxyToList(), ShowProxyList(), EditProxyInfo(), CommitProxyInfo(),
@@ -38,9 +41,8 @@ void AddProxyToList(), ShowProxyList(), EditProxyInfo(), CommitProxyInfo(),
         CallRemoveProxy(), DestroyDialog(), PopProxyDialog(), DeleteProxy(),
         EditNoProxyInfo(), CenterDialog(), ProxyHelpWindow(), HelpWindow();
 
-struct Proxy *ReadProxies(char *filename);
-
-struct Proxy *ReadNoProxies(char *filename);
+extern void ReadProxies(char *rootdir);
+extern void ReadNoProxies(char *rootdir);
 
 struct ProxyDomain *AddProxyDomain(char *sbDomain, struct ProxyDomain **pdList);
 

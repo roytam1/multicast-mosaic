@@ -20,16 +20,6 @@ static XtResource resources[] = {
 /* default font choice from Options menu choices */
   { "defaultFontChoice", "DefaultFontChoice", XtRString, sizeof (char *),
     offset (default_font_choice), XtRString, "TimesRegular" },
-/* Whether Mosaic reads and writes global history from 
- * ~/.mosaic-global-history
- * and thus provides persistent history tracking. */
-  { "useGlobalHistory", "UseGlobalHistory", XtRBoolean, sizeof (Boolean),
-    offset (use_global_history), XtRString, "True" },
-/* Whether titles will be displayed wherever URL\'s are normally
- *   displayed. */
-  { "displayURLsNotTitles", "DisplayURLsNotTitles", XtRBoolean, 
-    sizeof (Boolean),
-    offset (display_urls_not_titles), XtRString, "False" },
 /* Default width for a Document View window.  This will change as windows
  *   are cloned. */
   { "defaultWidth", "DefaultWidth", XtRInt, sizeof (int),
@@ -39,8 +29,7 @@ static XtResource resources[] = {
       offset (default_height), XtRString, "700" },
 /* Startup document. */
   { "homeDocument", "HomeDocument", XtRString, sizeof (char *),
-      offset (home_document), XtRString, 
-      HOME_PAGE_DEFAULT },
+      offset (home_document), XtRString, HOME_PAGE_DEFAULT },
   { "confirmExit", "ConfirmExit", XtRBoolean, sizeof (Boolean),
       offset (confirm_exit), XtRString, "True" },
 /* THIS USED TO BE mailCommand BUT IS NOW sendmailCommand. */
@@ -77,39 +66,14 @@ static XtResource resources[] = {
       "xterm",
     },
 #endif /* not _AIX */
-  { "globalHistoryFile", "GlobalHistoryFile", XtRString, 
-      sizeof (char *),
-      offset (global_history_file), XtRString, ".mosaic-global-history" },
-  { "historyFile", "HistoryFile", XtRString, 
-      sizeof (char *),
-      offset (history_file), XtRString, ".mosaic-x-history" },
-  { "defaultHotlistFile", "DefaultHotlistFile", XtRString, 
-      sizeof (char *),
-      offset (default_hotlist_file), XtRString, ".mosaic-hotlist-default" },
-  { "defaultHotFile", "DefaultHotFile", XtRString,
-      sizeof (char *),
-      offset (default_hot_file), XtRString, ".mosaic-hot.html" },
-  { "addHotlistAddsRBM", "AddHotlistAddsRBM", XtRBoolean, sizeof (Boolean),
-      offset (addHotlistAddsRBM), XtRString, "True" },
-  { "addRBMAddsRBM", "AddRBMAddsRBM", XtRBoolean, sizeof (Boolean),
-      offset (addRBMAddsRBM), XtRString, "True" },
-  { "personalAnnotationDirectory", "PersonalAnnotationDirectory", XtRString, 
-      sizeof (char *),
-      offset (private_annotation_directory), XtRString, 
-      ".mosaic-personal-annotations" },
-/* Whether selections should be fancy, by default. */
-  { "fancySelections", "FancySelections", XtRBoolean,
-      sizeof (Boolean), offset (default_fancy_selections), 
-      XtRString, "False" },
+  { "defaultAuthorFullName", "DefaultAuthorFullName",XtRString, sizeof (char *),
+      offset (author_full_name), XtRString, NULL },
   { "defaultAuthorName", "DefaultAuthorName", XtRString, sizeof (char *),
-      offset (default_author_name), XtRString, NULL },
+      offset (author_name), XtRString, NULL },
   { "defaultAuthorEmail", "DefaultAuthorEmail", XtRString, sizeof (char *),
-      offset (default_author_email), XtRString, NULL },
+      offset (author_email), XtRString, NULL },
   { "signature", "Signature", XtRString, sizeof (char *),
       offset (signature), XtRString, NULL },
-  { "annotationsOnTop", "AnnotationsOnTop", XtRBoolean, sizeof (Boolean),
-      offset (annotations_on_top), XtRString, "False" },
-
   { "colorsPerInlinedImage", "ColorsPerInlinedImage", XtRInt, sizeof (int),
       offset (colors_per_inlined_image), XtRString, "50" },
   { "trackVisitedAnchors", "TrackVisitedAnchors", XtRBoolean, sizeof (Boolean),
@@ -119,73 +83,14 @@ static XtResource resources[] = {
       offset (uncompress_command), XtRString, "uncompress" },
   { "gunzipCommand", "GunzipCommand", XtRString, 
       sizeof (char *), offset (gunzip_command), XtRString, "gunzip -f -n" },
-
-#if defined(__hpux)
-  { "recordCommandLocation", "RecordCommandLocation", XtRString, 
-      sizeof (char *), offset (record_command_location), XtRString,
-      "/usr/audio/bin/srecorder" },
-#else
-#if defined(__sgi)
-  { "recordCommandLocation", "RecordCommandLocation", XtRString, 
-      sizeof (char *), offset (record_command_location), XtRString,
-      "/usr/sbin/recordaiff" },
-#else
-#if defined (sun)
-  { "recordCommandLocation", "RecordCommandLocation", XtRString, 
-      sizeof (char *), offset (record_command_location), XtRString,
-      "/usr/demo/SOUND/record" },
-#else
-  { "recordCommandLocation", "RecordCommandLocation", XtRString, 
-      sizeof (char *), offset (record_command_location), XtRString,
-      "/bin/true" },
-#endif /* if sun */
-#endif /* if sgi */
-#endif /* ifdef */
-
-#ifdef __hpux
-  { "recordCommand", "RecordCommand", XtRString, sizeof (char *),
-      offset (record_command), XtRString,
-      "srecorder -au" },
-#else
-#if defined(__sgi)
-  { "recordCommand", "RecordCommand", XtRString, sizeof (char *),
-      offset (record_command), XtRString,
-      "recordaiff -n 1 -s 8 -r 8000" },
-#else
-#if defined (sun)
-  { "recordCommand", "RecordCommand", XtRString, sizeof (char *),
-      offset (record_command), XtRString,
-      "record" },
-#else
-  { "recordCommand", "RecordCommand", XtRString, sizeof (char *),
-      offset (record_command), XtRString,
-      "true" },
-#endif /* if sun */
-#endif /* if sgi */
-#endif /* ifdef */
-
-  { "gethostbynameIsEvil", "GethostbynameIsEvil", XtRBoolean, sizeof (Boolean),
-      offset (gethostbyname_is_evil), XtRString, "False" },
-  { "autoPlaceWindows", "AutoPlaceWindows", XtRBoolean, sizeof (Boolean),
-      offset (auto_place_windows), XtRString, "True" },
   { "initialWindowIconic", "InitialWindowIconic", XtRBoolean, sizeof (Boolean),
       offset (initial_window_iconic), XtRString, "False" },
 
-  { "tmpDirectory", "TmpDirectory", XtRString, sizeof (char *),
-      offset (tmp_directory), XtRString, NULL },
-  { "annotationServer", "AnnotationServer", XtRString, sizeof (char *),
-      offset (annotation_server), XtRString, NULL },
   { "catchPriorAndNext", "CatchPriorAndNext", XtRBoolean, sizeof (Boolean),
       offset (catch_prior_and_next), XtRString, "True" },
 
   { "fullHostname", "FullHostname", XtRString, sizeof (char *),
       offset (full_hostname), XtRString, NULL },
-  { "reverseInlinedBitmapColors", "ReverseInlinedBitmapColors", XtRBoolean,
-      sizeof (Boolean),
-      offset (reverse_inlined_bitmap_colors), XtRString, "False" },
-  { "confirmDeleteAnnotation", "ConfirmDeleteAnnotation", 
-      XtRBoolean, sizeof (Boolean),
-      offset (confirm_delete_annotation), XtRString, "True"},
   { "tweakGopherTypes", "TweakGopherTypes", XtRBoolean, sizeof (Boolean),
       offset (tweak_gopher_types), XtRString, "True" },
 
@@ -195,24 +100,11 @@ static XtResource resources[] = {
   { "trackFullURLs", "TrackFullURLs", XtRBoolean, sizeof (Boolean),
       offset (track_full_url_names), XtRString, "True" },
 
-  { "hdfMaxImageDimension", "HdfMaxImageDimension", XtRInt, sizeof (int),
-      offset (hdf_max_image_dimension), XtRString, "400" },
-  { "hdfMaxDisplayedDatasets", "HdfMaxDisplayedDatasets", XtRInt, sizeof (int),
-      offset (hdf_max_displayed_datasets), XtRString, "15" },
-  { "hdfMaxDisplayedAttributes", "HdfMaxDisplayedAttributes", XtRInt, sizeof (int),
-      offset (hdf_max_displayed_attributes), XtRString, "10" },
-  { "hdfPowerUser", "HdfPowerUser", XtRBoolean, sizeof (Boolean),
-      offset (hdf_power_user), XtRString, "False" },
-
   { "docsDirectory", "DocsDirectory", XtRString, sizeof (char *),
       offset (docs_directory), XtRString, NULL },
 
-  { "reloadReloadsImages", "ReloadReloadsImages", XtRBoolean, sizeof (Boolean),
-      offset (reload_reloads_images), XtRString, "False" },
   { "reloadPragmaNoCache", "ReloadPragmaNoCache", XtRBoolean, sizeof (Boolean),
       offset (reload_pragma_no_cache), XtRString, "False" },
-  { "simpleInterface", "SimpleInterface", XtRBoolean, sizeof (Boolean),
-      offset (simple_interface), XtRString, "False" },
 
   { "maxWaisResponses", "MaxWaisResponses", XtRInt, sizeof (int),
       offset (max_wais_responses), XtRString, "200" },
@@ -222,23 +114,9 @@ static XtResource resources[] = {
   { "useDefaultExtensionMap", "UseDefaultExtensionMap", 
       XtRBoolean, sizeof (Boolean),
       offset (use_default_extension_map), XtRString, "True" },
-  { "globalExtensionMap", "GlobalExtensionMap", 
-      XtRString, sizeof (char *),
-      offset (global_extension_map), XtRString, GLOBAL_EXTENSION_MAP },
-  { "personalExtensionMap", "PersonalExtensionMap", 
-      XtRString, sizeof (char *),
-      offset (personal_extension_map), XtRString, ".mime.types" },
-
   { "useDefaultTypeMap", "UseDefaultTypeMap", 
       XtRBoolean, sizeof (Boolean),
       offset (use_default_type_map), XtRString, "True" },
-  { "globalTypeMap", "GlobalTypeMap", 
-      XtRString, sizeof (char *),
-      offset (global_type_map), XtRString, GLOBAL_TYPE_MAP },
-  { "personalTypeMap", "PersonalTypeMap", 
-      XtRString, sizeof (char *),
-      offset (personal_type_map), XtRString, ".mailcap" },
-
   { "twirlingTransferIcon", "TwirlingTransferIcon", 
       XtRBoolean, sizeof (Boolean),
       offset (twirling_transfer_icon), XtRString, "True" },
@@ -248,9 +126,6 @@ static XtResource resources[] = {
   { "securityIcon", "securityIcon", 
       XtRBoolean, sizeof (Boolean),
       offset (securityIcon), XtRString, "True" },
-
-  { "imageCacheSize", "ImageCacheSize", XtRInt, sizeof (int),
-      offset (image_cache_size), XtRString, "2048" },
 
   { "protectMeFromMyself", "ProtectMeFromMyself", 
       XtRBoolean, sizeof (Boolean),
@@ -277,28 +152,9 @@ static XtResource resources[] = {
       XtRBoolean, sizeof (Boolean),
       offset (print_us), XtRString, "True" },
 
-  { "useAFSKlog", "UseAFSKlog",
-      XtRBoolean, sizeof(Boolean),
-      offset(useAFSKlog), XtRString,"False" },
-
           /* new in 2.7 */
-  { "clipping", "Clipping", XtRBoolean, sizeof (Boolean),
-      offset (clipping), XtRString, "True" },
-      
-  { "maxClippingSizeX", "MaxClippingSizeX", XtRInt, sizeof (int),
-      offset (max_clip_x), XtRString, "-1" },
-      
-  { "maxClippingSizeY", "MaxClippingSizeY", XtRInt, sizeof (int),
-      offset (max_clip_y), XtRString, "-1" },
-
-  { "useLongTextNames", "UseLongTextNames", XtRBoolean, sizeof (Boolean),
-      offset (long_text_names), XtRString, "False" },
-
-  { "toolbarLayout", "ToolbarLayout", XtRString, sizeof (char *),
-      offset (toolbar_layout), XtRString, NULL},
-
   { "installColormap", "InstallColormap", XtRBoolean, sizeof (Boolean),
-      offset (instamap), XtRString, "False" },
+      offset (install_colormap), XtRString, "False" },
 
   { "imageViewInternal", "ImageViewInternal", XtRBoolean, sizeof (Boolean),
       offset (imageViewInternal), XtRString, "False" },
@@ -306,11 +162,8 @@ static XtResource resources[] = {
   { "urlExpired", "UrlExpired", XtRInt, sizeof (int),
       offset (urlExpired), XtRString, "30" },
 
-  { "httpTrace", "HttpTrace", XtRBoolean, sizeof (Boolean),
-      offset (httpTrace), XtRString, "False" },
-
-  { "www2Trace", "Www2Trace", XtRBoolean, sizeof (Boolean),
-      offset (www2Trace), XtRString, "False" },
+  { "wwwTrace", "WwwTrace", XtRBoolean, sizeof (Boolean),
+      offset (wwwTrace), XtRString, "False" },
 
   { "htmlwTrace", "HtmlwTrace", XtRBoolean, sizeof (Boolean),
       offset (htmlwTrace), XtRString, "False" },
@@ -320,30 +173,6 @@ static XtResource resources[] = {
 
   { "srcTrace", "SrcTrace", XtRBoolean, sizeof (Boolean),
       offset (srcTrace), XtRString, "False" },
-
-  { "cacheTrace", "CacheTrace", XtRBoolean, sizeof (Boolean),
-      offset (cacheTrace), XtRString, "False" },
-
-  { "nutTrace", "NutTrace", XtRBoolean, sizeof (Boolean),
-      offset (nutTrace), XtRString, "False" },
-
-  { "animateBusyIcon", "AnimateBusyIcon", XtRBoolean, sizeof (Boolean),
-      offset (animateBusyIcon), XtRString, "True" },
-
-  { "sendReferer", "SendReferer", XtRBoolean, sizeof (Boolean),
-      offset (sendReferer), XtRString, "True" },
-
-  { "sendAgent", "SendAgent", XtRBoolean, sizeof (Boolean),
-      offset (sendAgent), XtRString, "True" },
-
-  { "expandUrls", "ExpandUrls", XtRBoolean, sizeof (Boolean),
-      offset (expandUrls), XtRString, "True" },
-
-  { "expandUrlsWithName", "expandUrlsWithName", XtRBoolean, sizeof (Boolean),
-      offset (expandUrlsWithName), XtRString, "True" },
-
-  { "defaultProtocol", "DefaultProtocol", XtRString, sizeof (char *),
-      offset (defaultProtocol), XtRString, "http"},
 
   { "meterForeground", "MeterForeground", XtRString, sizeof (char *),
       offset (meterForeground), XtRString, "#FFFF00000000"},
@@ -357,19 +186,6 @@ static XtResource resources[] = {
   { "meterFontBackground", "MeterFontBackground", XtRString, sizeof (char *),
       offset (meterFontBackground), XtRString, "#000000000000"},
 
-  { "meter", "Meter", XtRBoolean, sizeof (Boolean),
-      offset (use_meter), XtRString, "True" },
-
-  { "backupDataFiles", "BackupDataFiles", XtRBoolean, sizeof (Boolean),
-      offset (backup_files), XtRString, "True" },
-
-/* Icon Animation Stuff - BJS */
-  { "iconPixBasename", "IconPixBasename", XtRString, sizeof (char *),
-      offset (pix_basename), XtRString, "default"},
-
-  { "iconPixCount", "IconPixCount", XtRInt, sizeof (int),
-      offset (pix_count), XtRString, "0" },
-
 /* Accept-Language stuff - BJS */
   { "acceptLanguage", "AcceptLanguage", XtRString, sizeof (char *),
       offset (acceptlanguage_str), XtRString, NULL },
@@ -380,9 +196,6 @@ static XtResource resources[] = {
   { "ftpRedial", "FtpRedial", XtRInt, sizeof (int),
       offset (ftpRedial), XtRString, "10" },
 
-  { "ftpRedialSleep", "FtpRedialSleep", XtRInt, sizeof (int),
-      offset (ftpRedialSleep), XtRString, "3" },
-
   { "ftpFilenameLength", "FtpFilenameLength", XtRInt, sizeof (int),
       offset (ftpFilenameLength), XtRString, "18" },
 
@@ -392,56 +205,15 @@ static XtResource resources[] = {
   { "ftpEllipsisMode", "FtpEllipsisMode", XtRInt, sizeof (int),
       offset (ftpEllipsisMode), XtRString, "2" },
 
-  { "hdfLongName", "HdfLongName", XtRBoolean, sizeof (Boolean),
-      offset (hdflongname), XtRString, "False" },
-
-  { "titleIsWindowTitle", "TitleIsWindowTitle", XtRBoolean, sizeof (Boolean),
-      offset (titleIsWindowTitle), XtRString, "True" },
-
-  { "useIconBar", "UseIconBar", XtRBoolean, sizeof (Boolean),
-      offset (useIconBar), XtRString, "False" },
-
-  { "useTextButtonBar", "UseTextButtonBar", XtRBoolean, sizeof (Boolean),
-      offset (useTextButtonBar), XtRString, "True" },
-
-  { "proxySpecfile", "ProxySpecfile", XtRString, sizeof (char *),
-      offset (proxy_specfile), XtRString, 
-      "/usr/local/lib/mMosaic/proxy" },
-
-  { "noproxySpecfile", "NoproxySpecfile", XtRString, sizeof (char *),
-      offset (noproxy_specfile), XtRString, 
-      "/usr/local/lib/mMosaic/no_proxy" },
-  
-  { "useScreenGamma", "UseScreenGamma", XtRBoolean, sizeof (Boolean),
-      offset (useScreenGamma), XtRString, "False" },
-
   { "screenGamma", "ScreenGamma", XtRFloat, sizeof (float),
       offset (screen_gamma), XtRString, "2.2" },
+  { "useScreenGamma", "UseScreenGamma", XtRBoolean, sizeof(Boolean),
+    offset(use_screen_gamma), XtRString, "False"},
 
   { "popupCascadeMappingDelay", "PopupCascadeMappingDelay", XtRInt, 
-    sizeof(int), offset(popupCascadeMappingDelay), XtRString, "500" },
+    sizeof(int), offset(popupCascadeMappingDelay), XtRString, "180" },
 
-  { "frameHack", "FrameHack", XtRBoolean, sizeof (Boolean),
-    offset (frame_hack), XtRString, "False" },
-  
 /* New news stuff in B4 */
-  { "newsUseThreadView", "NewsUseThreadView", XtRBoolean,
-    sizeof(Boolean), offset(newsConfigView), XtRString, "True" },
-  
-  { "newsNoThreadJumping", "NewsNoThreadJumping", XtRBoolean,
-    sizeof(Boolean), offset(newsNoThreadJumping), XtRString, "True" },
-
-  { "newsShowAllGroups", "NewsShowAllGroups", XtRBoolean,
-    sizeof(Boolean), offset(newsShowAllGroups), XtRString, "False" },
-
-  { "newsShowReadGroups", "NewsShowReadGroups", XtRBoolean,
-    sizeof(Boolean), offset(newsShowReadGroups), XtRString, "False" },
-
-  { "newsShowAllArticles", "NewsShowAllArticles", XtRBoolean,
-    sizeof(Boolean), offset(newsShowAllArticles), XtRString, "True" },
-
-  { "newsUseBackgroundFlush", "NewsUseBackgroundFlush", XtRBoolean,
-    sizeof(Boolean), offset(newsUseBackgroundFlush), XtRString, "True" },
 
   { "newsBackgroundFlushTime", "NewsBackgroundFlushTime", XtRInt,
     sizeof(int), offset(newsBackgroundFlushTime), XtRString, "300" },
@@ -461,40 +233,8 @@ static XtResource resources[] = {
     {"multiCastAddr", "multiCastAddr", XtRString, sizeof(char *),
     offset(mc_dest), XtRString, (caddr_t) NULL},
 #endif
-  /* New in 2.7b5 */
-  { "newsPrevIsPrevUnread", "NewsPrevIsPrevUnread", XtRBoolean,
-    sizeof(Boolean), offset(newsPrevIsUnread), XtRString, "False" },
-                                      
-  { "newsNextIsNextUnread", "NewsNextIsNextUnread", XtRBoolean,
-    sizeof(Boolean), offset(newsNextIsUnread), XtRString, "True" },
-                                      
-  { "newsNewsrcPrefix", "NewsNewsrcPrefix", XtRString,
-    sizeof(char *), offset(newsNewsrcPrefix), XtRString, ".newsrc" },
-                                      
-  { "newsUseNewsrc", "NewsUseNewsrc", XtRBoolean,
-    sizeof(Boolean), offset(newsUseNewsrc), XtRString, "True" },
-                                      
-  { "newsSubjectWidth", "NewsSubjectWidth", XtRInt,
-    sizeof(int), offset(newsSubjectWidth), XtRString, "38" },
-                                      
-  { "newsAuthorWidth", "NewsAuthorWidth", XtRInt,
-    sizeof(int), offset(newsAuthorWidth), XtRString, "30" },
-                                      
-  { "focusFollowsMouse", "FocusFollowsMouse", XtRBoolean,
-    sizeof(Boolean), offset(focusFollowsMouse), XtRString, "False" },
-                                      
-  { "sessionHistoryOnRBM", "SessionHistoryOnRBM", XtRBoolean,
-    sizeof(Boolean), offset(sessionHistoryOnRBM), XtRString, "True" },
-                                      
   { "numberOfItemsInRBMHistory", "NumberOfItemsInRBMHistory", XtRInt,
     sizeof(int), offset(numberOfItemsInRBMHistory), XtRString, "12" },
-                                      
-  { "hotlistOnRBM", "HotlistOnRBM", XtRBoolean,
-    sizeof(Boolean), offset(hotlistOnRBM), XtRString, "True" },
-                                      
-  { "newsUseShortNewsrc", "NewsUseShortNewsrc", XtRBoolean,
-    sizeof(Boolean), offset(newsUseShortNewsrc), XtRString, "False" },
-
 };
 
 #undef offset
@@ -505,10 +245,6 @@ static XrmOptionDescRec options[] = {
   {"-fm",     "*menubar*fontList",    XrmoptionSepArg, NULL},
   {"-home",   "*homeDocument",        XrmoptionSepArg, NULL},
   {"-ngh",    "*useGlobalHistory",    XrmoptionNoArg,  "False"},
-  /* Let Xt strip out -mono from stuff it considers interesting. */
-  {"-mono",   "*nothingUseful",       XrmoptionNoArg,  "True"},
-  {"-color",  "*nothingUseful",       XrmoptionNoArg,  "True"},
-  {"-ghbnie", "*gethostbynameIsEvil", XrmoptionNoArg,  "True"},
   {"-iconic", "*initialWindowIconic", XrmoptionNoArg,  "True"},
   {"-i",      "*initialWindowIconic", XrmoptionNoArg,  "True"},
   /* New in 1.1 */
@@ -526,7 +262,7 @@ static XrmOptionDescRec options[] = {
 #endif
   {"-cciPort",  "*cciPort",   	      XrmoptionSepArg,  "0"},
   {"-maxNumCCIConnect",  "*maxNumCCIConnect",  XrmoptionSepArg,  "0"},
-  {"-install",  "*nothingUseful",     XrmoptionNoArg,  "True"},
+  {"-installColormap",  "*installColormap",     XrmoptionNoArg,  "True"},
 #ifdef MULTICAST
     {"-v", ".debug", XrmoptionNoArg, "True"},
     {"-verbose", ".debug", XrmoptionNoArg, "True"},
@@ -612,7 +348,6 @@ static String color_resources[] = {
   "*XmScrollBar*highlightThickness:     0",
   "*highlightThickness:	                0",
   /* "*geometry:                           +400+200", */
-  /*"*keyboardFocusPolicy:                pointer",*/
   
   "*TitleFont: -adobe-times-bold-r-normal-*-24-*-*-*-*-*-iso8859-1",
   "*Font: -adobe-times-medium-r-normal-*-17-*-*-*-*-*-iso8859-1",
@@ -649,7 +384,6 @@ static String color_resources[] = {
   "*XmToggleButton*Foreground:          #1d1d15155b5b",
   "*XmPushButton*Foreground:            #5b5b00000000",
   "*logo*Foreground:                    #1d1d15155b5b",
-  "*searchindex_button*Foreground:      #1d1d15155b5b",
   "*XmTextField*Background: 		#8c8c8c8c8c8c",
   "*SelectColor:			#ffffffff0000",
   "*HighlightColor:		 	#afafafafafaf",
@@ -671,7 +405,6 @@ static String color_resources[] = {
   "*XmToggleButton*Foreground:          #1d1d15155b5b",
   "*XmPushButton*Foreground:            #5b5b00000000",
   "*logo*Foreground:                    #1d1d15155b5b",
-  "*searchindex_button*Foreground:      #1d1d15155b5b",
 
   "*Background:                         #bfbfbfbfbfbf",
 
@@ -701,113 +434,6 @@ static String color_resources[] = {
   "*dragInitiatorProtocolStyle: XmDRAG_NONE",
   "*dragReceiverProtocolStyle:  XmDRAG_NONE",
  
-  NULL,
-};
-
-static String mono_resources[] = {
-  "*XmLabel*fontList:   		-*-helvetica-bold-r-normal-*-14-*-*-*-*-*-iso8859-1",
-  "*XmLabelGadget*fontList:	-*-helvetica-bold-r-normal-*-14-*-*-*-*-*-iso8859-1",
-  "*XmScale*fontList:   		-*-helvetica-bold-r-normal-*-14-*-*-*-*-*-iso8859-1",
-  "*XmBulletinBoard*labelFontList:	-*-helvetica-bold-r-normal-*-14-*-*-*-*-*-iso8859-1",
-  "*optionmenu.XmLabelGadget*fontList:	-*-helvetica-bold-r-normal-*-14-*-*-*-*-*-iso8859-1",
-  "*XmPushButton*fontList:		-*-helvetica-medium-r-normal-*-14-*-iso8859-1",
-  "*XmPushButtonGadget*fontList:	-*-helvetica-medium-r-normal-*-14-*-iso8859-1",
-  "*XmToggleButton*fontList:	-*-helvetica-medium-r-normal-*-14-*-iso8859-1",
-  "*XmToggleButtonGadget*fontList:	-*-helvetica-medium-r-normal-*-14-*-iso8859-1",
-  "*optionmenu*fontList:		-*-helvetica-medium-r-normal-*-14-*-iso8859-1",
-  "*XmIconGadget*fontList:		-*-helvetica-medium-r-normal-*-14-*-iso8859-1",
-  "*XmBulletinBoard*buttonFontList: -*-helvetica-medium-r-normal-*-14-*-iso8859-1",
-  "*menubar*fontList:   		-*-helvetica-bold-o-normal-*-14-*-iso8859-1",
-  "*XmMenuShell*XmPushButton*fontList:  -*-helvetica-bold-o-normal-*-14-*-iso8859-1",
-  "*XmMenuShell*XmLabelGadget*fontList: -*-helvetica-bold-o-normal-*-14-*-iso8859-1",
-  "*XmMenuShell*XmPushButtonGadget*fontList: -*-helvetica-bold-o-normal-*-14-*-iso8859-1",
-  "*XmMenuShell*XmCascadeButton*fontList: -*-helvetica-bold-o-normal-*-14-*-iso8859-1",
-  "*XmMenuShell*XmCascadeButtonGadget*fontList: -*-helvetica-bold-o-normal-*-14-*-iso8859-1",
-  "*XmCascadeButton*fontList: -*-helvetica-bold-o-normal-*-14-*-iso8859-1",
-  "*XmCascadeButtonGadget*fontList: -*-helvetica-bold-o-normal-*-14-*-iso8859-1",
-  "*XmMenuShell*XmToggleButton*fontList: -*-helvetica-bold-o-normal-*-14-*-iso8859-1",
-  "*XmMenuShell*XmToggleButtonGadget*fontList: -*-helvetica-bold-o-normal-*-14-*-iso8859-1",
-  "*pulldownmenu*fontList:	-*-helvetica-bold-o-normal-*-14-*-iso8859-1",
-  "*XmList*fontList:	-*-helvetica-medium-r-normal-*-14-*-iso8859-1",
-  "*XmText.fontList:      -*-lucidatypewriter-medium-r-normal-*-14-*-iso8859-1",
-  "*XmTextField.fontList: -*-lucidatypewriter-medium-r-normal-*-14-*-iso8859-1",
-
-  "*optionmenu*marginHeight: 	0",
-  "*optionmenu*marginTop: 		5",
-  "*optionmenu*marginBottom: 	5",
-  "*optionmenu*marginWidth: 	5",
-  "*pulldownmenu*XmPushButton*marginHeight:	1",
-  "*pulldownmenu*XmPushButton*marginWidth:	1",
-  "*pulldownmenu*XmPushButton*marginLeft:	3",
-  "*pulldownmenu*XmPushButton*marginRight:	3",
-  "*XmList*listMarginWidth:        3",
-  "*menubar*marginHeight: 		1",
-  "*menubar.marginHeight: 		0",
-  "*menubar*marginLeft:  		1",
-  "*menubar.spacing:  		7",
-  "*XmMenuShell*marginLeft:  	3",
-  "*XmMenuShell*marginRight:  	4",
-  "*XmMenuShell*XmToggleButtonGadget*spacing: 	 2",
-  "*XmMenuShell*XmToggleButtonGadget*marginHeight:  0",
-  "*XmMenuShell*XmToggleButtonGadget*indicatorSize: 12",
-  "*XmMenuShell*XmLabelGadget*marginHeight: 4",
-  "*XmToggleButtonGadget*spacing: 	4",
-  "*XmToggleButton*spacing: 	4",
-  "*XmScrolledWindow*spacing: 	0",
-  "*XmScrollBar*width: 		        18",
-  "*XmScrollBar*height: 		18",
-  "*Hbar*height:                        22",
-  "*Vbar*width:                         22",
-  "*XmScale*scaleHeight: 		20",
-  "*XmText*marginHeight:		4",
-  "*fsb*XmText*width:                   420",
-  "*fsb*XmTextField*width:                   420",
-  "*fillOnSelect:			True",
-  "*visibleWhenOff:		        True",
-  "*XmText*highlightThickness:		0",
-  "*XmTextField*highlightThickness:	0",
-  "*XmPushButton*highlightThickness:	0",
-  "*XmScrollBar*highlightThickness:     0",
-  "*highlightThickness:	                0",
-  /* "*geometry:                           +400+200", */
-  /*"*keyboardFocusPolicy:                pointer",*/
-
-  "*TitleFont: -adobe-times-bold-r-normal-*-24-*-*-*-*-*-iso8859-1",
-  "*Font: -adobe-times-medium-r-normal-*-17-*-*-*-*-*-iso8859-1",
-  "*ItalicFont: -adobe-times-medium-i-normal-*-17-*-*-*-*-*-iso8859-1",
-  "*BoldFont: -adobe-times-bold-r-normal-*-17-*-*-*-*-*-iso8859-1",
-  "*FixedFont: -adobe-courier-medium-r-normal-*-17-*-*-*-*-*-iso8859-1",
-  "*Header1Font: -adobe-times-bold-r-normal-*-24-*-*-*-*-*-iso8859-1",
-  "*Header2Font: -adobe-times-bold-r-normal-*-18-*-*-*-*-*-iso8859-1",
-  "*Header3Font: -adobe-times-bold-r-normal-*-17-*-*-*-*-*-iso8859-1",
-  "*Header4Font: -adobe-times-bold-r-normal-*-14-*-*-*-*-*-iso8859-1",
-  "*Header5Font: -adobe-times-bold-r-normal-*-12-*-*-*-*-*-iso8859-1",
-  "*Header6Font: -adobe-times-bold-r-normal-*-10-*-*-*-*-*-iso8859-1",
-  "*AddressFont: -adobe-times-medium-i-normal-*-17-*-*-*-*-*-iso8859-1",
-  "*PlainFont: -adobe-courier-medium-r-normal-*-14-*-*-*-*-*-iso8859-1",
-  "*ListingFont: -adobe-courier-medium-r-normal-*-12-*-*-*-*-*-iso8859-1",
-  "*SupSubFont: -adobe-courier-medium-r-normal-*-10-*-*-*-*-*-iso8859-1",
-  "*MeterFont: -adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*",
-  "*ToolbarFont: -adobe-times-bold-r-normal-*-12-*-*-*-*-*-iso8859-1",
-
-  "*Foreground:                         black",
-  "*Background:                         white",
-  "*TopShadowColor:                     black",
-  "*BottomShadowColor:                  black",
-  "*anchorColor:                        black",
-  "*visitedAnchorColor:                 black",
-  "*activeAnchorFG:                     black",
-  "*activeAnchorBG:                     white",
-  "*TroughColor:                        black",
-  "*SelectColor:                        black",
-  "*AnchorUnderlines:                   1",
-  "*VisitedAnchorUnderlines:            1",
-  "*DashedVisitedAnchorUnderlines:      True",
-  "*VerticalScrollOnRight:              True",
-  /* Disable Motif Drag-N-Drop - BJS */
-  "*dragInitiatorProtocolStyle: XmDRAG_NONE",
-  "*dragReceiverProtocolStyle:  XmDRAG_NONE",
-  
   NULL,
 };
 

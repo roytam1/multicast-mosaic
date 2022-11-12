@@ -4,8 +4,6 @@
 #ifndef __MOSAIC_H__
 #define __MOSAIC_H__
 
-/* --------------------------- SYSTEM INCLUDES ---------------------------- */
-
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -20,17 +18,134 @@
 #include <malloc.h>
 #endif
 
-
 #include <Xm/XmAll.h>
-#include "../libXmx/Xmx.h"
+#include <X11/StringDefs.h>
+#include <X11/Xutil.h>
+#include <X11/cursorfont.h>
+#include "Xmx.h"
 #include "toolbar.h"
 #include "cci.h"
 
+typedef struct {
+					/* anchors */
+	Boolean track_visited_anchors;
+	Boolean track_pointer_motion;
+	Boolean track_full_url_names;
+					/* cache */
+	Boolean reload_pragma_no_cache;
+					/* strings (command name, file name) */
+	char *sendmail_command;
+	char *edit_command;
+	char *xterm_command;
+	char *mail_filter_command;
+					/* document */
+	char *home_document;                  
+	char *docs_directory;
+					/* fonts */
+	char *default_font_choice;
+					/* images */
+	int colors_per_inlined_image;
+	Boolean delay_image_loads;
+					/* mail */
+	char *author_full_name;
+	char *author_name;
+	char *author_email;
+	char *signature;
+	char *mail_mode;
+					/* MIME */
+	char *print_command;
+	char *uncompress_command;
+	char *gunzip_command;
+	Boolean use_default_extension_map;
+	Boolean use_default_type_map;
+	Boolean tweak_gopher_types;
+					/* news */
+					/* printing */
+	char *print_mode;
+	Boolean print_banners;
+	Boolean print_footnotes;
+	Boolean print_us;
+					/* services */
+	int cciPort;
+	int max_num_of_cci_connections;
+	int max_wais_responses;
+	Boolean kiosk;
+	Boolean kioskPrint;
+	Boolean kioskNoExit;
+	int ftp_timeout_val;
+					/* window */
+	int default_width;                    
+	int default_height;                   
+	Boolean initial_window_iconic;
+	Boolean twirling_transfer_icon;
+	Boolean securityIcon;
+	int twirl_increment;
+					/* Save file stuff */
+	char *save_mode;
+					/* miscellaneous */
+	char *full_hostname;
+	int  load_local_file;
+	Boolean edit_command_use_xterm;
+	Boolean confirm_exit;
+	Boolean catch_prior_and_next; 
+	Boolean protect_me_from_myself;      
+					/* new in 2.7 */
+	char * meterForeground;
+	char * meterBackground;
+	char * meterFontForeground;
+	char * meterFontBackground;
+	char * acceptlanguage_str;
+	int ftpRedial;
+	int ftpFilenameLength;
+	int ftpEllipsisLength;
+	int ftpEllipsisMode;
+	Boolean use_screen_gamma;
+	float screen_gamma;
+					/* newer in 2.7 */
+	Boolean wwwTrace;
+	Boolean htmlwTrace;
+	Boolean cciTrace;
+	Boolean srcTrace;
+	Boolean install_colormap;
+	Boolean imageViewInternal;
+	int urlExpired;
+	int popupCascadeMappingDelay;
+				/* newest in 2.7 (ha top that) */
+	int newsBackgroundFlushTime;
+#ifdef MULTICAST
+	Boolean         mc_debug;              /* debug or verbose */
+	char           *mc_sess_name;
+	char           *mc_media_name;
+	int             mc_life_time;
+	int             mc_ttl;
+	char           *mc_alias_name;
+	char	   *mc_dest;		/* multicast dest addr/port */
+#endif
+					/* newest in 2.7b5 double haha; */
+	int numberOfItemsInRBMHistory;
+} AppData, *AppDataPtr;
 
-typedef enum
-{
-  mo_plaintext = 0, mo_formatted_text, mo_html, mo_latex, mo_postscript,
-  mo_mif
+extern char	*mMosaicRootDirName;	/* ~/.mMosaic is a directory */
+					/* allocated at init. */
+extern char	*mMosaicTmpDir;		/* working tmp dir */
+extern char 	*mMosaicStartupDocument; /* the argv of command line */
+extern char	*mMosaicMachineWithDomain;
+
+extern AppData	mMosaicAppData;		/* Application resources of mMosaic */
+extern XtAppContext	mMosaicAppContext;
+extern int	mMosaicVisualClass;	/* visual class for 24bit support hack */
+extern Widget	mMosaicToplevelWidget;	/* the toplevel widget */
+extern Display *mMosaicDisplay;		/* the display */
+extern Colormap mMosaicColormap;	/* the colormap */
+
+extern int	mMosaicCCITrace; 
+extern int	mMosaicSrcTrace; 
+
+
+/*###############################*/
+typedef enum {
+	mo_plaintext = 0, mo_formatted_text, mo_html, mo_latex, mo_postscript,
+	mo_mif
 } mo_format_token;
 
 /* -------------------------------- ICONS --------------------------------- */
@@ -41,59 +156,50 @@ typedef enum
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.2.0"
+#define MO_VERSION_STRING "3.2.1"
 #define MO_HELP_ON_VERSION_DOCUMENT \
-  mo_assemble_help_url ("help-on-version-2.7b5.html")
+	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@sig.enst.fr"
 
 #ifndef DOCS_DIRECTORY_DEFAULT
 #define DOCS_DIRECTORY_DEFAULT \
-  "http://www.ncsa.uiuc.edu/SDG/Software/XMosaic"
+	"http://www.ncsa.uiuc.edu/SDG/Software/XMosaic"
 #endif
 
+/* This must be a straight string as it is included into a struct; no tricks. */
 #ifndef HOME_PAGE_DEFAULT
-/* This must be a straight string as it is included into a struct; 
-   no tricks. */
-#define HOME_PAGE_DEFAULT \
-  "http://www-sig.enst.fr/~dauphin/mMosaic/index.html"
+#define HOME_PAGE_DEFAULT "http://www-sig.enst.fr/~dauphin/mMosaic/index.html"
 #endif /* not HOME_PAGE_DEFAULT */
 
 #ifndef WHATSNEW_PAGE_DEFAULT
 #define WHATSNEW_PAGE_DEFAULT \
-  "http://www-sig.enst.fr/~dauphin/mMosaic/change.html"
+	"http://www-sig.enst.fr/~dauphin/mMosaic/change.html"
 #endif /* not WHATSNEW_PAGE_DEFAULT */
 
 #ifndef DEMO_PAGE_DEFAULT
 #define DEMO_PAGE_DEFAULT \
-  "http://www.ncsa.uiuc.edu/demoweb/demo.html"
+	"http://www.ncsa.uiuc.edu/demoweb/demo.html"
 #endif /* not DEMO_PAGE_DEFAULT */
 
 #ifndef HTMLPRIMER_PAGE_DEFAULT
 #define HTMLPRIMER_PAGE_DEFAULT \
-  "http://www.ncsa.uiuc.edu/General/Internet/WWW/HTMLPrimer.html"
+	"http://www.ncsa.uiuc.edu/General/Internet/WWW/HTMLPrimer.html"
 #endif /* not HTMLPRIMER_PAGE_DEFAULT */
 
 #ifndef URLPRIMER_PAGE_DEFAULT
 #define URLPRIMER_PAGE_DEFAULT \
-  "http://www.ncsa.uiuc.edu/demoweb/url-primer.html"
+	"http://www.ncsa.uiuc.edu/demoweb/url-primer.html"
 #endif /* not URLPRIMER_PAGE_DEFAULT */
 
 #ifndef NETWORK_STARTING_POINTS_DEFAULT
 #define NETWORK_STARTING_POINTS_DEFAULT \
-  "http://www.ncsa.uiuc.edu/SDG/Software/Mosaic/StartingPoints/NetworkStartingPoints.html"
+	"http://www.ncsa.uiuc.edu/SDG/Software/Mosaic/StartingPoints/NetworkStartingPoints.html"
 #endif /* not NETWORK_STARTING_POINTS_DEFAULT */
 
 #ifndef INTERNET_METAINDEX_DEFAULT
 #define INTERNET_METAINDEX_DEFAULT \
-  "http://www.ncsa.uiuc.edu/SDG/Software/Mosaic/MetaIndex.html"
+	"http://www.ncsa.uiuc.edu/SDG/Software/Mosaic/MetaIndex.html"
 #endif /* not INTERNET_METAINDEX_DEFAULT */
-
-#ifndef GLOBAL_EXTENSION_MAP
-#define GLOBAL_EXTENSION_MAP "/usr/local/lib/mMosaic/mime.types"
-#endif
-#ifndef GLOBAL_TYPE_MAP
-#define GLOBAL_TYPE_MAP "/usr/local/lib/mMosaic/mailcap"
-#endif
 
 
 #if defined(bsdi)
@@ -149,14 +255,6 @@ typedef enum
 #endif
 
 #ifdef __hpux
-#define HAVE_AUDIO_ANNOTATIONS
-#else
-#if defined(__sgi) || defined(sun)
-#define HAVE_AUDIO_ANNOTATIONS
-#endif /* if */
-#endif /* ifdef */
-
-#ifdef __hpux
 #define MO_SIGHANDLER_RETURNTYPE int
 #else /* not __hpux */
 #define MO_SIGHANDLER_RETURNTYPE void
@@ -196,7 +294,13 @@ typedef enum
 
 /* ------------------------------ MAIN TYPES ------------------------------ */
 
+typedef struct _AgentSpoofCBStruct {
+	Widget w;
+	struct mo_window * win;
+	int d;
+} AgentSpoofCBStruct;
 /* ------------------------------ mo_window ------------------------------- */
+
 
 #define moMODE_PLAIN  0x0001
 #define moMODE_FTP    0x0002
@@ -204,251 +308,195 @@ typedef enum
 #define moMODE_ALL    0x0007
 
 /* mo_window contains everything related to a single Document View
-   window, including subwindow details. */
+ * window, including subwindow details. */
 typedef struct mo_window {
-  Widget base;
-  int mode;
+	Widget base;
+	int mode;
     
-  /* Subwindows. */
-  Widget source_win;
-  Widget save_win;
-  Widget upload_win;
-  Widget savebinary_win;  /* for binary transfer mode */
-  Widget open_win;
-  Widget mail_fsb_win;
-  Widget mail_win;
-  Widget mailhot_win;
-  Widget edithot_win;
-  Widget inserthot_win;
-  Widget mailhist_win;
-  Widget print_win;
-  Widget history_win;
-  Widget open_local_win;
-  Widget hotlist_win;
-  Widget techsupport_win;
-  Widget news_win;           /* News Post/Followup*/
-  Widget news_fsb_win;
-  Widget news_sub_win;       /* News Subscribe Window */
-  Widget annotate_win;
-  Widget src_search_win;         /* source window document search */
-  Widget search_win;         /* internal document search */
-  Widget searchindex_win;    /* network index search */
-  Widget cci_win;	     /* common client interface control window */
-  Widget mailto_win;
-  Widget mailto_form_win;
-    Widget links_win;     /* window with list of links */
-    Widget links_list; /* widget holding the list itself */
-    XmString *links_items;
-    int links_count;
+/* Subwindows. */
+	Widget source_win;
+	Widget save_win;
+	Widget upload_win;
+	Widget savebinary_win;  /* for binary transfer mode */
+	Widget open_win;
+	Widget mail_fsb_win;
+	Widget mail_win;
+	Widget mailhot_win;
+	Widget edithot_win;
+	Widget inserthot_win;
+	Widget mailhist_win;
+	Widget print_win;
+	Widget history_win;
+	Widget open_local_win;
+	Widget hotlist_win;
+	Widget techsupport_win;
+	Widget news_win;           /* News Post/Followup*/
+	Widget news_fsb_win;
+	Widget news_sub_win;       /* News Subscribe Window */
+	Widget src_search_win;         /* source window document search */
+	Widget search_win;         /* internal document search */
+	Widget cci_win;	     /* common client interface control window */
+	Widget mailto_win;
+	Widget mailto_form_win;
+	Widget links_win;     /* window with list of links */
+	Widget links_list; /* widget holding the list itself */
+	XmString *links_items;
+	int links_count;
 
-  Widget ftpput_win, ftpremove_win, ftpremove_text, ftpmkdir_win, ftpmkdir_text;
-  char *ftp_site;
+	Widget ftpput_win, ftpremove_win, ftpremove_text, 
+		ftpmkdir_win, ftpmkdir_text;
+	char *ftp_site;
 
-  Widget session_menu;
-  Widget *session_items;  
-  int num_session_items;
+	Widget session_menu;
+	Widget *session_items;  
+	int num_session_items;
   
 
-  /* Tag 'n Bag 
-  Widget tag_win;
-  Widget tag_list;
-  */
-    
-       
-#ifdef HAVE_AUDIO_ANNOTATIONS
-  Widget audio_annotate_win;
-#endif
+/* USER INTERFACE BITS 'n PIECES */
+	struct toolbar tools[BTN_COUNT];
+	Widget slab[7];
+	int slabpart[8];
+	int biglogo,smalllogo,texttools;
 
-        /* USER INTERFACE BITS 'n PIECES */
-    struct toolbar tools[BTN_COUNT];
+	XmxMenuRecord *menubar;
 
-    Widget slab[7];
-    int slabpart[8];
-    int biglogo,smalllogo,texttools;
+	Widget url_text;
+	Widget scrolled_win, view;
+	Widget tracker_label, logo, security;
+	Widget button_rc, button2_rc, encrypt;
+	Widget toolbarwin, topform;
+	int toolset;
+	int toolbardetached;
+	int toolbarorientation;
 
-    XmxMenuRecord *menubar;
+	Widget meter, meter_frame;
+	int meter_level,meter_width,meter_height;
+	int meter_notext;
+	Pixel meter_fg, meter_bg, meter_font_fg, meter_font_bg;
+	int meter_fontW, meter_fontH;
+	char *meter_text;
+	XFontStruct *meter_font;
 
-    Widget url_text;
-    Widget title_text;
-    Widget scrolled_win, view;
-    Widget rightform;
-    Widget tracker_label, logo, security;
-    Widget button_rc, button2_rc, encrypt;
-    Widget toolbarwin, topform;
-    int toolset;
-    int toolbardetached;
-    int toolbarorientation;
-    
-    
-    Widget meter, meter_frame;
-    int meter_level,meter_width,meter_height;
-    int meter_notext;
-    Pixel meter_fg, meter_bg, meter_font_fg, meter_font_bg;
-    int meter_fontW, meter_fontH;
-    char *meter_text;
-    XFontStruct *meter_font;
+	struct mo_node *history;
+	struct mo_node *current_node;
 
-  Widget searchindex_button;   /* pushbutton, says "Search Index" */
-  Widget searchindex_win_label, searchindex_win_text;
-  Widget searchindex_win_searchbut;
+	char *target_anchor;
 
-  Widget home_button;
+/* Document source window. */
+	Widget source_text;
+	Widget source_url_text;
+	Widget source_date_text;
+	XmxMenuRecord *format_optmenu;
+	mo_format_token save_format; /* starts at 0 */
 
-  int last_width;
+	Widget open_text;
 
-  struct mo_node *history;
-  struct mo_node *current_node;
-  int reloading;
+	Widget mail_to_text;
+	Widget mail_subj_text;
+	XmxMenuRecord *mail_fmtmenu;
+	int mail_format;
 
-  char *target_anchor;
+	Widget mailhot_to_text;
+	Widget mailhot_subj_text;
+	Widget mailhist_to_text;
+	Widget mailhist_subj_text;
 
-  /* Document source window. */
-  Widget source_text;
-  Widget source_url_text;
-  Widget source_date_text;
-  XmxMenuRecord *format_optmenu;
-  mo_format_token save_format; /* starts at 0 */
-
-  Widget open_text;
-
-  Widget mail_to_text;
-  Widget mail_subj_text;
-  XmxMenuRecord *mail_fmtmenu;
-  int mail_format;
-
-  Widget mailhot_to_text;
-  Widget mailhot_subj_text;
-  Widget mailhist_to_text;
-  Widget mailhist_subj_text;
-
-  Widget print_text;
-  XmxMenuRecord *print_fmtmenu;
-  mo_format_token print_format;
-  /*swp*/
-  Widget hotlist_rbm_toggle;
-  Widget print_header_toggle_save;
-  Widget print_header_toggle_print;
-  Widget print_header_toggle_mail;
-  Widget print_footer_toggle_save;
-  Widget print_footer_toggle_print;
-  Widget print_footer_toggle_mail;
-  Widget print_a4_toggle_save;
-  Widget print_a4_toggle_print;
-  Widget print_a4_toggle_mail;
-  Widget print_us_toggle_save;
-  Widget print_us_toggle_print;
-  Widget print_us_toggle_mail;
-    Widget print_url_only;
-    Widget print_doc_only;
+	Widget print_text;
+	XmxMenuRecord *print_fmtmenu;
+	mo_format_token print_format;
+/*swp*/
+	Widget print_header_toggle_save;
+	Widget print_header_toggle_print;
+	Widget print_header_toggle_mail;
+	Widget print_footer_toggle_save;
+	Widget print_footer_toggle_print;
+	Widget print_footer_toggle_mail;
+	Widget print_a4_toggle_save;
+	Widget print_a4_toggle_print;
+	Widget print_a4_toggle_mail;
+	Widget print_us_toggle_save;
+	Widget print_us_toggle_print;
+	Widget print_us_toggle_mail;
+	Widget print_url_only;
+	Widget print_doc_only;
  
+	Widget history_list;
 
-  Widget history_list;
+	Widget hotlist_list;
+	Widget hotlist_label;
+	Widget save_hotlist_win;
+	Widget load_hotlist_win;
+	struct _mo_hotlist *current_hotlist;
+	union _mo_hot_item *hot_cut_buffer;
 
-  Widget hotlist_list;
-  Widget hotlist_label;
-  Widget save_hotlist_win;
-  Widget load_hotlist_win;
-  struct _mo_hotlist *current_hotlist;
-  union _mo_hot_item *hot_cut_buffer;
+	Widget techsupport_text;
 
-  Widget techsupport_text;
+	Widget news_text;
+	Widget news_text_from, news_text_subj, news_text_group;
+/* news followup storage */
+	char *newsfollow_artid;
+	char *newsfollow_grp, *newsfollow_subj, *newsfollow_ref, *newsfollow_from;
 
-  Widget news_text;
-  Widget news_text_from, news_text_subj, news_text_group;
-    /* news followup storage */
-  char *newsfollow_artid;
-  char *newsfollow_grp, *newsfollow_subj, *newsfollow_ref, *newsfollow_from;
-
-  Widget mailto_text;
-  Widget mailto_fromfield;
-  Widget mailto_tofield;
-  Widget mailto_subfield;
+	Widget mailto_text;
+	Widget mailto_fromfield;
+	Widget mailto_tofield;
+	Widget mailto_subfield;
   
-  Widget mailto_form_text;
-  Widget mailto_form_fromfield;
-  Widget mailto_form_tofield;
-  Widget mailto_form_subfield;
+	Widget mailto_form_text;
+	Widget mailto_form_fromfield;
+	Widget mailto_form_tofield;
+	Widget mailto_form_subfield;
 
-  char *post_data;
+	char *post_data;
 
-  int font_size;
-  int font_family;
-  int pretty;
+	int font_size;
+	int font_family;
 
-  int underlines_snarfed;
-  int underlines_state;
-  /* Default values only, mind you. */
-  int underlines;
-  int visited_underlines;
-  Boolean dashed_underlines;
-  Boolean dashed_visited_underlines;
+	int underlines_snarfed;
+	int underlines_state;
+/* Default values only, mind you. */
+	int underlines;
+	int visited_underlines;
+	Boolean dashed_underlines;
+	Boolean dashed_visited_underlines;
 
+	Widget delete_button;
+	Widget include_fsb;
+	int editing_id;
 
-#ifdef HAVE_AUDIO_ANNOTATIONS
-  Widget audio_start_button;
-  Widget audio_stop_button;
-  pid_t record_pid;
-  char *record_fnam;
-#endif
+	char *cached_url;
 
-  Widget annotate_author;
-  Widget annotate_title;
-  Widget annotate_text;
-  Widget delete_button;
-  Widget include_fsb;
-  int annotation_mode;
-  int editing_id;
+	Widget search_win_text;
+	Widget search_caseless_toggle;
+	Widget search_backwards_toggle;
+	void *search_start;
+	void *search_end;
 
-  char *cached_url;
+	Widget src_search_win_text;
+	Widget src_search_caseless_toggle;
+	Widget src_search_backwards_toggle;
+	int src_search_pos;
 
-  Widget search_win_text;
-  Widget search_caseless_toggle;
-  Widget search_backwards_toggle;
-  void *search_start;
-  void *search_end;
+	Widget cci_win_text;
+	Widget cci_accept_toggle;
+	Widget cci_off_toggle;
 
-  Widget src_search_win_text;
-  Widget src_search_caseless_toggle;
-  Widget src_search_backwards_toggle;
-  int src_search_pos;
-
-  Widget cci_win_text;
-  Widget cci_accept_toggle;
-  Widget cci_off_toggle;
-
-  int binary_transfer;
-  int delay_image_loads;
+	int binary_transfer;
+	int delay_image_loads;
 /*SWP*/
-  Boolean body_color;
-  Boolean body_images;
-  int image_view_internal;
+	Boolean body_color;
+	Boolean body_images;
+	int image_view_internal;
 
 /* PLB */
-  Widget subgroup;
-  Widget unsubgroup;
+	Widget subgroup;
+	Widget unsubgroup;
 
-  struct mo_window *next;
+	struct mo_window *next;
 
-#ifdef GRPAN_PASSWD
-  Widget passwd_label;
-  Widget annotate_passwd;
-  Widget passwd_toggle;
-#endif
-  XmxMenuRecord *pubpri_menu;
-  int pubpri;  /* one of mo_annotation_[public,private] */
-  XmxMenuRecord *audio_pubpri_menu;
-  int audio_pubpri;  /* one of mo_annotation_[public,private] */
-#ifdef NOPE_NOPE_NOPE
-  XmxMenuRecord *title_menu;
-  int title_opt;  /* mo_document_title or mo_document_url */
-  Widget annotate_toggle;
-  Widget crossref_toggle;
-  Widget checkout_toggle;
-  Widget checkin_toggle;
-#endif
-
-  int agent_state;
-  Boolean have_focus;
+	int agent_state;
+	AgentSpoofCBStruct * agspd_cbd;
+	Widget agent_state_pulldown;
 
 #ifdef MULTICAST
 	McMoWType mc_type;	/* MC_MO_TYPE_UNICAST   */
@@ -458,8 +506,7 @@ typedef struct mo_window {
 				/* MC_MO_TYPE_RCV_ALL */
 	struct _mc_user *mc_user;
 #endif
-
-  int delete_position_from_current_hotlist;
+	int delete_position_from_current_hotlist;
 } mo_window;
 
 typedef struct {
@@ -488,14 +535,11 @@ typedef struct mo_node
 	char *expires;
 	char *ref;	/*how the node was referred to from a previous anchor,*/
 			/*if such an anchor existed. */
-	char *text;
-	char *texthead;   /* head of the alloc'd text -- this should */
-			  /* be freed, NOT text */
+	char *text;	/* a copy of html text , need to be freed */
+			/* when the node is released */
 	int position;	 /* Position in the list, starting at 1; last item is*/
 			  /* effectively 0 (according to the XmList widget). */
-	int annotation_type; /* The type of annotation this is (if any) */
 	int docid; 	/* This is returned from HTMLPositionToId. */
-	void *cached_stuff; /* This is returned from HTMLGetWidgetInfo. */
 	int authType; 	/* Type of authorization */
 	struct mo_node *previous;
 	struct mo_node *next;
@@ -507,13 +551,6 @@ typedef enum {
 	mo_fail = 0, 
 	mo_succeed
 } mo_status;
-
-typedef enum {
-	mo_annotation_public = 0, 
-	mo_annotation_workgroup, 
-	mo_annotation_private
-} mo_pubpri_token;
-
 
 /* ---------------------------- a few globals ----------------------------- */
 
@@ -563,107 +600,44 @@ typedef enum
   mo_ftp_remove,
   mo_ncsa_document_tkn,
   mo_cc_tkn,
-  mo_checkout_tkn, mo_checkin_tkn,
+  mo_checkout_tkn, mo_checkin_tkn
 
 /*##############*/
-   /*mo_all_hotlist_to_rbm, mo_all_hotlist_from_rbm,*/
    /*mo_news_sub_anchor, mo_news_unsub_anchor,*/
    /*mo_news_mread_anchor,*/
 /* Password cash stuff */
    /*mo_clear_passwd_cache,*/
 
-/* NOTE!!!!!! THIS MUST ALWAYS BE LAST!!!!!! */
-	mo_last_entry_tkn
 } mo_token;
 
 /* ------------------------------ PROTOTYPES ------------------------------ */
-
-/* annotate.c */
-extern mo_status mo_post_annotate_win 
-  (mo_window *win, int, int, char *, char *, char *, char *);
-extern char *mo_fetch_annotation_links (char *, int);
-extern mo_status mo_is_editable_annotation (mo_window *, char *);
-extern mo_status mo_delete_annotation (mo_window *, int);
-extern mo_status mo_delete_group_annotation (mo_window *, char *);
-
-#ifdef HAVE_AUDIO_ANNOTATIONS
-/* audan.c */
-extern mo_status mo_audio_capable (void);
-extern mo_status mo_post_audio_annotate_win (mo_window *);
-#endif
-
-/* globalhist.c */
-extern mo_status mo_been_here_before_huh_dad (char *);
-extern mo_status mo_here_we_are_son (char *);
-extern mo_status mo_init_global_history (void);
-extern mo_status mo_wipe_global_history (mo_window *);
-extern mo_status mo_setup_global_history (void);
-extern mo_status mo_write_global_history (void);
-extern mo_status mo_cache_data (char *, void *, int);
-extern mo_status mo_zap_cached_images_here (mo_window *);
-extern mo_status mo_flush_image_cache (mo_window *);
-extern mo_status mo_set_image_cache_nuke_threshold (void);
-
-/* grpan.c */
-extern char *mo_fetch_grpan_links (char *url);
-extern mo_status mo_is_editable_grpan (char *);
-extern mo_status mo_audio_grpan (char *url, char *title, char *author,
-                               char *data, int len);
-extern mo_status mo_new_grpan (char *url, char *title, char *author,
-                               char *text);
-extern mo_status mo_modify_grpan (char *url, char *title, char *author,
-                               char *text);
-extern mo_status mo_delete_grpan (char *url);
-extern mo_status mo_grok_grpan_pieces 
-  (char *, char *, char **, char **, char **, int *, char **);
-
-/* grpan-www.c */
-extern char *grpan_doit (char *, char *, char *, int, char **);
 
 /* gui.c */
 extern mo_window *mo_fetch_window_by_id (int);
 extern char *mo_assemble_help_url (char *);
 extern mo_status mo_redisplay_window (mo_window *);
-extern mo_status mo_set_current_cached_win (mo_window *);
 extern mo_status mo_set_dtm_menubar_functions (mo_window *);
 extern mo_status mo_delete_window (mo_window *);
 extern mo_window *mo_duplicate_window (mo_window *);
 extern mo_window *mo_open_another_window (mo_window *, char *, char *, char *);
 extern mo_status mo_open_initial_window (void);
-extern void mo_gui_notify_progress (char *);
-extern int mo_gui_check_icon (int);
-extern void mo_gui_clear_icon (void);
-extern void mo_gui_done_with_icon (mo_window * win);
 extern int IconWidth, IconHeight, WindowWidth, WindowHeight;
 extern Pixmap *IconPix,*IconPixSmall,*IconPixBig;
 extern void MoCCISendEventOutput(CCI_events event_type);
 
-void mo_gui_update_meter(int level,char *text);
 extern int force_dump_to_file;
 extern char *HTAppVersion;
 char *MakeFilename();
 long GetCardCount(char *fname);
-extern int sendAgent;
-extern int sendReferer;
 extern int imageViewInternal;
 extern int do_comment;
 int anchor_visited_predicate (Widget, char *);
 extern Pixmap securityKerberos4, securityBasic, securityMd5, securityNone,
 	securityUnknown, securityKerberos5, securityDomain, securityLogin;
-extern char *HTDescribeURL (char *);
 extern mo_status mo_post_access_document (mo_window *win, char *url,
                                           char *content_type,
                                           char *post_data);
-extern void mo_make_popup(Widget view);
-
-void mo_gui_check_security_icon_in_win(int type, mo_window *win);
-void mo_gui_check_security_icon(int type);
-
 void mo_assemble_controls(mo_window *win, int detach);
-
-
-
-extern void mo_do_gui (int, char **);
 
 /* gui-extras.c */
 extern mo_status mo_post_links_window(mo_window *);
@@ -672,7 +646,6 @@ extern mo_status mo_update_links_window(mo_window *);
 /* gui-dialogs.c */
 extern mo_status mo_post_save_window (mo_window *);
 /* called from libwww */
-extern void rename_binary_file (char *);
 extern mo_status mo_post_open_local_window (mo_window *);
 extern mo_status mo_post_open_window (mo_window *);
 extern mo_status mo_post_mail_window (mo_window *);
@@ -685,51 +658,20 @@ extern mo_status mo_post_subscribe_win (mo_window *);
 extern mo_status mo_post_follow_win (mo_window *);
 extern mo_status mo_post_generic_news_win (mo_window *, int follow);
 
-/* gui-documents.c */
-extern mo_status mo_back_impossible (mo_window *win);
-extern mo_status mo_forward_impossible (mo_window *win);
-extern mo_status mo_set_win_current_node (mo_window *, mo_node *);
-extern mo_status mo_reload_window_text (mo_window *, int);
-extern mo_status mo_refresh_window_text (mo_window *);
-extern mo_status mo_load_window_text (mo_window *, char *, char *);
-extern mo_status mo_duplicate_window_text (mo_window *, mo_window *);
-extern mo_status mo_access_document (mo_window *, char *);
-
 /* gui-menubar.c */
 extern mo_status mo_set_fonts (mo_window *, int);
 extern mo_status mo_set_underlines (mo_window *, int);
 
-/* history.c */
-extern mo_status mo_free_node_data (mo_node *);
-extern mo_status mo_kill_node (mo_window *, mo_node *);
-extern mo_status mo_kill_node_descendents (mo_window *, mo_node *);
-extern char *mo_grok_title (mo_window *, char *, char *);
-extern mo_status mo_record_visit (mo_window *, char *, char *, 
-                                  char *, char *, char *, char *);
-extern mo_status mo_back_node (mo_window *);
-extern mo_status mo_forward_node (mo_window *);
-extern mo_status mo_visit_position (mo_window *, int);
-extern mo_status mo_dump_history (mo_window *);
-extern mo_status mo_post_history_win (mo_window *);
-
 /* hotlist.c */
-extern mo_status mo_setup_default_hotlist (void);
 extern mo_status mo_write_default_hotlist (void);
 extern mo_status mo_post_hotlist_win (mo_window *);
 extern mo_status mo_add_node_to_current_hotlist (mo_window *);
-
-/* img.c */
-extern mo_status mo_free_image_data (void *);
-extern mo_status mo_register_image_resolution_function (mo_window *);
 
 /* main.c */
 extern void mo_exit (void);
 
 /* mo-www.c */
-extern char *mo_pull_er_over (char *, char **);
-extern mo_status mo_pull_er_over_virgin (char *, char *);
 extern char *mo_tmpnam (char *);
-extern char *mo_get_html_return (char **);
 extern char *mo_convert_newlines_to_spaces (char *);
 extern mo_status mo_re_init_formats (void);
 
@@ -739,27 +681,10 @@ extern char *mo_url_canonicalize_keep_anchor (char *, char *);
 extern char *mo_url_canonicalize_local (char *);
 extern char *mo_url_to_unique_document (char *);
 extern char *mo_url_extract_anchor (char *);
-extern char *mo_url_extract_access (char *, char *);
 
-extern void application_user_feedback (char *);
 extern void application_user_info_wait (char *str);
 extern char *mo_escape_part (char *);
 extern char *mo_unescape_part (char *);
-
-/* pan.c */
-extern mo_status mo_setup_pan_list (void);
-extern mo_status mo_write_pan_list (void);
-extern mo_status mo_new_pan (char *, char *, char *, char *);
-extern char *mo_fetch_pan_links (char *url, int);
-extern mo_status mo_delete_pan (int);
-extern mo_status mo_modify_pan (int, char *, char *, char *);
-extern mo_status mo_is_editable_pan (char *);
-extern mo_status mo_grok_pan_pieces 
-  (char *, char *, char **, char **, char **, int *, char **);
-extern int mo_next_pan_id (void);
-
-/* picread.c */
-extern unsigned char *ReadBitmap (char *, int *, int *, XColor *, int *);
 
 /* pixmaps.c */
 extern void AnimatePixmapInWidget(Widget, Pixmap);
@@ -817,12 +742,6 @@ void mo_help_faq(Widget w, XtPointer clid, XtPointer calld);
 void mo_help_html(Widget w, XtPointer clid, XtPointer calld);
 void mo_help_url(Widget w, XtPointer clid, XtPointer calld);
 void mo_techsupport(Widget w, XtPointer clid, XtPointer calld);
-void mo_annotate(Widget w, XtPointer clid, XtPointer calld);
-#ifdef HAVE_AUDIO_ANNOTATIONS
-void mo_audio_annotate(Widget w, XtPointer clid, XtPointer calld);
-#endif
-void mo_annotate_edit(Widget w, XtPointer clid, XtPointer calld);
-void mo_annotate_delete(Widget w, XtPointer clid, XtPointer calld);
 void mo_news_fmt0(Widget w, XtPointer clid, XtPointer calld);
 void mo_news_fmt1(Widget w, XtPointer clid, XtPointer calld);
 void mo_search(Widget w, XtPointer clid, XtPointer calld);
@@ -863,7 +782,6 @@ void mo_image_view_internal(Widget w, XtPointer clid, XtPointer calld);
 void mo_delay_image_loads(Widget w, XtPointer clid, XtPointer calld);
 void mo_expand_images_current(Widget w, XtPointer clid, XtPointer calld);
 void mo_re_init(Widget w, XtPointer clid, XtPointer calld);
-void mo_clear_image_cache(Widget w, XtPointer clid, XtPointer calld);
 void mo_clear_global_history(Widget w, XtPointer clid, XtPointer calld);
 void mo_news_groups(Widget w, XtPointer clid, XtPointer calld);
 void mo_news_list(Widget w, XtPointer clid, XtPointer calld);
@@ -897,26 +815,18 @@ void mo_plaintext_cb(Widget w, XtPointer clid, XtPointer calld);
 void mo_formatted_text_cb(Widget w, XtPointer clid, XtPointer calld);
 void mo_postscript_cb(Widget w, XtPointer clid, XtPointer calld);
 void mo_html_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_annotation_private_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_annotation_workgroup_cb(Widget w, XtPointer clid, XtPointer calld);
-void mo_annotation_public_cb(Widget w, XtPointer clid, XtPointer calld);
 
 extern void InitChildProcessor();
 extern int MoCCIFormToClient( char *, char *, char *, char *, int);
-extern void DrawSecurityPixmap(Widget wid, Pixmap pix);
 extern mo_status mo_edit_source(mo_window *win);
 extern void CommentCard(mo_window *win);
 extern void mo_init_menubar();
 extern mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t);
 
-extern mo_status mo_do_window_text(mo_window *, char *url, char *txt,
-		char *txthead, int register_visit, char *ref,
-		char *last_modified, char *expires);
 extern void GetUrlData(Widget w, XtPointer clid, XtPointer calld);
 
 extern void System(char *cmd, char *title);
 extern mo_window *mo_main_next_window (mo_window *win);
-extern mo_status mo_post_mailto_win (char *to_address, char *subject);
 extern mo_status mo_source_date(mo_window *win);
 extern mo_status MoDisplayCCIWindow( mo_window *win);
 extern void ShowNoProxyDialog(mo_window *win);
@@ -937,9 +847,6 @@ extern mo_status mo_handle_ftpput(mo_window *win);
 extern mo_status mo_handle_ftpmkdir(mo_window *win);
 extern void mo_switch_mode(mo_window *win);
 
-void MedianCut( unsigned char *data, int *w, int *h, XColor *colrs,
-        int start_cnt, int end_cnt);
-
 mo_status mo_save_window(mo_window *win, char *fname,
                                         mo_format_token save_format);
 mo_status mo_print_window(mo_window *win,
@@ -949,8 +856,5 @@ mo_status mo_search_window(mo_window *win,char *str,int backward, int caselessi,
 	int news);
 
 extern void loadAgents();
-
-#include "prefs.h"
-
 
 #endif /* not __MOSAIC_H__ */

@@ -41,15 +41,6 @@ struct timezone Tz;
 /*for memset*/
 #include <memory.h>
 
-extern Display *dsp;
-
-extern int installed_colormap;
-extern Colormap installed_cmap;
-
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
-
 char *xpmColorKeys[] = {
     "s",				/* key #1: symbol */
     "m",				/* key #2: mono visual */
@@ -904,7 +895,7 @@ void xpmOpenArray( char **data, xpmData *mdata)
     mdata->Bos = mdata->Eos = '\0';
 }
 
-unsigned char *ReadXpm3Pixmap( FILE *fp, char *datafile, int *w, int *h,
+unsigned char *ReadXpm3Pixmap( Widget view, FILE *fp, char *datafile, int *w, int *h,
 	XColor *colrs, int *bg)
 {
 	xpmData mdata;
@@ -919,14 +910,7 @@ unsigned char *ReadXpm3Pixmap( FILE *fp, char *datafile, int *w, int *h,
 	unsigned char *pix_data;
 	unsigned char *bptr;
 	unsigned int *pixels;
-        extern Widget view;
 
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
-		gettimeofday(&Tv, &Tz);
-		fprintf(stderr, "ReadXpm3Pixmap enter (%d.%d)\n", Tv.tv_sec, Tv.tv_usec);
-	}
-#endif
 	*w = 0;
 	*h = 0;
 
@@ -962,19 +946,10 @@ unsigned char *ReadXpm3Pixmap( FILE *fp, char *datafile, int *w, int *h,
 			tmpcolr.pixel = bg_pixel;
 
 			/* Now query for the full color info. */
-			XQueryColor (XtDisplay (view), 
-				(installed_colormap ?
-				 installed_cmap :
-				 DefaultColormap (XtDisplay (view),
-						  DefaultScreen (XtDisplay (view)))),
-			       &tmpcolr);
+			XQueryColor(XtDisplay(view), mMosaicColormap, &tmpcolr);
 			*bg = i;
 		} else {
-			XParseColor(dsp,
-				(installed_colormap ?
-				 installed_cmap :
-				 DefaultColormap(dsp, DefaultScreen(dsp))),
-				colorName, &tmpcolr);
+			XParseColor(mMosaicDisplay, mMosaicColormap, colorName, &tmpcolr);
 		}
 		colrs[i].red = tmpcolr.red;
 		colrs[i].green = tmpcolr.green;
@@ -993,11 +968,7 @@ unsigned char *ReadXpm3Pixmap( FILE *fp, char *datafile, int *w, int *h,
 	pixels = attrib.pixelindex;
 	pix_data = (unsigned char *)malloc((*w) * (*h));
         if (pix_data == NULL) {
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
-			fprintf(stderr, "Not enough memory for data.\n");
-		}
-#endif
+		fprintf(stderr, "Not enough memory for data.\n");
 
 		xpmFreeInternAttrib(&attrib);
 		xpmDataClose(&mdata);
@@ -1017,13 +988,6 @@ unsigned char *ReadXpm3Pixmap( FILE *fp, char *datafile, int *w, int *h,
 	xpmFreeInternAttrib(&attrib);
 	xpmDataClose(&mdata);
 
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
-		gettimeofday(&Tv, &Tz);
-		fprintf(stderr, "ReadXpm3Pixmap exit (%d.%d)\n", Tv.tv_sec, Tv.tv_usec);
-	}
-#endif
-
         return(pix_data);
 }
 
@@ -1042,7 +1006,6 @@ unsigned char *ProcessXpm3Data( Widget wid, char **xpmdata,
 	unsigned char *pix_data;
 	unsigned char *bptr;
 	unsigned int *pixels;
-        extern Widget view;
 
 	*w = 0;
 	*h = 0;
@@ -1073,19 +1036,10 @@ unsigned char *ProcessXpm3Data( Widget wid, char **xpmdata,
 			tmpcolr.pixel = bg_pixel;
 
 			/* Now query for the full color info. */
-			XQueryColor (XtDisplay (wid), 
-				(installed_colormap ?
-				 installed_cmap :
-				 DefaultColormap (XtDisplay (wid),
-						  DefaultScreen (XtDisplay (wid)))),
-			       &tmpcolr);
+			XQueryColor(XtDisplay(wid), mMosaicColormap, &tmpcolr);
 			*bg = i;
 		} else {
-			XParseColor(XtDisplay (wid),
-				(installed_colormap ?
-				 installed_cmap :
-				 DefaultColormap(XtDisplay (wid),
-						 DefaultScreen(XtDisplay (wid)))),
+			XParseColor(XtDisplay(wid), mMosaicColormap,
 				colorName, &tmpcolr);
 		}
 		colrs[i].red = tmpcolr.red;
@@ -1105,12 +1059,7 @@ unsigned char *ProcessXpm3Data( Widget wid, char **xpmdata,
 	pixels = attrib.pixelindex;
 	pix_data = (unsigned char *)malloc((*w) * (*h));
         if (pix_data == NULL) {
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
-			fprintf(stderr, "Not enough memory for data.\n");
-		}
-#endif
-
+		fprintf(stderr, "Not enough memory for data.\n");
 		xpmFreeInternAttrib(&attrib);
 		xpmDataClose(&mdata);
                 return((unsigned char *)NULL);
@@ -1129,12 +1078,10 @@ unsigned char *ProcessXpm3Data( Widget wid, char **xpmdata,
 	xpmFreeInternAttrib(&attrib);
 	xpmDataClose(&mdata);
 
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
+	if (mMosaicSrcTrace) {
 		gettimeofday(&Tv, &Tz);
 		fprintf(stderr, "ReadXpm3Pixmap exit (%d.%d)\n", Tv.tv_sec, Tv.tv_usec);
 	}
-#endif
 
         return(pix_data);
 }

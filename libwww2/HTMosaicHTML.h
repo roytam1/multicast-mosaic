@@ -10,11 +10,12 @@
 #include "HTStream.h"
 #include "HTAnchor.h"
 
-extern HTStream* HTMosaicHTMLPresent PARAMS((
+extern HTStream* HTMosaicHTMLPresent (
         HTPresentation *        pres,
         HTParentAnchor *        anchor,
         HTStream *              sink, 
         HTFormat                format_in,
-        int                     compressed));
+        int                     compressed,
+	caddr_t			appd);
 
 #endif

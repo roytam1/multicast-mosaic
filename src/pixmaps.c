@@ -11,8 +11,6 @@
 #include <memory.h>
 
 
-extern int installed_colormap;
-extern Colormap installed_cmap;
 
 Pixmap IconsBig[25], IconsSmall[25];
 
@@ -160,7 +158,6 @@ static struct color_rec {
 static char **LoadPixmapFile(char *file);
 static void FindIconColor(Display *dsp, Colormap colormap, XColor *colr);
 static void PixAddHash(int red, int green, int blue, int pixval);
-static void InitHash(void);
 static int highbit(unsigned long ul);
 static Pixmap PixmapFromData(Widget wid, unsigned char *data, int width,
                              int height, XColor *colrs, int gray);
@@ -322,14 +319,6 @@ static void PixAddHash(int red, int green, int blue, int pixval)
 	Hash[lum] = hash_ptr;
 }
 
-static void InitHash(void)
-{
-	int i;
-
-	for (i=0; i<256; i++)
-		Hash[i] = NULL;
-}
-
 static int highbit(unsigned long ul)
 {
 	/*
@@ -360,8 +349,6 @@ PixmapFromData(Widget wid, unsigned char *data, int width, int height,
 	XColor tmpcolr;
 	int size;
 	int depth;
-	int Vclass;
-	XVisualInfo vinfo, *vptr;
 	Visual *theVisual;
 	int bmap_order;
 	unsigned long c;
@@ -370,17 +357,6 @@ PixmapFromData(Widget wid, unsigned char *data, int width, int height,
         
 	if (data == NULL)
 		return(0);
-
-	/* find the visual class. */
-	vinfo.visualid = XVisualIDFromVisual(DefaultVisual(XtDisplay(wid),
-		DefaultScreen(XtDisplay(wid))));
-	vptr = XGetVisualInfo(XtDisplay(wid), VisualIDMask, &vinfo, &i);
-#if defined(__cplusplus) || defined(c_plusplus)
-	Vclass = vptr->c_class;
-#else
-	Vclass = vptr->class;
-#endif
-	XFree((char *)vptr);
 
 	depth = DefaultDepthOfScreen(XtScreen(wid));
 
@@ -391,16 +367,13 @@ PixmapFromData(Widget wid, unsigned char *data, int width, int height,
                 tmpcolr.green = colrs[i].green;
                 tmpcolr.blue = colrs[i].blue;
                 tmpcolr.flags = DoRed|DoGreen|DoBlue;
-                if ((Vclass == TrueColor) || (Vclass == DirectColor)) {
+                if ((mMosaicVisualClass == TrueColor) || (mMosaicVisualClass == DirectColor)) {
                         Mapping[i] = i;
                 } else {
 			PixFindHash(tmpcolr.red, tmpcolr.green, tmpcolr.blue,
 				hash_ptr);
 			if (hash_ptr == NULL) {
-				FindIconColor(XtDisplay(wid),
-					(installed_colormap ?
-					 installed_cmap :
-					 DefaultColormapOfScreen(XtScreen(wid))),
+				FindIconColor(XtDisplay(wid), mMosaicColormap ,
 					&tmpcolr);
 				PixAddHash(colrs[i].red, colrs[i].green,
 					colrs[i].blue, tmpcolr.pixel);
@@ -595,83 +568,25 @@ PixmapFromData(Widget wid, unsigned char *data, int width, int height,
 	}
 }
 
-static int been_here=0;
-
-static unsigned long p[256];
-static int j;
-
 void MakePixmaps(Widget wid)
 {
-    int i,j;
-    unsigned char *data;
-    char **pdata;
-    int w, h, bg;
-    XColor colrs[256];
+	unsigned char *data;
+	int i, w, h, bg;
+	XColor colrs[256];
 
-    int pix_count = get_pref_int(ePIX_COUNT);
-    char *pix_basename = get_pref_string(ePIX_BASENAME);
-    int number_of_frames = NUMBER_OF_FRAMES;
-    
+	for (i=0; i<256; i++)
+		Hash[i] = NULL;
 
-    if (!been_here) {
-        been_here=1;        
-        InitHash();
-    }
-    
-        /* load pixmaps */
-    for(i=0;pix_info[i].raw;i++) {
-        data = ProcessXpm3Data(wid, pix_info[i].raw, &w, &h, colrs, &bg);
-        *(pix_info[i].handle) = PixmapFromData(wid, data, w, h, colrs, pix_info[i].gray);
-    }
-
-    IconPixSmall = IconsSmall;
-    IconPixBig = IconsBig;
-
-    if(pix_basename && strcmp("default",pix_basename) && (pix_count > 0)) {
-        char *fname;
-
-        IconPixBig = (Pixmap *) malloc(sizeof(Pixmap)*pix_count);
-        fname = (char *) malloc(strlen(pix_basename)+8);
-        
-        for (i=0; i<pix_count; i++) {
-            sprintf(fname,"%s%d.xpm",pix_basename,i+1);
-            if(!(pdata=LoadPixmapFile(fname))){
-                fprintf(stderr,"Could not load pixmap '%s'.\n",fname);
-                free(IconPixBig);
-                IconPixBig = IconsBig;
-                set_pref(ePIX_COUNT, (void *)&number_of_frames);
-                break;
-            }
-            
-            data = ProcessXpm3Data(wid, pdata, &w, &h, colrs, &bg);
-            IconPixBig[i] = PixmapFromData(wid, data, w, h, colrs,0);
-            
-            if ((IconWidth == 0)||(IconHeight == 0)) { 
-                IconWidth = w; IconHeight = h; 
-            }
-            
-                /* delete the temp pixmap data */
-            for(j=0;pdata[j];j++) free(pdata[j]);
-            free(pdata);
-        }
-        free(fname);   
-    } else {
-        set_pref(ePIX_COUNT, &number_of_frames);
-    }
-
-    IconPix = IconPixBig;
+/* load pixmaps */
+	for(i=0;pix_info[i].raw;i++) {
+		data =ProcessXpm3Data(wid, pix_info[i].raw, &w, &h, colrs, &bg);
+		*(pix_info[i].handle) = PixmapFromData(wid, data, w, h,
+			colrs, pix_info[i].gray);
+	}
+	IconPixSmall = IconsSmall;
+	IconPixBig = IconsBig;
+	IconPix = IconPixBig;
 }
-
-
-void DrawSecurityPixmap(Widget wid, Pixmap pix) 
-{
-	XtVaSetValues(wid,
-		      XmNlabelPixmap, pix,
-		      XmNlabelType, XmPIXMAP,
-		      NULL);
-	return;
-}
-
 
 void AnimatePixmapInWidget(Widget wid, Pixmap pix)
 {

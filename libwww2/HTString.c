@@ -4,13 +4,12 @@
 **	Version TBL Oct 91 replaces one which modified the strings.
 **	02-Dec-91 (JFG) Added stralloccopy and stralloccat
 **	23 Jan 92 (TBL) Changed strallocc* to 8 char HTSAC* for VM and suchlike
-**	 6 Oct 92 (TBL) Moved WWW_TraceFlag in here to be in library
 */
+#include <stdio.h>
 #include <ctype.h>
 #include "HTUtils.h"
 #include "tcp.h"
 
-PUBLIC int WWW_TraceFlag = 0;	/* Global trace flag for ALL W3 code */
 
 #ifndef VC
 #define VC "unknown"

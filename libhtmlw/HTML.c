@@ -2,6 +2,9 @@
 #include "copyright.ncsa"
 
 #include <stdio.h>
+
+#include "HTMLparse.h"
+
 #include "../libnut/mipcf.h"
 #include "../libmc/mc_defs.h"
 #include "HTMLP.h"
@@ -35,14 +38,8 @@
 #define ABS(x)  (((x) > 0) ? (x) : ((x) * -1))
 #endif
 
-#define	W_TEXTFIELD	0
-#define	W_CHECKBOX	1
-#define	W_RADIOBOX	2
-#define	W_PUSHBUTTON	3
-#define	W_PASSWORD	4
-#define	W_OPTIONMENU	5
+int htmlwTrace = 0;
 
-static void 		DebugHook( int x, int y, int width, int height);
 static void		SelectStart(Widget w, XEvent *event,
 				String * params, Cardinal * num_params);
 static void		ExtendStart(Widget w, XEvent *event,
@@ -79,29 +76,20 @@ static void 		Realize(Widget ww, XtValueMask *valueMask,
 
 char CurrentURL[8096];	/*if url bigger than this...too bad*/
 
-
-#ifndef DISABLE_TRACE
-int htmlwTrace;
-#endif
-
-/*
- * Default translations
+/* Default translations
  * Selection of text, and activate anchors.
  * If motif, add manager translations.
- * 4/5/96 TPR added traversal_current to make sure if user presses
- * button in view the hotkeys get control.
  */
 
 static char defaultTranslations[] = " \
 <Btn1Down>:	select-start() ManagerGadgetArm()\n\
 <Btn1Motion>:	extend-adjust() ManagerGadgetButtonMotion()\n\
-<Btn1Up>:	extend-end(PRIMARY, CUT_BUFFER0) ManagerGadgetActivate() traversal_current()\n\
+<Btn1Up>:	extend-end(PRIMARY, CUT_BUFFER0) ManagerGadgetActivate()\n\
 <Btn2Down>:	select-start()\n\
 <Btn2Motion>:	extend-adjust()\n\
 <Btn2Up>:	extend-end(PRIMARY, CUT_BUFFER0)\n\
 <Motion>:       track-motion()\n\
 <Leave>:        track-motion()\n\
-<FocusOut>:     track-motion()\n\
 <Expose>:       track-motion()\
 ";
 
@@ -110,20 +98,7 @@ static XtActionsRec actionsList[] = {
    { "extend-start",    (XtActionProc) ExtendStart },
    { "extend-adjust",   (XtActionProc) ExtendAdjust },
    { "extend-end",      (XtActionProc) ExtendEnd },
-   { "track-motion",    (XtActionProc) TrackMotion },
-   { "HTMLInput",	(XtActionProc) _HTMLInput },
-   { "traversal_back",  (XtActionProc) traversal_back },
-   { "traversal_forward",  (XtActionProc) traversal_forward },
-   { "traversal_end",  (XtActionProc) traversal_end },
-   { "traversal_current",   (XtActionProc) traversal_current },
-
-#ifndef MOTIF1_2
-   { "Arm",      (XtActionProc) _XmGadgetArm },         /* Motif 1.0 */
-   { "Activate", (XtActionProc) _XmGadgetActivate },    /* Motif 1.0 */
-   { "Enter",    (XtActionProc) _XmManagerEnter },      /* Motif 1.0 */
-   { "FocusIn",  (XtActionProc) _XmManagerFocusIn },    /* Motif 1.0 */
-   { "Help",     (XtActionProc) _XmManagerHelp },       /* Motif 1.0 */
-#endif /* not MOTIF1_2 */
+   { "track-motion",    (XtActionProc) TrackMotion }
 };
 
 /*
@@ -138,10 +113,6 @@ static XtActionsRec SpareActionsList[] = {
    { "extend-adjust",   (XtActionProc) ExtendAdjust },
    { "extend-end",      (XtActionProc) ExtendEnd },
    { "track-motion",    (XtActionProc) TrackMotion },
-   { "HTMLInput",	(XtActionProc) _HTMLInput },
-   { "traversal_back",  (XtActionProc) traversal_back },
-   { "traversal_forward",  (XtActionProc) traversal_forward },
-   { "traversal_end",  (XtActionProc) traversal_end },
 };
 
 /*
@@ -150,254 +121,184 @@ static XtActionsRec SpareActionsList[] = {
 
 static XtResource resources[] = {
   /* Without Motif we need to override the borderWidth to 0 (from 1). */
-	{	WbNmarginWidth,
-		WbCMarginWidth, XtRDimension, sizeof (Dimension),
-		XtOffset (HTMLWidget, html.margin_width),
-		XtRImmediate, (caddr_t) MARGIN_DEFAULT
+	{ WbNmarginWidth, WbCMarginWidth, XtRDimension, sizeof (Dimension),
+	  XtOffset (HTMLWidget, html.margin_width),
+	  XtRImmediate, (caddr_t) MARGIN_DEFAULT
 	},
-	{	WbNmarginHeight,
-		WbCMarginHeight, XtRDimension, sizeof (Dimension),
-		XtOffset (HTMLWidget, html.margin_height),
-		XtRImmediate, (caddr_t) MARGIN_DEFAULT
+	{ WbNmarginHeight, WbCMarginHeight, XtRDimension, sizeof (Dimension),
+	  XtOffset (HTMLWidget, html.margin_height),
+	  XtRImmediate, (caddr_t) MARGIN_DEFAULT
 	},
-	{	WbNanchorCallback,
-		XtCCallback, XtRCallback, sizeof (XtCallbackList),
-		XtOffset (HTMLWidget, html.anchor_callback),
-		XtRImmediate, (caddr_t) NULL
+	{ WbNanchorCallback, XtCCallback, XtRCallback, sizeof (XtCallbackList),
+	  XtOffset (HTMLWidget, html.anchor_callback),
+	  XtRImmediate, (caddr_t) NULL
 	},
-	{	WbNlinkCallback,
-		XtCCallback, XtRCallback, sizeof (XtCallbackList),
-		XtOffset (HTMLWidget, html.link_callback),
-		XtRImmediate, (caddr_t) NULL
+	{ WbNlinkCallback, XtCCallback, XtRCallback, sizeof (XtCallbackList),
+	  XtOffset (HTMLWidget, html.link_callback),
+	  XtRImmediate, (caddr_t) NULL
 	},
-	{	WbNsubmitFormCallback,
-		XtCCallback, XtRCallback, sizeof (XtCallbackList),
-		XtOffset (HTMLWidget, html.form_callback),
-		XtRImmediate, (caddr_t) NULL
+	{ WbNsubmitFormCallback, XtCCallback, XtRCallback, sizeof(XtCallbackList),
+	  XtOffset (HTMLWidget, html.form_callback), XtRImmediate, (caddr_t) NULL
 	},
-	{	WbNtext,
-		WbCText, XtRString, sizeof (char *),
-		XtOffset (HTMLWidget, html.raw_text),
-		XtRString, (char *) NULL
+	{ WbNtext, WbCText, XtRString, sizeof (char *),
+	  XtOffset (HTMLWidget, html.raw_text), XtRString, (char *) NULL
 	},
-	{	WbNheaderText,
-		WbCHeaderText, XtRString, sizeof (char *),
-		XtOffset (HTMLWidget, html.header_text),
-		XtRString, (char *) NULL
+	{ WbNtitleText, WbCTitleText, XtRString, sizeof (char *),
+	  XtOffset (HTMLWidget, html.title), XtRString, (char *) NULL	
 	},
-	{	WbNfooterText,
-		WbCFooterText, XtRString, sizeof (char *),
-		XtOffset (HTMLWidget, html.footer_text),
-		XtRString, (char *) NULL
+	{ WbNbodyColors, WbCBodyColors, XtRBoolean, sizeof (Boolean),
+	  XtOffset (HTMLWidget, html.body_colors), XtRString, "True"
 	},
-	{	WbNtitleText,
-		WbCTitleText, XtRString, sizeof (char *),
-		XtOffset (HTMLWidget, html.title),
-		XtRString, (char *) NULL	
+	{ WbNbodyImages, WbCBodyImages, XtRBoolean, sizeof (Boolean),
+	  XtOffset (HTMLWidget, html.body_images), XtRString, "True"
 	},
-	{	WbNbodyColors,
-		WbCBodyColors, XtRBoolean, sizeof (Boolean),
-		XtOffset (HTMLWidget, html.body_colors),
-		XtRString, "True"
+	{ WbNanchorUnderlines, WbCAnchorUnderlines, XtRInt, sizeof (int),
+	  XtOffset (HTMLWidget, html.num_anchor_underlines), XtRString, "0"
 	},
-	{	WbNbodyImages,
-		WbCBodyImages, XtRBoolean, sizeof (Boolean),
-		XtOffset (HTMLWidget, html.body_images),
-		XtRString, "True"
+	{ WbNvisitedAnchorUnderlines, WbCVisitedAnchorUnderlines, 
+	  XtRInt, sizeof (int),
+	  XtOffset (HTMLWidget, html.num_visitedAnchor_underlines),
+	  XtRString, "0"
 	},
-	{	WbNanchorUnderlines,
-		WbCAnchorUnderlines, XtRInt, sizeof (int),
-		XtOffset (HTMLWidget, html.num_anchor_underlines),
-		XtRString, "0"
+	{ WbNdashedAnchorUnderlines, WbCDashedAnchorUnderlines, 
+	  XtRBoolean, sizeof (Boolean),
+	  XtOffset (HTMLWidget, html.dashed_anchor_lines),
+	  XtRString, "False"
 	},
-	{	WbNvisitedAnchorUnderlines,
-		WbCVisitedAnchorUnderlines, XtRInt, sizeof (int),
-		XtOffset (HTMLWidget, html.num_visitedAnchor_underlines),
-		XtRString, "0"
+	{ WbNdashedVisitedAnchorUnderlines, WbCDashedVisitedAnchorUnderlines, 
+	  XtRBoolean, sizeof (Boolean),
+	  XtOffset (HTMLWidget, html.dashed_visitedAnchor_lines),
+	  XtRString, "False"
 	},
-	{	WbNdashedAnchorUnderlines,
-		WbCDashedAnchorUnderlines, XtRBoolean, sizeof (Boolean),
-		XtOffset (HTMLWidget, html.dashed_anchor_lines),
-		XtRString, "False"
+	{ WbNanchorColor, XtCForeground, XtRPixel, sizeof (Pixel),
+	  XtOffset (HTMLWidget, html.anchor_fg), XtRString, "blue2"
 	},
-	{	WbNdashedVisitedAnchorUnderlines,
-		WbCDashedVisitedAnchorUnderlines, XtRBoolean, sizeof (Boolean),
-		XtOffset (HTMLWidget, html.dashed_visitedAnchor_lines),
-		XtRString, "False"
+	{ WbNvisitedAnchorColor, XtCForeground, XtRPixel, sizeof (Pixel),
+	  XtOffset (HTMLWidget, html.visitedAnchor_fg), XtRString, "purple4"
 	},
-	{	WbNanchorColor,
-		XtCForeground, XtRPixel, sizeof (Pixel),
-		XtOffset (HTMLWidget, html.anchor_fg),
-		XtRString, "blue2"
+	{ WbNactiveAnchorFG, XtCBackground, XtRPixel, sizeof (Pixel),
+	  XtOffset (HTMLWidget, html.activeAnchor_fg), XtRString, "Red"
 	},
-	{	WbNvisitedAnchorColor,
-		XtCForeground, XtRPixel, sizeof (Pixel),
-		XtOffset (HTMLWidget, html.visitedAnchor_fg),
-		XtRString, "purple4"
+	{ WbNactiveAnchorBG, XtCForeground, XtRPixel, sizeof (Pixel),
+	  XtOffset (HTMLWidget, html.activeAnchor_bg), XtRString, "White"
 	},
-	{	WbNactiveAnchorFG,
-		XtCBackground, XtRPixel, sizeof (Pixel),
-		XtOffset (HTMLWidget, html.activeAnchor_fg),
-		XtRString, "Red"
+	{ WbNisIndex, WbCIsIndex, XtRBoolean, sizeof (Boolean),
+	  XtOffset (HTMLWidget, html.is_index), XtRString, "False"
 	},
-	{	WbNactiveAnchorBG,
-		XtCForeground, XtRPixel, sizeof (Pixel),
-		XtOffset (HTMLWidget, html.activeAnchor_bg),
-		XtRString, "White"
+	{ WbNview, WbCView, XtRWidget, sizeof (Widget),
+	  XtOffset (HTMLWidget, html.view), XtRImmediate, NULL
 	},
-	{	WbNfancySelections,
-		WbCFancySelections, XtRBoolean, sizeof (Boolean),
-		XtOffset (HTMLWidget, html.fancy_selections),
-		XtRString, "False"
+	{ XtNfont, XtCFont, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.font),
+	  XtRString, "-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNisIndex,
-		WbCIsIndex, XtRBoolean, sizeof (Boolean),
-		XtOffset (HTMLWidget, html.is_index),
-		XtRString, "False"
+	{ WbNitalicFont, WbCItalicFont, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.italic_font),
+	  XtRString, "-adobe-times-medium-i-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNview,
-		WbCView, XtRWidget, sizeof (Widget),
-		XtOffset (HTMLWidget, html.view),
-		XtRImmediate, NULL
+	{ WbNboldFont, WbCBoldFont, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.bold_font),
+	  XtRString, "-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNverticalScrollBar,
-		WbCVerticalScrollBar, XtRWidget, sizeof (Widget),
-		XtOffset (HTMLWidget, html.vbar),
-		XtRImmediate, NULL
+	{ WbNmeterFont, WbCMeterFont, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.meter_font),
+	  XtRString, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNhorizontalScrollBar,
-		WbCHorizontalScrollBar, XtRWidget, sizeof (Widget),
-		XtOffset (HTMLWidget, html.hbar),
-		XtRImmediate, NULL
+	{ WbNtoolbarFont, WbCToolbarFont, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.toolbar_font),
+	  XtRString, "-adobe-times-bold-r-normal-*-12-*-*-*-*-*-iso8859-1"
 	},
-	{	XtNfont,
-		XtCFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.font),
-		XtRString, "-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"
+	{ WbNfixedFont, WbCFixedFont, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.fixed_font),
+	  XtRString, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNitalicFont,
-		WbCItalicFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.italic_font),
-		XtRString, "-adobe-times-medium-i-normal-*-14-*-*-*-*-*-*-*"
+	{ WbNfixedboldFont, WbCFixedboldFont, XtRFontStruct,sizeof(XFontStruct *),
+	  XtOffset (HTMLWidget, html.fixedbold_font),
+	  XtRString, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNboldFont,
-		WbCBoldFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.bold_font),
-		XtRString, "-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"
+	{ WbNfixeditalicFont, WbCFixeditalicFont, 
+	  XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.fixeditalic_font),
+	  XtRString, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNmeterFont,
-		WbCMeterFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.meter_font),
-		XtRString, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"
+	{ WbNheader1Font, WbCHeader1Font, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.header1_font),
+	  XtRString, "-adobe-times-bold-r-normal-*-24-*-*-*-*-*-*-*"
 	},
-	{	WbNtoolbarFont,
-		WbCToolbarFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.toolbar_font),
-		XtRString, "-adobe-times-bold-r-normal-*-12-*-*-*-*-*-iso8859-1"
+	{ WbNheader2Font, WbCHeader2Font, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.header2_font),
+	  XtRString, "-adobe-times-bold-r-normal-*-18-*-*-*-*-*-*-*"
 	},
-	{	WbNfixedFont,
-		WbCFixedFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.fixed_font),
-		XtRString, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"
+	{ WbNheader3Font, WbCHeader3Font, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.header3_font),
+	  XtRString, "-adobe-times-bold-r-normal-*-17-*-*-*-*-*-*-*"
 	},
-	{	WbNfixedboldFont,
-		WbCFixedboldFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.fixedbold_font),
-		XtRString, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"
+	{ WbNheader4Font, WbCHeader4Font, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.header4_font),
+	  XtRString, "-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNfixeditalicFont,
-		WbCFixeditalicFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.fixeditalic_font),
-		XtRString, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"
+	{ WbNheader5Font, WbCHeader5Font, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.header5_font),
+	  XtRString, "-adobe-times-bold-r-normal-*-12-*-*-*-*-*-*-*"
 	},
-	{	WbNheader1Font,
-		WbCHeader1Font, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.header1_font),
-		XtRString, "-adobe-times-bold-r-normal-*-24-*-*-*-*-*-*-*"
+	{ WbNheader6Font, WbCHeader6Font, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.header6_font),
+	  XtRString, "-adobe-times-bold-r-normal-*-10-*-*-*-*-*-*-*"
 	},
-	{	WbNheader2Font,
-		WbCHeader2Font, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.header2_font),
-		XtRString, "-adobe-times-bold-r-normal-*-18-*-*-*-*-*-*-*"
+	{ WbNaddressFont, WbCAddressFont, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.address_font),
+	  XtRString, "-adobe-times-medium-i-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNheader3Font,
-		WbCHeader3Font, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.header3_font),
-		XtRString, "-adobe-times-bold-r-normal-*-17-*-*-*-*-*-*-*"
+	{ WbNplainFont, WbCPlainFont, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.plain_font),
+	  XtRString, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNheader4Font,
-		WbCHeader4Font, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.header4_font),
-		XtRString, "-adobe-times-bold-r-normal-*-14-*-*-*-*-*-*-*"
+	{ WbNplainboldFont, WbCPlainboldFont, XtRFontStruct,sizeof(XFontStruct *),
+	  XtOffset (HTMLWidget, html.plainbold_font),
+	  XtRString, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNheader5Font,
-		WbCHeader5Font, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.header5_font),
-		XtRString, "-adobe-times-bold-r-normal-*-12-*-*-*-*-*-*-*"
+	{ WbNplainitalicFont, WbCPlainitalicFont, 
+	  XtRFontStruct, sizeof(XFontStruct *),
+	  XtOffset (HTMLWidget, html.plainitalic_font),
+	  XtRString, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"
 	},
-	{	WbNheader6Font,
-		WbCHeader6Font, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.header6_font),
-		XtRString, "-adobe-times-bold-r-normal-*-10-*-*-*-*-*-*-*"
-	},
-	{	WbNaddressFont,
-		WbCAddressFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.address_font),
-		XtRString, "-adobe-times-medium-i-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{	WbNplainFont,
-		WbCPlainFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.plain_font),
-		XtRString, "-adobe-courier-medium-r-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{	WbNplainboldFont,
-		WbCPlainboldFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.plainbold_font),
-		XtRString, "-adobe-courier-bold-r-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{	WbNplainitalicFont,
-		WbCPlainitalicFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.plainitalic_font),
-		XtRString, "-adobe-courier-medium-o-normal-*-14-*-*-*-*-*-*-*"
-	},
-	{	WbNlistingFont,
-		WbCListingFont, XtRFontStruct, sizeof (XFontStruct *),
-		XtOffset (HTMLWidget, html.listing_font),
-		XtRString, "-adobe-courier-medium-r-normal-*-12-*-*-*-*-*-*-*"
+	{ WbNlistingFont, WbCListingFont, XtRFontStruct, sizeof (XFontStruct *),
+	  XtOffset (HTMLWidget, html.listing_font),
+	  XtRString, "-adobe-courier-medium-r-normal-*-12-*-*-*-*-*-*-*"
 	},
 /* amb */
-        {       WbNsupSubFont,
-                WbCSupSubFont, XtRFontStruct, sizeof (XFontStruct *),
-                XtOffset (HTMLWidget, html.supsub_font),
-                XtRString, "-adobe-courier-medium-r-normal-*-10-*-*-*-*-*-*-*"
+        { WbNsupSubFont, WbCSupSubFont, XtRFontStruct, sizeof (XFontStruct *),
+          XtOffset (HTMLWidget, html.supsub_font),
+          XtRString, "-adobe-courier-medium-r-normal-*-10-*-*-*-*-*-*-*"
         },
 /* end amb */
-        {       WbNpreviouslyVisitedTestFunction,
-                WbCPreviouslyVisitedTestFunction, XtRPointer, 
-                sizeof (XtPointer),
-                XtOffset (HTMLWidget, html.previously_visited_test),
-                XtRImmediate, (caddr_t) NULL
+        { WbNpreviouslyVisitedTestFunction, WbCPreviouslyVisitedTestFunction, 
+	  XtRPointer, sizeof (XtPointer),
+          XtOffset (HTMLWidget, html.previously_visited_test),
+          XtRImmediate, (caddr_t) NULL
         },
-        {	WbNpointerMotionCallback,
-                WbCPointerMotionCallback, XtRCallback, sizeof(XtCallbackList),
-                XtOffset (HTMLWidget, html.pointer_motion_callback),
-                XtRImmediate, (caddr_t) NULL
+        { WbNpointerMotionCallback, WbCPointerMotionCallback, 
+	  XtRCallback, sizeof(XtCallbackList),
+          XtOffset (HTMLWidget, html.pointer_motion_callback),
+          XtRImmediate, (caddr_t) NULL
         },
-        {	WbNimageCallback,
-                WbCImageCallback, XtRCallback, sizeof (XtCallbackList),
-                XtOffset (HTMLWidget, html.image_callback),
-                XtRImmediate, (caddr_t) NULL
+	{ WbNmaxColorsInImage, WbCMaxColorsInImage, XtRInt, sizeof (int),
+	  XtOffset (HTMLWidget, html.max_colors_in_image),
+	  XtRImmediate, (caddr_t) 50
+	},
+        { WbNimageCallback, WbCImageCallback, XtRCallback, sizeof(XtCallbackList),
+          XtOffset (HTMLWidget, html.image_callback), XtRImmediate, (caddr_t)NULL
         },
-        {	WbNgetUrlDataCB,
-                WbCGetUrlDataCB, XtRCallback, sizeof (XtCallbackList),
-                XtOffset (HTMLWidget, html.get_url_data_cb),
-                XtRImmediate, (caddr_t) NULL
+	{ WbNdelayImageLoads, WbCDelayImageLoads, XtRBoolean, sizeof (Boolean),
+	  XtOffset (HTMLWidget, html.delay_image_loads), XtRString, "False"
+	},
+        { WbNgetUrlDataCB, WbCGetUrlDataCB, XtRCallback, sizeof (XtCallbackList),
+          XtOffset (HTMLWidget, html.get_url_data_cb),
+          XtRImmediate, (caddr_t) NULL
         },
 #ifdef MULTICAST
-	{	WbNmctype,
-		WbCMctype, XtRInt, sizeof (int),
-		XtOffset (HTMLWidget, html.mc_wtype),
-		XtRImmediate, MC_MO_TYPE_UNICAST
+	{ WbNmctype, WbCMctype, XtRInt, sizeof (int),
+	  XtOffset (HTMLWidget, html.mc_wtype), XtRImmediate, MC_MO_TYPE_UNICAST
 	},
 #endif
 };
@@ -430,7 +331,7 @@ HTMLClassRec htmlClassRec = {
       NULL,					/* set_values_hook    */
       XtInheritSetValuesAlmost,			/* set_values_almost  */
       NULL,					/* get_values_hook    */
-      (XtAcceptFocusProc) html_accept_focus,	/* accept_focus       */
+      (XtAcceptFocusProc)NULL /* html_accept_focus*/,	/* accept_focus       */
       XtVersion,				/* version            */
       NULL,					/* callback_private   */
       defaultTranslations,			/* tm_table           */
@@ -477,42 +378,21 @@ static char *mailToKludgeURL = NULL;
 int installed_colormap=0;
 Colormap installed_cmap;
 
-int NoBodyColors(Widget w) 
+static void InitBody(HTMLWidget hw) 
 {
-	HTMLWidget hw = (HTMLWidget) w;
-
-	if (hw->html.body_colors)
-		return(0);
-	return(1);
-}
-
-int NoBodyImages(Widget w) 
-{
-	HTMLWidget hw = (HTMLWidget) w;
-
-	if (hw->html.body_images)
-		return(0);
-	return(1);
-}
-
-void InitBody(Widget w) 
-{
-	HTMLWidget hw = (HTMLWidget) w;
-
 	hw->html.bg_image=0;
 	hw->html.bgmap_SAVE=None;
 	hw->html.bgclip_SAVE=None;
-	if (NoBodyImages(w))
+	if (!hw->html.body_images)
 		return;
-/* ??? Why is this here? */
+/* ###### ??? Why is this here? */
 	hw->html.view->core.background_pixel = hw->html.background_SAVE ;
 	return;
 }
 
-void hw_do_bg(Widget w, char *bgname) 
+void hw_do_bg(HTMLWidget hw, char *bgname) 
 {
 	ImageInfo pic_data;
-	HTMLWidget hw=(HTMLWidget) w;
 
 /* clear previous GD 28 Apr 96 Voir aussi HTMLlists.c*/
         if (hw->html.bgmap_SAVE!=None) {  
@@ -523,17 +403,21 @@ void hw_do_bg(Widget w, char *bgname)
                 XFreePixmap(XtDisplay(hw), hw->html.bgclip_SAVE);
                 hw->html.bgclip_SAVE=None;
         }
+	hw->html.bg_image=0;
+	hw->html.bgmap_SAVE=None;
+	hw->html.bgclip_SAVE=None;
 
 	if (!bgname || !*bgname )
+		return;
+
+/* if image delayed don't load the background image... */
+	if ( hw->html.delay_image_loads )
 		return;
 
 /*!!! Need to do delayed image loading junk*/
 /*!!! Need the ability to free up the pixmap when done with it (in cache)*/
 /*#########################*/
 	pic_data.src=bgname;
-#ifdef MULTICAST
-	pic_data.wtype = hw->html.mc_wtype;
-#endif
 	pic_data.internal_numeo = 0;
 	XtCallCallbackList ((Widget)hw, hw->html.image_callback,
 				(XtPointer)&pic_data);
@@ -556,21 +440,17 @@ void hw_do_bg(Widget w, char *bgname)
 		hw->html.bg_width=pic_data.width;
 		hw->html.bgmap_SAVE=pic_data.image;
 		hw->html.bgclip_SAVE=pic_data.clip;
-        } else {
-		hw->html.bg_image=0;
-		hw->html.bgmap_SAVE=None;
-		hw->html.bgclip_SAVE=None;
-	}
+        }
 }
 
-void hw_do_color(Widget w, char *att, char *cname)
+void hw_do_color(HTMLWidget hw, char *att, char *cname,
+	PhotoComposeContext * pcc)
 {
 	int r,g,b;
 	XColor ecol,col;
 	XColor fg,sel,ts,bs;
 	XmColorProc calc;
 	Colormap cmap;
-	HTMLWidget hw = (HTMLWidget) w;
 	char *val;
 	char t[3];
 	int allocated=0;
@@ -581,7 +461,7 @@ void hw_do_color(Widget w, char *att, char *cname)
 	cmap = hw->core.colormap;
 	val=cname;
 	if (*val!='#') {
-		if (XAllocNamedColor(XtDisplay(w),cmap,cname,&col,&ecol))
+		if (XAllocNamedColor(XtDisplay(hw),cmap,cname,&col,&ecol))
 			allocated=1;
 	}
 	if(!allocated){
@@ -612,7 +492,7 @@ void hw_do_color(Widget w, char *att, char *cname)
 			col.blue = ((unsigned) b) << 8;
 			col.flags = DoRed | DoGreen | DoBlue;
             
-			if (!XAllocColor(XtDisplay(w),cmap,&col))
+			if (!XAllocColor(XtDisplay(hw),cmap,&col))
 				return;
 		} else {
 			return;
@@ -623,13 +503,14 @@ void hw_do_color(Widget w, char *att, char *cname)
 	if (!strcasecmp(att,"bgcolor")){ /* calculate shadow colors */
 		calc = XmGetColorCalculation();
 		calc(&col, &fg, &sel, &ts, &bs);
-		if (XAllocColor(XtDisplay(w),cmap,&ts)) 
+		if (XAllocColor(XtDisplay(hw),cmap,&ts)) 
 			hw->manager.top_shadow_color = ts.pixel;
-		if (XAllocColor(XtDisplay(w),cmap,&bs)) 
+		if (XAllocColor(XtDisplay(hw),cmap,&bs)) 
 			hw->manager.bottom_shadow_color = bs.pixel;
 		hw->core.background_pixel = col.pixel;
 		hw->html.view->core.background_pixel = col.pixel ;
 		hw->html.activeAnchor_bg = col.pixel;
+		pcc->bg = col.pixel;
 	}
 	if (!strcasecmp(att,"link"))
 		hw->html.anchor_fg = col.pixel;
@@ -640,11 +521,7 @@ void hw_do_color(Widget w, char *att, char *cname)
 	return;
 }
 
-#define MAX_Y_EXP_DIFF 10 /*pixels between exposes to make one expose area*/
-
-
-/*
- * Process an expose event in the View (or drawing area).  This 
+/* Process an expose event in the View (or drawing area).  This 
  * Can be a regular expose event, or perhaps a GraphicsExpose Event.
  */
 static void DrawExpose(Widget w, caddr_t data, XEvent *event)
@@ -653,20 +530,13 @@ static void DrawExpose(Widget w, caddr_t data, XEvent *event)
 	HTMLWidget hw = (HTMLWidget)data;
 	int x, y, x1, y1;
 	int width, height;
-       int nx, ny, nwidth, nheight;
-       Display *dsp;        
-       Window win;           
-       int changed=0;
+	int nx, ny, nwidth, nheight;
+	Display *dsp;        
+	Window win;           
 
-        if (!(event->xany.type==Expose ||
-            (event->xany.type==GraphicsExpose) ||
-            event->xany.type==VisibilityNotify)) {
+        if (!(event->xany.type==Expose || event->xany.type==GraphicsExpose)) {
                 return;              
         } 
-
-        if (event->xany.type==VisibilityNotify) {
-                return;              
-        }               
 
         if (event->xany.type==Expose) {
                 x = event->xexpose.x;
@@ -680,97 +550,41 @@ static void DrawExpose(Widget w, caddr_t data, XEvent *event)
                 height = event->xgraphicsexpose.height;
         }  
 
-	/*
-	 * Get rid of any extra expose events.
+	/* Get rid of any extra expose events.
 	 * Be sure to get the entire area of exposure.
 	 */
         dsp=XtDisplay(w);            
         win=XtWindow(w); 
 
-	while (((XCheckWindowEvent(dsp, win,
-		    ExposureMask|VisibilityChangeMask, &NewEvent) == True))) {
-                if (NewEvent.xany.type==Expose ||
-                    (NewEvent.xany.type==GraphicsExpose) ||
-                    NewEvent.xany.type==VisibilityNotify) {
-         
-                        if (NewEvent.xany.type==VisibilityNotify) {
-                                continue;  
-                        } 
-                        if (NewEvent.xany.type==Expose) {
-                                nx = NewEvent.xexpose.x;
-                                ny = NewEvent.xexpose.y;
-                                nwidth = NewEvent.xexpose.width;
-                                nheight = NewEvent.xexpose.height;
-                        } else {      
-                                nx = NewEvent.xgraphicsexpose.x;
-                                ny = NewEvent.xgraphicsexpose.y;
-                                nwidth = NewEvent.xgraphicsexpose.width;
-                                nheight = NewEvent.xgraphicsexpose.height;
-                        }           
-                        if (width==(-666) && height==(-666)) {
-                                x = nx;
-                                y = ny;
-                                width = nwidth;
-                                height = nheight;
-                                continue;  
-                        }         
-
-
+	while(XCheckWindowEvent(dsp, win, ExposureMask, &NewEvent) == True) {
+		if(NewEvent.xany.type==Expose ||
+		   NewEvent.xany.type==GraphicsExpose) {
+			if (NewEvent.xany.type==Expose) {
+				nx = NewEvent.xexpose.x;
+				ny = NewEvent.xexpose.y;
+				nwidth = NewEvent.xexpose.width;
+				nheight = NewEvent.xexpose.height;
+			} else {      
+				nx = NewEvent.xgraphicsexpose.x;
+				ny = NewEvent.xgraphicsexpose.y;
+				nwidth = NewEvent.xgraphicsexpose.width;
+				nheight = NewEvent.xgraphicsexpose.height;
+			}           
 			x1 = x + width;
 			y1 = y + height;
                                     
-/* The following block makes sure the exposure area is not
-  incredibly HUGE...like one widget at the top and another
-  at the bottom causing the whole page to be drawn over and over. --SWP */
-                        if ((y>(ny+nheight) &&(y-(ny+nheight))>MAX_Y_EXP_DIFF) ||
-                            (y1<ny && (ny-y1)>MAX_Y_EXP_DIFF)) {
-#ifndef DISABLE_TRACE               
-                                if (htmlwTrace) {
-                                        DebugHook(x, y, width, height);
-                                }   
-#endif                              
-                                ViewRedisplay(hw, x, y, width, height);
-                                width=height=(-666);
-                                continue;  
-                        }
-                                    
-                        if (x > nx) {
-                                x = nx;
-                                changed=1; 
-                        }           
-                                    
-                        if (y > ny) {
-                                y = ny;
-                                changed=1; 
-                        }           
-                                    
-                        if (x1 < (nx + nwidth)) {
-                                x1 = nx + nwidth;
-                                changed=1; 
-                        }           
-                                    
-                        if (y1 < (ny + nheight)) {
-                                y1 = ny + nheight;
-                                changed=1; 
-                        } 
-/* The following is to create a clip_mask for the gc which
-   will insure that nothing is drawn that does not need to
-   be drawn. Also changes appear in ViewRedisplay. --SWP */
-                        if (changed) {
-                                width = x1 - x;
-                                height = y1 - y;
-                                changed=0; 
-                        }           
-                }                   
-                                    
-        }    
-
-
-#ifndef DISABLE_TRACE
-	if (htmlwTrace)
-		DebugHook(x, y, width, height);
-#endif
-        /* Let's actually do the draw... --SWP */
+			if (x > nx)
+				x = nx;
+			if (y > ny)
+				y = ny;
+			if (x1 < (nx + nwidth))
+				x1 = nx + nwidth;
+			if (y1 < (ny + nheight))
+				y1 = ny + nheight;
+			width = x1 - x;
+			height = y1 - y;
+		}                   
+	}    
 	ViewRedisplay(hw, x, y, width, height);
 }
 
@@ -805,9 +619,8 @@ void ScrollWidgets(HTMLWidget hw)
 			w = wptr->w;
                         x = wptr->x-xval;
                         y = wptr->y-yval;
-        
-                        /*
-                         * lower_right on screen?
+
+                        /* lower_right on screen?
                          * lower_left on screen?
                          * upper_right on screen?
                          * upper_left on screen?
@@ -818,12 +631,10 @@ void ScrollWidgets(HTMLWidget hw)
                          *           
                          * SWP and TPR
                          */     
-                        if (((y>0 && 
-                              y<=hw->html.view_height) ||
+                        if (((y>0 && y<=hw->html.view_height) ||
                              ((y+wptr->height)>0 &&
                               (y+wptr->height)<=hw->html.view_height)) &&
-                            ((x>0 && 
-                              x<=hw->html.view_width) ||
+                            ((x>0 && x<=hw->html.view_width) ||
                              ((x+wptr->width)>0 &&
                               (x+wptr->width)<=hw->html.view_width))) {
                                 wptr->seeable=1;
@@ -925,8 +736,7 @@ static void Realize(Widget ww, XtValueMask *valueMask, XSetWindowAttributes *att
         XtRealizeWidget(w->html.hbar);
 } /* End Realize */ 
 
-/*
- * Create the horizontal and vertical scroll bars.
+/* Create the horizontal and vertical scroll bars.
  * Size them later.
  */
 static void CreateScrollbars( HTMLWidget hw)
@@ -935,20 +745,14 @@ static void CreateScrollbars( HTMLWidget hw)
 	Cardinal argcnt;
 	XtTranslations trans;
 
-	/*
-	 * If the user hasn't provided a viewing area Widget (which they
-	 * should not most of the time) make a drawing are to use.
-	 */
-	if (hw->html.view == NULL) {
-		argcnt = 0;
-		XtSetArg(arg[argcnt], XxNwidth, 10); argcnt++;
-		XtSetArg(arg[argcnt], XxNheight, 10); argcnt++;
-		XtSetArg(arg[argcnt], XmNmarginWidth, 0); argcnt++;
-		XtSetArg(arg[argcnt], XmNmarginHeight, 0); argcnt++;
-		hw->html.view = XtCreateWidget("View", xmDrawingAreaWidgetClass,
-			(Widget)hw, arg, argcnt);
-		XtManageChild(hw->html.view);
-	}
+	argcnt = 0;
+	XtSetArg(arg[argcnt], XxNwidth, 10); argcnt++;
+	XtSetArg(arg[argcnt], XxNheight, 10); argcnt++;
+	XtSetArg(arg[argcnt], XmNmarginWidth, 0); argcnt++;
+	XtSetArg(arg[argcnt], XmNmarginHeight, 0); argcnt++;
+	hw->html.view = XtCreateWidget("View", xmDrawingAreaWidgetClass,
+		(Widget)hw, arg, argcnt);
+	XtManageChild(hw->html.view);
 	/*
 	 * For the view widget catch all Expose and GraphicsExpose
 	 * events.  Replace its translations with ours, and make
@@ -969,40 +773,24 @@ static void CreateScrollbars( HTMLWidget hw)
 	XtSetArg(arg[argcnt], XtNtranslations, trans); argcnt++;
 	XtSetValues(hw->html.view, arg, argcnt);
 
-	/*
-	 * If the user hasn't provided a vertical scrollbar (which they
-	 * should not most of the time) make one.
-	 */
-	if (hw->html.vbar == NULL) {
-		argcnt = 0;
-		XtSetArg(arg[argcnt], XmNorientation, XmVERTICAL); argcnt++;
-		XtSetArg(arg[argcnt], XtNwidth, VERT_SCROLL_WIDTH); argcnt++;
-		hw->html.vbar = XtCreateWidget("Vbar", xmScrollBarWidgetClass,
-			(Widget)hw, arg, argcnt);
-		XtManageChild(hw->html.vbar);
-	}
-	/*
-	 * Add callbacks to catch scrollbar changes
-	 */
+/* vert scrollbar */
+	argcnt = 0;
+	XtSetArg(arg[argcnt], XmNorientation, XmVERTICAL); argcnt++;
+	XtSetArg(arg[argcnt], XtNwidth, VERT_SCROLL_WIDTH); argcnt++;
+	hw->html.vbar = XtCreateWidget("Vbar", xmScrollBarWidgetClass,
+		(Widget)hw, arg, argcnt);
+	XtManageChild(hw->html.vbar);
 	XtAddCallback(hw->html.vbar, XmNvalueChangedCallback,
 		(XtCallbackProc)ScrollMove, (caddr_t)hw);
 	XtAddCallback(hw->html.vbar, XmNdragCallback,
 		(XtCallbackProc)ScrollMove, (caddr_t)hw);
-	/*
-	 * If the user hasn't provided a horizontal scrollbar (which they
-	 * should not most of the time) make one.
-	 */
-	if (hw->html.hbar == NULL) {
-		argcnt = 0;
-		XtSetArg(arg[argcnt], XmNorientation, XmHORIZONTAL); argcnt++;
-		XtSetArg(arg[argcnt], XtNheight, HORIZ_SCROLL_HEIGHT); argcnt++;
-		hw->html.hbar = XtCreateWidget("Hbar", xmScrollBarWidgetClass,
-			(Widget)hw, arg, argcnt);
-		XtManageChild(hw->html.hbar);
-	}
-	/*
-	 * Add callbacks to catch scrollbar changes
-	 */
+/* horiz scrollbar*/
+	argcnt = 0;
+	XtSetArg(arg[argcnt], XmNorientation, XmHORIZONTAL); argcnt++;
+	XtSetArg(arg[argcnt], XtNheight, HORIZ_SCROLL_HEIGHT); argcnt++;
+	hw->html.hbar = XtCreateWidget("Hbar", xmScrollBarWidgetClass,
+		(Widget)hw, arg, argcnt);
+	XtManageChild(hw->html.hbar);
 	XtAddCallback(hw->html.hbar, XmNvalueChangedCallback,
 		(XtCallbackProc)ScrollMove, (caddr_t)hw);
 	XtAddCallback(hw->html.hbar, XmNdragCallback,
@@ -1210,24 +998,21 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
 		XtUnmanageChild(hw->html.vbar);
 		hw->html.scroll_y = 0;
 	}
-	/* Calculate the actual max width and height of the complete
-	 * formatted document.
-	 * The max width may exceed the preformatted width due to special
-	 * factors in the formatting of the widget.
-	 * Use the max of the 2 here, but leave max_pre_width unchanged
-	 * for future formatting calls.
-	 * new_width includes the margins, and hw->html.max_pre_width
-	 * does not, fix that here.
-	 */
+/* Calculate the actual max width and height of the complete formatted document.
+ * The max width may exceed the preformatted width due to special factors in
+ * the formatting of the widget. Use the max of the 2 here, but leave
+ * max_pre_width unchanged for future formatting calls.
+ * new_width includes the margins, and hw->html.max_pre_width does not,
+ * fix that here.
+ */
 	new_width = new_width - (2 * hw->html.margin_width);
 	if (hw->html.max_pre_width > new_width)
 		new_width = hw->html.max_pre_width;
-	/*
-	 * If the maximum width derives from a formatted, as opposed to
-	 * unformatted piece of text, allow a 20% of margin width slop
-	 * over into the margin to cover up a minor glick with terminaing
-	 * punctuation after anchors at the end of the line.
-	 */
+/* If the maximum width derives from a formatted, as opposed to
+ * unformatted piece of text, allow a 20% of margin width slop
+ * over into the margin to cover up a minor glick with terminaing
+ * punctuation after anchors at the end of the line.
+ */
 	else
 		new_width = new_width - (20 * hw->html.margin_width / 100);
 
@@ -1236,10 +1021,9 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
 	if (hw->html.view_width > hw->html.doc_width)
 		hw->html.doc_width = hw->html.view_width;
 
-	/* If we need a horizontal scrollbar
-	 * Place it and manage it.  Save the height of the current
-	 * viewing area.
-	 */
+/* If we need a horizontal scrollbar Place it and manage it. Save the height
+ * of the current viewing area.
+ */
 	if (hw->html.doc_width > hw->html.view_width) {
 		hw->html.use_hbar = True;
 		XtMoveWidget(hw->html.hbar, 0,
@@ -1247,8 +1031,7 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
 		XtManageChild(hw->html.hbar);
 		hw->html.view_height = hw->core.height - sheight - (2 * st);
 	} else {
-		/*
-		 * Else we don't need a horizontal scrollbar.
+		/* Else we don't need a horizontal scrollbar.
 		 * Remove it and save the current viewing area height.
 		 */
 		hw->html.use_hbar = False;
@@ -1258,13 +1041,10 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
 	}
 
 	/* Configure the scrollbar min, max, and slider sizes */
-	if (htmlwTrace)
-		fprintf (stderr, "calling in ReformatWindow\n");
 	ConfigScrollBars(hw);
 }
 
-/*
- * We're a happy widget.  We let any child move or resize themselves
+/* We're a happy widget.  We let any child move or resize themselves
  * however they want, we don't care.
  */
 static XtGeometryResult GeometryManager ( Widget w,
@@ -1280,8 +1060,7 @@ static XtGeometryResult GeometryManager ( Widget w,
 	return (XtGeometryYes);
 }
 
-/*
- * Initialize is called when the widget is first initialized.
+/* Initialize is called when the widget is first initialized.
  * Check to see that all the starting resources are valid.
  */
 static void Initialize( HTMLWidget request, HTMLWidget nw)
@@ -1309,16 +1088,10 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 		nw->html.num_visitedAnchor_underlines = MAX_UNDERLINES;
 /* Parse the raw text with the HTML parser.  And set the formatted 
  * element list to NULL. */
-	nw->html.html_objects = HTMLParse(NULL, request->html.raw_text,
-				(Widget) nw);
+	nw->html.html_objects = HTMLParse(request->html.raw_text);
+
 	CallLinkCallbacks(nw);
-	nw->html.html_header_objects =
-		HTMLParse(NULL, request->html.header_text, (Widget) nw);
-	nw->html.html_footer_objects =
-		HTMLParse(NULL, request->html.footer_text, (Widget) nw);
 	nw->html.formatted_elements = NULL;
-	nw->html.my_visited_hrefs = NULL;
-	nw->html.my_delayed_images = NULL;
 	nw->html.widget_list = NULL;
 	nw->html.form_list = NULL;
 
@@ -1326,13 +1099,14 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 /* Find the max width of a preformatted line in this document. */
 	nw->html.max_pre_width = DocumentWidth(nw, nw->html.html_objects);
 
-/* Create the scrollbars.
- * Find their dimensions and then decide which scrollbars you
- * will need, and what the dimensions of the viewing area are.
+/* Create the scrollbars. Find their dimensions and then decide which
+ * scrollbars you will need, and what the dimensions of the viewing area are.
  * Start assuming a vertical scrollbar and a horizontal one.
- * The remove vertical if short enough, and remove horizontal
- * if narrow enough.
+ * The remove vertical if short enough, and remove horizontal if narrow enough.
  */
+	nw->html.vbar = NULL;
+	nw->html.hbar = NULL;
+	nw->html.view = NULL;
 	CreateScrollbars(nw);
 	nw->html.scroll_x = 0;
 	nw->html.scroll_y = 0;
@@ -1362,7 +1136,6 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 	nw->html.bgmap_SAVE = None;
 	nw->html.bgclip_SAVE = None;
 	nw->html.bg_image=0;
-        nw->html.focus_follows_mouse=0;
 
 /* Initialize cursor used when pointer is inside anchor. */
         if (in_anchor_cursor == (Cursor)NULL)
@@ -1382,13 +1155,7 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
         return;
 }
 
-static void DebugHook( int x, int y, int width, int height)
-{
-	fprintf(stderr, "Redrawing (%d,%d) %dx%d\n", x, y, width, height);
-}
-
-/*
- * This is called by redisplay.  It is passed a rectangle
+/* This is called by redisplay.  It is passed a rectangle
  * in the viewing area, and it redisplays that portion of the
  * underlying document area.
  */
@@ -1414,6 +1181,11 @@ void ViewRedisplay( HTMLWidget hw, int x, int y, int width, int height)
 /* Find Element to Refresh */
 	eptr = hw->html.formatted_elements;
 	while(eptr){
+		if (eptr->type == E_APROG || eptr->type == E_APPLET){
+			RefreshElement(hw,eptr);
+			eptr = eptr->next;
+			continue;
+		}
 		if( ((eptr->y + eptr->height) < doc_y) || 
 		    (eptr->y > ( doc_y + height)) ){
 			eptr = eptr->next;
@@ -1428,9 +1200,7 @@ void ViewClearAndRefresh( HTMLWidget hw)
 {
 	int r,b;
 
-	/* Only refresh if we have a window already.
-	* (if we have a GC we have a window)
-	*/
+/* Only refresh if we have a window already. (if we have a GC we have a window) */
 	if (!XtIsRealized((Widget)hw))
 		return;
 
@@ -1457,15 +1227,13 @@ void ViewClearAndRefresh( HTMLWidget hw)
 		0, 0, 0, 0, False);
 	ViewRedisplay(hw, 0, 0, 
 			hw->html.view_width, hw->html.view_height);
-/*
-* This is a fake deal to make an Expose event tocall Redisplay
+/* This is a fake deal to make an Expose event tocall Redisplay
 * to redraw the shadow around the view area
 */
 	XClearArea(XtDisplay(hw),XtWindow(hw->html.view),0,0,1,1,True);
 }
 
-/*
- * The Redisplay function is what you do with an expose event.
+/* The Redisplay function is what you do with an expose event.
  * Right now we call user callbacks, and then call the CompositeWidget's
  * Redisplay routine.
  */
@@ -1488,23 +1256,11 @@ static void Redisplay( HTMLWidget hw, XEvent * event, Region region)
 		      hw->html.view_height+(2*st),
 		      hw->manager.shadow_thickness,
 			XmSHADOW_IN);
-/*
-	_XmDrawShadow(XtDisplay(hw), XtWindow(hw),
-		      hw->manager.bottom_shadow_GC, hw->manager.top_shadow_GC,
-		      hw->manager.shadow_thickness, dx, dy,
-		      hw->html.view_width+(2*st),
-		      hw->html.view_height+(2*st));
-*/
-#ifdef MOTIF1_2
 	_XmRedisplayGadgets ((Widget)hw, (XEvent*)event, region);
-#else
-	_XmRedisplayGadgets ((CompositeWidget)hw, (XExposeEvent*)event, region);
-#endif /* MOTIF1_2 */
 	return;
 }
 
-/*
- * Resize is called when the widget changes size.
+/* Resize is called when the widget changes size.
  * Mostly any resize causes a reformat, except for the special case
  * where the width doesn't change, and the height doesn't change
  * enought to affect the vertical scrollbar.
@@ -1517,11 +1273,6 @@ static void Resize( HTMLWidget hw)
 	ReformatWindow(hw, True);
 	ScrollWidgets(hw);
 	ViewClearAndRefresh(hw);
-	if (htmlwTrace) {
-		int ss;
-		XtVaGetValues(hw->html.vbar, XmNsliderSize, &ss, NULL);
-		fprintf (stderr, "leaving; slider size %d\n", ss);
-        }
 }
 
 /*
@@ -1533,22 +1284,21 @@ static void FindSelectAnchor(HTMLWidget hw, struct ele_rec *aptr)
 	struct ele_rec *eptr;
 
 	eptr = aptr;
-	while((eptr->prev != NULL)&& (eptr->prev->anchor_tag_ptr->anchor_href != NULL)&&
-	     (strcmp(eptr->prev->anchor_tag_ptr->anchor_href, eptr->anchor_tag_ptr->anchor_href) == 0))
+	while((eptr->prev != NULL)&& (eptr->prev->anchor_tag_ptr->anc_href != NULL)&&
+	     (strcmp(eptr->prev->anchor_tag_ptr->anc_href, eptr->anchor_tag_ptr->anc_href) == 0))
 		eptr = eptr->prev;
 	hw->html.select_start = eptr;
 	hw->html.sel_start_pos = 0;
 
 	eptr = aptr;
-	while((eptr->next != NULL)&& (eptr->next->anchor_tag_ptr->anchor_href != NULL)&&
-	     (strcmp(eptr->next->anchor_tag_ptr->anchor_href, eptr->anchor_tag_ptr->anchor_href) == 0))
+	while((eptr->next != NULL)&& (eptr->next->anchor_tag_ptr->anc_href != NULL)&&
+	     (strcmp(eptr->next->anchor_tag_ptr->anc_href, eptr->anchor_tag_ptr->anc_href) == 0))
 		eptr = eptr->next;
 	hw->html.select_end = eptr;
 	hw->html.sel_end_pos = eptr->edata_len - 2;
 }
 
-/*
- * Set as active all elements in the widget that are part of the anchor
+/* Set as active all elements in the widget that are part of the anchor
  * in the widget's start ptr.
  */
 static void SetAnchor(HTMLWidget hw)
@@ -1560,7 +1310,7 @@ static void SetAnchor(HTMLWidget hw)
 	unsigned long old_fg, old_bg;
 
 	eptr = hw->html.active_anchor;
-	if ((eptr == NULL)||(eptr->anchor_tag_ptr->anchor_href == NULL))
+	if ((eptr == NULL)||(eptr->anchor_tag_ptr->anc_href == NULL))
 		return;
 	fg = hw->html.activeAnchor_fg;
 	bg = hw->html.activeAnchor_bg;
@@ -1775,8 +1525,7 @@ static void EraseSelection( HTMLWidget hw,
 	}
 }
 
-/*
- * Clear the current selection (if there is one)
+/* Clear the current selection (if there is one)
  */
 static void ClearSelection(HTMLWidget hw)
 {
@@ -1832,8 +1581,7 @@ static void UnsetAnchor( HTMLWidget hw)
  * flashing.
  */
 static void ChangeSelection( HTMLWidget hw, struct ele_rec *start,
-	struct ele_rec *end,
-	int start_pos, int end_pos)
+	struct ele_rec *end, int start_pos, int end_pos)
 {
 	struct ele_rec *old_start;
 	struct ele_rec *old_end;
@@ -2031,7 +1779,7 @@ static void SelectStart( Widget w, XEvent *event,
 		 * If this is an anchor assume for now we are activating it
 		 * and not selecting it.
 		 */
-		if (eptr->anchor_tag_ptr->anchor_href != NULL) {
+		if (eptr->anchor_tag_ptr->anc_href != NULL) {
 			hw->html.active_anchor = eptr;
 			hw->html.press_x = BuEvent->x;
 			hw->html.press_y = BuEvent->y;
@@ -2363,8 +2111,7 @@ static void ExtendEnd( Widget w, XEvent *event,
 			default: buffer = -1; break;
 			}
 			if (buffer >= 0) {
-				if (hw->html.fancy_selections == True) {
-				    text = ParseTextToPrettyString(hw,
+				text = ParseTextToString(
 					hw->html.formatted_elements,
 					hw->html.select_start,
 					hw->html.select_end,
@@ -2372,16 +2119,6 @@ static void ExtendEnd( Widget w, XEvent *event,
 					hw->html.sel_end_pos,
 					hw->html.font->max_bounds.width,
 					hw->html.margin_width);
-				} else {
-				    text = ParseTextToString(
-					hw->html.formatted_elements,
-					hw->html.select_start,
-					hw->html.select_end,
-					hw->html.sel_start_pos,
-					hw->html.sel_end_pos,
-					hw->html.font->max_bounds.width,
-					hw->html.margin_width);
-				}
 				XStoreBuffer(XtDisplay((Widget)hw),
 					text, strlen(text), buffer);
 				if (text != NULL)
@@ -2453,13 +2190,13 @@ static void TrackMotion( Widget w, XEvent *event,
 	}
 		/* We're hitting a new anchor if eptr exists and
 		 * eptr != cached tracked element and anchor_tag_ptr != NULL. */
-	if (eptr != NULL && eptr->anchor_tag_ptr->anchor_href != NULL) {
+	if (eptr != NULL && eptr->anchor_tag_ptr->anc_href != NULL) {
 		XtCallCallbackList((Widget)hw,
-			hw->html.pointer_motion_callback, eptr->anchor_tag_ptr->anchor_href);
+			hw->html.pointer_motion_callback, eptr->anchor_tag_ptr->anc_href);
 		XDefineCursor (XtDisplay (hw), XtWindow (hw->html.view), 
 			in_anchor_cursor);
 	} else 
-		if (eptr != NULL &&  eptr->anchor_tag_ptr->anchor_href == NULL) {
+		if (eptr != NULL &&  eptr->anchor_tag_ptr->anc_href == NULL) {
 		/* We're leaving an anchor if eptr exists and
 		 * a cached ele exists and we're not entering a new anchor. */
 			LEAVING_ANCHOR (hw);
@@ -2481,8 +2218,7 @@ void GetMailtoKludgeInfo(char **url, char **subject)
 	*subject = mailToKludgeSubject;
 }
 
-/*
- * Process mouse input to the HTML widget
+/* Process mouse input to the HTML widget
  * Currently only processes an anchor-activate when Button1 is pressed
  */
 static void _HTMLInput( Widget w, XEvent *event,
@@ -2495,20 +2231,14 @@ static void _HTMLInput( Widget w, XEvent *event,
 	WbAnchorCallbackData cbdata;
 	int epos;
 	Boolean on_gadget;
+	char *buf = NULL;
 
 	if (XtClass(XtParent(w)) != htmlWidgetClass)
 		return;
-	/*
-	 * If motif is defined, we don't want to process this button press
+	/* If motif is defined, we don't want to process this button press
 	 * if it is on a gadget */
-#ifdef MOTIF1_2
 	on_gadget = (_XmInputForGadget((Widget)hw,
 				event->xbutton.x, event->xbutton.y) != NULL);
-#else
-	on_gadget = (_XmInputForGadget((CompositeWidget)hw,
-				event->xbutton.x, event->xbutton.y) != NULL);
-#endif /* MOTIF1_2 */
-
 	if (on_gadget)
 		return;
 	if (event->type != ButtonRelease)
@@ -2516,7 +2246,7 @@ static void _HTMLInput( Widget w, XEvent *event,
 	eptr = LocateElement(hw,event->xbutton.x,event->xbutton.y, &epos);
 	if (eptr == NULL)
 		return;
-	if (eptr->anchor_tag_ptr->anchor_href == NULL)
+	if (eptr->anchor_tag_ptr->anc_href == NULL)
 		return;
 	HTMLSetAppInsensitive((Widget) hw);
 		   /* Save the anchor text, replace newlines with * spaces. */
@@ -2535,65 +2265,15 @@ static void _HTMLInput( Widget w, XEvent *event,
 #ifdef EXTRA_FLUSH
 	XFlush(XtDisplay(hw));
 #endif
-	mailToKludgeSubject = eptr->anchor_tag_ptr->anchor_title;
-	mailToKludgeURL = eptr->anchor_tag_ptr->anchor_href;
+	mailToKludgeSubject = eptr->anchor_tag_ptr->anc_title;
+	mailToKludgeURL = eptr->anchor_tag_ptr->anc_href;
 
-	if(IsDelayedHRef(hw, eptr->anchor_tag_ptr->anchor_href)) {
-/*######################*/
-		eptr->pic_data->src=eptr->edata;
-#ifdef MULTICAST
-		eptr->pic_data->wtype = hw->html.mc_wtype;
-#endif
-		eptr->pic_data->internal_numeo = 0;
-		XtCallCallbackList ((Widget)hw, hw->html.image_callback,
-					(XtPointer)(eptr->pic_data));
-/*######################*/
-		eptr->pic_data->delayed = 0;
-		eptr->pic_data->internal = 0;
-		if (!eptr->pic_data->fetched) {
-			eptr->pic_data = NoImageData(hw);
-		}
-		ReformatWindow(hw,True);
-		ScrollWidgets(hw);
-		ViewClearAndRefresh(hw);
-		mailToKludgeSubject = NULL;
-		mailToKludgeURL = NULL;
-		return;
-	}
-
-	if ((eptr->pic_data != NULL)&& (eptr->pic_data->delayed)&&
-	    (eptr->anchor_tag_ptr->anchor_href != NULL)&& (IsIsMapForm(hw, eptr->anchor_tag_ptr->anchor_href))) {
-/*######################*/
-		eptr->pic_data->src=eptr->edata;
-#ifdef MULTICAST
-		eptr->pic_data->wtype = hw->html.mc_wtype;
-#endif
-		eptr->pic_data->internal_numeo = 0;
-		XtCallCallbackList ((Widget)hw, hw->html.image_callback,
-					(XtPointer)(eptr->pic_data));
-/*######################*/
-		if (!eptr->pic_data->fetched ) {
-			eptr->pic_data =NoImageData(hw);
-			eptr->pic_data->internal = 0;
-		}
-		eptr->pic_data->delayed = 0;
-		ReformatWindow(hw,True);
-		ScrollWidgets(hw);
-		ViewClearAndRefresh(hw);
-		mailToKludgeSubject = NULL;
-		mailToKludgeURL = NULL;
-		return;
-	} 
 	if((eptr->pic_data != NULL)&& (eptr->pic_data->delayed)&&
-	  (eptr->anchor_tag_ptr->anchor_href != NULL)&& (!IsDelayedHRef(hw, eptr->anchor_tag_ptr->anchor_href))&&
-	  (!IsIsMapForm(hw, eptr->anchor_tag_ptr->anchor_href))&&
+	  (eptr->anchor_tag_ptr->anc_href != NULL)&&
 	  (((event->xbutton.y + hw->html.scroll_y) - (eptr->y + eptr->baseline)) >
-	     AnchoredHeight(hw))) {
+	     eptr->pic_data->height)) {
 /*######################*/
 		eptr->pic_data->src=eptr->edata;
-#ifdef MULTICAST
-		eptr->pic_data->wtype = hw->html.mc_wtype;
-#endif
 		eptr->pic_data->internal_numeo = 0;
 		XtCallCallbackList ((Widget)hw, hw->html.image_callback,
 					(XtPointer)eptr->pic_data);
@@ -2610,62 +2290,55 @@ static void _HTMLInput( Widget w, XEvent *event,
 		mailToKludgeURL = NULL;
 		return;
 	} 
-	if((eptr->pic_data != NULL)&& (eptr->pic_data->ismap)&&
-	 (eptr->anchor_tag_ptr->anchor_href != NULL)&&(IsIsMapForm(hw, eptr->anchor_tag_ptr->anchor_href))){
+/* An ISMAP image but in Form */
+	if((eptr->pic_data != NULL) && (eptr->anchor_tag_ptr->anc_href != NULL)&&
+	   eptr->pic_data->ismap && eptr->is_in_form) {      
 		int form_x, form_y;
 
 		form_x = event->xbutton.x + hw->html.scroll_x - eptr->x;
 		form_y = event->xbutton.y + hw->html.scroll_y - eptr->y;
 		ImageSubmitForm(eptr->pic_data->fptr, event,
 			form_x, form_y);
-	} else {
-    		/* The following is a hack to send the
-     		* selection location along with the HRef
-     		* for images.  This allows you to
-     		* point at a location on a map and have
-     		* the server send you the related document.
-     		* Tony Sanders, April 1993 <sanders@bsdi.com>
-     		*/
-		int alloced = 0;
-		char *buf = eptr->anchor_tag_ptr->anchor_href;
-		if (eptr->type == E_IMAGE && eptr->pic_data->image_data
-       		&& eptr->pic_data->ismap) {
- 			buf = (char *)
-       			malloc(strlen(eptr->anchor_tag_ptr->anchor_href) + 256);
-    			alloced = 1;
-    			sprintf(buf, "%s?%d,%d", eptr->anchor_tag_ptr->anchor_href,
-				event->xbutton.x + hw->html.scroll_x - eptr->x,
-				event->xbutton.y + hw->html.scroll_y - eptr->y);
-       		}
-		/*
- 		* XXX: should call a media dependent
- 		* function that decides how to munge the
- 		* HRef.  For example mpeg data will want
- 		* to know on what frame the event occured.
- 		*
- 		* cddata.href = *(eptr->eventf)(eptr, event);
-       		*/
-		cbdata.event = event;
-		cbdata.element_id = eptr->ele_id;
-		cbdata.href = buf;
-		cbdata.text = tptr;
-		XtCallCallbackList ((Widget)hw, hw->html.anchor_callback,
-				(XtPointer)&cbdata);
-       		if (alloced) free(buf);
-       		if (tptr != NULL) free(tptr);
+		mailToKludgeSubject = NULL;
+		mailToKludgeURL = NULL;
+		return;
+	} 
+/* Send the selection location along with the HRef
+ * for images. Allows you to point at a location on a map and have
+ * the server send you the related document.
+ */
+	if (eptr->type == E_IMAGE && eptr->pic_data->image_data && 
+	    eptr->pic_data->ismap) {
+ 		buf = (char *) malloc(strlen(eptr->anchor_tag_ptr->anc_href) + 256);
+    		sprintf(buf, "%s?%d,%d", eptr->anchor_tag_ptr->anc_href,
+			event->xbutton.x + hw->html.scroll_x - eptr->x,
+			event->xbutton.y + hw->html.scroll_y - eptr->y);
+       	} else {
+		buf = strdup(eptr->anchor_tag_ptr->anc_href);
 	}
+/* XXX: should call a media dependent function that decides how to munge the
+ * HRef.  For example mpeg data will want to know on what frame the event occured.
+ *
+ * cddata.href = *(eptr->eventf)(eptr, event);
+ */
+	cbdata.event = event;
+	cbdata.element_id = eptr->ele_id;
+	cbdata.href = buf;
+	cbdata.text = tptr;
+	XtCallCallbackList ((Widget)hw, hw->html.anchor_callback,
+			(XtPointer)&cbdata);
+       	if (buf) free(buf);
+       	if (tptr != NULL) free(tptr);
 	mailToKludgeSubject = NULL;
 	mailToKludgeURL = NULL;
 }
 
-/*
- * SetValues is called when XtSetValues is used to change resources in this
+/* SetValues is called when XtSetValues is used to change resources in this
  * widget.
  */
 static Boolean SetValues( HTMLWidget current, HTMLWidget request, HTMLWidget nw)
 {
-	/*
-	 *	Make sure the underline numbers are within bounds.
+	/*	Make sure the underline numbers are within bounds.
 	 */
 	if (request->html.num_anchor_underlines < 0)
 		nw->html.num_anchor_underlines = 0;
@@ -2676,37 +2349,22 @@ static Boolean SetValues( HTMLWidget current, HTMLWidget request, HTMLWidget nw)
 	if (request->html.num_visitedAnchor_underlines > MAX_UNDERLINES)
 		nw->html.num_visitedAnchor_underlines = MAX_UNDERLINES;
 
-	if ((request->html.raw_text != current->html.raw_text)||
-	    (request->html.header_text != current->html.header_text)||
-	    (request->html.footer_text != current->html.footer_text))
-	{
-		/* Free up the old visited href list.  */
-		FreeHRefs(current->html.my_visited_hrefs);
-		nw->html.my_visited_hrefs = NULL;
-
-		/* Free up the old visited delayed images list.  */
-		FreeDelayedImages(current->html.my_delayed_images);
-		nw->html.my_delayed_images = NULL;
-
+	if (request->html.raw_text != current->html.raw_text ) {
 		/* Free any old colors and pixmaps */
 		FreeColors(XtDisplay(current),
 			   (installed_colormap ? installed_cmap :
 			    DefaultColormapOfScreen(XtScreen(current))));
 		/* Hide any old widgets */
 		HideWidgets(current);
+		HTMLFreeWidgetInfo(current->html.widget_list);
+		current->html.widget_list = NULL;
 		nw->html.widget_list = NULL;
 		nw->html.form_list = NULL;
 
 		/* Parse the raw text with the HTML parser */
-		nw->html.html_objects = HTMLParse(current->html.html_objects,
-			request->html.raw_text, (Widget) nw);
+		FreeMarkUpList(current->html.html_objects); /*clear previous*/
+		nw->html.html_objects = HTMLParse(request->html.raw_text);
 		CallLinkCallbacks(nw);
-		nw->html.html_header_objects =
-			HTMLParse(current->html.html_header_objects,
-			request->html.header_text, (Widget) nw);
-		nw->html.html_footer_objects =
-			HTMLParse(current->html.html_footer_objects,
-			request->html.footer_text, (Widget) nw);
 
 		/* Redisplay for the changed data. */
 		nw->html.scroll_x = 0;
@@ -2847,20 +2505,11 @@ static Boolean ConvertSelection( Widget w,
 		} else {
 			*type = XA_STRING;
 		}
-		if (hw->html.fancy_selections == True) {
-			text = ParseTextToPrettyString(hw,
-				hw->html.formatted_elements,
-				hw->html.select_start, hw->html.select_end,
-				hw->html.sel_start_pos, hw->html.sel_end_pos,
-				hw->html.font->max_bounds.width,
-				hw->html.margin_width);
-		} else {
-			text = ParseTextToString(hw->html.formatted_elements,
-				hw->html.select_start, hw->html.select_end,
-				hw->html.sel_start_pos, hw->html.sel_end_pos,
-				hw->html.font->max_bounds.width,
-				hw->html.margin_width);
-		}
+		text = ParseTextToString(hw->html.formatted_elements,
+			hw->html.select_start, hw->html.select_end,
+			hw->html.sel_start_pos, hw->html.sel_end_pos,
+			hw->html.font->max_bounds.width,
+			hw->html.margin_width);
 		*value = text;
 		*length = strlen(*value);
 		*format = 8;
@@ -2882,20 +2531,11 @@ static Boolean ConvertSelection( Widget w,
 	}
 
 	if (*target == XA_LENGTH(d)) {
-		if (hw->html.fancy_selections == True) {
-			text = ParseTextToPrettyString(hw,
-				hw->html.formatted_elements,
-				hw->html.select_start, hw->html.select_end,
-				hw->html.sel_start_pos, hw->html.sel_end_pos,
-				hw->html.font->max_bounds.width,
-				hw->html.margin_width);
-		} else {
-			text = ParseTextToString(hw->html.formatted_elements,
-				hw->html.select_start, hw->html.select_end,
-				hw->html.sel_start_pos, hw->html.sel_end_pos,
-				hw->html.font->max_bounds.width,
-				hw->html.margin_width);
-		}
+		text = ParseTextToString(hw->html.formatted_elements,
+			hw->html.select_start, hw->html.select_end,
+			hw->html.sel_start_pos, hw->html.sel_end_pos,
+			hw->html.font->max_bounds.width,
+			hw->html.margin_width);
 		*value = XtMalloc(4);
 		if (sizeof(long) == 4) {
 			*(long*)*value = strlen(text);
@@ -2932,9 +2572,8 @@ static void SelectionDone( Widget w, Atom * selection, Atom * target)
 /******************************* PUBLIC FUNCTIONS *************************/
 /*
  * Convenience function to return the text of the HTML document as a plain
- * ascii text string.
- * This function allocates memory for the returned string, that it is up
- * to the user to free.
+ * ascii text string. This function allocates memory for the returned string,
+ * that it is up to the user to free.
  * Extra option flags "pretty" text to be returned.
  * when pretty is two or larger, Postscript is returned. The font used is
  * encoded in the pretty parameter:
@@ -2990,8 +2629,7 @@ char * HTMLGetText(Widget w, int pretty, char *url, char *time_str)
 	return(text);
 }
 
-/*
- * Convenience function to return the element id of the element
+/* Convenience function to return the element id of the element
  * nearest to the x,y coordinates passed in.
  * If there is no element there, return the first element in the
  * line we are on.  If there we are on no line, either return the
@@ -3018,8 +2656,7 @@ int HTMLPositionToId(Widget w, int x, int y)
 		}
 	}
 
-	/*
-	 * 0 means the very top of the document.  We put you there for
+	/* 0 means the very top of the document.  We put you there for
 	 * unfound elements.
 	 * We also special case for when the scrollbar is at the
 	 * absolute top.
@@ -3029,8 +2666,7 @@ int HTMLPositionToId(Widget w, int x, int y)
 	return(eptr->ele_id);
 }
 
-/*
- * Convenience function to return the position of the element
+/* Convenience function to return the position of the element
  * based on the element id passed in.
  * Function returns 1 on success and fills in x,y pixel values.
  * If there is no such element, x=0, y=0 and -1 is returned.
@@ -3139,8 +2775,8 @@ int HTMLAnchorToPosition(Widget w, char *name, int *x, int *y)
 	eptr = NULL;
 	start = hw->html.formatted_elements;
 	while (start != NULL) {
-		if ((start->anchor_tag_ptr->anchor_name)&&
-		    (strcmp(start->anchor_tag_ptr->anchor_name, name) == 0)) {
+		if ((start->anchor_tag_ptr->anc_name)&&
+		    (strcmp(start->anchor_tag_ptr->anc_name, name) == 0)) {
 			eptr = start;
 			break;
 		}
@@ -3172,8 +2808,8 @@ int HTMLAnchorToId(Widget w, char *name)
 	eptr = NULL;
 	start = hw->html.formatted_elements;
 	while (start != NULL) {
-		if ((start->anchor_tag_ptr->anchor_name)&&
-		    (strcmp(start->anchor_tag_ptr->anchor_name, name) == 0)) {
+		if ((start->anchor_tag_ptr->anc_name)&&
+		    (strcmp(start->anchor_tag_ptr->anc_name, name) == 0)) {
 			eptr = start;
 			break;
 		}
@@ -3211,14 +2847,14 @@ char ** HTMLGetHRefs(Widget w, int *num_hrefs)
 		/*
 		 * This one has an HREF
 		 */
-		if (start->anchor_tag_ptr->anchor_href != NULL) {
+		if (start->anchor_tag_ptr->anc_href != NULL) {
 			/*
 			 * Check to see if we already have
 			 * this HREF in our list.
 			 */
 			eptr = list;
 			while (eptr != NULL) {
-				if(strcmp(eptr->anchor_tag_ptr->anchor_href,start->anchor_tag_ptr->anchor_href)==0)
+				if(strcmp(eptr->anchor_tag_ptr->anc_href,start->anchor_tag_ptr->anc_href)==0)
 					break;
 				eptr = eptr->next;
 			}
@@ -3247,8 +2883,8 @@ char ** HTMLGetHRefs(Widget w, int *num_hrefs)
 	eptr = list;
 	cnt--;
 	while (eptr != NULL) {
-		harray[cnt] = (char *) malloc(strlen(eptr->anchor_tag_ptr->anchor_href) + 1);
-		strcpy(harray[cnt], eptr->anchor_tag_ptr->anchor_href);
+		harray[cnt] = (char *) malloc(strlen(eptr->anchor_tag_ptr->anc_href) + 1);
+		strcpy(harray[cnt], eptr->anchor_tag_ptr->anc_href);
 		start = eptr;
 		eptr = eptr->next;
 		free((char *)start);
@@ -3364,46 +3000,9 @@ LinkInfo * HTMLGetLinks(Widget w, int *num_links)
 	return(larray);
 }
 
-void * HTMLGetWidgetInfo(Widget w)
-{
-	HTMLWidget hw = (HTMLWidget)w;
-
-	return((void *)hw->html.widget_list);
-}
-
-void HTMLFreeWidgetInfo(void *ptr)
-{
-	WidgetInfo *wptr = (WidgetInfo *)ptr;
-	WidgetInfo *tptr;
-
-	while (wptr != NULL) {
-		tptr = wptr;
-		wptr = wptr->next;
-		if (tptr->w != NULL) {
-			/*
-			 * This is REALLY DUMB, but X generates an expose event
-			 * for the destruction of the Widgte, even if it isn't
-			 * mapped at the time it is destroyed.
-			 * So I move the invisible widget to -1000,-1000
-			 * before destroying it, to avoid a visible flash.
-			 */
-			XtMoveWidget(tptr->w, -1000, -1000);
-			XtDestroyWidget(tptr->w);
-		}
-		if (tptr->name != NULL)
-			free(tptr->name);
-		if ((tptr->value != NULL)&&(tptr->type != W_OPTIONMENU))
-			free(tptr->value);
-		free((char *)tptr);
-	}
-}
-
-/*
- * Convenience function to redraw all active anchors in the
- * document.
+/* Convenience function to redraw all active anchors in the document.
  * Can also pass a new predicate function to check visited
- * anchors.  If NULL passed for function, uses default predicate
- * function.
+ * anchors.  If NULL passed for function, uses default predicate function.
  */
 void HTMLRetestAnchors(Widget w, visitTestProc testFunc)
 {
@@ -3417,12 +3016,12 @@ void HTMLRetestAnchors(Widget w, visitTestProc testFunc)
 	 */
 	start = hw->html.formatted_elements;
 	while (start != NULL) {
-		if (start->anchor_tag_ptr->anchor_href == NULL) {
+		if (start->anchor_tag_ptr->anc_href == NULL) {
 			start = start->next;
 			continue;
 		}
 		if (testFunc != NULL) {
-			if ((*testFunc)((Widget)hw, start->anchor_tag_ptr->anchor_href)) {
+			if ((*testFunc)((Widget)hw, start->anchor_tag_ptr->anc_href)) {
 			    start->fg = hw->html.visitedAnchor_fg;
 			    start->underline_number =
 				hw->html.num_visitedAnchor_underlines;
@@ -3576,8 +3175,7 @@ void HTMLSetSelection(Widget w, ElementRef *start, ElementRef *end)
 		default: buffer = -1; break;
 		}
 		if (buffer >= 0) {
-			if (hw->html.fancy_selections == True) {
-			    text = ParseTextToPrettyString(hw,
+			text = ParseTextToString(
 				hw->html.formatted_elements,
 				hw->html.select_start,
 				hw->html.select_end,
@@ -3585,16 +3183,6 @@ void HTMLSetSelection(Widget w, ElementRef *start, ElementRef *end)
 				hw->html.sel_end_pos,
 				hw->html.font->max_bounds.width,
 				hw->html.margin_width);
-			} else {
-			    text = ParseTextToString(
-				hw->html.formatted_elements,
-				hw->html.select_start,
-				hw->html.select_end,
-				hw->html.sel_start_pos,
-				hw->html.sel_end_pos,
-				hw->html.font->max_bounds.width,
-				hw->html.margin_width);
-			}
 			XStoreBuffer(XtDisplay((Widget)hw),
 				text, strlen(text), buffer);
 			free(text);
@@ -3690,8 +3278,7 @@ char * HTMLGetTextAndSelection(Widget w,char **startp,char **endp,char **insertp
 	return(text);
 }
 
-/*
- * Convenience function to set the raw text into the widget.
+/* Convenience function to set the raw text into the widget.
  * Forces a reparse and a reformat.
  * If any pointer is passed in as NULL that text is unchanged,
  * if a pointer points to an empty string, that text is set to NULL;
@@ -3699,27 +3286,18 @@ char * HTMLGetTextAndSelection(Widget w,char **startp,char **endp,char **insertp
  * text.  Finally pass an anchor NAME to set position of the new text
  * to that anchor.
  */
-void HTMLSetText(Widget w, char *text, 
-	char *header_text, char *footer_text, int element_id, 
-	char *target_anchor, void *ptr)
+void HTMLSetText(Widget w, char *text, int element_id, 
+	char *target_anchor)
 {
 	HTMLWidget hw = (HTMLWidget)w;
-	WidgetInfo *wptr = (WidgetInfo *)ptr;
 	struct ele_rec *start;
 	struct ele_rec *eptr;
 	int newy;
 
-	if ((text == NULL)&&(header_text == NULL)&&(footer_text == NULL))
+	if (text == NULL)
 		return;
 
-	FreeHRefs(hw->html.my_visited_hrefs); /*Free the old visited href list*/
-	hw->html.my_visited_hrefs = NULL;
-
-	FreeDelayedImages(hw->html.my_delayed_images); /*Free old  */
-						/*visited delayed images list.*/
-	hw->html.my_delayed_images = NULL;
-
-	InitBody((Widget)hw); /*init body stuff. in case they have no body tag*/
+	InitBody(hw); /*init body stuff. in case they have no body tag*/
 
         				/* restore default colors as required */
 	if(hw->manager.foreground != hw->html.foreground_SAVE) {
@@ -3760,7 +3338,8 @@ void HTMLSetText(Widget w, char *text,
             hw->html.view->core.background_pixel = hw->html.background_SAVE ;
         }
 	HideWidgets(hw); 		/* Hide any old widgets */
-	hw->html.widget_list = wptr;
+	HTMLFreeWidgetInfo(hw->html.widget_list);
+	hw->html.widget_list = NULL;
 	hw->html.form_list = NULL;
 
 	if (text != NULL) {
@@ -3771,36 +3350,9 @@ void HTMLSetText(Widget w, char *text,
 		FreeColors(XtDisplay(hw), (installed_colormap ? installed_cmap :
 			    DefaultColormapOfScreen(XtScreen(hw))));
 				/* Parse the raw text with the HTML parser */
-		hw->html.html_objects = HTMLParse(hw->html.html_objects,
-			hw->html.raw_text, (Widget) hw);
+		FreeMarkUpList(hw->html.html_objects); /* clear previous*/
+		hw->html.html_objects = HTMLParse( hw->html.raw_text);
 		CallLinkCallbacks(hw);
-	}
-	if(hw->html.header_text){
-		free(hw->html.header_text);
-		hw->html.header_text = NULL;
-	}
-	if( header_text == NULL || *header_text == '\0'){
-		hw->html.html_header_objects = NULL;
-	}
-	if (header_text != NULL && *header_text != '\0') {
-		hw->html.header_text = strdup(header_text);
-				/* Parse the header text with the HTML parser */
-		hw->html.html_header_objects = HTMLParse(
-			hw->html.html_header_objects, hw->html.header_text, (Widget) hw);
-	}
-	if(hw->html.footer_text){
-		free(hw->html.footer_text);
-		hw->html.footer_text = NULL;
-	}
-	if( footer_text == NULL || *footer_text == '\0'){
-		hw->html.html_footer_objects = NULL;
-	}
-	if (footer_text != NULL && *footer_text != '\0') {
-		hw->html.footer_text = strdup(footer_text);
-				/* Parse the footer text with the HTML parser */
-		hw->html.html_footer_objects =
-			HTMLParse(hw->html.html_footer_objects,
-			hw->html.footer_text, (Widget) hw);
 	}
 				/* Reformat the new text */
 	hw->html.max_pre_width = DocumentWidth(hw, hw->html.html_objects);
@@ -3862,19 +3414,7 @@ void HTMLSetText(Widget w, char *text,
 	hw->html.active_anchor = NULL;
 }
 
-/*
- * To use faster TOLOWER as set up in HTMLparse.c
- */
-#ifdef NOT_ASCII
-#define TOLOWER(x)      (tolower(x))
-#else
-extern unsigned char map_table[];
-#define TOLOWER(x)      (map_table[x])
-#endif /* NOT_ASCII */
-
-
-/*
- * Allows us to jump to the bottom of a document (or very close).
+/* Allows us to jump to the bottom of a document (or very close).
  */
 int HTMLLastId(Widget w)
 {
@@ -3893,8 +3433,7 @@ int HTMLLastId(Widget w)
 	return(Id);
 }
 
-/*
- * News hack of searching function for HTML widget...only looks for an edata
+/* News hack of searching function for HTML widget...only looks for an edata
  *   of ">>>" as it will be by itself because the one we are looking for
  *   will be enclosed in a <b></b>. This will have to be rewritten when we
  *   start using the new parser! --SWP                 
@@ -3930,8 +3469,9 @@ int HTMLSearchNews(Widget w, ElementRef *m_start, ElementRef *m_end)
       return(-1);
 }
 
-/*
- * Convenience function to search the text of the HTML document as a single
+#define TOLOWER(x)      (tolower(x))
+
+/* Convenience function to search the text of the HTML document as a single
  * white space separated string. Linefeeds are converted into spaces.
  *
  * Takes a pattern, pointers to the start and end blocks to store the
@@ -3945,8 +3485,8 @@ int HTMLSearchNews(Widget w, ElementRef *m_start, ElementRef *m_end)
  *      (and the start and end positions of the match).
  * returns -1 otherwise (and start and end are unchanged).
  */
-int
-HTMLSearchText (Widget w, char *pattern, ElementRef *m_start, ElementRef *m_end,
+int HTMLSearchText(Widget w, char *pattern,
+		ElementRef *m_start, ElementRef *m_end,
 		int backward, int caseless)
 {
 	HTMLWidget hw = (HTMLWidget)w;
@@ -3961,20 +3501,17 @@ HTMLSearchText (Widget w, char *pattern, ElementRef *m_start, ElementRef *m_end,
 	ElementRef s_ref, e_ref;
 	ElementRef *start, *end;
 
-	/*
-	 * If bad parameters are passed, just fail the search
-	 */
+/* If bad parameters are passed, just fail the search
+ */
 	if ((pattern == NULL)||(*pattern == '\0')||
 		(m_start == NULL)||(m_end == NULL)) {
 		return(-1);
 	}
 
-	/*
-	 * If we are caseless, make a lower case copy of the pattern to
-	 * match to use in compares.
-	 *
-	 * remember to free this before returning
-	 */
+/* If we are caseless, make a lower case copy of the pattern to
+ * match to use in compares.
+ * remember to free this before returning
+ */
 	if (caseless) {
 		match = (char *)malloc(strlen(pattern) + 1);
 		tptr = pattern;
@@ -3989,12 +3526,10 @@ HTMLSearchText (Widget w, char *pattern, ElementRef *m_start, ElementRef *m_end,
 		match = pattern;
 	}
 
-	/*
-	 * Slimy coding.  I later decided I didn't want to change start and
-	 * end if the search failed.  Rather than changing all the code,
-	 * I just copy it into locals here, and copy it out again if a match
-	 * is found.
-	 */
+/* Slimy coding.  I later decided I didn't want to change start and
+ * end if the search failed.  Rather than changing all the code,
+ * I just copy it into locals here, and copy it out again if a match is found.
+ */
 	start = &s_ref;
 	end = &e_ref;
 	start->id = m_start->id;
@@ -4139,8 +3674,7 @@ HTMLSearchText (Widget w, char *pattern, ElementRef *m_start, ElementRef *m_end,
 			/*
 			 * Linefeeds match to single space characters.
 			 */
-			else if (eptr->type == E_LINEFEED)
-			{
+			else if (eptr->type == E_LINEFEED) {
 				if (equal) {
 					if (*mptr == ' ') {
 						mptr--;
@@ -4187,15 +3721,14 @@ HTMLSearchText (Widget w, char *pattern, ElementRef *m_start, ElementRef *m_end,
 			    tptr = eptr->edata;
 			    if (eptr == s_eptr)
 				tptr = (char *)(tptr + s_pos);
-			    while (*tptr != '\0') {
+			    while (*tptr ) {
 				if (equal) {
 					if (caseless) {
 						cval =(char)TOLOWER((int)*tptr);
 					} else {
 						cval = *tptr;
 					}
-					while ((*mptr != '\0')&& (cval == *mptr))
-					{
+					while ( *mptr && (cval == *mptr)) {
 						tptr++;
 						mptr++;
 						if (caseless) {
@@ -4222,8 +3755,7 @@ HTMLSearchText (Widget w, char *pattern, ElementRef *m_start, ElementRef *m_end,
 					} else {
 						cval = *tptr;
 					}
-					while ((*tptr != '\0')&& (cval != *mptr))
-					{
+					while ( *tptr && (cval != *mptr)) {
 						tptr++;
 						if (caseless) {
 						cval =(char)TOLOWER((int)*tptr);
@@ -4314,11 +3846,6 @@ void HTMLSetAppSensitive(Widget hw)
   sens_win = (Window)NULL;
 }
 
-/*
- * Original hack by TPR...
- *
- * Fixed up and rewritten by SWP...
- */
 void HTMLDrawBackgroundImage(Widget wid, int x, int y, int width, int height) 
 {
 int	w_whole=0, h_whole=0,
@@ -4337,12 +3864,10 @@ HTMLWidget hw = (HTMLWidget) wid;
 
                 return;
 
-        if (width > hw->html.view_width) {
+        if (width > hw->html.view_width)
                 width=hw->html.view_width-x;
-        }
-        if (height > hw->html.view_height) {
+        if (height > hw->html.view_height)
                 height=hw->html.view_height-y;
-        }
 
 	/*
 	 * Figure out the width offset into the bg image.
@@ -4468,32 +3993,5 @@ HTMLPart * McGetInternalHtmlPart( Widget w)
  
 static Boolean html_accept_focus(Widget w, Time *t)
 {
-  return True;
-}
-
-/* this allows the client to set the focus policy for all the widgets
-   created as children of the html widget */
-void HTMLSetFocusPolicy(Widget w, int to)
-{
-  HTMLWidget hw = (HTMLWidget) w;
-
-  if(hw->html.focus_follows_mouse == to)
-    return;
-  else { 
-      Widget shell = w;
-
-      while(!XtIsTopLevelShell(shell))
-        shell = XtParent(shell);
-
-      hw->html.focus_follows_mouse = to;
-      if(to) {   
-          XtVaSetValues(shell, XmNkeyboardFocusPolicy, XmPOINTER, NULL);
-      } else { 
-          XtVaSetValues(shell, XmNkeyboardFocusPolicy, XmEXPLICIT, NULL);
-          /* when we have preference dialog this will have to
-             undo all the translations that are currently installed
-             in the widgets and set the keyboardFocus policy of the
-             toplevel shell to pointer */
-      }
-  }   
+  return False;
 }

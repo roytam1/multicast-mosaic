@@ -15,12 +15,12 @@
 #include <netdb.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
+#include <memory.h>
+
 #ifdef SCREWY_BLOCKING
 #include <sys/fcntl.h>
 #endif
 
-/*For memset*/
-#include <memory.h>
 
 #ifdef SVR4
 # ifndef linux /* mjr++ */
@@ -34,10 +34,6 @@
 
 #include "port.h"
 #include "accept.h"
-
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
 
 /* return -1 on error */
 ListenAddress NetServerInitSocket(int portNumber)
@@ -79,8 +75,7 @@ ListenAddress NetServerInitSocket(int portNumber)
 	return(socketFD);
 }
 
-/* accept a connection off of a base socket */
-/* do not block! */
+/* accept a connection off of a base socket. Do not block! */
 /* return NULL if no connection else return PortDescriptor*  */
 PortDescriptor *NetServerAccept( ListenAddress socketFD)
 {
@@ -132,6 +127,11 @@ void NetCloseAcceptPort(int s)
 	close(s);
 }
 
+/* FD_SETSIZE is define in <sys/select.h> */
+#ifndef FD_SETSIZE
+#define FD_SETSIZE      32
+#endif
+
 /* Do a non block check on socket for input and return 1 for yes, 0 for no */
 int NetIsThereInput(PortDescriptor *p)
 {
@@ -140,7 +140,7 @@ int NetIsThereInput(PortDescriptor *p)
 
 	FD_ZERO(&readfds);
 	FD_SET(p->socketFD,&readfds);
-	if (0 < select(32, &readfds, 0, 0, &timeout))
+	if (0 < select(FD_SETSIZE, &readfds, 0, 0, &timeout))
 		return(1);
 	else
 		return(0);
@@ -154,7 +154,7 @@ int NetIsThereAConnection(int socketFD)
 
 	FD_ZERO(&readfds);
 	FD_SET(socketFD,&readfds);
-	if (0 < select(32, &readfds, 0, 0, &timeout))
+	if (0 < select(FD_SETSIZE, &readfds, 0, 0, &timeout))
 		return(1);
 	else
 		return(0);

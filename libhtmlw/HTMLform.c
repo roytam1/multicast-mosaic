@@ -247,11 +247,11 @@ void FormTextAreaBegin(HTMLWidget hw, struct mark_up ** mptr,
 	char *buf;
 	int len;        
 	struct mark_up * mark = *mptr;
-	char *tptr2, *cptr, *rptr;
+	char *cptr, *rptr;
 	int dir, ascent, descent;
 	XCharStruct all;
 	char * text;
-	int m_w, def_w, def_h, l;
+	int m_w, def_w, def_h;
 	int cols, rows;
 	FormInputType input_type= InputTypeTextArea;
 
@@ -409,8 +409,6 @@ void FormSelectBegin(HTMLWidget hw, struct mark_up ** mptr,
         PhotoComposeContext * pcc, Boolean save_obj)
 {
 	struct mark_up * mark = *mptr;
-	char *buf;
-	int len;        
 
 	if (!pcc->in_form)
 		return;

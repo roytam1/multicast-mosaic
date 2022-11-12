@@ -7,29 +7,18 @@
 **	25 Jun 92  JFG  Added DECNET option through TCP socket emulation.
 */
 
-#include "HTUtils.h"
-#include "HTParse.h"
-#include "HTAlert.h"
-#include "HTAccess.h"
-#include "tcp.h"
+#include <stdio.h>
 
 #ifdef __STDC__
 #include <stdlib.h>
 #endif
-
-#if defined(SVR4) && !defined(SCO) && !defined(linux)
-#include <sys/filio.h>
-#include <unistd.h>
-#endif
-
 /* Apparently needed for AIX 3.2. */
 #ifndef FD_SETSIZE
 #define FD_SETSIZE 256
 #endif
-
-#ifndef DISABLE_TRACE
-extern int httpTrace;
-extern int www2Trace;
+#if defined(SVR4) && !defined(SCO) && !defined(linux)
+#include <sys/filio.h>
+#include <unistd.h>
 #endif
 
 #ifdef SOLARIS
@@ -43,6 +32,16 @@ int gethostname(char *name, int namelen); /* because solaris 2.5 include bug */
 }
 #endif
 #endif
+
+#include "HText.h"
+#include "HTTCP.h"
+#include "HTUtils.h"
+#include "HTParse.h"
+#include "HTAlert.h"
+#include "HTAccess.h"
+#include "tcp.h"
+#include "HTParams.h"		/* params from X resources */
+
 
 /*	Module-Wide variables */
 
@@ -198,10 +197,8 @@ PUBLIC int HTParseInet ARGS2(SockA *,sin, WWW_CONST char *,str)
         } else {
           phost = gethostbyname (host);
           if (!phost) {
-#ifndef DISABLE_TRACE
-if (www2Trace) fprintf (stderr, 
+if (wWWParams.trace) fprintf (stderr, 
 "HTTPAccess: Can't find internet node name `%s'.\n",host);
-#endif
               return -1;  /* Fail? */
             }
 
@@ -224,15 +221,13 @@ if (www2Trace) fprintf (stderr,
         }
     }
   
-#ifndef DISABLE_TRACE
-if (www2Trace) fprintf(stderr,  
+if (wWWParams.trace) fprintf(stderr,  
             "TCP: Parsed address as port %d, IP address %d.%d.%d.%d\n",
             (int)ntohs(sin->sin_port),
             (int)*((unsigned char *)(&sin->sin_addr)+0),
             (int)*((unsigned char *)(&sin->sin_addr)+1),
             (int)*((unsigned char *)(&sin->sin_addr)+2),
             (int)*((unsigned char *)(&sin->sin_addr)+3));
-#endif
 
 #endif /* IPV6 */
   return 0;	/* OK */
@@ -256,30 +251,24 @@ PRIVATE void get_host_details(void)
     if (hostname) return;		/* Already done */
     gethostname(name, namelength);	/* Without domain */
 
-#ifndef DISABLE_TRACE
-    if (www2Trace) {
+    if (wWWParams.trace) {
 	fprintf(stderr, "TCP: Local host name is %s\n", name);
     }
-#endif
 
     StrAllocCopy(hostname, name);
 
 #ifdef NEED_HOST_ADDRESS		/* no -- needs name server! */
     phost=gethostbyname(name);		/* See netdb.h */
     if (!phost) {
-#ifndef DISABLE_TRACE
-	if (www2Trace) fprintf(stderr, 
+	if (wWWParams.trace) fprintf(stderr, 
 		"TCP: Can't find my own internet node address for `%s'!!\n",
 		name);
-#endif
 	return;  /* Fail! */
     }
     StrAllocCopy(hostname, phost->h_name);
     memcpy(&HTHostAddress, &phost->h_addr, phost->h_length);
-#ifndef DISABLE_TRACE
-    if (www2Trace) fprintf(stderr, "     Name server says that I am `%s' = %s\n",
+    if (wWWParams.trace) fprintf(stderr, "     Name server says that I am `%s' = %s\n",
 	    hostname, HTInetString(&HTHostAddress));
-#endif
 #endif
 }
 
@@ -289,7 +278,8 @@ PUBLIC char * HTHostName(void)
     return hostname;
 }
 
-PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
+PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s,
+	caddr_t appd)
 {
 #ifdef IPV6
 /* 4.3 BSD ipv6 based */
@@ -317,7 +307,7 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
     char *p1 = HTParse(url, "", PARSE_HOST);
 
     sprintf (line, "Looking up %s.", p1);
-    HTProgress (line);
+    HTProgress (line,appd);
 
 #ifdef IPV6
     status = HTParseInet(sin6, p1);
@@ -326,13 +316,13 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
 #endif
     if (status) {
         sprintf (line, "Unable to locate remote host %s.", p1);
-        HTProgress(line);
+        HTProgress(line,appd);
         free (p1);
         return HT_NO_DATA;
     }
 
     sprintf (line, "Making %s connection to %s.", protocol, p1);
-    HTProgress (line);
+    HTProgress (line,appd);
     free (p1);
   }
 
@@ -356,10 +346,10 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
     ret = ioctl(*s, FIONBIO, &val);
     if (ret == -1) {
         sprintf (line, "Could not make connection non-blocking.");
-        HTProgress(line);
+        HTProgress(line,appd);
     }
   }
-  HTClearActiveIcon();
+  HTClearActiveIcon(appd);
 
   /*
    * Issue the connect.  Since the server can't do an instantaneous accept
@@ -458,13 +448,11 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
                   break;
                 }
             }
-          intr = HTCheckActiveIcon(1);
+          intr = HTCheckActiveIcon(1,appd);
           if (intr)
             {
-#ifndef DISABLE_TRACE
-              if (www2Trace)
+              if (wWWParams.trace)
                 fprintf (stderr, "*** INTERRUPTED in middle of connect.\n");
-#endif
               status = HT_INTERRUPTED;
               errno = EINTR;
               break;
@@ -483,7 +471,7 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
       ret = ioctl(*s, FIONBIO, &val);
       if (ret == -1) {
           sprintf (line, "Could not restore socket to blocking.");
-          HTProgress(line);
+          HTProgress(line,appd);
 	}
   }
   /*
@@ -496,7 +484,7 @@ PUBLIC int HTDoConnect (char *url, char *protocol, int default_port, int *s)
 }
 
 /* This is so interruptible reads can be implemented cleanly. */
-int HTDoRead (int fildes, void *buf, unsigned nbyte)
+int HTDoRead (int fildes, void *buf, unsigned nbyte, caddr_t appd)
 {
   int ready, ret, intr;
   fd_set readfds;
@@ -522,18 +510,16 @@ int HTDoRead (int fildes, void *buf, unsigned nbyte)
         if (ret > 0) {
                 ready = 1;
         } else {
-                intr = HTCheckActiveIcon(1);
+                intr = HTCheckActiveIcon(1,appd);
                 if (intr)
                         return HT_INTERRUPTED;
         }
   }
   ret = read (fildes, buf, nbyte);
 
-#ifndef DISABLE_TRACE
-  if (httpTrace) {
+  if (wWWParams.trace) {
 	adtestbuf = (char*) buf;
 	for (intr = 0; intr < ret; fprintf(stderr,"%c",adtestbuf[intr++]) ) ;
   }
-#endif
   return ret;
 }

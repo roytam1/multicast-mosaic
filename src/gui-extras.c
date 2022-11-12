@@ -1,11 +1,17 @@
 /* Please read copyright.ncsa. Don't remove next line */
 #include "copyright.ncsa"
-#include "libhtmlw/HTML.h"
-#include "mosaic.h"
+
 #include <Xm/Xm.h>
 #include <Xm/ScrolledW.h>
 #include <Xm/List.h>
 #include <Xm/Label.h>
+
+#include "libhtmlw/HTML.h"
+#include "mosaic.h"
+#include "gui.h"
+#include "gui-documents.h"
+#include "gui-dialogs.h"
+#include "mo-www.h"
 
 #include "mo-www.h"
 
@@ -21,7 +27,7 @@ static XmxCallback (links_win_cb0)		 /* GOTO */
 		if(pcount && XmStringGetLtoR(win->links_items[posns[0]-1],
 		   XmSTRING_DEFAULT_CHARSET, &text)){
 			if(strncmp(text,"===",3))
-				mo_access_document(win,text);
+				mo_load_window_text(win,text,NULL);
 			XtFree(text);
 		}
 		XtFree((char *)posns);
@@ -56,8 +62,8 @@ static XmxCallback (links_win_cb3)	 /* SAVE TO FILE */
 			if(strncmp(text,"===",3)){
 				url = mo_url_canonicalize(
 						text,win->current_node->url);
-				if(mo_pull_er_over_virgin(url,fnam = mo_tmpnam(text)))
-					rename_binary_file(fnam);
+				if(mo_pull_er_over_virgin(url,fnam = mo_tmpnam(text),win))
+					mo_rename_binary_file(win, fnam);
 				free(url);
 				free(fnam);
 			}
@@ -77,7 +83,7 @@ static void links_list_cb(Widget w, XtPointer client, XtPointer call)
 	if(XmStringGetLtoR(win->links_items[cs->item_position-1],
 	   XmSTRING_DEFAULT_CHARSET, &text)){
 		if(strncmp(text,"===",3))
-			mo_access_document(win,text);
+			mo_load_window_text(win,text,NULL);
 		XtFree(text);
 	}
 /* Don't unmanage the list. */

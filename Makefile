@@ -6,7 +6,7 @@
 ## Scott Powers
 ##
 
-MCVER=3.2.0
+MCVER=3.2.1
 
 all: dev_$(DEV_ARCH)
 
@@ -122,7 +122,6 @@ sun-lresolv:
 	$(MAKE) -f makefiles/Makefile.sun-lresolv
 
 clean:
-	cd libXmx; $(MAKE) clean
 	cd libhtmlw; $(MAKE) clean
 	cd libnut; $(MAKE) clean
 	cd libwww2; $(MAKE) clean
@@ -134,15 +133,15 @@ clean:
 
 archive:
 	$(MAKE) clean
-	(cd ..; tar cf /sig/ultimate1/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar ./mMosaic-src-$(MCVER) )
-	gzip -9 /sig/ultimate1/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar
-	chmod 444 /sig/ultimate1/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar.gz
-	- rm /sig/ultimate1/ftp/pub/multicast/mMosaic/mMosaic-src.tar.gz
-	(cd /sig/ultimate1/ftp/pub/multicast/mMosaic; ln -s mMosaic-$(MCVER).tar.gz mMosaic-src.tar.gz)
+	(cd ..; tar cf /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar ./mMosaic-src-$(MCVER) )
+	gzip -9 /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar
+	chmod 444 /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER).tar.gz
+	- rm /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-src.tar.gz
+	(cd /sig/archive/ftp/pub/multicast/mMosaic; ln -s mMosaic-$(MCVER).tar.gz mMosaic-src.tar.gz)
 
 archive-bin :
-	- cp src/mMosaic /sig/ultimate1/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
-	- gzip -9 /sig/ultimate1/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
-	chmod 444 /sig/ultimate1/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25.gz
-	- rm /sig/ultimate1/ftp/pub/multicast/mMosaic/mMosaic-solaris25-bin.gz
-	(cd /sig/ultimate1/ftp/pub/multicast/mMosaic; ln -s mMosaic-$(MCVER)-bin-solaris-25.gz mMosaic-solaris25-bin.gz)
+	- cp src/mMosaic /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
+	- gzip -9 /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
+	chmod 444 /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25.gz
+	- rm /sig/archive/ftp/pub/multicast/mMosaic/mMosaic-solaris25-bin.gz
+	(cd /sig/archive/ftp/pub/multicast/mMosaic; ln -s mMosaic-$(MCVER)-bin-solaris-25.gz mMosaic-solaris25-bin.gz)

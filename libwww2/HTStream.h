@@ -25,12 +25,12 @@ typedef struct _HTStream HTStream;
  */
 typedef struct _HTStreamClass {
         char*  name;                            /* Just for diagnostics */
-        void (*free) PARAMS(( HTStream*   me));
-        void (*end_document) PARAMS(( HTStream*  me));
-        void (*put_character) PARAMS(( HTStream* me, char ch));
-        void (*put_string) PARAMS(( HTStream*    me, char * str));
-        void (*put_block) PARAMS(( HTStream* me, char * str, int len));
-        void (*handle_interrupt) PARAMS(( HTStream* me));
+        void (*free) ( HTStream*   me, caddr_t appd);
+        void (*end_document) ( HTStream*  me, caddr_t appd);
+        void (*put_character) ( HTStream* me, char ch, caddr_t appd);
+        void (*put_string) ( HTStream*    me, char * str, caddr_t appd);
+        void (*put_block) ( HTStream* me, char * str, int len, caddr_t appd);
+        void (*handle_interrupt) ( HTStream* me, caddr_t appd);
 }HTStreamClass;
 
 #endif /* HTSTREAM_H */

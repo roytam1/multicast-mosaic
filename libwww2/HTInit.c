@@ -1,3 +1,7 @@
+#include <stdio.h>
+#include <sys/types.h>
+
+#include "HText.h"
 #include "HTInit.h"
 
 #include "HTML.h"
@@ -10,16 +14,11 @@
 
 #include "tcp.h"
 #include "HTUtils.h"
-
-#ifndef DISABLE_TRACE
-extern int www2Trace;
-#endif
+#include "HTParams.h"
 
 int HTLoadTypesConfigFile (char *fn);
 
-extern int use_default_type_map;
-extern char *global_type_map;
-extern char *personal_type_map;
+HTParams wWWParams;	/* Params from X resourses */
 
 /* Reread config files. */
 PUBLIC void HTReInit NOARGS
@@ -36,30 +35,33 @@ PUBLIC void HTReInit NOARGS
 	HTFileInit ();
 }
 
-PUBLIC void HTFormatInit NOARGS
+PUBLIC void HTFormatInit (void)
 {
 /* Conversions aren't customizable. */
-  HTSetConversion("www/mime",  "*", HTMIMEConvert, 1.0, 0.0, 0.0);
+	HTSetConversion("www/mime",  "*", HTMIMEConvert, 1.0, 0.0, 0.0);
 
 /* Wonder what HTML will end up as? */
-  HTSetConversion("text/html", "www/present", HTMosaicHTMLPresent, 1.0, 0.0, 0.0);
-  HTSetConversion("text/x-html", "www/present", HTMosaicHTMLPresent, 1.0, 0.0, 0.0);
-  HTSetConversion("application/html", "www/present", HTMosaicHTMLPresent, 1.0, 0.0, 0.0);
-  HTSetConversion("application/x-html", "www/present", HTMosaicHTMLPresent, 1.0, 0.0, 0.0);
+	HTSetConversion("text/html", "www/present",
+		HTMosaicHTMLPresent, 1.0, 0.0, 0.0);
+	HTSetConversion("text/x-html", "www/present", 
+		HTMosaicHTMLPresent, 1.0, 0.0, 0.0);
+	HTSetConversion("application/html", "www/present", 
+		HTMosaicHTMLPresent, 1.0, 0.0, 0.0);
+	HTSetConversion("application/x-html", "www/present", 
+		HTMosaicHTMLPresent, 1.0, 0.0, 0.0);
 
-  HTSetConversion("text/plain", "www/present", HTPlainPresent,	1.0, 0.0, 0.0);
-  HTSetConversion("application/x-wais-source", "*", HTWSRCConvert, 1.0, 0.0, 0.0);
+	HTSetConversion("text/plain", "www/present", 
+		HTPlainPresent,	1.0, 0.0, 0.0);
+	HTSetConversion("application/x-wais-source", "*", 
+		HTWSRCConvert, 1.0, 0.0, 0.0);
 
 /* These should override everything else. */
-  HTLoadTypesConfigFile (personal_type_map);
-
-/* These should override the default types as necessary. */
-  HTLoadTypesConfigFile (global_type_map);
+  HTLoadTypesConfigFile (wWWParams.personal_type_map);
 
 /* These should always be installed if we have internal support;
      can be overridden by users. */
   
-  if (use_default_type_map) {
+  if (wWWParams.use_default_type_map) {
 #if defined(__sgi)
       HTSetPresentation("audio/basic", "sfplay %s", 1.0, 3.0, 0.0);
       HTSetPresentation("audio/x-aiff", "sfplay %s", 1.0, 3.0, 0.0);
@@ -224,10 +226,8 @@ static ProcessMailcapEntry(FILE *fp)
     }
     s = strchr(rawentry, ';');
     if (!s) {
-#ifndef DISABLE_TRACE
-      if (www2Trace)
+      if (wWWParams.trace)
 	fprintf(stderr, "Ignoring invalid mailcap entry: %s\n", rawentry);
-#endif
       free(rawentry);
       return(0);
     }
@@ -271,11 +271,9 @@ static ProcessMailcapFile(char *file)
 {
     FILE *fp;
 
-#ifndef DISABLE_TRACE
-    if (www2Trace)
+    if (wWWParams.trace)
       fprintf (stderr, "Loading types config file '%s'\n",
                file);
-#endif
 
     fp = fopen(file, "r");
 
@@ -292,7 +290,6 @@ int HTLoadTypesConfigFile (char *fn)
 }
 
 /* ------------------------------------------------------------------------ */
-/* ------------------------------------------------------------------------ */
 /*	Define a basic set of suffixes
 **	------------------------------
 **
@@ -306,15 +303,9 @@ int HTLoadTypesConfigFile (char *fn)
 
 PUBLIC void HTFileInit NOARGS
 {
-  extern int use_default_extension_map;
-  extern char *global_extension_map;
-  extern char *personal_extension_map;
-
-  if (use_default_extension_map) {
-#ifndef DISABLE_TRACE
-      if (www2Trace)
+  if (wWWParams.use_default_extension_map) {
+      if (wWWParams.trace)
         fprintf (stderr, "@@@ Using default extension map\n");
-#endif
 
       HTSetSuffix(".uu",	"application/octet-stream", "binary", 1.0); /* xtra */
       HTSetSuffix(".saveme",	"application/octet-stream", "binary", 1.0); /* xtra */
@@ -383,9 +374,7 @@ PUBLIC void HTFileInit NOARGS
       HTSetSuffix(".wav",  "audio/x-wav", "binary", 1.0);
       
       HTSetSuffix(".gif", "image/gif", "binary", 1.0);
-
       HTSetSuffix(".png", "image/png", "binary", 1.0);
-
       HTSetSuffix(".ief", "image/ief", "binary", 1.0);
 
       HTSetSuffix(".jfif","image/jpeg", "binary", 1.0); /* xtra */
@@ -437,11 +426,8 @@ PUBLIC void HTFileInit NOARGS
       HTSetSuffix(".mime", "message/rfc822", "binary", 1.0);
     }
 
-  /* These should override the default extensions as necessary. */
-  HTLoadExtensionsConfigFile (global_extension_map);
-  
   /* These should override everything else. */
-  HTLoadExtensionsConfigFile (personal_extension_map);
+  HTLoadExtensionsConfigFile (wWWParams.personal_extension_map);
 }
 
 
@@ -491,16 +477,12 @@ int HTLoadExtensionsConfigFile (char *fn)
 	FILE *f;
 	int x, count = 0;
 
-#ifndef DISABLE_TRACE
-	if (www2Trace)
+	if (wWWParams.trace)
 		fprintf (stderr, "Loading extensions config file '%s'\n", fn);
-#endif
   
 	if(!(f = fopen(fn,"r"))) {
-#ifndef DISABLE_TRACE
-		if (www2Trace)
+		if (wWWParams.trace)
 		fprintf(stderr,"Could not open extensions config file '%s'\n",fn);
-#endif
 		return -1;
 	}
 
@@ -523,9 +505,7 @@ int HTLoadExtensionsConfigFile (char *fn)
 					ext[x+1] = TOLOWER(w[x]);
 				ext[0] = '.';
 				ext[strlen(w)+1] = 0;
-#ifndef DISABLE_TRACE
-if (www2Trace) fprintf (stderr, "SETTING SUFFIX '%s' to '%s'\n", ext, ct);
-#endif
+if (wWWParams.trace) fprintf (stderr, "SETTING SUFFIX '%s' to '%s'\n", ext, ct);
 				HTSetSuffix (ext, ct, "binary", 1.0);
 				count++;
 				free (ext);

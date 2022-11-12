@@ -14,10 +14,11 @@
 
 int HTMIME_get_header_length(HTStream *me);
 
-extern HTStream * HTMIMEConvert PARAMS((HTPresentation * pres,
-                                        HTParentAnchor * anchor,
-                                        HTStream *              sink,
-                                        HTFormat                format_in,
-                                        int                     compressed));
+extern HTStream * HTMIMEConvert(HTPresentation * pres,
+                                HTParentAnchor * anchor,
+                                HTStream *       sink,
+                                HTFormat         format_in,
+                                int              compressed,
+				caddr_t		appd);
 
 #endif

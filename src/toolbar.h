@@ -18,7 +18,6 @@ struct toolbar
 
 struct tool {
 	char *text;            /* button text */
-	char *long_text;       /* long button text */
 	char *label;           /* tracker label */
 	XtCallbackProc action; /* mo_* for menubar dispatcher */
 	Pixmap *image;         /* the icon */

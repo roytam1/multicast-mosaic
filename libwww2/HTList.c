@@ -7,12 +7,9 @@
 */
 
 #include "HTList.h"
+#include "HTParams.h"
 
 #include <stdio.h>				/* joe@athena, TBL 921019 */
-
-#ifndef DISABLE_TRACE
-extern int www2Trace;
-#endif
 
 HTList * HTList_new NOARGS
 {
@@ -44,12 +41,10 @@ void HTList_addObject ARGS2(HTList *,me, void *,newObject)
 		newNode->next = me->next;
 		me->next = newNode;
 	}
-#ifndef DISABLE_TRACE
  	 else
-		if (www2Trace) fprintf(stderr,
+		if (wWWParams.trace) fprintf(stderr,
 		"HTList: Trying to add object %p to a nonexisting list\n",
 		newObject);
-#endif
 }
 
 void HTList_addObjectAtEnd ARGS2(HTList *,me, void *,newObject)
@@ -64,12 +59,10 @@ void HTList_addObjectAtEnd ARGS2(HTList *,me, void *,newObject)
 			me = me->next;
 		me->next = newNode;
 	}
-#ifndef DISABLE_TRACE
 	else
-		if (www2Trace) fprintf(stderr,
+		if (wWWParams.trace) fprintf(stderr,
 		"HTList: Trying to add object %p to a nonexisting list\n",
 		newObject);
-#endif
 }
 
 HT_BOOL HTList_removeObject ARGS2(HTList *,me, void *,oldObject)

@@ -45,7 +45,6 @@ void MoCCISendMouseAnchorOutput(char *anchor);
 void MoCCISendBrowserViewOutput(char *url, char *contentType, 
 char *data, int dataLength);
 int MoCCISendBrowserViewFile(char *url, char *contentType, char *filename);
-int MoCCIMaxNumberOfConnectionsAllowed();
 int MoCCICurrentNumberOfConnections();
 void MoCCIAddFileURLToList(char *fileName,char *url);
 char *MoReturnURLFromFileName(char *fileName);

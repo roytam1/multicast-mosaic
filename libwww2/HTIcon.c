@@ -10,6 +10,11 @@
 ** 
 */
 
+#include <stdio.h>
+#include <sys/types.h>
+#include <string.h>
+
+#include "HText.h"
 #include "HTFile.h"
 #include "HTAtom.h"
 

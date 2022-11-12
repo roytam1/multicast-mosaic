@@ -28,8 +28,8 @@
 #include "../libnut/mipcf.h"
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
-#include "../src/mo-www.h"
 #include "../src/mosaic.h"
+#include "../src/gui-documents.h"
 #include "mc_rtp.h"
 #include "mc_defs.h"
 #include "mc_misc.h"
@@ -43,8 +43,6 @@ XtIntervalId    	mc_send_rtcp_sdes_cname_time_out_id;
 mo_window * 	mc_send_win;
 int      	mc_multicast_enable;
 int      	mc_send_enable;
-
-extern Widget toplevel;
 
 typedef struct _packet_struct {
 	unsigned char code;
@@ -141,13 +139,13 @@ void McInit(mo_window * win)
 	mc_send_enable = 0;	/* On demare en mode lecture */
         mc_send_win = NULL;
         if ( mc_multicast_enable ){
-                mc_read_socket_id = XtAppAddInput(app_context, mc_fdread,
+                mc_read_socket_id = XtAppAddInput(mMosaicAppContext, mc_fdread,
                         (XtPointer)XtInputReadMask,
                         McReadSocketCb, NULL);
 		XtVaSetValues(win->scrolled_win, 
                                 WbNmctype, MC_MO_TYPE_MAIN, 
                                 NULL);
-                mc_rtcp_read_socket_id=XtAppAddInput(app_context,mc_rtcp_fdread,
+                mc_rtcp_read_socket_id=XtAppAddInput(mMosaicAppContext,mc_rtcp_fdread,
                         (XtPointer)XtInputReadMask,
                         McReadRtcpSocketCb, NULL);
 
@@ -159,19 +157,19 @@ void McInit(mo_window * win)
 /* now active timeout callback for receiver mode */
 /* send my cname member */
 		mc_send_rtcp_sdes_cname_time_out_id = XtAppAddTimeOut(
-				app_context,
+				mMosaicAppContext,
 				MC_SEND_RTCP_SDES_CNAME_TIME_OUT,
 				McSendRtcpSdesCnameTimeOutCb,
 				NULL);
 		McCreateWUserlist( win);
 
 		mc_check_rcvstime_time_out_id = XtAppAddTimeOut(
-				app_context,
+				mMosaicAppContext,
 				MC_CHECK_RCVSTIME_TIME_OUT,
 				McCheckRcvstimeTimeOutCb,
 				NULL);
 		mc_check_senderstime_time_out_id = XtAppAddTimeOut(
-				app_context,
+				mMosaicAppContext,
 				MC_CHECK_SENDERSTIME_TIME_OUT,
 				McCheckSenderstimeTimeOutCb,
 				NULL);
@@ -179,12 +177,12 @@ void McInit(mo_window * win)
 		hw = (HTMLWidget) win->scrolled_win;
 		fg = hw->html.foreground_SAVE;
 		bg = hw->html.background_SAVE;
-        	VirCursorPix = XCreatePixmapFromBitmapData (XtDisplay(toplevel),
-                        DefaultRootWindow(XtDisplay(toplevel)),
+        	VirCursorPix = XCreatePixmapFromBitmapData (mMosaicDisplay,
+                        DefaultRootWindow(mMosaicDisplay),
                         (char*)vir_cursor_bits, vir_cursor_width,
                         vir_cursor_height, fg^bg, 0, 
-			DefaultDepth( XtDisplay(toplevel),
-			              DefaultScreen( XtDisplay(toplevel) ) 
+			DefaultDepth( mMosaicDisplay,
+			              DefaultScreen( mMosaicDisplay ) 
 			            ) );
 		gcm = GCFunction | GCForeground | GCPlaneMask | GCBackground |
 			GCSubwindowMode ;
@@ -194,14 +192,14 @@ void McInit(mo_window * win)
         	gcv.background = 0;
 		gcv.subwindow_mode = IncludeInferiors;
 
-		gc_vc = XCreateGC(XtDisplay(toplevel),
-				XtWindow(toplevel),gcm,&gcv);
+		gc_vc = XCreateGC(mMosaicDisplay,
+				XtWindow(mMosaicToplevelWidget),gcm,&gcv);
         }
 }
 void McSetCursorPos(Widget w, int x, int y)
 {
 	HTMLWidget hw = (HTMLWidget) w;
-	XCopyArea(XtDisplay(toplevel),VirCursorPix,XtWindow(hw->html.view),
+	XCopyArea(mMosaicDisplay,VirCursorPix,XtWindow(hw->html.view),
 		gc_vc,0,0,vir_cursor_width,vir_cursor_height,
 		x,y);
 }
@@ -210,7 +208,7 @@ void McStartSendHyperText(mo_window * main_win)
 {
 /* Collect the data */
 	mc_send_win = main_win;
-	mo_reload_window_text (main_win, 0);
+	mo_reload_window_text (main_win);
 	mc_data_send_data_struct.id = 0;
 	mc_local_url_id++;
 	mc_data_send_data_struct.text = NULL;
@@ -224,12 +222,12 @@ void McStartSendHyperText(mo_window * main_win)
 
 	McSendAllDataOnlyOnce(&mc_data_send_data_struct);
 	mc_send_hear_beat_time_out_id = XtAppAddTimeOut(
-                                app_context,
+                                mMosaicAppContext,
                                 MC_SEND_HEAR_BEAT_TIME_OUT,
                                 McSendHearBeatTimeOutCb,
                                 NULL);
 	mc_send_goto_id_time_out_id = XtAppAddTimeOut(
-                                app_context,
+                                mMosaicAppContext,
                                 MC_SEND_GOTO_ID_TIME_OUT,
                                 McSendGotoIdTimeOutCb,
                                 NULL);
@@ -264,18 +262,6 @@ void McFillData(McSendDataStruct * d, mo_window * win)
 
 	/* l'hypertext doit etre stocke en global qqe part */
 	/* faut le trouver ... */
-	/* HTMainText stocke l'hypertexte */
-	/* Mosaic stocke le texte dans HTMainText. */
-	/* 	struct _HText {
-	 *		char *expandedAddress;
-	 *		char *simpleAddress;
-	 *		char *htmlSrc;   * a 'parser'. se termine par '\0' *
-	 *		char *htmlSrcHead;     * This is what we should free.*
-	 *		int srcalloc;    * amount of space allocated *
-	 *		int srclen;      * amount of space used(len of htmlSrc *
-	 *	};
-	 * le texte est dans HTMainText->htmlSrc;
-	 */
 
 /*	HTMLPart * htmlptr = McGetInternalHtmlPart( win->scrolled_win); */
 
@@ -453,7 +439,7 @@ static void McSendGotoIdTimeOutCb(XtPointer clid, XtIntervalId * id)
 	printf("in McSendGotoIdTimeOutCb \n");
 #endif
 	mc_send_goto_id_time_out_id = XtAppAddTimeOut(
-                                app_context,
+                                mMosaicAppContext,
                                 MC_SEND_GOTO_ID_TIME_OUT,
                                 McSendGotoIdTimeOutCb,
                                 NULL);
@@ -485,7 +471,7 @@ void McSendHearBeatTimeOutCb(XtPointer clid, XtIntervalId * id)
 	printf("in McSendHearBeatTimeOutCb \n");
 #endif
 	mc_send_hear_beat_time_out_id = XtAppAddTimeOut(
-                                app_context,
+                                mMosaicAppContext,
                                 MC_SEND_HEAR_BEAT_TIME_OUT,
                                 McSendHearBeatTimeOutCb,
                                 NULL);
@@ -554,7 +540,7 @@ void McSendAPacketCB(XtPointer clid, XtIntervalId * id)
 			Packets[nu].packet_size);
 		nu++;
 		mc_send_all_data_in_bd_time_out_id = XtAppAddTimeOut(
-                        app_context,
+                        mMosaicAppContext,
                         _mc_timer_interval,
                         McSendAPacketCB,
                         (XtPointer) nu);
@@ -755,7 +741,7 @@ void McSendAllDataInBandWidth(McSendDataStruct * d)
 				/* alors _mc_timer_interval = 40 milli second */
 				
 	mc_send_all_data_in_bd_time_out_id = XtAppAddTimeOut(
-                                app_context,
+                                mMosaicAppContext,
                                 _mc_timer_interval,
                                 McSendAPacketCB,
                                 0);
@@ -821,7 +807,7 @@ static void McSendRtcpSdesCnameTimeOutCb(XtPointer clid, XtIntervalId * id)
                                 
         McSendRtcpSdesCname();         /* send my cname user@host */
         mc_send_rtcp_sdes_cname_time_out_id = XtAppAddTimeOut(
-			app_context, 
+			mMosaicAppContext, 
 			MC_SEND_RTCP_SDES_CNAME_TIME_OUT,
 			McSendRtcpSdesCnameTimeOutCb,
 			NULL);

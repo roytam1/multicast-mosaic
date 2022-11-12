@@ -44,7 +44,7 @@ void HTSortSort (void)
   qsort ((void *)hunk, 
 	 count, 
 	 sizeof (char *), 
-	 (int (*)(void*,void*))dsortf);
+	 (int (*)(const void*,const void*))dsortf);
 }
 
 char *HTSortFetch (int i)

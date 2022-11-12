@@ -18,10 +18,6 @@ extern "C" {
 #include "readJPEG.h"
 #include <setjmp.h>
 
-#ifndef DISABLE_TRACE
-extern int srcTrace;
-#endif
-
 struct my_error_mgr {
 	struct jpeg_error_mgr pub;	/* "public" fields */
 	jmp_buf setjmp_buffer;	/* for return to caller */
@@ -33,12 +29,10 @@ static void
 my_error_exit (j_common_ptr cinfo)
 {
 	my_error_ptr myerr = (my_error_ptr) cinfo->err;
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
+	if (mMosaicSrcTrace) {
 		fprintf(stderr,"Error reading JPEG image: ");
 		(*cinfo->err->output_message) (cinfo);
 	}
-#endif
 	longjmp(myerr->setjmp_buffer, 1);
 }
 
@@ -48,18 +42,12 @@ unsigned char * ReadJPEG(FILE *infile,int *width, int *height, XColor *colrs)
 	struct my_error_mgr jerr;
 	unsigned char *retBuffer=0;	/* Output image buffer */
 	unsigned char *r;
-	JSAMPROW buffer[1];		/* row pointer array for read_scanlines */
+	JSAMPROW buffer[1];	/* row pointer array for read_scanlines */
 	int row_stride;		/* physical row width in output buffer */
 	int i;
 
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
-		fprintf(stderr,"ReadJPEG(): I've been called\n");
-	}
-#endif
 
-	/* We set up the normal JPEG error routines, 
-		then override error_exit. */
+	/* We set up the normal JPEG error routines, then override error_exit.*/
 	cinfo.err = jpeg_std_error(&jerr.pub);
 	jerr.pub.error_exit = my_error_exit;
 
@@ -68,7 +56,7 @@ unsigned char * ReadJPEG(FILE *infile,int *width, int *height, XColor *colrs)
 	if (setjmp(jerr.setjmp_buffer)) {
 		/* If we get here, the JPEG code has signaled an error. */
     		jpeg_destroy_decompress(&cinfo);
-		fclose(infile);
+/*		fclose(infile); */
 
 		if (retBuffer) {
 			free(retBuffer);
@@ -90,7 +78,7 @@ unsigned char * ReadJPEG(FILE *infile,int *width, int *height, XColor *colrs)
 
   	cinfo.quantize_colors = TRUE; 
 	/*cinfo.desired_number_of_colors = 50;*/
-	cinfo.desired_number_of_colors = get_pref_int(eCOLORS_PER_INLINED_IMAGE);
+	cinfo.desired_number_of_colors = mMosaicAppData.colors_per_inlined_image;
 	cinfo.two_pass_quantize = TRUE;
 
 	jpeg_start_decompress(&cinfo);
@@ -98,20 +86,16 @@ unsigned char * ReadJPEG(FILE *infile,int *width, int *height, XColor *colrs)
 	if (!(retBuffer = (unsigned char *) malloc(cinfo.output_width 
 			* cinfo.output_height * cinfo.output_components))) {
 		jpeg_destroy_decompress(&cinfo);
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
+		if (mMosaicSrcTrace) {
 			fprintf(stderr,"Couldn't create space for JPEG read\n");
 		}
-#endif
 		return(0);
 	}
-#ifndef DISABLE_TRACE
-	if (srcTrace) {
+	if (mMosaicSrcTrace) {
 		fprintf(stderr,"buffer size is width=%d x height=%d x depth=%d\n",
 		       cinfo.output_width , cinfo.output_height , 
 		       cinfo.output_components);
 	}
-#endif
 
 	r = retBuffer;
 	row_stride = cinfo.output_width * cinfo.output_components;
@@ -127,14 +111,12 @@ unsigned char * ReadJPEG(FILE *infile,int *width, int *height, XColor *colrs)
 	/* set up X colormap */
 	if (cinfo.out_color_components  == 3) {
 
-#ifndef DISABLE_TRACE
-		if (srcTrace) {
+		if (mMosaicSrcTrace) {
 			fprintf(stderr,"cinfo.actual_number_of_colors=%d\n",cinfo.actual_number_of_colors);
 			fprintf(stderr,"colrs[0].red=%d colrs[99].red=%d\n",colrs[0].red,colrs[99].red);
 			fprintf(stderr,"cinfo.colormap[0][0]=%d\n",cinfo.colormap[0][0]);
 			{char dummy[80]; fprintf(stderr,"RETURN\n"); gets(dummy);}
 		}
-#endif
 
 		for (i=0; i < cinfo.actual_number_of_colors; i++) {
 			colrs[i].red = cinfo.colormap[0][i] << 8;

@@ -69,15 +69,10 @@
 #include "HTML.h"		/* The object we will generate */
 #include "HTFile.h"
 #include "HTAlert.h"
+#include "HTParams.h"		/* params from X resources */
  
 /* #include "ParseWSRC.h" */
 
-#ifndef DISABLE_TRACE
-extern int www2Trace;
-#endif
-
-extern int WWW_TraceFlag;	/* Control diagnostic output */
-extern FILE * logfile;		/* Log file output */
 /*char *log_file_name = "/dev/null";*/
 extern char *log_file_name;     /* change for freeWAIS-0.5 - DXP */
 
@@ -193,8 +188,7 @@ PRIVATE char * WWW_from_WAIS ARGS1(any *, docid)
   unsigned char * q = buf;
   char * p = (docid->bytes);
   int i, l;
-#ifndef DISABLE_TRACE
-  if (www2Trace) 
+  if (wWWParams.trace) 
     {
       char *p;
       fprintf(stderr, "WAIS id (%d bytes) is ", (int)docid->size);
@@ -207,16 +201,13 @@ PRIVATE char * WWW_from_WAIS ARGS1(any *, docid)
         }
       fprintf(stderr, "\n");
     }	 
-#endif
 
   for (p = docid->bytes; 
        (p < docid->bytes+docid->size) && 
        (q < &buf[BIG]);) 
     {
-#ifndef DISABLE_TRACE
-      if (www2Trace) fprintf(stderr, "    Record type %d, length %d\n",
+      if (wWWParams.trace) fprintf(stderr, "    Record type %d, length %d\n",
                          p[0], p[1]);
-#endif
       sprintf(num, "%d", (int)*p);
 /*
       bcopy(num, q, strlen(num));
@@ -247,10 +238,8 @@ PRIVATE char * WWW_from_WAIS ARGS1(any *, docid)
       *q++= ';';		/* Terminate field */
     }
   *q++ = 0;			/* Terminate string */
-#ifndef DISABLE_TRACE
-  if (www2Trace) 
+  if (wWWParams.trace) 
     fprintf(stderr, "WWW form of id: %s\n", buf); 
-#endif
 
   {
     char * result = (char *)malloc (strlen (buf) + 1);
@@ -279,10 +268,8 @@ PRIVATE any * WAIS_from_WWW ARGS2 (any *, docid, char *, docname)
   char *s; 	/* Position of semicolon */
   int n;	/* size */
 
-#ifndef DISABLE_TRACE
-  if (www2Trace) 
+  if (wWWParams.trace) 
     fprintf(stderr, "WWW id (to become WAIS id): %s\n", docname); 
-#endif
   for(n=0, p = docname; *p; p++) 
     {	/* Count sizes of strings */
       n++;
@@ -370,8 +357,7 @@ PRIVATE any * WAIS_from_WWW ARGS2 (any *, docid, char *, docname)
       p++;			/* After semicolon: start of next record */
     }
   
-#ifndef DISABLE_TRACE
-  if (www2Trace) 
+  if (wWWParams.trace) 
     {
       char *p;
       fprintf(stderr, "WAIS id (%d bytes) is ", (int)docid->size);
@@ -383,7 +369,6 @@ PRIVATE any * WAIS_from_WWW ARGS2 (any *, docid, char *, docname)
       }
       fprintf(stderr, "\n");
     }	 
-#endif
   return docid;		/* Ok */
   
 } /* WAIS_from_WWW */
@@ -434,19 +419,13 @@ display_search_response ARGS4(
 
   archie = strstr(database, "archie")!=0;	/* Specical handling */
   
-#ifndef DISABLE_TRACE
-  if (www2Trace) 
+  if (wWWParams.trace) 
     fprintf(stderr, "HTWAIS: Displaying search response\n");
-#endif
-#ifndef DISABLE_TRACE
-  if (www2Trace)
+  if (wWWParams.trace)
     fprintf (stderr, "HTWAIS: database 0x%08x '%s', response 0x%08x\n",
              database, database, response);
-#endif
-#ifndef DISABLE_TRACE
-  if (www2Trace)
+  if (wWWParams.trace)
     fprintf (stderr, "HTWAIS: keywords 0x%08x '%s'\n", keywords, keywords);
-#endif
   sprintf(line,
   	"Index %s contains the following %d item%s relevant to '%s'.\n",
 	 database,
@@ -476,14 +455,12 @@ display_search_response ARGS4(
 
 /*	Make a printable string out of the document id.
 */
-#ifndef DISABLE_TRACE
-	if (www2Trace) fprintf(stderr, 
+	if (wWWParams.trace) fprintf(stderr, 
 		"HTWAIS:  %2ld: Score: %4ld, lines:%4ld '%s'\n", 
 	       i,
 	       (long int)(info->DocHeaders[k]->Score),
 	       (long int)(info->DocHeaders[k]->Lines),
 	       headline);
-#endif
 	PUTS("\n<LI> ");
 	sprintf(line, "%4ld  %4ld  ",
 	    head->Score,
@@ -505,10 +482,8 @@ display_search_response ARGS4(
 	    }
 	} else { /* Not archie */
 	    docname =  WWW_from_WAIS(docid);
-#ifndef DISABLE_TRACE
-            if (www2Trace)
+            if (wWWParams.trace)
               fprintf (stderr, "HTWAIS: docname '%s'\n", docname);
-#endif
 	    if (docname) {
 		char * dbname = HTEscape(database);
                 char types_array[1000]; /* bad */
@@ -528,10 +503,8 @@ display_search_response ARGS4(
                         strcat (types_array, type_escaped);
                         free (type_escaped);
                       }
-#ifndef DISABLE_TRACE
-                    if (www2Trace)
+                    if (wWWParams.trace)
                       fprintf (stderr, "Built types_array '%s'\n", types_array);
-#endif
                   }
                 else
                   {
@@ -549,11 +522,9 @@ display_search_response ARGS4(
                     strcmp (head->Types[0], "URL") == 0)
                   {
                     /* The real URL, maybe? */
-#ifndef DISABLE_TRACE
-                    if (www2Trace)
+                    if (wWWParams.trace)
                       fprintf (stderr, "HTWAIS: Using headline '%s' as URL\n",
                                headline);
-#endif
                     PUTS(headline);
                   }
                 else
@@ -630,13 +601,11 @@ static int fd_mosaic_connect_to_server(char *host_name, long port, long *fd)
 
   sprintf (dummy, "wais://%s:%d/", host_name, port);
 
-  status = HTDoConnect (dummy, "WAIS", 210, (int *)fd);
+  status = HTDoConnect (dummy, "WAIS", 210, (int *)fd,appd);
   if (status == HT_INTERRUPTED)
     {
-#ifndef DISABLE_TRACE
-      if (www2Trace)
+      if (wWWParams.trace)
         fprintf (stderr, "===WAIS=== interrupted in connect\n");
-#endif
       HTProgress ("Connection interrupted.");
       return -1;
     }
@@ -676,16 +645,11 @@ static int mosaic_connect_to_server(char *host_name, long port, FILE **fp)
 
 
 /* ------------------------------------------------------------------------ */
-/* ------------------------------------------------------------------------ */
-    
-/* Pulled in from gui.c; corresponds to Rdata.max_wais_responses. */
-extern int max_wais_responses;
 
 #define MAX_KEYWORDS_LENGTH 5000
 #define MAX_SERVER_LENGTH 1000
 #define MAX_DATABASE_LENGTH 1000
 #define MAX_SERVICE_LENGTH 1000
-#define MAXDOCS max_wais_responses
 
 /*		Load by name					HTLoadWAIS
 **		============
@@ -696,7 +660,8 @@ PUBLIC int HTLoadWAIS ARGS4(
 	WWW_CONST char *,		arg,
 	HTParentAnchor *,	anAnchor,
 	HTFormat,		format_out,
-	HTStream*,		sink)
+	HTStream*,		sink,
+###	caddr_t ,		appd)
 {
   char *key;			  /* pointer to keywords in URL */
   char *request_message = NULL; /* arbitrary message limit */
@@ -758,12 +723,10 @@ PUBLIC int HTLoadWAIS ARGS4(
                   
                   /* OK, now doclength should be the rest of the URL,
                      right??? */
-#ifndef DISABLE_TRACE
-                  if (www2Trace)
+                  if (wWWParams.trace)
                     fprintf (stderr, 
                              "WAIS: doctype '%s', doclength\n~~~~\n%s\n~~~~\n",
                              doctype, doclength);
-#endif
                   /* Multitype! */
                   if (strchr (doctype, ','))
                     {
@@ -772,15 +735,13 @@ PUBLIC int HTLoadWAIS ARGS4(
                       char *t, *oldt, *newt, *revised;
                       int first;
 
-#ifndef DISABLE_TRACE
-                      if (www2Trace)
+                      if (wWWParams.trace)
                         {
                           fprintf (stderr,
                                    "WAIS: Hey boss, got multitype.\n");
                           fprintf (stderr,
                                    "WAIS: names is '%s'\n", names);
                         }
-#endif
 
                       PUTS("<TITLE>");
                       PUTS("Multiple Format Opportunity");
@@ -861,10 +822,8 @@ PUBLIC int HTLoadWAIS ARGS4(
       return HT_NOT_LOADED;
     }
 
-#ifndef DISABLE_TRACE
-  if (www2Trace) 
+  if (wWWParams.trace) 
     fprintf(stderr, "HTWAIS: Parsed OK; type is '%s'\n", doctype);
-#endif
 
   service = strchr(names, ':');
   if (service)  
@@ -877,27 +836,21 @@ PUBLIC int HTLoadWAIS ARGS4(
   else if (!(key && !*key))
     {
       int status;
-#ifndef DISABLE_TRACE
-      if (www2Trace)
+      if (wWWParams.trace)
         fprintf (stderr, "===WAIS=== calling mosaic_connect_to_server\n");
-#endif
       status = mosaic_connect_to_server
         (server_name, atoi(service), &connection);
       if (status == 0)
         {
-#ifndef DISABLE_TRACE
-          if (www2Trace)
+          if (wWWParams.trace)
             fprintf (stderr, "===WAIS=== connection failed\n");
-#endif
           free(names);
           return HT_NOT_LOADED;
         }
       else if (status == -1)
         {
-#ifndef DISABLE_TRACE
-          if (www2Trace)
+          if (wWWParams.trace)
             fprintf (stderr, "===WAIS=== connection interrupted\n");
-#endif
           free(names);
           return HT_INTERRUPTED;
         }
@@ -961,14 +914,12 @@ PUBLIC int HTLoadWAIS ARGS4(
       PUTS("<ISINDEX>\n");
       
       request_buffer_length = MAX_MESSAGE_LEN; /* Amount left */
-#ifndef DISABLE_TRACE
-      if (www2Trace) fprintf(stderr, "HTWAIS: Search for `%s' in `%s'\n",
+      if (wWWParams.trace) fprintf(stderr, "HTWAIS: Search for `%s' in `%s'\n",
                          keywords, wais_database);
-#endif
       
       if(NULL == generate_search_apdu(request_message + HEADER_LENGTH, 
                                       &request_buffer_length, 
-                                      keywords, wais_database, NULL, MAXDOCS))
+                                      keywords, wais_database, NULL, wWWParams.max_wais_responses))
         {
           HTProgress ("WAIS request too large; something went wrong.");
         }
@@ -1016,22 +967,18 @@ PUBLIC int HTLoadWAIS ARGS4(
       if (doctype)
         HTUnEscape (doctype);
 
-#ifndef DISABLE_TRACE
-      if (www2Trace)
+      if (wWWParams.trace)
         fprintf(stderr,
                 "===WAIS=== Retrieve document id `%s' type `%s' length %ld\n",
                 docname, doctype, document_length);
-#endif      
       {
         char *tmp_doctype = strdup (doctype);
         char *tmp;
         for (tmp = tmp_doctype; *tmp; tmp++)
           *tmp = TOLOWER (*tmp);
-#ifndef DISABLE_TRACE
-        if (www2Trace)
+        if (wWWParams.trace)
           fprintf (stderr,
                    "===WAIS=== Doing HTAtom_exists on '%s'\n", tmp_doctype);
-#endif
         format_in = HTAtom_exists (tmp_doctype);
         free (tmp_doctype);
       }
@@ -1073,10 +1020,8 @@ PUBLIC int HTLoadWAIS ARGS4(
           {
             char *type = s_strdup(doctype);	/* Gets freed I guess */
             request_buffer_length = MAX_MESSAGE_LEN; /* Amount left */
-#ifndef DISABLE_TRACE
-            if (www2Trace) 
+            if (wWWParams.trace) 
               fprintf(stderr, "HTWAIS: Slice number %ld\n", count);
-#endif
             
             intr = HTCheckActiveIcon (1);
             if (intr)
@@ -1132,10 +1077,8 @@ PUBLIC int HTLoadWAIS ARGS4(
 
             if(NULL == response->Text)
               {
-#ifndef DISABLE_TRACE
-                if (www2Trace)
+                if (wWWParams.trace)
                   fprintf (stderr, "WAIS: no more data (NULL response->Text)\n");
-#endif
                 if (retrieval_response->DatabaseDiagnosticRecords)
                   freeWAISSearchResponse 
                     (retrieval_response->DatabaseDiagnosticRecords);
@@ -1154,10 +1097,8 @@ PUBLIC int HTLoadWAIS ARGS4(
               } /* If text existed */
             else
               {
-#ifndef DISABLE_TRACE
-                if (www2Trace)
+                if (wWWParams.trace)
                   fprintf (stderr, "WAIS: no more data (fell through)\n");
-#endif
                 if (retrieval_response->DatabaseDiagnosticRecords)
                   freeWAISSearchResponse 
                     (retrieval_response->DatabaseDiagnosticRecords);
@@ -1175,10 +1116,8 @@ PUBLIC int HTLoadWAIS ARGS4(
                 diag[0]->ADDINFO != NULL &&
                 !strcmp(diag[0]->DIAG, D_PresentRequestOutOfRange))
               {
-#ifndef DISABLE_TRACE
-                if (www2Trace)
+                if (wWWParams.trace)
                   fprintf (stderr, "WAIS: no more data (diag)\n");
-#endif
                 if (retrieval_response->DatabaseDiagnosticRecords)
                   freeWAISSearchResponse 
                     (retrieval_response->DatabaseDiagnosticRecords);
@@ -1217,7 +1156,7 @@ PUBLIC int HTLoadWAIS ARGS4(
   return HT_LOADED;
 }
 
-PUBLIC HTProtocol HTWAIS = { "wais", HTLoadWAIS, NULL };
+PUBLIC HTProtocol HTWAIS = { "wais", HTLoadWAIS };
 
 #endif /* DIRECT_WAIS */
  

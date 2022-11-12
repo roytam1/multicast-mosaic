@@ -62,7 +62,7 @@ extern "C" {
 #include <arpa/inet.h>
 int strcasecmp(const char *, const char *);
 clock_t clock(void);
-#if !defined(sco) && !defined(sgi) && !defined(__bsdi__) && !defined(__FreeBSD__) && !defined(linux)
+#if !defined(sco) && !defined(sgi) && !defined(__bsdi__) && !defined(__FreeBSD__) && !defined(linux) && !defined(__alpha)
 long int gethostid(void);
 #endif
 time_t time(time_t *);

@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#include "HTMLmiscdefs.h"
+#include "HTMLparse.h"
 #include "../libmc/mc_defs.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
@@ -23,36 +25,46 @@
 
 #define TBL_CELL_MARGIN_WIDTH	2
 
-#define FONTHEIGHT(font) (font->max_bounds.ascent + font->max_bounds.descent)
-
-void TableDump( TableInfo *t);
+#if 0
+static void TableDump( TableInfo *t);
+#endif
 
 static void FreeColList(ColumnList * col_list)
 {
-#ifdef TO_DO
-/* mjr: the ' confuses gcc-cpp */
+	ColumnList * cl;
 
-	/* ####C'est a faire #### */
-#endif
+	cl = col_list;
+	if( cl->cells)
+		free(cl->cells);
+	free(cl);
 }
+
 static void FreeRowlist( RowList * row_list)
 {
-#ifdef TO_DO
-	/* ####C'est a faire #### */
-#endif
-}
-static void FreeTableInfo(TableInfo * t)
-{
-#ifdef TO_DO
-	/* ####C'est a faire #### */
-#endif
+	RowList * rl;
+	int i;
+
+	rl = row_list;
+	for(i=0; i< rl->row_count; i++)
+		free(rl->cells_lines[i]);
+	
+	free(rl->cells_lines);
+	free(rl);
 }
 
-/* #####Push the PhotoComposeContext (context) for M_TABLE ####
-####            TablePlace(hw, mptr, x, y, #####a copy of chst ####);
-###             get next mptr and look for caption or tr ###
-###             if tr parse until (td or th) ####
-###             if td or th alors FormatChunk (hw, mptr, x, y, copy of chst####
+void _FreeTableStruct(TableInfo * t)
+{
+	FreeRowlist(t->row_list);
+	free(t->col_max_w);
+	free(t->col_min_w);
+	free(t->col_w);
+	free(t);
+}
+
+/* Push the PhotoComposeContext (context) for M_TABLE
+   TablePlace() get next mptr and look for caption or tr
+   if tr parse until (td or th)
+   if td or th then FormatChunk ()
 */
 void UpateColList( ColumnList ** col_list, int td_count,
 		MarkType m_cell_type,
@@ -123,27 +135,27 @@ void UpateColList( ColumnList ** col_list, int td_count,
 	*col_list = cl;
 }
 
-void AddPadAtEndColList(ColumnList * cl, int toadd)
+void AddPadAtEndColList(ColumnList ** cl, int toadd)
 {
 	int i;
 
-	cl->cells = (CellStruct*)realloc(cl->cells,
-		sizeof(CellStruct) * (cl->cell_count+toadd));
-	for(i=cl->cell_count; i< (cl->cell_count+toadd); i++){
-			cl->cells[i].td_count = 0;
-			cl->cells[i].colspan = 1;
-			cl->cells[i].rowspan = 1;
-			cl->cells[i].back_cs = 0;
-			cl->cells[i].back_rs = 0;
-			cl->cells[i].td_start = NULL;
-			cl->cells[i].td_end = NULL;
-			cl->cells[i].height = 0;
-			cl->cells[i].width = 0;
-			cl->cells[i].is_colspan = 0;
-			cl->cells[i].is_rowspan = 0;
-			cl->cells[i].cell_type = M_TD_CELL_PAD;
+	(*cl)->cells = (CellStruct*)realloc((*cl)->cells,
+		sizeof(CellStruct) * ((*cl)->cell_count+toadd));
+	for(i=(*cl)->cell_count; i< ((*cl)->cell_count+toadd); i++){
+			(*cl)->cells[i].td_count = 0;
+			(*cl)->cells[i].colspan = 1;
+			(*cl)->cells[i].rowspan = 1;
+			(*cl)->cells[i].back_cs = 0;
+			(*cl)->cells[i].back_rs = 0;
+			(*cl)->cells[i].td_start = NULL;
+			(*cl)->cells[i].td_end = NULL;
+			(*cl)->cells[i].height = 0;
+			(*cl)->cells[i].width = 0;
+			(*cl)->cells[i].is_colspan = 0;
+			(*cl)->cells[i].is_rowspan = 0;
+			(*cl)->cells[i].cell_type = M_TD_CELL_PAD;
 	}
-	cl->cell_count = cl->cell_count+toadd;
+	(*cl)->cell_count = (*cl)->cell_count+toadd;
 }
 static void AddPadAtEndRowList(
 	RowList * rl,
@@ -228,7 +240,7 @@ static void AddFreeLineToRow(RowList * rl, int toadd)
 }
 
 static void UpdateRowList(RowList ** row_list, int tr_count,
-		ColumnList * cl,
+		ColumnList ** cl,
 		struct mark_up * tr_start_mark,
 		struct mark_up * tr_end_mark)
 {
@@ -248,10 +260,10 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 
 
 	rl = *row_list;
-	ncell_for_this_cl = cl->cell_count;
-	nrow_for_this_cl = cl->max_row_span;
+	ncell_for_this_cl = (*cl)->cell_count;
+	nrow_for_this_cl = (*cl)->max_row_span;
 	if (rl == NULL){ /* Create one RowList */
-		this_line = cl->cells;
+		this_line = (*cl)->cells;
 		rl = (RowList*) malloc( sizeof(RowList));
 		rl->row_count = nrow_for_this_cl;
 		rl->max_cell_count_in_line = ncell_for_this_cl;
@@ -329,9 +341,9 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 				/*from =*/ 0, /*to=*/ low_cur_line_num /*exclu*/);
 		/* de low_cur_line_num inclu a row_count-1 mettre FREE */
 	}
-	this_line = cl->cells;
+	this_line = (*cl)->cells;
 	rcl = rl->cells_lines[low_cur_line_num];
-	nrow_for_this_cl = cl->max_row_span;
+	nrow_for_this_cl = (*cl)->max_row_span;
 
 /*Si nrow_for_this_cl + low_cur_line_num > row_count */
 /*etendre la table , augmenter le nombre de ligne avec partout FREE */
@@ -340,7 +352,7 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 			nrow_for_this_cl + low_cur_line_num - rl->row_count);
 	}
 
-/* maintenant cl->cell_count et n_rl_free_cell sont egaux */
+/* maintenant (*cl)->cell_count et n_rl_free_cell sont egaux */
 /* le nombre de ligne dans rl est suffisant */
 	jc = 0;
 	for(i=0; i<rl->max_cell_count_in_line; i++){
@@ -379,15 +391,19 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 	*row_list = rl;
 }
 
-TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
+static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	PhotoComposeContext * pcc)
 {
 	char * val;
 	char * tptr;
 	TableInfo *t;
+	TableInfo lt;
 	struct mark_up * sm;
 	struct mark_up * tb_start_mark;		/* save the marker <TABLE> */
 	struct mark_up * tb_end_mark=NULL;	/* save the marker <TABLE> */
+	struct mark_up * start_other_mark; /* is mark up between TABLE and TR */
+					/* or CAPTION ?			   */
+	struct mark_up * end_other_mark; /* is mark up between TABLE and TR */
 	ColumnList * col_list;
 	RowList * row_list;
 	int td_count;
@@ -409,52 +425,67 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	int colspan =0;
 	int rowspan =0;
 
+/* mptr is a pointer on <TABLE> */
+
 	tb_start_mark = mptr;
 	psm = mptr;
 	sm = mptr->next;
 
-	t = (TableInfo *) malloc(sizeof(TableInfo));
-	if (!t) {
-		MEM_OVERFLOW;
-	}
+/* 'sm' is a pointer just after <TABLE> */
+
 	td_count = 0;
 	tr_count = 0;
-	t->num_col = 0;
-	t->num_row = 0;
-	t->caption_start_mark = NULL;
-	t->caption_end_mark = NULL;
-	t->relative_width = 0;
-	t->borders = 0;
-	t->row_list = NULL;
-	t->width = 0;
-	t->height = 0;
-	t->min_width =0;
-	t->max_width =0;
-	t->is_tint = 0;
+	lt.num_col = 0;
+	lt.num_row = 0;
+	lt.caption_start_mark = NULL;
+	lt.caption_end_mark = NULL;
+	lt.start_other_mark = NULL;
+	lt.end_other_mark =NULL;
+	lt.relative_width = 0;
+	lt.borders = 0;
+	lt.row_list = NULL;
+	lt.width = 0;
+	lt.height = 0;
+	lt.min_width =0;
+	lt.max_width =0;
+	lt.is_tint = 0;
 	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"BORDER")){
-		t->borders = atoi(tptr);
+		lt.borders = atoi(tptr);
+		free(tptr);
 	}
 	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"WIDTH")){
-		t->relative_width = atoi(tptr);	/* the width wanted by user */
+		lt.relative_width = atoi(tptr);	/* the width wanted by user */
 		if (strchr(tptr,'%') == NULL){ /* absolute value */
-			t->relative_width = (t->relative_width*100)/pcc->cur_line_width;
+			lt.relative_width = (lt.relative_width*100)/pcc->cur_line_width;
 		}
+		free(tptr);
 	}
-	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"ALIGN"))
+	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"ALIGN")) {
 		printf("[MakeTable] %s not yet implemented\n","ALIGN");
-	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLSPACING"))
+		free(tptr);
+	}
+	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLSPACING")) {
 		printf("[MakeTable] %s not yet implemented\n","CELLSPACING");
-	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLPADDING"))
+		free(tptr);
+	}
+	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLPADDING")) {
 		printf("[MakeTable] %s not yet implemented\n","CELLPADDING");
+		free(tptr);
+	}
 
 	/* find the first TR or CAPTION */
 	caption_found = 0;
 	tr_found = 0;
+	start_other_mark = NULL;
+	end_other_mark = NULL;
+/* 'sm' is a pointer just after <TABLE> */
 	while ( sm ){
 		if((sm->type== M_CAPTION) && (!sm->is_end)){
-			t->captionAlignment = ALIGN_BOTTOM;
-			if (ParseMarkTag(sm->start,MT_CAPTION,"top"))
-				t->captionAlignment = ALIGN_TOP;
+			lt.captionAlignment = VALIGN_BOTTOM;
+			if (tptr = ParseMarkTag(sm->start,MT_CAPTION,"top")){
+				lt.captionAlignment = VALIGN_TOP;
+				free(tptr);
+			}
 			caption_found = 1;
 			caption_start_mark = sm;
 			break;
@@ -465,8 +496,15 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			tr_start_mark = sm;
 			break;
 		}
+		if ( (!sm->is_white_text) && (!start_other_mark) )
+			start_other_mark = sm;
+		if (start_other_mark)
+			end_other_mark = sm;
 		sm = sm->next;
 	}
+	lt.start_other_mark = start_other_mark;
+	lt.end_other_mark = end_other_mark;
+
 	if ( (caption_found == 0) && (tr_found == 0))
 		return NULL;
 
@@ -485,10 +523,11 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			printf("</CAPTION> not found\n");
 			return NULL;
 		}
-		t->caption_start_mark = caption_start_mark;
-		t->caption_end_mark = caption_end_mark;
+		lt.caption_start_mark = caption_start_mark;
+		lt.caption_end_mark = caption_end_mark;
 		printf("<CAPTION> not yet fully implemented\n");
 	}
+
 	/* now find the first <TR> */
 	if ( ! tr_found ){
 		tr_start_mark = caption_end_mark;
@@ -504,6 +543,7 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			return NULL;
 		}
 	}
+
 				/*tr_start_mark	is the first TR */
 	psm = NULL;		/* the previous mark because end is optional */
 	sm = tr_start_mark;
@@ -604,8 +644,9 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 				tr_end_mark = psm;
 				tr_count++;
 				if (col_list){
-					UpdateRowList(&row_list,tr_count,col_list,
+					UpdateRowList(&row_list,tr_count,&col_list,
 						tr_start_mark,tr_end_mark);
+					FreeColList(col_list);
 					col_list = NULL;
 					td_count =0;
 				}else{
@@ -636,8 +677,9 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			tr_count++;
 			tr_end_mark = sm;
 			if(col_list){
-				UpdateRowList(&row_list,tr_count,col_list,
+				UpdateRowList(&row_list,tr_count,&col_list,
 					tr_start_mark,tr_end_mark);
+				FreeColList(col_list);
 				col_list = NULL;
 				td_count =0;
 			} else {
@@ -664,8 +706,9 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 				tr_end_mark = psm;
 				tr_count++;
 				if(col_list){
-					UpdateRowList(&row_list,tr_count,col_list,
+					UpdateRowList(&row_list,tr_count,&col_list,
 						tr_start_mark,tr_end_mark);
+					FreeColList(col_list);
 					col_list = NULL;
 					td_count =0;
 				} else {
@@ -677,11 +720,11 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 				break;
 			tb_end_mark = sm;
 			/* UpdateTableInfo */
-			t->num_col = row_list->max_cell_count_in_line ;
-			t->num_row = row_list->row_count;
-			t->tb_end_mark = tb_end_mark;
-			t->tb_start_mark = tb_start_mark;
-			t->row_list = row_list;
+			lt.num_col = row_list->max_cell_count_in_line ;
+			lt.num_row = row_list->row_count;
+			lt.tb_end_mark = tb_end_mark;
+			lt.tb_start_mark = tb_start_mark;
+			lt.row_list = row_list;
 			row_list=NULL;
 			tr_count =0;
 			break;
@@ -693,14 +736,16 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 
 			tt = FirstPasseTable(hw, sm, pcc); /* be recursive */
 			if (!tt){
-				printf("table have no column or row!\n");
-				return NULL;
+				printf("Buggy Table in Table !\n");
+				sm->type = M_BUGGY_TABLE; /* change type */
+						/* don't rescan */
+			} else {
+				tt->is_tint = 1;
+				sm->t_p1= tt;
+				psm = sm;
+				sm = tt->tb_end_mark->next;
+				continue;
 			}
-			tt->is_tint = 1;
-			sm->table_info1= tt;
-			psm = sm;
-			sm = tt->tb_end_mark->next;
-			continue;
 		}
 		psm = sm;
 		sm=sm->next;
@@ -711,9 +756,11 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			FreeColList(col_list);
 		if(row_list)
 			FreeRowlist(row_list);
-		FreeTableInfo(t);
 		return NULL;
 	}
+	t = (TableInfo *) calloc(1,sizeof(TableInfo));
+	CHECK_OUT_OF_MEM(t);
+	*t = lt;
 	return t;
 }
 
@@ -797,7 +844,8 @@ void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_
 	t->estimate_height = estimate_height;
 }
 
-void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc)
+void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc,
+	Boolean save_obj)
 {
 	struct mark_up *sm;
 	TableInfo *t;
@@ -813,7 +861,6 @@ void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc)
 	int delta;
 	struct ele_rec * cr_eptr;
 	struct ele_rec * eptr;
-	int max_line_number;
 	int w_in_cell;
 	int tbl_border;
 	int line_som_bdw;
@@ -825,36 +872,47 @@ void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc)
                 return;
 	sm = *mptr;			/* save marker */
 
-/* Faire une prepasse pour compter le nombre de colonne et de ligne */
-/* capturer les markeurs de fin */
+/* 'sm' is now a pointer on <TABLE> */
 
-	if (!sm->table_info1){		/* do the prepasse */
-        	if (htmlwTrace) {
-                	fprintf(stderr,"[TablePlace] pcc->x=%d, pcc->y=%d\n",
-				pcc->x,pcc->y);
-        	}
+/* do a pre-pass to count the number of column and raw.
+ * Capture all end markers
+ * Faire une prepasse pour compter le nombre de colonne et de ligne
+ * capturer les markeurs de fin */
+
+	if (!sm->t_p1){		/* do the prepasse */
 		t = FirstPasseTable(hw,sm,pcc);	/* the First passe */
 		if (!t){
-			printf("table have no column or row!\n");
+			printf("Invalid table structure !\n");
 			return;
 		}
-		sm->table_info1= t;
+		sm->t_p1= t;
 	}
-	t = sm->table_info1;
+	t = sm->t_p1;
+
+/* execute HTML marker beetween <TABLE> and first <TR> or <CAPTION> */
+
+	if(t->start_other_mark){
+		FormatChunk(hw, t->start_other_mark, t->end_other_mark,
+			pcc, save_obj);
+		LineBreak(hw,t->end_other_mark,pcc);
+	}
+
+/* on place le CAPTION toujours au debut */
+	if(t->caption_start_mark){
+		FormatChunk(hw,t->caption_start_mark,t->caption_end_mark,
+					pcc, save_obj);
+		LineBreak(hw,t->caption_end_mark,pcc);
+	}
 
 /* once we have a table, we compute the min and max size of each cell */
 /* save the contexte for each cell, parse beetween marker , the return context */
 /* give the size. When doing this NEVER create element */
-/* save the img struct or aprog struct or applet struct in the mark_up struct, NOT in */
-/* ele_rec struct */
+/* save the img struct or aprog struct or applet struct in the mark_up struct, */
+/* NOT in ele_rec struct */
 
-#ifdef TO_DO
-	Faire un premier tour pour caption avec un pcc artificiel
-	stocker le pcc_caption(min,max)
-#endif
 
-	/* faire un deuxieme tour pour chauque TD avec un pcc artificiel */
-	/* de td_start_mark a td_end_mark */
+/* faire un deuxieme tour pour chauque TD avec un pcc artificiel */
+/* de td_start_mark a td_end_mark */
 	if (!t->min_width) { /* on a pas estimer les dimensions de la table */
 		EstimateMinMaxTable(hw,t,pcc);
 	}
@@ -889,47 +947,26 @@ void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc)
 Caluler maintenant t->col_w[i] suivant ces trois cas.
 
 */
-/*
-	if (!t->is_tint){
-*/
-		if (t->min_width >= pcc->cur_line_width){	/* cas 1 */
-			for(i=0; i<t->num_col;i++){
-				t->col_w[i] = t->col_min_w[i];
-			}
-		} else if (t->max_width < pcc->cur_line_width){ /* cas 2 */
-			for(i=0; i<t->num_col;i++){
-				t->col_w[i] = t->col_max_w[i];
-			}
-		} else {				       /* cas 3 */
-			int gw;
-			int gd;
-			int pd;
-	
-			gw = pcc->cur_line_width - t->min_width;
-			gd = t->max_width - t->min_width;
-			for (i=0;i<t->num_col;i++){
-				pd = t->col_max_w[i] - t->col_min_w[i];
-				t->col_w[i] = t->col_min_w[i] + (pd * gw) / gd;
-			}
+	if (t->min_width >= pcc->cur_line_width){	/* cas 1 */
+		for(i=0; i<t->num_col;i++){
+			t->col_w[i] = t->col_min_w[i];
 		}
-/*
-/*	} else {	/* une table dans une table doit prendre la dim exacte*/
-/*
+	} else if (t->max_width < pcc->cur_line_width){ /* cas 2 */
+		for(i=0; i<t->num_col;i++){
+			t->col_w[i] = t->col_max_w[i];
+		}
+	} else {				       /* cas 3 */
 		int gw;
-		int mo;
-		int cw;
+		int gd;
+		int pd;
 
-		gw = pcc->parent_html_object_desc->inner_width;
-		cw = gw / t->num_col;
-		mo = gw % t->num_col; 
-
-		if (cw == 0) cw = 1;
+		gw = pcc->cur_line_width - t->min_width;
+		gd = t->max_width - t->min_width;
 		for (i=0;i<t->num_col;i++){
-			t->col_w[i] = cw;
+			pd = t->col_max_w[i] - t->col_min_w[i];
+			t->col_w[i] = t->col_min_w[i] + (pd * gw) / gd;
 		}
-		t->col_w[t->num_col -1] += mo;
 	}
-*/
 
 /* maintenant on peut calculer la largeur de la table */
 	w_table = 0;
@@ -966,18 +1003,7 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 
         LineBreak(hw, *mptr, pcc);
 
-
-/*#######*/
-/* on place le CAPTION toujours au debut */
-	if(t->caption_start_mark){
-		FormatChunk(hw,t->caption_start_mark,t->caption_end_mark,
-					pcc, False);
-		LineBreak(hw,t->caption_end_mark,pcc);
-	}
-/*#######*/
-
 	tbl_pcc = *pcc;
-
 	
 /* now compute the real width of cell and create element in cell */
 /*somme des bords dans une ligne */
@@ -988,8 +1014,6 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	line_pcc = tbl_pcc;
 	line_pcc.y = tbl_pcc.y ;
 	line_pcc.eoffsetx = tbl_pcc.left_margin+tbl_pcc.eoffsetx;
-	line_pcc.line_number++;
-	max_line_number = line_pcc.line_number;
 	max_line_bot = line_pcc.y+ h_def_height_cell;
 	for(i=0; i< t->num_row; i++){
 		int cell_offset;
@@ -998,7 +1022,6 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 		cell_offset =0;
 		for(j=0; j<t->num_col; j++){ /* prendre chaque element */
 			int add_offset;
-			ParentHTMLObjectDesc p_desc;
 
 			w_cell = t->col_w[j]; /* set final width of cell */
 					/* just for test: set equal width */
@@ -1017,6 +1040,9 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 			switch (cell.cell_type){
 			case M_TD_CELL_PAD:
 				cell.x = cell_offset + line_pcc.eoffsetx;
+/* propagate the height, line_bottom, from starting cell span */
+				cell.line_bottom = t->row_list->cells_lines[i-cell.back_rs][j-cell.back_cs].line_bottom;
+				cell.height = t->row_list->cells_lines[i-cell.back_rs][j-cell.back_cs].height;
 				break;
 			case M_TD_CELL_FREE:
 				cell.x = cell_offset + line_pcc.eoffsetx;
@@ -1050,15 +1076,8 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
                 			work_pcc.cur_baseline, &work_pcc);
 				cell.start_elem = cr_eptr;
 
-				p_desc.type = cell.cell_type;
-				p_desc.inner_width = w_in_cell;
-				p_desc.inner_height = cell.height;
-				p_desc.el = (void*) &cell;
-				work_pcc.parent_html_object_desc = &p_desc;
-
 				FormatChunk(hw,cell.td_start,cell.td_end,
 					&work_pcc, False);
-				work_pcc.parent_html_object_desc = NULL;
 /* add little vertical space */
 				LineBreak(hw,cell.td_end,&work_pcc);
 				cell.end_elem = hw->html.last_formatted_elem;
@@ -1072,8 +1091,6 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 						line_pcc.cur_font->ascent/2;
 				cell.line_bottom = work_pcc.y+
                                                 line_pcc.cur_font->ascent/2;
-				if(max_line_number < work_pcc.line_number)
-					max_line_number = work_pcc.line_number;
 				break;
 			default:
 				printf("BUG: Unknow cell type in TABLE\n");
@@ -1091,12 +1108,10 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 			line_pcc.aprog_id = work_pcc.aprog_id;
 			line_pcc.applet_id = work_pcc.applet_id;
 		}
-/*Ajuster les hauteurs des 'cells'*/
-/*Faire attention au span en ligne et colonne */
+/*Ajuster les hauteurs des 'cells'.Faire attention au span en ligne et colonne */
 /* pour chaque cellule dans la ligne voir si c'est la fin d'un 'rowspan'*/
 /* si oui (ou cellule seule) ajuster la hauteur pour que les lignes du bas */
-/* soient alignees */
-/* Si cellule seule ou fin d'un row span , alors */
+/* soient alignees. Si cellule seule ou fin d'un row span , alors */
 /* Creer l'element graphique qui entoure la cellule */
 		for(j=0; j<t->num_col; j++){
 			cell = line[j];
@@ -1118,8 +1133,6 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 /* stocker la hauteur de la table */
 		h_table = max_line_bot - pcc->y;
 		line_pcc.y = max_line_bot;
-		max_line_number++;
-		line_pcc.line_number = max_line_number;
 	}
 
 	pcc->widget_id = line_pcc.widget_id;
@@ -1134,7 +1147,6 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	eptr = CreateElement(hw,E_TABLE, pcc->cur_font,
 		pcc->x, pcc->y, w_table, h_table, h_table, pcc); 
 
-	pcc->line_number = max_line_number;
 	eptr->underline_number = 0; /* Table's can't be underlined */
 	eptr->table_data = t;
 
@@ -1149,8 +1161,10 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 /* do a linefeed */
 	LinefeedPlace(hw,t->tb_end_mark,pcc);
 
+#if 0
 	if (htmlwTrace)
 		TableDump(t);
+#endif
 }
 
 
@@ -1204,6 +1218,7 @@ void TableRefresh( HTMLWidget hw, struct ele_rec *eptr)
 			   1, LineSolid, CapNotLast, JoinMiter);
 }
 
+#if 0
 
 /* print out the table to stdout */
 void TableDump( TableInfo *t)
@@ -1227,3 +1242,4 @@ void TableDump( TableInfo *t)
 		}
 	}
 }
+#endif

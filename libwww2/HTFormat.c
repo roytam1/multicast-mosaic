@@ -3,7 +3,10 @@
 */
 
 /* Connection: Keep-Alive support -bjs */
+#include <stdio.h>
 #include <unistd.h>
+
+#include "HText.h"
 #include "HTMIME.h"
 
 #include "HTFormat.h"
@@ -15,7 +18,6 @@ PUBLIC float HTMaxLength = 1e10;	/* No effective limit */
 #include "tcp.h"
 #include "HTTCP.h"
 
-#include "HText.h"
 #include "HTAlert.h"
 #include "HTList.h"
 #include "HTInit.h"
@@ -23,13 +25,7 @@ PUBLIC float HTMaxLength = 1e10;	/* No effective limit */
 #include "HTPlain.h"
 #include "SGML.h"
 #include "HTML.h"
-
-/* From gui-documents.c. */
-extern int loading_inlined_images;
-
-#ifndef DISABLE_TRACE
-extern int www2Trace;
-#endif
+#include "HTParams.h"		/* params from X resources */
 
 PUBLIC	HT_BOOL HTOutputSource = NO;	/* Flag: shortcut parser to stdout */
 extern  HT_BOOL interactive;
@@ -177,30 +173,26 @@ PUBLIC void HTInitInput ARGS1 (int,file_number)
 }
 
 PUBLIC int interrupted_in_htgetcharacter = 0;
-PUBLIC char HTGetCharacter NOARGS
+PUBLIC char HTGetCharacter (caddr_t appd)
 {
   char ch;
   interrupted_in_htgetcharacter = 0;
   do {
       if (input_pointer >= input_limit) {
           int status = 
-            HTDoRead(input_file_number, input_buffer, INPUT_BUFFER_SIZE);
+            HTDoRead(input_file_number, input_buffer, INPUT_BUFFER_SIZE,appd);
           if (status <= 0) {
               if (status == 0) 
                 return (char)EOF;
               if (status == HT_INTERRUPTED) {
-#ifndef DISABLE_TRACE
-                  if (www2Trace)
+                  if (wWWParams.trace)
                     fprintf (stderr, "HTFormat: Interrupted in HTGetCharacter\n");
-#endif
                   interrupted_in_htgetcharacter = 1;
                   return (char)EOF;
                 }
-#ifndef DISABLE_TRACE
-              if (www2Trace) 
+              if (wWWParams.trace) 
                 fprintf(stderr,
                         "HTFormat: File read error %d\n", status);
-#endif
               return (char)EOF;
 	    }
           input_pointer = input_buffer;
@@ -212,27 +204,6 @@ PUBLIC char HTGetCharacter NOARGS
   
   return ch;
 }
-
-/*	Stream the data to an ouput file as binary
-*/
-PUBLIC int HTOutputBinary ARGS2( int, 		input,
-				  FILE *, 	output)
-{
-  do {
-      int status = HTDoRead(input, input_buffer, INPUT_BUFFER_SIZE);
-      if (status <= 0) {
-          if (status == 0) 
-            return 0;
-#ifndef DISABLE_TRACE
-          if (www2Trace) fprintf(stderr,
-                             "HTFormat: File read error %d\n", status);
-#endif
-          return 2;			/* Error */
-        }
-      fwrite(input_buffer, sizeof(char), status, output);
-    } while (YES);
-}
-
 
 static int partial_wildcard_matches (HTFormat r1, HTFormat r2)
 {
@@ -304,43 +275,40 @@ nope:
 **	MIME so far.  Storing the format of a stream in the stream might
 **	be a lot neater.
 */
-PUBLIC HTStream * HTStreamStack ARGS5(
-	HTFormat,		format_in,
-	HTFormat,		rep_out,
-        int,                    compressed,
-	HTStream*,		sink,
-	HTParentAnchor*,	anchor)
+PUBLIC HTStream * HTStreamStack (
+	HTFormat	format_in,
+	HTFormat	rep_out,
+        int             compressed,
+	HTStream*	sink,
+	HTParentAnchor*	anchor,
+	caddr_t		appd)
 {
   HTAtom * wildcard = HTAtom_for("*");
   HTPresentation temp;
 
-  /* Inherit force_dump_to_file from mo-www.c. */
-  extern int force_dump_to_file;
+  /* Inherit force_dump_filename from mo-www.c. */
+  extern char* force_dump_filename;
 
-#ifndef DISABLE_TRACE
-  if (www2Trace) 
+  if (wWWParams.trace) 
     fprintf(stderr,
             "[HTStreamStack] Constructing stream stack for %s to %s\n",
             HTAtom_name(format_in),	
             HTAtom_name(rep_out));
-  if (www2Trace)
+  if (wWWParams.trace)
     fprintf (stderr, "               Compressed is %d\n", compressed);
-#endif
     
   if (rep_out == WWW_SOURCE || rep_out == format_in) {
-#ifndef DISABLE_TRACE
-      if (www2Trace)
+      if (wWWParams.trace)
         fprintf (stderr,
                  "[HTStreamStack] rep_out == WWW_SOURCE | rep_out == format_in; returning sink\n");
-#endif
       return sink;
   }
   
   if (!HTPresentations) 
     HTFormatInit();	/* set up the list */
   
-  if (force_dump_to_file && format_in != WWW_MIME)
-      return HTSaveAndExecute (NULL, anchor, sink, format_in, compressed);
+  if (force_dump_filename && format_in != WWW_MIME)
+      return HTSaveAndExecute (NULL, anchor, sink, format_in, compressed,appd);
   
   {
     int n = HTList_count(HTPresentations);
@@ -348,8 +316,7 @@ PUBLIC HTStream * HTStreamStack ARGS5(
     HTPresentation * pres;
     for(i=0; i<n; i++) {
         pres = (HTPresentation*)HTList_objectAt(HTPresentations, i);
-#ifndef DISABLE_TRACE
-        if (www2Trace) {
+        if (wWWParams.trace) {
             fprintf (stderr, "HTFormat: looking at pres '%s'\n",
                      HTAtom_name (pres->rep));
             if (pres->command)
@@ -358,44 +325,35 @@ PUBLIC HTStream * HTStreamStack ARGS5(
             else
               fprintf (stderr, "HTFormat: pres->command doesn't exist\n");
         }
-#endif
         if (pres->rep == format_in ||
             partial_wildcard_matches (pres->rep, format_in))
           {
             if (pres->command && strstr (pres->command, "mosaic-internal-present"))
               {
-#ifndef DISABLE_TRACE
-                if (www2Trace)
+                if (wWWParams.trace)
                   fprintf (stderr, "[HTStreamStack] HEY HEY HEY caught internal-present\n");
-#endif
-                return HTPlainPresent (pres, anchor, sink, format_in, compressed);
+                return HTPlainPresent(pres, anchor, sink, format_in, compressed,appd);
               }
             if (pres->rep_out == rep_out) {
-#ifndef DISABLE_TRACE
-                if (www2Trace)
+                if (wWWParams.trace)
                   fprintf (stderr,
                            "[HTStreamStack] pres->rep_out == rep_out\n");
-#endif
-                return (*pres->converter)(pres, anchor, sink, format_in, compressed);
+                return (*pres->converter)(pres, anchor, sink, format_in, compressed,appd);
               }
             if (pres->rep_out == wildcard) {
-#ifndef DISABLE_TRACE
-                if (www2Trace)
+                if (wWWParams.trace)
                   fprintf (stderr,
                            "[HTStreamStack] pres->rep_out == wildcard\n");
-#endif
                 temp = *pres;/* make temp conversion to needed fmt */
                 temp.rep_out = rep_out;		/* yuk */
-                return (*pres->converter)(&temp, anchor, sink, format_in, compressed);
+                return (*pres->converter)(&temp, anchor, sink, format_in, compressed,appd);
               }
           }
     }
   }
-#ifndef DISABLE_TRACE
-  if (www2Trace) {
+  if (wWWParams.trace) {
       fprintf (stderr, "[HTStreamStack] Returning NULL at bottom.\n");
   }
-#endif
   return NULL;
 }
 
@@ -416,12 +374,10 @@ PUBLIC float HTStackValue ARGS4(
 {
     HTAtom * wildcard = HTAtom_for("*");
 
-#ifndef DISABLE_TRACE
-    if (www2Trace) fprintf(stderr,
+    if (wWWParams.trace) fprintf(stderr,
     	"HTFormat: Evaluating stream stack for %s worth %.3f to %s\n",
 	HTAtom_name(format_in),	initial_value,
 	HTAtom_name(rep_out));
-#endif
 		
     if (rep_out == WWW_SOURCE ||
     	rep_out == format_in) return 0.0;
@@ -459,139 +415,117 @@ PUBLIC float HTStackValue ARGS4(
 **   when the format is textual.
 */
 
-#define SWP_HACK
 
-PUBLIC int HTCopy ARGS3(int,		file_number,
-                         HTStream*,	sink,
-                         int,           bytes_already_read)
+PUBLIC int HTCopy (int		file_number,
+                   HTStream*	sink,
+                   int          bytes_already_read,
+		caddr_t		appd)
 {
-  HTStreamClass targetClass;    
-  char line[256];
-  char *msg;
-  int bytes = bytes_already_read;
-  extern int twirl_increment;
-  int next_twirl = twirl_increment;
-  int rv = 0;
+	HTStreamClass targetClass;    
+	char line[256];
+	char *msg;
+	int bytes = bytes_already_read;
+	int next_twirl = wWWParams.twirl_increment;
+	int rv = 0;
+	int left = -1, total_read = bytes_already_read, hdr_len = 0;
 
-  int left = -1, total_read = bytes_already_read, hdr_len = 0;
+	HTClearActiveIcon(appd);
 
-  HTClearActiveIcon();
+/* Push the data down the stream */
+	targetClass = *(sink->isa);	/* Copy pointers to procedures */
 
-  /*	Push the data down the stream */
-  targetClass = *(sink->isa);	/* Copy pointers to procedures */
-  
-  hdr_len = HTMIME_get_header_length(sink);
-
-      /*	Push binary from socket down sink */
-  for(;;) {
-      int status, intr;
-
-      if (bytes > next_twirl) {
-          intr = HTCheckActiveIcon(1);
-          next_twirl += twirl_increment;
-      } else {
-          intr = HTCheckActiveIcon(0);
-      }
-      if (intr) {
-#ifdef SWP_HACK
-	  loading_length=(-1);
-#endif
-          HTProgress ("Data transfer interrupted.");
-	  noLength=0;
-	  HTMeter(100,NULL);
-	  noLength=1;
-          (*targetClass.handle_interrupt)(sink);
-          rv = -1;
-          goto ready_to_leave;
-        }
-      
-      if(loading_length == -1) {
-	  left = -1;
-	  status = HTDoRead(file_number, input_buffer, INPUT_BUFFER_SIZE);
-      } else {
-	  left = (loading_length+hdr_len)-total_read;
-	  if(left>0) 
-		status = HTDoRead(file_number, input_buffer, 
-                                      (left>INPUT_BUFFER_SIZE?
-                                       INPUT_BUFFER_SIZE:left));
-          else 
-		status=0;
-      }
-
-      if (status > 0)
-	  total_read += status;
-      
-/*      fprintf(stderr,"ll = %d status = %d left = %d hdr = %d tr = %d\n",
-              loading_length,status,left,hdr_len,total_read);
-*/		  
-      if (status <= 0) {
-          if (status == 0) 
-            break;
-          if (status == HT_INTERRUPTED) {
-#ifdef SWP_HACK
-	      loading_length=(-1);
-#endif
-              HTProgress ("Data transfer interrupted.");
-	      noLength=0;
-	      HTMeter(100,NULL);
-	      noLength=1;
-              (*targetClass.handle_interrupt)(sink);
-              rv = -1;
-              goto ready_to_leave;
-          }
-          if (errno == ENOTCONN || errno == ECONNRESET || errno == EPIPE) {
-              /* Arrrrgh, HTTP 0/1 compability problem, maybe. */
-              rv = -2;
-              goto ready_to_leave;
-          }
-          break;
-      }
-#ifndef DISABLE_TRACE
-      if (www2Trace)
-	  fprintf (stderr, "HTCopy: put_block on input_buffer '%s'\n", input_buffer);
-#endif
-      (*targetClass.put_block)(sink, input_buffer, status);
-      if (ftpKludge) {
-	hdr_len=0;
-      } else {
 	hdr_len = HTMIME_get_header_length(sink);
-      }
-      bytes += status;
 
-      /* moved msg stuff here as loading_length may change midstream -bjs*/
-      if (loading_length == -1){
-	  msg = (loading_inlined_images ? 
-		 "Read %d bytes of inlined image data." : 
-		 "Read %d bytes of data.");
-        sprintf (line, msg, bytes);
-      }else{
-	  msg = (loading_inlined_images ? 
-		 "Read %d of %d bytes of inlined image data." : 
-		 "Read %d of %d bytes of data.");
-        sprintf (line, msg, bytes, loading_length+hdr_len);
-	HTMeter((bytes*100)/(loading_length+hdr_len),NULL);
-      }
-      HTProgress (line);
-      if((loading_length != -1) && (total_read>=(loading_length+hdr_len))) {
-	  break;
-      }
-  } /* next bufferload */
-  
-  HTProgress ("Data transfer complete.");    
-  noLength=0;
-  HTMeter(100,NULL);
-  noLength=1;
+/* Push binary from socket down sink */
+	for(;;) {
+		int status, intr;
 
-/*  fprintf(stderr,"HTFormat: KeepAlive Exit\n");*/
-/* NETCLOSE (file_number); */
+		if (bytes > next_twirl) {
+			intr = HTCheckActiveIcon(1,appd);
+			next_twirl += wWWParams.twirl_increment;
+		} else {
+			intr = HTCheckActiveIcon(0,appd);
+		}
+		if (intr) {
+			loading_length=(-1);
+			HTProgress ("Data transfer interrupted.",appd);
+			noLength=0;
+			HTMeter(100,NULL,appd);
+			noLength=1;
+			(*targetClass.handle_interrupt)(sink,appd);
+			rv = -1;
+			/* Reset ourselves so we don't get confused. */
+			loading_length = -1;
+			return rv;
+		}
 
-  /* Success. */
-  rv = 0;
-
-ready_to_leave:
-  /* Reset ourselves so we don't get confused. */
-  loading_length = -1;
-  return rv;
+		if(loading_length == -1) {
+			left = -1;
+			status = HTDoRead(file_number, input_buffer, INPUT_BUFFER_SIZE,appd);
+		} else {
+			left = (loading_length+hdr_len)-total_read;
+			if(left>0) 
+				status = HTDoRead(file_number, input_buffer, 
+					(left>INPUT_BUFFER_SIZE?
+					INPUT_BUFFER_SIZE:left),appd);
+			else 
+				status=0;
+		}
+		if (status > 0)
+			total_read += status;
+		if (status <= 0) {
+			if (status == 0) 
+			break;
+			if (status == HT_INTERRUPTED) {
+				loading_length=(-1);
+				HTProgress ("Data transfer interrupted.",appd);
+				noLength=0;
+				HTMeter(100,NULL,appd);
+				noLength=1;
+				(*targetClass.handle_interrupt)(sink,appd);
+				rv = -1;
+				/* Reset ourselves so we don't get confused. */
+				loading_length = -1;
+				return rv;
+			}
+			if (errno == ENOTCONN || errno == ECONNRESET || errno == EPIPE) {
+/* Arrrrgh, HTTP 0/1 compability problem, maybe. */
+				rv = -2;
+				/* Reset ourselves so we don't get confused. */
+				loading_length = -1;
+				return rv;
+			}
+			break;
+		}
+/* write the block to target */
+		(*targetClass.put_block)(sink, input_buffer, status,appd);
+		if (ftpKludge) {
+			hdr_len=0;
+		} else {
+			hdr_len = HTMIME_get_header_length(sink);
+		}
+		bytes += status;
+/* moved msg stuff here as loading_length may change midstream -bjs*/
+		if (loading_length == -1){
+			msg = "Read %d bytes of data.";
+			sprintf (line, msg, bytes);
+		}else{
+			msg = "Read %d of %d bytes of data.";
+			sprintf (line, msg, bytes, loading_length+hdr_len);
+			HTMeter((bytes*100)/(loading_length+hdr_len),NULL,appd);
+		}
+		HTProgress (line,appd);
+		if((loading_length != -1) && (total_read>=(loading_length+hdr_len))) {
+			break;
+		}
+	} 			/* next bufferload */
+	HTProgress ("Data transfer complete.",appd);    
+	noLength=0;
+	HTMeter(100,NULL,appd);
+	noLength=1;
+	rv = 0;			 /* Success. */
+	loading_length = -1;	 /* Reset ourselves so we don't get confused. */
+	return rv;
 }
 
 /*	Push data from a file pointer down a stream
@@ -600,9 +534,10 @@ ready_to_leave:
 **   This routine is responsible for creating and PRESENTING any
 **   graphic (or other) objects described by the file.
 */
-PUBLIC void HTFileCopy ARGS2(
-	FILE *,			fp,
-	HTStream*,		sink)
+PUBLIC void HTFileCopy(
+	FILE *		fp,
+	HTStream*	sink,
+	caddr_t		appd)
 {
     HTStreamClass targetClass;    
     
@@ -611,13 +546,11 @@ PUBLIC void HTFileCopy ARGS2(
 	int status = fread(input_buffer, 1, INPUT_BUFFER_SIZE, fp);
 	if (status == 0) { /* EOF or error */
 	    if (ferror(fp) == 0) break;
-#ifndef DISABLE_TRACE
-	    if (www2Trace) fprintf(stderr,
+	    if (wWWParams.trace) fprintf(stderr,
 		"HTFormat: Read error, read returns %d\n", ferror(fp));
-#endif
 	    break;
 	}
-	(*targetClass.put_block)(sink, input_buffer, status);
+	(*targetClass.put_block)(sink, input_buffer, status,appd);
     } /* next bufferload */
 
     fclose (fp);
@@ -633,10 +566,8 @@ PUBLIC void HTFileCopyToText ARGS2(
       if (status == 0) { /* EOF or error */
           if (ferror(fp) == 0)
 		 break;
-#ifndef DISABLE_TRACE
-          if (www2Trace) 
+          if (wWWParams.trace) 
 		fprintf(stderr, "HTFormat: Read error, read returns %d\n", ferror(fp));
-#endif
           break;
       }
       HText_appendBlock (text, input_buffer, status);
@@ -655,38 +586,37 @@ PUBLIC void HTFileCopyToText ARGS2(
 **   CRLF at the end of lines which need to be stripped to LF for unix
 **   when the format is textual.
 */
-PUBLIC int HTParseSocket ARGS6(
-	HTFormat,		format_in,
-	HTFormat,		format_out,
-	HTParentAnchor *,	anchor,
-	int,			file_number,
-	HTStream*,		sink,
-        int,                    compressed)
+PUBLIC int HTParseSocket (
+	HTFormat		format_in,
+	HTFormat		format_out,
+	HTParentAnchor *	anchor,
+	int			file_number,
+	HTStream*		sink,
+        int                    compressed,
+	caddr_t			appd)
 {
   HTStream * stream;
   HTStreamClass targetClass;    
   int rv;
   
   stream = HTStreamStack(format_in, format_out,
-                         compressed, sink, anchor);
+                         compressed, sink, anchor,appd);
   if (!stream) {
       char buffer[1024];	/* @@@@@@@@ */
       sprintf(buffer, "Sorry, can't convert from %s to %s.",
               HTAtom_name(format_in), HTAtom_name(format_out));
-#ifndef DISABLE_TRACE
-      if (www2Trace) fprintf(stderr, "HTFormat: %s\n", buffer);
-#endif
-      HTAlert( buffer);
+      if (wWWParams.trace) fprintf(stderr, "HTFormat: %s\n", buffer);
+      HTAlert( buffer,appd);
       return -1;
   }
   targetClass = *(stream->isa);	/* Copy pointers to procedures */
-  rv = HTCopy(file_number, stream, 0);
+  rv = HTCopy(file_number, stream, 0,appd);
   if (rv == -1) {
       /* handle_interrupt should have been done in HTCopy */
       /* (*targetClass.handle_interrupt)(stream); */
       return HT_INTERRUPTED;
   }
-  (*targetClass.end_document)(stream);
+  (*targetClass.end_document)(stream,appd);
 
   /* New thing: we force close the data socket here, so that if
      an external viewer gets forked off in the free method below,
@@ -694,7 +624,7 @@ PUBLIC int HTParseSocket ARGS6(
      which it does if we don't do this. */
 
   NETCLOSE (file_number);
-  (*targetClass.free)(stream);
+  (*targetClass.free)(stream,appd);
   return HT_LOADED;
 }
 
@@ -707,32 +637,31 @@ PUBLIC int HTParseSocket ARGS6(
 **   CRLF at the end of lines which need to be stripped to LF for unix
 **   when the format is textual.
 */
-PUBLIC int HTParseFile ARGS6(
-	HTFormat,		format_in,
-	HTFormat,		format_out,
-	HTParentAnchor *,	anchor,
-	FILE *,			fp,
-	HTStream*,		sink,
-        int,                    compressed)
+PUBLIC int HTParseFile (
+	HTFormat		format_in,
+	HTFormat		format_out,
+	HTParentAnchor *	anchor,
+	FILE *			fp,
+	HTStream*		sink,
+        int                    compressed,
+	caddr_t			appd)
 {
     HTStream * stream;
     HTStreamClass targetClass;    
     
     stream = HTStreamStack(format_in, format_out,
-                           compressed, sink , anchor);
+                           compressed, sink , anchor,appd);
     if (!stream) {
         char buffer[1024];	/* @@@@@@@@ */
 	sprintf(buffer, "Sorry, can't convert from %s to %s.",
 		HTAtom_name(format_in), HTAtom_name(format_out));
-#ifndef DISABLE_TRACE
-	if (www2Trace) fprintf(stderr,"HTFormat(in HTParseFile): %s\n", buffer);
-#endif
-        HTAlert(buffer);
+	if (wWWParams.trace) fprintf(stderr,"HTFormat(in HTParseFile): %s\n", buffer);
+        HTAlert(buffer,appd);
 	return -1;
     }
     targetClass = *(stream->isa);	/* Copy pointers to procedures */
-    HTFileCopy(fp, stream);
-    (*targetClass.end_document)(stream);
-    (*targetClass.free)(stream);
+    HTFileCopy(fp, stream,appd);
+    (*targetClass.end_document)(stream,appd);
+    (*targetClass.free)(stream,appd);
     return HT_LOADED;
 }

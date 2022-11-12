@@ -210,16 +210,8 @@ CFLAGS = -g $(sysconfigflags) $(prereleaseflags)
 PURIFY = purify
 QUANTIFY = quantify
 
-default: $(dtmdirs) libwww2 libXmx libhtmlw libnut src
-	@echo \*\*\* Welcome to NCSA Mosaic.
-purifyd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-purifyd
-	@echo \*\*\* Welcome to Purify'd NCSA Mosaic.
-quantifyd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-quantifyd
-	@echo \*\*\* Welcome to Quantify'd NCSA Mosaic.
-
-libXmx::
-	@echo --- Building libXmx
-	cd libXmx; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc)"
+default: $(dtmdirs) libwww2 libhtmlw libnut src
+	@echo \*\*\* Welcome to mMosaic.
 
 libhtmlw::
 	@echo --- Building libhtmlw
@@ -236,15 +228,7 @@ libnut::
 
 src::
 	@echo --- Building src
-	cd src; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic"
-
-src-purifyd::
-	@echo --- Building Purify'd src
-	cd src; make PURIFY=$(PURIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-p"
-
-src-quantifyd::
-	@echo --- Building Quantify'd src
-	cd src; make PURIFY=$(QUANTIFY) CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic-q"
+	cd src; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic"
 
 libnet::
 	@echo --- Building libnet
@@ -255,7 +239,6 @@ libdtm::
 	cd libdtm; make $(dtmmachtype) CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(dtmflags)"
 
 clean:
-	cd libXmx; make $@
 	cd libhtmlw; make $@
 	cd libwww2; make $@
 	cd src; make $@
@@ -263,16 +246,6 @@ clean:
 	cd libdtm; make $@
 	cd libnut; make $@
 
-wclean:
-	cd libhtmlw; make $@
-	cd src; make $@
-
-commit:
-	cvs commit
-update:
-	cvs update
-countlines:
-	wc libdtm/*.[ch] libnet/*.[ch] libXmx/*.[ch] libhtmlw/*.[ch] libwww2/*.[ch] src/*.[ch]
 replicate:
 	cp Makefile Makefile.sun
 	cp Makefile Makefile.ibm
