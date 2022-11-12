@@ -33,8 +33,8 @@ struct mark_up NULL_ANCHOR = {
 
 struct mark_up * NULL_ANCHOR_PTR = &NULL_ANCHOR ;
 
-struct timeval Tv;
-struct timezone Tz;
+static struct timeval Tv;
+static struct timezone Tz;
 
 /* I need my own is ispunct function because I need a closing paren
  * immediately after a word to act like punctuation.

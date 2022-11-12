@@ -1,0 +1,31 @@
+mMosaic is a derivative work of NCSA XMosaic 2.7b5. You can use it as a simple
+browser. Now it supports TABLE and other supplementary TAG (like CENTER).
+
+mMosaic become a free browser, because since the 3.0.10 it is build
+over Lesstif-0.77 (GNU licence). 
+
+But, two major (from my point of vue) features have been added. The first is
+the multicast capability of mMosaic. It multicast any embedded object 
+(XPM, JPEG, PNG..., image, MIDI data, Music score (Rosegarden data), 
+figure (Xfig data)).
+
+Create your own data format via APROG, and mMosaic multicast it! mMosaic 
+multicast also the cursor and scrollbar position. It is, maybe, attractive 
+feature for who want to multicast slide in an interactive maner. (the cursor 
+is the pencil and scrollbar move the slide if the window is too short 
+- or slide too long ;-) ).
+
+Maybe, it's possible to give to mMosaic, the status of a new multicast media. 
+A pluggin for 'sdr' exists. 
+
+The second is the Application Program called APROG. APROG is a new experimental
+HTML marker. It's enable programs written over the Xt (like Motif and Athena 
+application) to run *inside* mMosaic. If you like APPLET, maybe you'll love
+APROG.
+
+More information is at :
+	http://sig.enst.fr/~dauphin/mMosaic/index.html
+
+--------------------------
+email: dauphin@sig.enst.fr
+25 Mars 1997

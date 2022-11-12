@@ -24,9 +24,9 @@ ldflags =
 
 #### For a few files in the source, some compilers may need to be kicked
 #### in K&R mode.  E.g., on SGI's, -cckr does this.
-knrflag = -cckr
+# knrflag = -cckr
 #### On most systems, no flag is needed.
-# knrflag =
+knrflag =
 
 
 #### Random system configuration flags.
@@ -40,7 +40,7 @@ knrflag = -cckr
 #### For Convex whatever, do -DCONVEX
 #### For SCO ODT 3.0, do -DSCO -DSVR4 -DMOTIF1_2
 #### For Motorola SVR4, do -DSVR4 -DMOTOROLA -DMOTIF1_2
-sysconfigflags = -DMO_IRIX5
+sysconfigflags = -DMO_IRIX5 -DMOTIF1_2
 
 #### System libraries.
 syslibs = -lPW -lsun -lmalloc
@@ -128,20 +128,20 @@ xlibs = -lXm_s -lXmu -lXt_s -lX11_s
 #### For inline PNG support, the following should be defined:
 #### The libraries currently used are PNGLIB 0.81 and ZLIB 0.95
 
-pngdir = /xdev/mosaic/libpng/indy
-pnglibdir = $(pngdir)/lib
-pngincludedir = $(pngdir)/include
-pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/libz.a -lm
-pngflags =  -I$(pngincludedir) -DHAVE_PNG
+#pngdir = /xdev/mosaic/libpng/indy
+#pnglibdir = $(pngdir)/lib
+#pngincludedir = $(pngdir)/include
+#pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/libz.a -lm
+#pngflags =  -I$(pngincludedir) -DHAVE_PNG
 
 
 #### JPEG SUPPORT
 #### For inline JPEG support, the following should be defined:
 #### The library used is Independent JPEG Group (IJG's) 5.0a.
 
-jpegdir = /xdev/mosaic/libjpeg/indy
-jpeglibs = $(jpegdir)/lib/libjpeg.a
-jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
+#jpegdir = /xdev/mosaic/libjpeg/indy
+#jpeglibs = $(jpegdir)/lib/libjpeg.a
+#jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
 
 
 #### KERBEROS SUPPORT
@@ -182,10 +182,11 @@ krblibs   = $(krb4libs) $(krb5libs)
 
 #### -lm is required for freeWAIS 0.5, as ceil() is used.
 
-waisroot = /xdev/mosaic/freeWAIS/irix5
-waisflags = -DDIRECT_WAIS -I$(waisroot)/include
-waislibdir = $(waisroot)/bin
-waislibs = $(waislibdir)/inv.a $(waislibdir)/wais.a $(waislibdir)/libftw.a -lm
+# Modif BR 4 lignes en commentaires
+#waisroot = /xdev/mosaic/freeWAIS/irix5
+#waisflags = -DDIRECT_WAIS -I$(waisroot)/include
+#waislibdir = $(waisroot)/bin
+#waislibs = $(waislibdir)/inv.a $(waislibdir)/wais.a $(waislibdir)/libftw.a -lm
 
 
 #### Customization flags:
@@ -196,7 +197,7 @@ waislibs = $(waislibdir)/inv.a $(waislibdir)/wais.a $(waislibdir)/libftw.a -lm
 #### . If you want to define the default Mosaic documentation directory
 ####   (should be a URL), set -DDOCS_DIRECTORY_DEFAULT=\\\"url\\\"
 #### . Other things you can define are spelled out in src/mosaic.h.
-customflags =
+customflags = -DMULTICAST -D_BSD_SIGNALS
 
 
 
@@ -232,7 +233,8 @@ CFLAGS = -g $(sysconfigflags) $(socksflags) $(prereleaseflags)
 PURIFY = purify
 QUANTIFY = quantify
 
-default: $(dtmdirs) libwww2 libXmx libhtmlw libnut src
+# default: $(dtmdirs) libwww2 libXmx libhtmlw libnut src
+default: $(dtmdirs) libhtmlw libwww2 libXmx libnut libmc libaprog src
 	@echo \*\*\* Welcome to NCSA Mosaic.
 purifyd: $(dtmdirs) libwww2 libXmx libhtmlw libnut src-purifyd
 	@echo \*\*\* Welcome to Purify'd NCSA Mosaic.
@@ -245,11 +247,19 @@ libXmx::
 
 libhtmlw::
 	@echo --- Building libhtmlw
-	cd libhtmlw; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag) $(xinc) -DMOTIF -DXMOSAIC"
+	cd libhtmlw; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag) $(xinc) $(customflags) -DMOTIF -DXMOSAIC"
 
 libwww2::
 	@echo --- Building libwww2
 	cd libwww2; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(knrflag) $(waisflags) $(krbflags) $(xinc)"
+
+libmc::
+	@echo --- Building libmc
+	cd libmc; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc) $(customflags)"
+
+libaprog::
+	@echo --- Building libaprog
+	cd libaprog; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc) $(customflags)" X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)"
 
 libnut::
 	@echo --- Building libnut
@@ -257,7 +267,8 @@ libnut::
 
 src::
 	@echo --- Building src
-	cd src; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut MOSAIC="Mosaic"
+	cd src; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(customflags) $(xinc) $(jpegflags) $(dtmflags) $(hdfflags) $(pngflags) $(krbflags) -I.. -I../libXmx -I../libwww2" AUX_CFLAGS=$(knrflag) X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" DTM_LIBS="$(dtmlibs)" HDF_LIBS="$(hdflibs)" WAIS_LIBS="$(waislibs)" LIBWWW_DIR=../libwww2 JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut LIBMC_DIR=../libmc MOSAIC="Mosaic"
+
 
 src-purifyd::
 	@echo --- Building Purify'd src
@@ -283,7 +294,9 @@ clean:
 	cd libnet; make $@
 	cd libdtm; make $@
 	cd libnut; make $@
-
+	cd libmc; make $@
+	cd libaprog; make $@
+ 
 wclean:
 	cd libhtmlw; make $@
 	cd src; make $@

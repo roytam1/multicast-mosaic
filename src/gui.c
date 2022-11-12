@@ -98,21 +98,12 @@
 #define SLAB_TEXTTOOLS 8
 
 #ifdef MULTICAST
-Boolean 	mc_relay;
-unsigned int 	mc_addr_ip_group;
-unsigned short 	mc_port;
-unsigned short 	mc_rtcp_port;
-int 		mc_debug;
 int 		mc_fdread;
 int 		mc_rtcp_fdread;
-time_t 		mc_init_gmt;
-unsigned short 	mc_my_pid;
 unsigned char 	mc_len_alias = 0;
 char *		mc_alias_name = "Unknow";
 char * 		mc_sess_name;
 char * 		mc_media_name;
-unsigned char 	mc_ttl;
-time_t 		mc_init_local_time;
 #endif
 
 /*##############*/
@@ -3169,7 +3160,6 @@ void mo_do_gui (int argc, char **argv)
 		mc_sess_name = thePrefsStructP->RdataP->mc_sess_name;
 		mc_media_name = thePrefsStructP->RdataP->mc_media_name;
 		mc_ttl = thePrefsStructP->RdataP->mc_ttl;
-		mc_relay = thePrefsStructP->RdataP->mc_relay;
 				/*mc_dest become mc_addr_ip_group and mc_port */
 		if( thePrefsStructP->RdataP->mc_alias_name == NULL ){
                         mc_alias_name = (char*) malloc(MC_MAX_ALIAS_SIZE + 1);

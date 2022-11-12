@@ -90,11 +90,7 @@ void ChildTerminated(int sig)
 {
 	pid_t pid;
 	ProcessHandle *p;
-#ifdef __sgi 
-	union wait stat_loc;
-#else                                
 	int stat_loc;
-#endif
 
 #ifdef SVR4
 	pid = waitpid((pid_t)(-1),NULL,WNOHANG);

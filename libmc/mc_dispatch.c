@@ -35,8 +35,11 @@
 #include "mc_action.h"
 #include "vir_cursor.xbm"
 
-int      mc_multicast_enable;
-int      mc_send_enable;
+McSendDataStruct 	mc_data_send_data_struct;
+XtIntervalId    	mc_send_rtcp_sdes_cname_time_out_id;
+mo_window * 	mc_send_win;
+int      	mc_multicast_enable;
+int      	mc_send_enable;
 
 extern Widget toplevel;
 

@@ -456,8 +456,6 @@ static XtResource resources[] = {
     offset(mc_life_time), XtRInt, (caddr_t) & Izero},
     {"ttl", "ttl", XtRInt, sizeof(int),
     offset(mc_ttl), XtRInt, (caddr_t) & ttl192},
-    {"relay", "relay", XtRBoolean, sizeof(Boolean),
-    offset(mc_relay), XtRBoolean, (caddr_t) & false},
     {"aliasName", "aliasName", XtRString, sizeof(char *),
     offset(mc_alias_name), XtRString, (caddr_t) NULL},
     {"multiCastAddr", "multiCastAddr", XtRString, sizeof(char *),

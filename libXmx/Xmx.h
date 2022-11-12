@@ -19,21 +19,6 @@
 #endif
 #endif
 
-#if 0
-
-#ifdef __sgi
-/* Fast malloc. */
-#include <malloc.h>
-/* For GLXconfig type. */
-#include <X11/Xirisw/GlxMDraw.h>
-#endif
-
-#ifdef _IBMR2
-/* nothing that I know of */
-#endif /* _IBMR2 */
-
-#endif /* if 0 */
-
 /* --------------------------- INTERNAL DEFINES --------------------------- */
 
 /* Maximum number of resource args usable --- should be large
@@ -233,26 +218,6 @@ extern void XmxTextInsertString (Widget, String);
 extern String XmxTextGetString (Widget);
 extern void XmxAddCallbackToText (Widget, XtCallbackProc, XtPointer);
 
-#if 0
-
-#ifdef __sgi
-extern Widget XmxMakeDrawingVolume 
-  (Widget, int, int, GLXconfig *, XtCallbackProc, XtCallbackProc,
-   XtCallbackProc);
-extern void XmxInstallColormaps (Widget, Widget);
-extern void XmxInstallColormapsWithOverlay (Widget, Widget);
-extern void XmxWinset (Widget);
-#endif
-
-#ifdef _IBMR2
-extern Widget XmxMakeDrawingVolume 
-  (Widget, int, int, XtCallbackProc, XtCallbackProc,
-   XtCallbackProc);
-extern void XmxInstallColormaps (Widget, Widget);
-extern void XmxWinset (Widget);
-#endif
-
-#endif /* if 0 */
 
 extern void XmxApplyBitmapToLabelWidget (Widget, String, unsigned int, 
                                          unsigned int);

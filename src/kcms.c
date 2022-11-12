@@ -2,6 +2,9 @@
 #include "copyright.ncsa"
 #include "kcms.h"
 
+int KCMS_Enabled;
+int KCMS_Return_Format;
+
 void CheckKCMS()
 {
 	/*replace this with the real lib call when we get it*/

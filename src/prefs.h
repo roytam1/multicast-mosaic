@@ -228,7 +228,6 @@ typedef struct {
     char           *mc_media_name;
     int             mc_life_time;
     int             mc_ttl;
-    Boolean         mc_relay;
     char           *mc_alias_name;
     char	   *mc_dest;		/* multicast dest addr/port */
 #endif

@@ -37,7 +37,6 @@
   if (url[strlen (url) - 1] == '\n') \
     url[strlen (url) - 1] = '\0';
 
-Boolean 	mc_relay;
 unsigned int 	mc_addr_ip_group;
 unsigned short 	mc_port;
 unsigned short 	mc_rtcp_port;

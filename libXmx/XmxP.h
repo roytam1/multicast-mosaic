@@ -14,18 +14,6 @@
 
 #include <Xm/XmAll.h>
 
-#if 0
-
-/* SGI-specific GL Widget inclues. */
-#ifdef __sgi
-#include <X11/Xirisw/GlxMDraw.h>
-#endif
-
-#ifdef _IBMR2
-#include "/usr/lpp/GL/utilities/inc/Glib.h"
-#endif /* _IBMR2 */
-
-#endif /* if 0 */
 
 /* Marc's defines. */
 #undef  private

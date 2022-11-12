@@ -635,10 +635,14 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			}
 			tr_count++;
 			tr_end_mark = sm;
-			UpdateRowList(&row_list,tr_count,col_list,
-				tr_start_mark,tr_end_mark);
-			col_list = NULL;
-			td_count =0;
+			if(col_list){
+				UpdateRowList(&row_list,tr_count,col_list,
+					tr_start_mark,tr_end_mark);
+				col_list = NULL;
+				td_count =0;
+			} else {
+				printf("<TR> without<TD>: empty line!\n");
+			}
 			tr_start_found = 0;
 			psm = sm;
 			sm = sm->next;
@@ -659,10 +663,15 @@ TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			if (tr_start_found) {
 				tr_end_mark = psm;
 				tr_count++;
-				UpdateRowList(&row_list,tr_count,col_list,
-					tr_start_mark,tr_end_mark);
-				col_list = NULL;
-				td_count =0;
+				if(col_list){
+					UpdateRowList(&row_list,tr_count,col_list,
+						tr_start_mark,tr_end_mark);
+					col_list = NULL;
+					td_count =0;
+				} else {
+					printf("<TR> without<TD> and </TABLE> see!: Buggy TABLE !!!\n");
+					break;
+				}
 			}
 			if ( tr_count == 0)
 				break;

@@ -12,8 +12,8 @@
 #include "HTMLP.h"
 #include "HTMLPutil.h"
 
-struct timeval Tv;
-struct timezone Tz;
+static struct timeval Tv;
+static struct timezone Tz;
 
 static MarkType ParseMarkType(char *str);
 
