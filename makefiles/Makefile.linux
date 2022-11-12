@@ -8,7 +8,7 @@
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
-prereleaseflags = -O
+prereleaseflags = -O3 -fomit-frame-pointer -funroll-loops
 
 RANLIB = /bin/true
 #### On non-SGI's, this should be ranlib.
@@ -141,7 +141,7 @@ xlibs += -lm -lXpm -lSM -lICE
 #### For inline PNG support, the following should be defined:
 #### The libraries currently used are PNGLIB 0.81 and ZLIB 0.95
 
-pngdir = /xdev/mosaic/libpng/linux
+pngdir = /usr
 pnglibdir = $(pngdir)/lib
 pngincludedir = $(pngdir)/include
 pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/libz.a /usr/lib/libm.a
@@ -151,9 +151,13 @@ pngflags =  -I$(pngincludedir) -DHAVE_PNG
 #### For inline JPEG support, the following should be defined:
 #### The library used is Independent JPEG Group (IJG's) 5.0a.
 
-jpegdir = /xdev/mosaic/libjpeg/linux
+#jpegdir = /xdev/mosaic/libjpeg/linux
+#jpeglibs = $(jpegdir)/lib/libjpeg.a
+#jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
+jpegdir = /usr
 jpeglibs = $(jpegdir)/lib/libjpeg.a
 jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
+
 
 
 #### KERBEROS SUPPORT

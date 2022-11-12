@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#include "jpeglib.h"
+#include <jpeglib.h>
 
 #ifdef  __cplusplus
 }

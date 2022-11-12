@@ -6,7 +6,7 @@
 ## Scott Powers
 ##
 
-MCVER=3.0.12
+MCVER=3.0.13
 
 all: dev_$(DEV_ARCH)
 
@@ -14,7 +14,7 @@ list: dev_
 help: dev_
 dev_::
 	@echo "You must specify one of the following or set the environment variable"
-	@echo "'DEV_ARCH' to one of the following:
+	@echo "'DEV_ARCH' to one of the following:"
 	@echo "  alpha -- DEC Alpha AXP running OSF/1"
 	@echo "  osf1 -- DEC Alpha AXP running OSF/1"
 	@echo "  bsdi -- x86 running BSDI BSD/OS 2.1"
@@ -36,7 +36,7 @@ dev_::
 	@echo "If your OS is not listed, you will need to copy one of the"
 	@echo "  the Makefiles.OS in the 'makefiles' directory, edit it for"
 	@echo "  your system, edit this Makefile to add your system, compile,"
-	@echo "  and send in your changes to: mosaic-x@ncsa.uiuc.edu."
+	@echo "  and send in your changes to: mMosaic-dev@sig.enst.fr"
 
 dev_alpha: alpha
 alpha:
