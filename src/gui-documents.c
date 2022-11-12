@@ -54,20 +54,6 @@ void mo_set_win_headers (mo_window *win, char* aurl_wa)
         }
 
 	XmxTextSetString (win->url_widget, aurl_wa);
-#ifdef MULTICAST
-/*
-	if((win->mc_type == MC_MO_TYPE_MAIN) && mc_send_enable){
-		McSendDataStruct * d = &mc_data_send_data_struct;
-
-		mc_local_url_id++;
-		strncpy(mc_local_url,win->current_node->aurl_wa,MC_MAX_URL_SIZE);
-		mc_len_local_url = strlen(mc_local_url);
-		if (mc_send_win !=NULL ){
-			McSendAllDataOnlyOnce(d);
-		}
-	}
-*/
-#endif
 	XtVaSetValues(win->base, XmNtitle, win->current_node->title, NULL);
 }
 
@@ -212,6 +198,7 @@ void mo_reload_document (Widget w, XtPointer clid, XtPointer calld)
 	rds.post_data = NULL;
 	rds.ct = NULL;
 	rds.is_reloading = True;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	MMPafLoadHTMLDocInWin(win, &rds);
 }
 

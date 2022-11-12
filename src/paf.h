@@ -15,6 +15,8 @@ typedef struct sockaddr_in SockA;
 #define NNTP_CON_TYPE 3
 #define GOPHER_CON_TYPE 4
 
+#define HTTP_STATUS_INTERNAL_CACHE_HIT (1200)
+
 typedef struct _EmbeddedObjectEntry {
 	char * url;
 	struct mark_up * mark;
@@ -54,6 +56,7 @@ typedef struct _PafDocDataStruct {
 	char *goto_anchor;	/* #target in url */
 	char * post_ct;		/* POST Content-Type */
 	char * post_data;	/* data to post, if any */
+	GuiActionType gui_action; /* how we do the request */
 	SendParamsStruct sps;	/* Some parameter for sending */
 	IOBStruct iobs;
 
@@ -96,6 +99,8 @@ typedef struct _PafDocDataStruct {
 /*	XtInputId connect_succes_input_id; */
 	XtInputId www_prim_fd_read_id;
 	XtInputId www_third_fd_read_id;
+
+	char * mc_fname_save;	/* multicast copy of original file */
 } PafDocDataStruct;
 
 extern void MMPafSaveData(Widget top, char * aurl, char * fname);

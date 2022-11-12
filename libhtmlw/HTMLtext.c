@@ -2,22 +2,10 @@
 
 #include "../Copyrights/copyright.ncsa"
 
- /* Copyright (C) 1996 - G.Dauphin
+/* Copyright (C) 1996 - G.Dauphin
  * See the file "license.mMosaic" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
- */
-
-
-/* HTMLtext.c
- * Author: Gilles Dauphin
- * Version 3.0 [Sep96]
- *
- * Copyright (C) 1996 - G.Dauphin
- * See the file "license.mMosaic" for information on usage and redistribution
- * of this file, and for a DISCLAIMER OF ALL WARRANTIES. 
- *
- * Bug report :  dauphin@sig.enst.fr
- */
+*/
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -83,10 +71,8 @@ if (pcc->cw_only) {	/* compute width only , dont create Element*/
 	/* linefeed is at end of line */
 	eptr = CreateElement(hw, E_LINEFEED, pcc->cur_font,
 		pcc->x, pcc->y, 0, pcc->cur_line_height, pcc->cur_baseline, pcc);
-/*	eptr->anchor_tag_ptr = pcc->anchor_tag_ptr; */
-		
-	if(adjx > 0 ){
-		/* adjust */
+
+	if(adjx > 0 ){ /* adjust */
 		/* Back to the list until CR and adjust each x with the adjx. */
 		septr = eptr;
 		while( septr && (septr->type != E_CR) ){
@@ -111,7 +97,6 @@ if (pcc->cw_only) {	/* compute width only , dont create Element*/
 		pcc->x, pcc->y,
 		0, pcc->cur_line_height,
 		pcc->cur_baseline, pcc);
-/*	eptr->anchor_tag_ptr = pcc->anchor_tag_ptr; */
 }
 
 /* Redraw a linefeed. Basically a filled rectangle at the end of a line. */
@@ -192,7 +177,7 @@ void Set_E_TEXT_Element(HTMLWidget hw,
 
 	len = strlen(text) + 1;
 	eptr->edata = strdup(text);
-	CHECK_OUT_OF_MEM(eptr);
+	CHECK_OUT_OF_MEM(eptr->edata);
 	eptr->edata_len = len;
 			/* if this is an anchor, puts its href and name */
 			/* values into the element.  */

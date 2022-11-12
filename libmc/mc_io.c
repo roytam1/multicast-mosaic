@@ -1,14 +1,4 @@
-/* sockio.c
- * Author: Gilles Dauphin
- * Version 3.1.1 [May97]
- *
- * Copyright (C) 1997 - G.Dauphin, P.Dax
- *
- * See the file "license.mMosaic" for information on usage and redistribution
- * of this file, and for a DISCLAIMER OF ALL WARRANTIES. 
- *
- * Bug report : dauphin@sig.enst.fr dax@inf.enst.fr
- */
+/* G.D. Version 3.4.0 [Mars99] */
 
 #ifdef MULTICAST
 
@@ -25,15 +15,12 @@
 #include <sys/param.h>
 #include <Xm/XmAll.h>
 
-
-
 #if defined(__QNX__) || defined(ultrix)
 /* From frank@ctcqnx4.ctc.cummins.com Mon Apr 28 02:33:01 1997
 /* QNX tcp/ip is not as complete, and I have to modify "libmc/mc_sockio.c"
 /* to make it compile. I am wondering IP multicast is supported, I will
 /* check with QNX to see ..  
 /* I will let you know, maybe we will have to disable this for QNX.  */
-
 /*those are borrowed from Linux */
 /*QNX's <netinet/in.h> is far from complete, some stuffs are not supported */
 
@@ -57,11 +44,25 @@ struct ip_mreq {
 #include "mc_main.h"
 #include "mc_rtp.h"
 #include "mc_misc.h"
+#ifdef SOLARIS
+#ifdef  __cplusplus
+extern "C" {
+#endif
+int gethostname(char *name, int namelen); /* because solaris 2.5 include bug */
+#ifdef  __cplusplus
+}
+#endif
+#endif
+
+
+#ifdef DEBUG
+#define DEBUG_MULTICAST
+#endif
 
 IPAddr		mc_local_ip_addr;
 
-RtpPacket *mc_rtp_packets_list =NULL;
-int mc_write_rtp_data_next_time = 10;		/* en millisec */
+RtpPacket 	*mc_rtp_packets_list =NULL;
+int 		mc_write_rtp_data_next_time = 10;	/* en millisec */
 
 #ifdef IPV6 
 static const IPAddr anyaddr = IPV6ADDR_ANY_INIT;
@@ -73,18 +74,6 @@ static unsigned char emit_buf[MC_MAX_BUF_SIZE+1];
 static unsigned char recv_buf[MC_MAX_BUF_SIZE+1];
 static unsigned int mc_send_cnt = 0;
 static unsigned int mc_my_upd_time ;
-
-#ifdef SOLARIS
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
-int gethostname(char *name, int namelen); /* because solaris 2.5 include bug */
-
-#ifdef  __cplusplus
-}
-#endif
-#endif
 
 static int		noloopback_broken_ = 1;
 
@@ -359,7 +348,7 @@ int McRead(int fd, unsigned char ** buf, IPAddr * ipfrom)
 #else
 	*ipfrom = addr_r.sin_addr.s_addr;
 #endif
-#ifdef MDEBUG
+#ifdef DEBUG_MULTICAST
 	printf("McRead: cnt=%d, recv_buf[12]=%u\n",cnt,recv_buf[12]);
 #endif
 	return cnt;
@@ -393,20 +382,9 @@ int UcRead(int fd, unsigned char ** buf, IPAddr * ipfrom,
 	*ipfrom = addr_r.sin_addr.s_addr;
 	*port_from = addr_r.sin_port ;
 #endif
-#ifdef MDEBUG
+#ifdef DEBUG_MULTICAST
 	printf("UcRead: cnt=%d, recv_buf[12]=%u\n",cnt,recv_buf[12]);
 #endif
-	return cnt;
-}
-
-int McWrite( int fd, unsigned char * buf, int len)
-{
-	int cnt;
-
-	cnt = write(fd, (char*)buf, len);
-	if(cnt != len){
-		perror("write:");
-	}
 	return cnt;
 }
 
@@ -417,24 +395,19 @@ int DewrapRtpData( unsigned char *buf, int len_buf,
 	RtpPacket *rs_ret)
 {
 	unsigned int rh_flags;
-	unsigned int m_flag;
-	unsigned int i;
 	unsigned char * p = buf;
 
-	if ( len_buf < 20 ){ 
+	if ( len_buf < 24 ){ 
 		fprintf(stderr,"Error receiving Rtp data: n = %d\n", len_buf);
 		return 0;
 	}
-	
 			/* T:2 P:1 X:1 CC:4 M:1 PT:7 */
-	m_flag = p[1] & 0x80;
 	rh_flags = (u_int16_t) (	((unsigned long) p[0] << 8 ) |
-                                        ((unsigned long) (p[1] & 0x7f) ) );
+                                        ((unsigned long) (p[1] & 0xff) ) );
 
 	if (rh_flags != (u_int16_t) 0x8062){
 		return 0;
 	}
-	rs_ret->is_end = m_flag;
 
 	rs_ret->seqn =  (u_int16_t)( ((u_int16_t) p[2] << 8) |
 				     ((u_int16_t) p[3]      ));
@@ -448,197 +421,36 @@ int DewrapRtpData( unsigned char *buf, int len_buf,
 				    ((u_int32_t) p[9] << 16) |
 				    ((u_int32_t) p[10] << 8) |
 				    ((u_int32_t) p[11]      ) );
+/* PT data */
+	if (p[12] != 0) {	/* Version */
+		return 0;
+	}
+	if (p[13] != 0 || p[14] != 0) {		/* reserved */
+		return 0;
+	}
+	rs_ret->is_eod = p[15] & 0x01;
+	rs_ret->data_type = p[15] & 0x02;
 
-	rs_ret->url_id = (u_int16_t)(((u_int16_t) p[12] << 8) |
-				     ((u_int16_t) p[13]      ));
+	rs_ret->id = (u_int32_t)( ((u_int32_t) p[16] << 24) |
+				  ((u_int32_t) p[17] << 16) |
+				  ((u_int32_t) p[18] << 8 ) |
+				  ((u_int32_t) p[19]      ) );
 
-	rs_ret->o_id = (u_int16_t)( ((u_int16_t) p[14] << 8) |
-				    ((u_int16_t) p[15]      ));
-
-	rs_ret->offset = (u_int32_t)( ((u_int32_t) p[16] << 24) |
-				      ((u_int32_t) p[17] << 16) |
-				      ((u_int32_t) p[18] << 8 ) |
-				      ((u_int32_t) p[19]      ) );
-	rs_ret->d = (char*) &buf[20];
-	rs_ret->d_len = len_buf - 20;
+	rs_ret->offset = (u_int32_t)( ((u_int32_t) p[20] << 24) |
+				      ((u_int32_t) p[21] << 16) |
+				      ((u_int32_t) p[22] << 8 ) |
+				      ((u_int32_t) p[23]      ) );
+	rs_ret->d = (char*) &buf[24];
+	rs_ret->d_len = len_buf - 24;
 	rs_ret->d[rs_ret->d_len] = '\0';
 	return 1;
 }
  
-/*                  
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |V=2|P|X|  CC   |M|     PT      |       sequence number         |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           timestamp                           |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |           synchronization source (SSRC) identifier            |
-   +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
-   |            contributing source (CSRC) identifiers             |
-   |                             ....                              |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   P = 0 (padding)  
-   X = 0 (extension)
-   CC = 0 (contributor count)
-   M = 0 (Marker: use as End Of Object.)
-   PT = 98
-*/
-                    
-static int mc_seq_number = 0; 
-
-void McSendRtpDataTimeOutCb(XtPointer clid, XtIntervalId * id)
-{
-        RtpPacket *p;
-        int len_buf;
-        int next_time;
-	int cnt;
- 
-        p = mc_rtp_packets_list;
-        
-        emit_buf[0] = 0x80;     /* V,P,CC */
-        emit_buf[1] = p->is_end | 0x62;        /* M, PT=98 */
-                                       
-        emit_buf[2] = (mc_seq_number >> 8) & 0xff;      /* sequence number */
-        emit_buf[3] = mc_seq_number & 0xff; 
-        mc_seq_number++;               
-                                       
-        emit_buf[4] = (p->rtp_ts >> 24) & 0xff;    /* timestamp */
-        emit_buf[5] = (p->rtp_ts >> 16) & 0xff;
-        emit_buf[6] = (p->rtp_ts >> 8) & 0xff;
-        emit_buf[7] =  p->rtp_ts & 0xff;
-
-        emit_buf[8] = (mc_local_srcid >> 24) & 0xff;    /* SSRC */
-        emit_buf[9] = (mc_local_srcid >> 16) & 0xff;
-        emit_buf[10] = (mc_local_srcid >> 8) & 0xff;
-        emit_buf[11] =  mc_local_srcid & 0xff;
-                                       
-/* payload                             
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |             url_id            |           object_id           |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                             offset                            |
-   +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
-*/                                     
-                                       
-        emit_buf[12] = ( p->url_id >> 8) & 0xff;        /* url_id */
-        emit_buf[13] = p->url_id & 0xff;
-                                       
-        emit_buf[14] = (p->o_id >> 8) & 0xff;   /* object_id */
-        emit_buf[15] = p->o_id & 0xff; 
-                                       
-        emit_buf[16] = ( p->offset >> 24) & 0xff;       /* offset */
-        emit_buf[17] = ( p->offset >> 16) & 0xff;
-        emit_buf[18] = ( p->offset >> 8) & 0xff;
-        emit_buf[19] = p->offset & 0xff;
-                                       
-        len_buf = 20 + p->d_len;       
-        memcpy(&emit_buf[20], p->d, p->d_len);
-	fprintf(stderr, "McSendRtpDataTimeOutCb: m=%d, seq=%d, ts=%u, srcid=%u, url_id=%u, o_id=%u, offset=%u, d_len=%u\n",
-		p->is_end, mc_seq_number, p->rtp_ts, mc_local_srcid,
-		p->url_id, p->o_id, p->offset,p->d_len);
-        cnt = McWrite(mc_fd_rtp_w, emit_buf, len_buf);  
-	if (p->is_end) {
-        	mc_state_report_url_id = p->url_id;
-        	mc_state_report_o_id = p->o_id;
-        	mc_state_report_len = p->offset + p->d_len;
-	}
-
-        mc_rtp_packets_list = p->next; 
-        mc_write_rtp_data_next_time = p->duration; 
-        free(p);                       
-        if( !mc_rtp_packets_list)      
-                return;                
-/* rearme a timer for the next packet */
-        mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
-                mc_write_rtp_data_next_time, McSendRtpDataTimeOutCb,
-                NULL);                 
-} 
-
-void UcRtpSendDataPacket(Source *s, RtpPacket *p)
-{
-        int len_buf;
-        int next_time;
-	int cnt;
-	struct sockaddr_in addr_w;
-
-        memset(&addr_w,0,sizeof(addr_w));
-        addr_w.sin_family = AF_INET;
-        addr_w.sin_port = s->uc_rtp_port;  /* net byteorder */
-        addr_w.sin_addr.s_addr = s->uc_rtp_ipaddr; /* net byteorder */
- 
-        emit_buf[0] = 0x80;     /* V,P,CC */
-        emit_buf[1] = p->is_end | 0x62;        /* M, PT=98 */
-                                       
-        emit_buf[2] = (0 >> 8) & 0xff;      /* sequence number */
-        emit_buf[3] = 0 & 0xff; 
-  /*      mc_seq_number++;                */
-                                       
-        emit_buf[4] = (p->rtp_ts >> 24) & 0xff;    /* timestamp */
-        emit_buf[5] = (p->rtp_ts >> 16) & 0xff;
-        emit_buf[6] = (p->rtp_ts >> 8) & 0xff;
-        emit_buf[7] =  p->rtp_ts & 0xff;
-
-        emit_buf[8] = (mc_local_srcid >> 24) & 0xff;    /* SSRC */
-        emit_buf[9] = (mc_local_srcid >> 16) & 0xff;
-        emit_buf[10] = (mc_local_srcid >> 8) & 0xff;
-        emit_buf[11] =  mc_local_srcid & 0xff;
-                                       
-/* payload                             
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |             url_id            |           object_id           |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                             offset                            |
-   +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
-*/                                     
-                                       
-        emit_buf[12] = ( p->url_id >> 8) & 0xff;        /* url_id */
-        emit_buf[13] = p->url_id & 0xff;
-                                       
-        emit_buf[14] = (p->o_id >> 8) & 0xff;   /* object_id */
-        emit_buf[15] = p->o_id & 0xff; 
-                                       
-        emit_buf[16] = ( p->offset >> 24) & 0xff;       /* offset */
-        emit_buf[17] = ( p->offset >> 16) & 0xff;
-        emit_buf[18] = ( p->offset >> 8) & 0xff;
-        emit_buf[19] = p->offset & 0xff;
-                                       
-        len_buf = 20 + p->d_len;       
-        memcpy(&emit_buf[20], p->d, p->d_len);
-	fprintf(stderr, "UcRtpSendDataPacket: m=%d, seq=%d, ts=%u, srcid=%u, url_id=%u, o_id=%u, offset=%u, d_len=%u\n",
-		p->is_end, mc_seq_number, p->rtp_ts, mc_local_srcid,
-		p->url_id, p->o_id, p->offset,p->d_len);
-
-	cnt = sendto(uc_fd_rtp_w, (char*)emit_buf, len_buf, 0,
-		(struct sockaddr *) &addr_w, sizeof(addr_w));
-        if(cnt != len_buf ){
-		perror("UcRtpSendDataPacket:sendto:");
-	}
-/*      cnt = McWrite(mc_fd_rtp_w, emit_buf, len_buf);  
-/*        mc_rtp_packets_list = p->next; 
-/*        mc_write_rtp_data_next_time = p->duration; 
-/*        free(p);                       
-/*        if( !mc_rtp_packets_list)      
-/*                return;                
-/* rearme a timer for the next packet */
-/*        mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
-/*                mc_write_rtp_data_next_time, McSendRtpDataTimeOutCb,
-/*                NULL);                 
-*/
-} 
-
-
 /* return 1 good or 0 if probleme */
 
 int DewrapRtcpData( unsigned char *buf, int len_buf,
 	RtcpPacket *rcs_ret)
 {
-	unsigned int rh_flags;
-	unsigned int i;
 	unsigned char * p = buf;
 	int len8 = 0;
 
@@ -665,4 +477,193 @@ int DewrapRtcpData( unsigned char *buf, int len_buf,
 	rcs_ret->d_len = len8 - 8;
 	return len8;
 }
+
+int McWrite( int fd, unsigned char * buf, int len)
+{
+	int cnt;
+
+	cnt = write(fd, (char*)buf, len);
+	if(cnt != len){
+		perror("McWrite: ");
+	}
+	return cnt;
+}
+
+/*
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |V=2|P|X|  CC   |M|     PT      |       sequence number         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           timestamp                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           synchronization source (SSRC) identifier            |
+   +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+   |            contributing source (CSRC) identifiers             |
+   |                         unused ....                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         PT data...                            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   P = 0 (padding)
+   X = 0 (extension)
+   CC = 0 (contributor count)
+   M = 0 (Marker: unused )
+   PT = 98 (HTML)
+*/
+
+
+void McSendRtpDataTimeOutCb(XtPointer clid, XtIntervalId * id)
+{
+        RtpPacket *p;
+        int len_buf;
+	int cnt;
+	static int mc_seq_number = 0;
+ 
+        p = mc_rtp_packets_list;
+
+        emit_buf[0] = 0x80;     /* V,P,CC */
+        emit_buf[1] = 0x62;        /* PT=98 */
+
+        emit_buf[2] = (mc_seq_number >> 8) & 0xff;      /* sequence number */
+        emit_buf[3] = mc_seq_number & 0xff;
+        mc_seq_number++;
+
+        emit_buf[4] = (p->rtp_ts >> 24) & 0xff;    /* timestamp */
+        emit_buf[5] = (p->rtp_ts >> 16) & 0xff;
+        emit_buf[6] = (p->rtp_ts >> 8) & 0xff;
+        emit_buf[7] =  p->rtp_ts & 0xff;
+
+        emit_buf[8] = (mc_local_srcid >> 24) & 0xff;    /* SSRC */
+        emit_buf[9] = (mc_local_srcid >> 16) & 0xff;
+        emit_buf[10] = (mc_local_srcid >> 8) & 0xff;
+        emit_buf[11] =  mc_local_srcid & 0xff;
+
+/* payload, PT data...
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |v=0|                         reserved                      |T|E|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          StateID or MOID                      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                             offset                            |
+   +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+   |                             data                              |
+   |                          ..........                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   V = 0 :	Release
+   T     :      Type of data.  State (0) or MOID (1)
+   E     :	If set, End of Data. This is the last Packet for this ID
+*/
+
+	emit_buf[12] = 0;	/* V=0 */
+	emit_buf[13] = emit_buf[14] = 0;	/* reserved */
+	emit_buf[15] = p->is_eod | p->data_type; /* T , E */
+
+        emit_buf[16] = ( p->id >> 24) & 0xff;        /* stateID or moID */
+        emit_buf[17] = ( p->id >> 16) & 0xff;
+        emit_buf[18] = ( p->id >> 8 ) & 0xff;
+        emit_buf[19] = p->id & 0xff;
+
+        emit_buf[20] = ( p->offset >> 24) & 0xff;       /* offset */
+        emit_buf[21] = ( p->offset >> 16) & 0xff;
+        emit_buf[22] = ( p->offset >> 8) & 0xff;
+        emit_buf[23] = p->offset & 0xff;
+
+        len_buf = 24 + p->d_len;
+        memcpy(&emit_buf[24], p->d, p->d_len);
+
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr, "McSendRtpDataTimeOutCb: m=%d, seq=%d, ts=%u, srcid=%u, id=%u, data-type=%u, offset=%u, d_len=%u\n",
+		p->is_eod, mc_seq_number, p->rtp_ts, mc_local_srcid,
+		p->id, p->data_type, p->offset,p->d_len);
+#endif
+
+        cnt = McWrite(mc_fd_rtp_w, emit_buf, len_buf);
+	if (p->is_eod) {
+		if ( p->data_type == HTML_STATE_DATA_TYPE ) {
+			mc_status_report_state_id = p->id;
+		}
+		if ( p->data_type == HTML_OBJECT_DATA_TYPE) {
+			/* send alway the hightest object number */
+			if ( p->id > mc_status_report_object_id) {
+				mc_status_report_object_id = p->id;
+			}
+		}
+	}
+	if (p->to_free)
+		free(p->to_free);
+
+        mc_rtp_packets_list = p->next;
+        mc_write_rtp_data_next_time = p->duration;
+        free(p);
+        if( !mc_rtp_packets_list)
+                return;
+/* rearme a timer for the next packet */
+        mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
+                mc_write_rtp_data_next_time, McSendRtpDataTimeOutCb,
+                NULL);
+}
+
+
+
+/* to_s	: we send Packet to this source
+ * p    : packet to send
+ */
+void UcRtpSendDataPacketTo(IPAddr addr, unsigned short port , RtpPacket *p)
+{
+        int len_buf;
+	int cnt;
+	struct sockaddr_in addr_w;
+
+        memset(&addr_w,0,sizeof(addr_w));
+        addr_w.sin_family = AF_INET;
+        addr_w.sin_port = port;  /* net byteorder */
+        addr_w.sin_addr.s_addr = addr; /* net byteorder */
+ 
+        emit_buf[0] = 0x80;		/* V,P,CC */
+        emit_buf[1] = 0x62;		/* M, PT=98 */
+        emit_buf[2] = 0 ;		/* sequence number =0 if unicast*/
+        emit_buf[3] = 0 ;
+                                       
+        emit_buf[4] = (p->rtp_ts >> 24) & 0xff;    /* timestamp */
+        emit_buf[5] = (p->rtp_ts >> 16) & 0xff;
+        emit_buf[6] = (p->rtp_ts >> 8) & 0xff;
+        emit_buf[7] =  p->rtp_ts & 0xff;
+
+        emit_buf[8] = (mc_local_srcid >> 24) & 0xff;    /* SSRC */
+        emit_buf[9] = (mc_local_srcid >> 16) & 0xff;
+        emit_buf[10] = (mc_local_srcid >> 8) & 0xff;
+        emit_buf[11] =  mc_local_srcid & 0xff;
+                                       
+/* payload PT data */ 
+	emit_buf[12] = 0;	/* V=0 */
+	emit_buf[13] = emit_buf[14] = 0;	/* reserved */
+	emit_buf[15] = p->is_eod | p->data_type; /* T , E */
+
+        emit_buf[16] = ( p->id >> 24) & 0xff;        /* stateID or moID */
+        emit_buf[17] = ( p->id >> 16) & 0xff;
+        emit_buf[18] = ( p->id >> 8 ) & 0xff;
+        emit_buf[19] = p->id & 0xff;
+
+        emit_buf[20] = ( p->offset >> 24) & 0xff;       /* offset */
+        emit_buf[21] = ( p->offset >> 16) & 0xff;
+        emit_buf[22] = ( p->offset >> 8) & 0xff;
+        emit_buf[23] = p->offset & 0xff;
+
+        len_buf = 24 + p->d_len;
+        memcpy(&emit_buf[24], p->d, p->d_len);
+
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr, "UcRtpSendDataPacketTo: seq=%d, ts=%u, srcid=%u, id=%u, offset=%u, d_len=%u\n",
+		0, p->rtp_ts, mc_local_srcid,
+		p->id, p->offset,p->d_len);
+#endif
+
+	cnt = sendto(uc_fd_rtp_w, (char*)emit_buf, len_buf, 0,
+		(struct sockaddr *) &addr_w, sizeof(addr_w));
+        if(cnt != len_buf ){
+		perror("UcRtpSendDataPacketTo:sendto:");
+	}
+} 
 #endif /* MULTICAST */

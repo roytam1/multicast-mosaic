@@ -81,7 +81,7 @@ void read_file_local(PafDocDataStruct * pafd)
 		dfp = opendir(local_name);
 		if (!dfp) {
 			free(local_name);
-			perror("PostRequestAndGetTypedData:");
+			perror("read_file_local:");
 			free(pafd->www_con_type);
 			pafd->www_con_type = NULL;
 			(*pafd->call_me_on_error)(pafd,"Can't open local file");
@@ -185,7 +185,7 @@ void read_file_local(PafDocDataStruct * pafd)
 	pafd->www_con_type->prim_fd = soc;
 	if ( soc < 0 ) {
 		free(local_name);
-		perror("PostRequestAndGetTypedData:");
+		perror("read_file_local:");
 		free(pafd->www_con_type);
 		pafd->www_con_type = NULL;
 		(*pafd->call_me_on_error)(pafd,"Can't open local file");

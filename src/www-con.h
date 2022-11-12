@@ -1,2 +1,2 @@
 
-extern void PostRequestAndGetTypedData(char *aurl, char *fn, PafDocDataStruct *pafd);
+extern void PostRequestAndGetTypedData(char *aurl, PafDocDataStruct *pafd);

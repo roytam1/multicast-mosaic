@@ -36,9 +36,7 @@ extern int errno;
 #ifdef  __cplusplus
 extern "C" {
 #endif
-
 int gethostname(char *name, int namelen); /* because solaris 2.5 include bug */
-
 #ifdef  __cplusplus
 }
 #endif
@@ -55,6 +53,7 @@ int gethostname(char *name, int namelen); /* because solaris 2.5 include bug */
 #include "URLParse.h"
 #include "proxy.h"
 #include "cache.h"
+#include "www-con.h"
 
 #ifdef DEBUG
 #define DEBUG_HTTP
@@ -272,6 +271,7 @@ static void doc_cancel_connect_time_out_cb(XtPointer clid, XtIntervalId * id)
 /* remove trigger */
 	pafd->www_con_type->call_me_on_stop_cb = NULL;
 	XtRemoveTimeOut(pafd->loop_connect_time_out_id);
+	pafd->loop_connect_time_out_id = NULL;	/* sanity */
 
 /* close the unsucces socket */
 	close(pafd->www_con_type->prim_fd);
@@ -290,6 +290,7 @@ static void MMStopConnectPostRequestAndGetTypedData(PafDocDataStruct * pafd)
 {
 /* remove trigger */
 	XtRemoveTimeOut(pafd->loop_connect_time_out_id);
+	pafd->loop_connect_time_out_id = NULL;  /* sanity */
 	XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
 
 /* close the pending connect socket */
@@ -318,6 +319,7 @@ static void loop_doc_connect_cb(XtPointer clid, XtIntervalId * id)
 		(struct sockaddr*)&(pafd->www_con_type->sin), sizeof(SockA));
 	if ( (status == 0) || ((status < 0) && (errno == EISCONN))) { /* succes in connect */
 		XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
+		pafd->loop_connect_time_out_id = NULL;  /* sanity */
 		doc_connect_succes(pafd);
 		return;
 	}
@@ -339,6 +341,7 @@ static void loop_doc_connect_cb(XtPointer clid, XtIntervalId * id)
 	free(pafd->www_con_type);
 	pafd->www_con_type = NULL;
 	XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
+	pafd->loop_connect_time_out_id = NULL;  /* sanity */
 	(*pafd->call_me_on_error)(pafd,"Connection Error: Can't connect");
 	return;
 }
@@ -431,12 +434,10 @@ static void doc_connect_succes(PafDocDataStruct * pafd)
 	}
 }
 
-void PostRequestAndGetTypedData( char * aurl, char* fname,
-	PafDocDataStruct * pafd)
+void PostRequestAndGetTypedData( char * aurl, PafDocDataStruct * pafd)
 {
 	SockA sin ;
 	char * access_part;
-	char * host_part;
 	int def_port = 0;
 	int con_type = FILE_CON_TYPE;
 	char * hap = NULL;	/* Host And Port */
@@ -480,11 +481,10 @@ void PostRequestAndGetTypedData( char * aurl, char* fname,
 /* aurl : the reference to find in cache */
 /* fd : the file where to write the data */
 /* mhs: to build a mime struct like (return) */
-/* voir MMCachePutDataInCache pour mettre les donnees tel qu'on les a recu */
 		found = MMCacheFindData( pafd->aurl_wa, pafd->aurl,
 				pafd->fd, pafd->mhs);
 		if (found) {	/* we have a hit */
-			pafd->http_status = 200; /* OK */
+			pafd->http_status = HTTP_STATUS_INTERNAL_CACHE_HIT; /*OK*/
 /* don't recache a cached data */
 			pafd->mhs->cache_control = CACHE_CONTROL_NO_STORE;
 			(*pafd->call_me_on_succes)(pafd);
@@ -627,6 +627,6 @@ void PostRequestAndGetTypedData( char * aurl, char* fname,
         pafd->www_con_type = NULL;
         XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
 	XtRemoveTimeOut(pafd->loop_connect_time_out_id);
+	pafd->loop_connect_time_out_id = NULL;  /* sanity */
         (*pafd->call_me_on_error)(pafd,"Connection Error: Can't connect");
-
 }

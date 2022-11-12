@@ -1367,7 +1367,6 @@ void MMPreloadImage(mo_window *win, struct mark_up *mptr, MimeHeaderStruct *mhs,
 {
 	ImageInfo *picd, lpicd;
 	Pixel fg_pixel,bg_pixel;
-	char * iaurl;
 	struct stat s;
 	HTMLWidget hw = (HTMLWidget) win->scrolled_win;
 	unsigned char * bit_data;
@@ -1407,6 +1406,7 @@ void MMPreloadImage(mo_window *win, struct mark_up *mptr, MimeHeaderStruct *mhs,
 	}
 /* now initialise the image part */
 
+	width = height = 0;
 	bit_data = ReadBitmap(win->scrolled_win, fname, &width, &height, colrs, &bg);
 	
         if( (width * height == 0) || (bit_data == NULL) ) {  /* size null ??? */
@@ -1647,78 +1647,3 @@ void MMPreloadImage(mo_window *win, struct mark_up *mptr, MimeHeaderStruct *mhs,
  *      internal_numeo = -1; cw_only = -1;
  */
 }
-
-/* Image resolution function. */
-/*
-/*void ImageResolve(Widget w, XtPointer clid, XtPointer calld)
-/*{
-/*	char *filename;
-/*	char * url;
-/*	int rc;
-/*	int bg ;
-/*	McMoWType wtype;
-/*	int len_data, rlen;
-/*	int i;
-/*
-/*#ifdef MULTICAST
-/*	wtype = win->mc_type;
-/*#endif
-/*
-/* First look in the cache */
-/*
-/*#########################*/
-/*#ifdef MULTICAST
-	/* if it is a receiver do something . Reassemble image if possible*/
-	/* the image is update in McActionAllData when it's ready to do it */
-/*	if (wtype == MC_MO_TYPE_RCV_ALL){
-/*		McUser * d = win->mc_user;	/*#####*/
-/*		int num_eo = img_info->internal_numeo + 2;
-/*
-/*		if (d->neo < (num_eo+1))	/* GASP###### */
-/*			return ;
-/*		if (d->eos[num_eo] == NULL)
-/*			return;
-/*		len_data = d->seo[num_eo];
-/*		data = (unsigned char*)d->eos[num_eo];
-/*		rlen = MMCachePutDataInCache((char*)data,len_data, url, &filename);
-/*		if ( rlen ){
- /*       		bit_data = ReadBitmap(w, filename, &width, &height, colrs, &bg);
-/*			free(filename);
-/*		}
-/*		if(bit_data){
- /*       		img_info->internal =  0;
-  /*      		img_info->delayed = 0;
-   /*     		img_info->fetched = 1;
-/*			img_info->cached = 1;
- /*       		img_info->image_data = bit_data;
-/*			if (bg >= 0 )
-/*       				img_info->bg_index=bg;        
-/*			img_info->width = width;
-/*			img_info->height = height;
-/*			img_info->len_image_data = len_data;
-/*			for ( i = 0; i < 256; i++)
-/*				img_info->colrs[i] = colrs[i];
-/*		}
-/*		free(src);
-/*		free(url);
-/*		return;
-/*	}
-/*#endif
-/*
-/*################################ */
-/*#ifdef MULTICAST
-/*	{
-/*	McGlobalEo * geo;
-/* if this is a sender widget, save the original data for futur send*/
-/*	if ((wtype == MC_MO_TYPE_MAIN) && mc_send_enable){
-/*		if (!img_info->cw_only){
-/*			geo = McGetEmptyGlobalObject();	/* a structure to fill */
-/*			geo->orig_data = McReadEo(filename,&(geo->len_eo));
-/*			/* and that's all. Work is done in McFillData */
-/*		}
-/*	}
-/*	}
-/*	/* continue if wtype == MC_TYPE_NONE */
-/*#endif	
-/*}
-*/

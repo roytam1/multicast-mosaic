@@ -36,7 +36,7 @@ char *getFileName(char *file_src);
 void print_sensitive(mo_window *win, int format) ;
 void application_user_info_wait (char *str);
 
-XmxOptionMenuStruct *format_opts;
+extern XmxOptionMenuStruct format_opts[];
 
 static XmxCallback (save_print_a4_cb)
 {
@@ -377,6 +377,7 @@ static XmxCallback (open_local_win_cb)
 	rds.ct = NULL;
 	rds.post_data = NULL;
 	rds.is_reloading = True;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	MMPafLoadHTMLDocInWin (win, &rds);
 	free (fname);
 	return;
@@ -418,6 +419,7 @@ static XmxCallback (open_win_cb0)
 	rds.ct = NULL;
 	rds.post_data = NULL;
 	rds.is_reloading = False;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	MMPafLoadHTMLDocInWin (win, &rds);
 }
 
@@ -507,6 +509,7 @@ static void mail_win_cb2(Widget w, XtPointer clid, XtPointer calld)
         rds.ct = rds.post_data = NULL; 
         rds.is_reloading = False;
         rds.req_url = mo_assemble_help_url ("docview-menubar-file.html");
+	rds.gui_action = HTML_LOAD_CALLBACK;
         neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
         MMPafLoadHTMLDocInWin (neww, &rds);
 }
@@ -1647,6 +1650,7 @@ void mo_done_editing(EditFile *e, int pid)
 	rds.ct = NULL;
 	rds.post_data = NULL;
 	rds.is_reloading = True;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	MMPafLoadHTMLDocInWin (e->win, &rds);
 
 	/* should I stay or should I go...du du dun da dun da da */

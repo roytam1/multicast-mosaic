@@ -13,8 +13,6 @@
 #define __WFUNC__(WIDGET_ID, FUNC)      (Widget)WIDGET_ID, __FILE__, \
          __LINE__, FUNC
 
-#define DEBUG_FRAME 1
-
 #ifdef DEBUG_FRAME
 #define _XmHTMLDebug(LEVEL,MSG) do {\
                 { printf MSG;} \
@@ -66,64 +64,6 @@ __XmHTMLWarning(w, module, line, routine, fmt, va_alist)
         else
                 fprintf(stderr, "Warning:    %s\n", buf);
         fprintf(stderr, "    (%s, %s, line %i)\n", module, routine, line);
-}
-
-
-extern struct mark_up * NULL_ANCHOR_PTR  ;
-
-/* Basically we show the urls that appear within the frameset tag
-   as urls and add some text explaining that these are the urls they
-   were supposed to see as frames. We also show the NOFRAMES stuff. */
-
-/* just now do the same things as anchor */
-
-void FramePlace(HTMLWidget hw, struct mark_up *mptr,PhotoComposeContext * pcc)
-{
-	char * tptr;
-
-/* Change color of anchors with SRC, because other anchors are not active. */
-	pcc->anchor_tag_ptr = mptr;
-	tptr = mptr->anc_href = ParseMarkTag(mptr->start, MT_FRAME, "SRC");
-	if (!tptr)
-		return;
-	if (tptr != NULL) {
-		pcc->fg = hw->html.anchor_fg;
-		pcc->underline_number = hw->html.num_anchor_underlines;
-		pcc->dashed_underlines = hw->html.dashed_anchor_lines;
-/* we may want to send the href back somewhere else and
- * find out if we've visited it before */
-		if (hw->html.previously_visited_test != NULL) {
-			if((*(visitTestProc)
-				(hw->html.previously_visited_test)) ((Widget)hw, tptr, hw->html.base_url)) {
-				pcc->fg = hw->html.visitedAnchor_fg;
-				pcc->underline_number = hw->html.num_visitedAnchor_underlines;
-				pcc->dashed_underlines= hw->html.dashed_visitedAnchor_lines;
-			} else {
-				pcc->fg = hw->html.anchor_fg;
-				pcc->underline_number = hw->html.num_anchor_underlines;
-				pcc->dashed_underlines = hw->html.dashed_anchor_lines;
-			}
-		} else {
-			pcc->fg = hw->html.anchor_fg;
-			pcc->underline_number =hw->html.num_anchor_underlines;
-			pcc->dashed_underlines = hw->html.dashed_anchor_lines;
-		}
-	}
-	if (pcc->in_underlined) {
-		pcc->dashed_underlines = False;
-		if (!pcc->underline_number)
-			pcc->underline_number = 1;
-	}
-
-	LineBreak(hw,mptr,pcc);
-	mptr->text = tptr;
-	PartOfTextPlace(hw, mptr, pcc);
-	mptr->text = NULL;
-
-	pcc->fg = hw->manager.foreground;
-	pcc->underline_number = pcc->in_underlined;
-	pcc->dashed_underlines = False;
-	pcc->anchor_tag_ptr = NULL_ANCHOR_PTR;
 }
 
 /*##############################################*/
@@ -427,7 +367,8 @@ static HTMLWidget doFrame(HTMLWidget html, String attributes)
                 frame->html.frame_resize        = True;
         }
 
-        _XmHTMLDebug(11, ("frames.c: doFrame, frame %i created\n"
+#ifdef DEBUG_FRAME
+        _XmHTMLDebug(11, ("doFrame, frame %i created\n"
                 "\tname: %s\n"
                 "\tsrc : %s\n"
                 "\tmargin width : %i\n"
@@ -442,7 +383,7 @@ static HTMLWidget doFrame(HTMLWidget html, String attributes)
 		frame->html.frame_resize ? "yes" : "no",
                 frame->html.frame_scroll_type == FRAME_SCROLL_AUTO ? "auto" :
                 (frame->html.frame_scroll_type == FRAME_SCROLL_YES ? "always" : "none")));
-
+#endif
         /*
         * Actual widget creation is postponed until the very last moment
         * of _XmHTMLCreateFrames
@@ -453,16 +394,12 @@ static HTMLWidget doFrame(HTMLWidget html, String attributes)
         return(frame);
 }
 
-/*****
-* Name:                 insertFrameSetChild
-* Return Type:  void
+/*
 * Description:  inserts a child frameset in it's parent list
 * In:
 *       parent:         parent of this frameset
 *       child:          obvious
-* Returns:
-*       nothing
-*****/
+*/
 static void insertFrameSetChild(frameSet *parent, frameSet *child)
 {
         if(parent && parent->childs_done < parent->nchilds) {
@@ -1128,57 +1065,43 @@ void  _XmHTMLDestroyFrames(HTMLWidget hw)
 	hw->html.frame_type = NOTFRAME_TYPE;
 }
 
-/*****
-* Name:                 _XmHTMLReconfigureFrames
-* Return Type:  void
+/*
 * Description:  resize method for XmHTML frame childs
 * In:
 *       hw:           XmHTMLWidget id
-* Returns:
-*       nothing
-*****/
-void _XmHTMLReconfigureFrames(HTMLWidget hw)
+*/
+static void _XmHTMLReconfigureFrames(HTMLWidget hw)
 {
         HTMLWidget frame;
         int i;
 
-        _XmHTMLDebug(11, ("frames.c: _XmHTMLReconfigureFrames Start\n"));
-        /* compute new screen positions */
-        adjustConstraints(hw);
+/* compute new screen positions */
+	adjustConstraints(hw);
 
-        /* reconfigure all widgets */
-        for(i = 0; i < hw->html.nframe; i++) {
-                frame = hw->html.frames[i];
-
-                _XmHTMLDebug(11,("frames.c: _XmHTMLReconfigureFrames doing frame "
-                        "%s.\n", frame->html.frame_name));
-
-                XtConfigureWidget(frame->html.frame_wid, frame->html.frame_x, frame->html.frame_y,
-                        frame->html.frame_width - frame->html.frame_border,
-                        frame->html.frame_height - frame->html.frame_border, frame->html.frame_border);
-/*		HTML_ATTR(tka)->ConfigureWidget(frame->frame, frame->x, frame->y,
-                        frame->width - frame->border,
-                        frame->height - frame->border, frame->border);
-*/
+/* reconfigure all widgets */
+	for(i = 0; i < hw->html.nframe; i++) {
+		frame = hw->html.frames[i];
+		XtConfigureWidget(frame->html.frame_wid,
+			frame->html.frame_x, frame->html.frame_y,
+			frame->html.frame_width - frame->html.frame_border,
+			frame->html.frame_height - frame->html.frame_border,
+			frame->html.frame_border);
         }
-        _XmHTMLDebug(11, ("frames.c: _XmHTMLReconfigureFrames End.\n"));
 }
 
-/*****
-* Name:                 _XmHTMLCreateFramecwSet
-* Return Type:  Boolean
-* Description:  main frame creator
+/* Description:  main frame creator
 * In:
 *       html_old:       previous XmHTMLWidget id;
 *       hw:           XmHTMLWidget id;
 * Returns:
 *       True when all frames could be created, False otherwise.
-*****/
+*/
 Boolean _XmHTMLCreateFrameSet(HTMLWidget old, HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext *pcc)
 {
         int i;
         struct mark_up **tmp;
         static Widget frame;
+        XmHTMLFrameCallbackStruct cbs;
 
         frame_stack = &frame_base;
         frame_stack->next = NULL;
@@ -1216,14 +1139,10 @@ Boolean _XmHTMLCreateFrameSet(HTMLWidget old, HTMLWidget hw, struct mark_up **mp
                 hw->html.frames[i] = frame_w;
         }
 
-        /* move to the first frameset declaration */
+/* move to the first frameset declaration */
 	tmp = mptr;
-/*        for(tmp = hw->html.html_objects; tmp != NULL && tmp->type != M_FRAMESET;
-                tmp = tmp->next); */
-	tmp = mptr;
-
         current_frame = 0;
-        /* create all frames (and possibly nested framesets also) */
+/* create all frames (and possibly nested framesets also) */
 	makeFrameset( hw, tmp, NULL);
 	*tmp = NULL;	/* This ends the scanning of Mark loop */
 			/* no more HTML is computed after the outermost framset
@@ -1232,36 +1151,19 @@ Boolean _XmHTMLCreateFrameSet(HTMLWidget old, HTMLWidget hw, struct mark_up **mp
         /* adjust framecount, makeFrameSets might have found some invalid sets */
         hw->html.nframe = current_frame;
 
-#ifdef DEBUG
-        _XmHTMLDebug(11, ("frames.c: _XmHTMLCreateFrames, raw frame listing\n"));
-        for(i = 0; i < hw->html.nframe; i++) {
-                _XmHTMLDebug(11, ("frame %i\n"
-                        "\tname           : %s\n"
-                        "\tsrc            : %s\n"
-                        "\tsize           : %i\n",
-                        i, hw->html.frames[i]->src, hw->html.frames[i]->name,
-                        hw->html.frames[i]->size_s));
-        }
-#endif
-
         adjustConstraints(hw);
 
-#ifdef DEBUG
-        _XmHTMLDebug(11, ("frames.c: _XmHTMLCreateFrames, adjusted frame "
-                "listing\n"));
-        for(i = 0; i < hw->html.nframe; i++) {
-                _XmHTMLDebug(11, ("frame %i\n"
-                        "\tname           : %s\n"
-                        "\tsrc            : %s\n"
-                        "\twidth by height: %ix%i\n"
-                        "\tx offset       : %i\n"
-                        "\ty offset       : %i\n",
-                        i, hw->html.frames[i]->src, hw->html.frames[i]->name,
-                        hw->html.frames[i]->width, hw->html.frames[i]->height,
-                        hw->html.frames[i]->x, hw->html.frames[i]->y));
-        }
-#endif
-        /* and now create all frames */
+	cbs.reason = XmCR_HTML_FRAMESET_INIT;
+	cbs.event = NULL;
+	cbs.src = NULL;
+	cbs.name = NULL;
+	cbs.html = NULL;
+	cbs.doit = False;
+	cbs.nframe = hw->html.nframe;
+/* call the callback list */
+	XtCallCallbackList((Widget)hw, hw->html.frame_callback, &cbs);
+
+/* and now create all frames */
         for(i = 0; i < hw->html.nframe; i++) {
                 hw->html.frames[i]->html.frame_wid = _XmHTMLFrameCreateCallback(
 			hw, hw->html.frames[i]);
@@ -1297,16 +1199,14 @@ void _XmHTMLDrawFrameBorder(XmHTMLWidget hw)
 #endif
 
 
-/*****
-* Name:                 XmHTMLFrameGetChild
-* Return Type:  Widget
+/*
 * Description:  returns the Widget id of a frame child given it's name.
 * In:
 *       w:                      XmHTMLWidget
 *       name:           name of frame to locate.
 * Returns:
 *       If found, the widget id of the requested frame, NULL otherwise.
-*****/
+*/
 Widget XmHTMLFrameGetChild(Widget w, String name)
 {
         HTMLWidget html;

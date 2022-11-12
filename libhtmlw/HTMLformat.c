@@ -594,9 +594,6 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	 * underlineing attributes.
 	 * No linefeeds, so they can be imbedded anywhere.
 	 */
-	case M_FRAME:
-		FramePlace(hw, *mptr, pcc);
-		break;
 	case M_ANCHOR:
 		if (mark->is_end) {
 			pcc->fg = hw->manager.foreground;
@@ -667,23 +664,23 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	case M_OPTION:
 		if (mark->is_end)	/* no end mark on <option> */
 			return;
-		FormSelectOptionField( hw, mptr, pcc, save_obj);
+		FormSelectOptionField( hw, mptr, pcc);
 		break;
 
 /* Special INPUT tag. */
 	case M_SELECT:
 		if (mark->is_end) {
-			FormSelectEnd(hw,mptr,pcc,save_obj);
+			FormSelectEnd(hw,mptr,pcc);
 		} else {
-			FormSelectBegin(hw,mptr,pcc,save_obj);
+			FormSelectBegin(hw,mptr,pcc);
 		}
 		break;
 
 	case M_TEXTAREA:
 		if (mark->is_end) {
-			FormTextAreaEnd(hw, mptr, pcc, save_obj);
+			FormTextAreaEnd(hw, mptr, pcc);
 		}else {
-			FormTextAreaBegin(hw, mptr, pcc, save_obj);
+			FormTextAreaBegin(hw, mptr, pcc);
 		}
 		break;
 
@@ -691,15 +688,15 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	case M_INPUT:
 		if (mark->is_end)	/* no end mark on <input> */
 			return;
-		FormInputField( hw, mptr, pcc, save_obj);
+		FormInputField( hw, mptr, pcc);
 		break;
 
 /* Fillout forms.  Cannot be nested. */
 	case M_FORM:
 		if (mark->is_end) {
-			EndForm  (hw, mptr, pcc, save_obj);
+			EndForm  (hw, mptr, pcc);
 		} else {
-			BeginForm(hw, mptr, pcc, save_obj);
+			BeginForm(hw, mptr, pcc);
 		}
 		break;
 
@@ -967,6 +964,14 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 					/* analyse de <TABLE> */
 	case M_DOCTYPE:			/* unused */
 	case M_META:			/* unused */
+	case M_LINK:			/* unused */
+
+	case M_FRAME:		/* process by frameset */
+	case M_ACRONYM:		/* not used */
+	case M_ABBR:
+	case M_TBODY:
+	case M_TFOOT:
+	case M_THEAD:
 		break;
 	default:
 		fprintf(stderr,"[TriggerMarkChanges] Unknow marker %d\n",
@@ -976,7 +981,6 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 } /* TriggerMarkChanges() */
 
 /* GD ######### */
-/*############# */
 	/* copy and push the state */
 	/* now pop PhotoComposeContext */
 /*#############*/
@@ -998,9 +1002,7 @@ void FormatChunk( HTMLWidget hw, struct mark_up * start_mark,
 
 	mptr = start_mark;
 	while (mptr != NULL) {
-/* ####################### */
 /* ################# voir peut etre la reentrance ici en fonction des tags####*/
-/* ####################### */
 		TriggerMarkChanges(hw, &mptr, pcc , save_obj);
 		if (mptr == end_mark){
 			return;

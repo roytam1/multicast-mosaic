@@ -13,8 +13,7 @@
 #include "mc_misc.h"
 
  
-/*            
- * Copyright (c) 1995 The Regents of the University of California.
+/* Copyright (c) 1995 The Regents of the University of California.
  * All rights reserved.
  *            
  * Redistribution and use in source and binary forms, with or without
@@ -119,27 +118,3 @@ u_int32_t McRtpTimeStamp(struct timeval ts)
 {
 	return (u_int32_t)ts.tv_sec + GETTIMEOFDAY_TO_NTP_OFFSET;
 }
-
-/*
-char * McReadEo(char * fnam, unsigned int * len_ret)
-{
-	struct stat st;
-	int r;
-	char *p;
-	int fd;
-
-	r = stat(fnam, &st);
-	if ( r != 0){
-		*len_ret = 0;
-		return NULL;
-	}
-
-	*len_ret = st.st_size;
-
-	p = (char*) malloc(*len_ret);
-	fd = open(fnam,O_RDONLY);
-	read(fd,p,*len_ret);
-	close (fd);
-	return p;
-}
-*/

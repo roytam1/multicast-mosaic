@@ -1,6 +1,6 @@
 # Toplevel Makefile for mMosaic.
 
-MCVER=3.3.3
+MCVER=3.4.0
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
@@ -171,9 +171,9 @@ krbflags  = $(krb4flags) $(krb5flags)
 krblibs   = $(krb4libs) $(krb5libs) 
 
 #### MULTICAST support
-mcdir = $(PWD)/libmc
-mcflag = -I$(mcdir) -DMULTICAST
-mclib = $(mcdir)/libmc.a
+#mcdir = $(PWD)/libmc
+#mcflag = -I$(mcdir) -DMULTICAST
+#mclib = $(mcdir)/libmc.a
 
 #### APROG support
 #adir = $(PWD)/libaprog

@@ -1,31 +1,6 @@
 /* Please read copyright.ncsa. Don't remove next line */
 #include "../Copyrights/copyright.ncsa"
-/*
- * The following XPM reading code was based on the libXpm code, which I
- * am free to use as long as I include the following copyright:
- */
-/*
- * Copyright 1990-93 GROUPE BULL
- *
- * Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee is hereby granted, provided
- * that the above copyright notice appear in all copies and that both that
- * copyright notice and this permission notice appear in supporting
- * documentation, and that the name of GROUPE BULL not be used in advertising
- * or publicity pertaining to distribution of the software without specific,
- * written prior permission.  GROUPE BULL makes no representations about the
- * suitability of this software for any purpose.  It is provided "as is"
- * without express or implied warranty.
- *
- * GROUPE BULL disclaims all warranties with regard to this software,
- * including all implied warranties of merchantability and fitness,
- * in no event shall GROUPE BULL be liable for any special,
- * indirect or consequential damages or any damages
- * whatsoever resulting from loss of use, data or profits,
- * whether in an action of contract, negligence or other tortious
- * action, arising out of or in connection with the use 
- * or performance of this software.
- */
+#include "../Copyrights/copyright.bull"
 
 #include <sys/time.h>
 struct timeval Tv;

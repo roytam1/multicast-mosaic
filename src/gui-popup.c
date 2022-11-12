@@ -49,6 +49,7 @@ static void fmenu_cb ( Widget w , XtPointer clid, XtPointer calld)
                 	return; /* oh, well */
                do_meta=1;
 		rds.req_url = win->current_node->aurl_wa;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
@@ -603,6 +604,7 @@ void metadata_cb(Widget w, XtPointer client_data, XtPointer call_data)
                xurl=eptr->pic_data->src;
                do_meta=1;   
 		rds.req_url = xurl;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
@@ -617,6 +619,7 @@ void metadata_cb(Widget w, XtPointer client_data, XtPointer call_data)
                		win->current_node->base_url);
                do_meta=2;
 		rds.req_url = xurl;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
@@ -659,6 +662,7 @@ void image_cb(Widget w, XtPointer client_data, XtPointer call_data)
 	case I_ViewExternal:
 		xurl=eptr->pic_data->src;
 		rds.req_url = xurl;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
@@ -671,6 +675,7 @@ void image_cb(Widget w, XtPointer client_data, XtPointer call_data)
 		imageViewInternal=1;
 */
 		rds.req_url = xurl;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
@@ -798,6 +803,7 @@ static void session_cb(Widget w, XtPointer clid, XtPointer calld)
 	XtVaGetValues(w, XmNuserData, (XtPointer) &win, NULL);
 
 	rds.req_url = xurl;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	rds.post_data = NULL;
 	rds.ct = NULL;
 	rds.is_reloading = False;

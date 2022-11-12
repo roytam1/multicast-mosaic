@@ -28,6 +28,11 @@
 typedef struct _MimeHeaderStruct *MimeHeaderStructPtr;
 
 typedef enum {
+	HTML_LOAD_CALLBACK,
+	FRAME_CALLBACK
+} GuiActionType;
+
+typedef enum {
         MC_MO_TYPE_UNICAST,
         MC_MO_TYPE_MAIN,         /* only the Main can send */
         MC_MO_TYPE_RCV_URL_ONLY,
@@ -40,6 +45,7 @@ typedef struct _RequestDataStruct {
 	char *post_data;
 	char *ct;	/* Content-Type of post_data */
 	int is_reloading;
+	GuiActionType gui_action;
 } RequestDataStruct;
 
 typedef struct _TwirlStruct {
@@ -121,7 +127,6 @@ typedef struct {
 				/* newest in 2.7 (ha top that) */
 	int newsBackgroundFlushTime;
 #ifdef MULTICAST
-	Boolean         mc_debug;              /* debug or verbose */
 	char           *mc_sess_name;
 	char           *mc_media_name;
 	int             mc_life_time;
@@ -174,7 +179,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.3.3"
+#define MO_VERSION_STRING "3.4.0"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@sig.enst.fr"
@@ -320,6 +325,8 @@ typedef struct _AgentSpoofCBStruct {
 /* ------------------------------ mo_window ------------------------------- */
 
 
+typedef int * DependObjectTab;	/* tab of moid */
+
 #define moMODE_PLAIN  0x0001
 #define moMODE_FTP    0x0002
 #define moMODE_NEWS   0x0004
@@ -336,6 +343,7 @@ typedef struct _mo_window {
 	struct _mo_window * frame_parent;
 	struct _mo_window ** frame_sons;
 	int frame_sons_nbre;
+	int frame_dot_index;
 
 /* Subwindows. */
 	Widget source_win;
@@ -512,15 +520,21 @@ typedef struct _mo_window {
 				/* only the Main can send */
 				/* MC_MO_TYPE_RCV_URL_ONLY */
 				/* MC_MO_TYPE_RCV_ALL */
-	void (*mc_callme_on_new_doc)(char *fname, char *aurl_wa, 
-		MimeHeaderStructPtr mhs);
 	void (*mc_callme_on_new_object)(char *fname, char *aurl_wa, 
-		MimeHeaderStructPtr mhs);
-	void (*mc_callme_on_error_object)(char *aurl, int status_code);
-	struct _mc_user *mc_user;
+		MimeHeaderStructPtr mhs, DependObjectTab dot,
+		int n_do, int stateless, int *moid_ret);
+	void (*mc_callme_on_error_object)(char *aurl, int status_code,
+		int * moid_ret);
+	void (*mc_callme_on_new_state)(struct _mo_window * win, int moid_ref, DependObjectTab dot, int ndo);
+	struct _Source *source;
+
+	int	moid_ref;	/* current moid at sender side */
+	int	n_do;		/* number of depend object */
+	DependObjectTab dot;	/* alldepend object */
 #endif
 	int delete_position_from_current_hotlist;
 } mo_window;
+
 
 typedef struct _BalloonInfoData {
         mo_window * win;
@@ -614,7 +628,7 @@ extern mo_status mo_post_subscribe_win (mo_window *);
 /* gui-menubar.c */
 extern mo_status mo_set_fonts (mo_window *, int);
 extern mo_status mo_set_underlines (mo_window *, int);
-
+extern void	loadAgents(void);
 /* hotlist.c */
 extern mo_status mo_write_default_hotlist (void);
 extern mo_status mo_post_hotlist_win (mo_window *);
@@ -640,8 +654,9 @@ void mo_html_cb(Widget w, XtPointer clid, XtPointer calld);
 
 extern void InitChildProcessor();
 extern mo_status mo_edit_source(mo_window *win);
-extern void mo_init_menubar();
 extern mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t);
+extern mo_window *MMMakeSubWindow( mo_window *parent, Widget htmlw,
+                        char *url, char *frame_name);
 
 extern void System(char *cmd, char *title);
 extern mo_window *mo_main_next_window (mo_window *win);

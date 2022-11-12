@@ -13,7 +13,6 @@
 #include <sys/param.h>
 #include <Xm/XmAll.h>
 
-
 #include "../libnut/mipcf.h"          
 #include "../libhtmlw/HTML.h"         
 #include "../libhtmlw/HTMLP.h"        
@@ -22,6 +21,10 @@
 #include "mc_mosaic.h"                  
 #include "mc_rtp.h"                   
 #include "mc_misc.h"                  
+
+#ifdef DEBUG
+#define DEBUG_MULTICAST
+#endif
 
 #define MC_MAX_BUF_SIZE         32767   /* max io buf size for socket */
 
@@ -70,7 +73,6 @@ typedef struct _SdesItem {
 void McRtcpWriteSdes()
 {
 	SdesItem itm[NITEMS];
-	char *s_ip;
 	int len;
 	int pad;
 	int n,i,j;
@@ -94,7 +96,7 @@ void McRtcpWriteSdes()
 	
 /* TOOL */
 	itm[3].type = RTCP_SDES_TOOL;
-	strcpy(itm[3].d, "mMosaic-3.3.3");
+	strcpy(itm[3].d, "mMosaic-3.4.0");
 	itm[3].len= strlen(itm[3].d);
 
         ebuf[0] = 0x80;     /* V,P,SC */
@@ -137,7 +139,6 @@ SdesStruct * parse_sdes(RtcpPacket* rcs)
 	static SdesStruct sdes;
 	unsigned char * psdesd = (unsigned char *) rcs->d;
 	int d_len = rcs->d_len;
-	unsigned short bid;
 	unsigned int h1, h2, h3, h4;
 	unsigned int h;
 	int i;
@@ -190,13 +191,11 @@ SdesStruct * parse_sdes(RtcpPacket* rcs)
 	return &sdes;
 }
 
-	
-
-void McRtcpWriteStatr()
+static void McRtcpWriteStateReport()
 {
 	int len = 7 - 1;
 
-	if (mc_state_report_len == 0)
+	if(mc_status_report_state_id == -1 || mc_status_report_object_id == -1)
 		return;
 
         ebuf[0] = 0x80;     /* V,P,RC */
@@ -210,11 +209,11 @@ void McRtcpWriteStatr()
         ebuf[6] = (mc_local_srcid >> 8) & 0xff;
         ebuf[7] =  mc_local_srcid & 0xff;
 
-	ebuf[8] = ebuf[9] = ebuf[10] = ebuf[11] = 0; /* NTP Msb*/
+	ebuf[8] = ebuf[9] = ebuf[10] = ebuf[11] = 0;   /* NTP Msb*/
 	ebuf[12] = ebuf[13] = ebuf[14] = ebuf[15] = 0; /* NTP Lsb */
 	ebuf[16] = ebuf[17] = ebuf[18] = ebuf[19] = 0; /* RTP ts */
-	ebuf[20] = ebuf[21] = ebuf[22] = ebuf[23] = 0; /* sender's packet count */
-	ebuf[24] = ebuf[25] = ebuf[26] = ebuf[27] = 0; /* sender's octet count */
+	ebuf[20] = ebuf[21] = ebuf[22] = ebuf[23] = 0; /* sender's pckt count*/
+	ebuf[24] = ebuf[25] = ebuf[26] = ebuf[27] = 0; /* sender's octet count*/
 
 /* State Report */
 	len = 6 -1;
@@ -229,31 +228,31 @@ void McRtcpWriteStatr()
         ebuf[34] = ebuf[6];
         ebuf[35] = ebuf[7];
 
-	ebuf[36] = ( mc_state_report_url_id >> 8) & 0xff; /* url_id */
-	ebuf[37] = mc_state_report_url_id & 0xff;
+	ebuf[36] = ( mc_status_report_state_id >> 24) & 0xff; /* state_id */
+	ebuf[37] = ( mc_status_report_state_id >> 16) & 0xff; /* state_id */
+	ebuf[38] = ( mc_status_report_state_id >> 8) & 0xff; /* state_id */
+	ebuf[39] = mc_status_report_state_id & 0xff;
 
-	ebuf[38] = (mc_state_report_o_id >> 8) & 0xff;   /* object_id */
-	ebuf[39] = mc_state_report_o_id & 0xff;
-
-	ebuf[40] = ( mc_state_report_len >> 24) & 0xff; /* len */
-	ebuf[41] = ( mc_state_report_len >> 16) & 0xff;
-	ebuf[42] = ( mc_state_report_len >> 8) & 0xff;
-	ebuf[43] = mc_state_report_len & 0xff;
+	ebuf[40] = ( mc_status_report_object_id >> 24) & 0xff; /* ojectid */
+	ebuf[41] = ( mc_status_report_object_id >> 16) & 0xff;
+	ebuf[42] = ( mc_status_report_object_id >> 8) & 0xff;
+	ebuf[43] = mc_status_report_object_id & 0xff;
 
 /* we load this o_id at this time (use for maintaining state of FRAME)*/
 	ebuf[44]= ebuf[45]= ebuf[46]= ebuf[47]= 0; /*RTP sample time of o_id */
 	ebuf[48]= ebuf[48]= ebuf[50]= ebuf[51]=0;  /* reserved */
 
 	McWrite(mc_fd_rtcp_w, ebuf, 52);
-	fprintf(stderr,"State Report: %d %d %d\n",
-		mc_state_report_url_id, mc_state_report_o_id,
-		mc_state_report_len);
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr,"State Report: statid %d objid %d \n",
+		mc_status_report_state_id, mc_status_report_object_id);
+#endif
 }
 
 void McRtcpWriteCb(XtPointer clid, XtIntervalId * time_id)
 {
 	McRtcpWriteSdes();
-	McRtcpWriteStatr();
+	McRtcpWriteStateReport();
 
 	mc_rtcp_w_timer_id = XtAppAddTimeOut(mMosaicAppContext,
 		mc_rtcp_w_time, McRtcpWriteCb, NULL);

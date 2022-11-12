@@ -19,221 +19,88 @@
 #include "mc_misc.h"
 #include "mc_main.h"
 
-void McFillLocalObject(ObjEntry ** obj, int num, char * fname, char *aurl_wa,
-	MimeHeaderStruct * mhs)
+/**************************************************************************/
+/* SENDER PART								  */
+/**************************************************************************/
+
+static void McObjectToPacket( McObjectStruct *obs)
 {
-	int fdd;
-	char * buf=NULL;
-	char ces[50];
-
-	ces[0] = '\0';
-	switch(mhs->content_encoding) {
-	case GZIP_ENCODING :
-		sprintf(ces,"Content-Encoding: gzip\n"); 
-		break;
-	case COMPRESS_ENCODING:
-		sprintf(ces,"Content-Encoding: compress\n");
-		break;
-	}
-
-	buf = (char*)malloc(strlen(aurl_wa)+strlen(ces)+
-		strlen(mhs->content_type)+strlen(mhs->last_modified)+220);
-	sprintf(buf, "GET %s HTTP/1.0\n\
-Content-Length: %d\n%s\
-Content-Type: %s\n\
-Last-Modified: %s\n\
-\n\n", aurl_wa, mhs->content_length, ces, mhs->content_type,
-mhs->last_modified);
-	
-	obj[num] = (ObjEntry *) calloc(1, sizeof(ObjEntry ));
-	obj[num]->h_part = buf;
-	obj[num]->h_len = strlen(buf);
-	obj[num]->h_fname = NULL;
-	if(obj[num]->h_len > 500)
-		fprintf(stderr,"Mc: header is long\n");
-
-        obj[num]->d_len = mhs->content_length;
-	fdd = open(fname,O_RDONLY);
-	buf = (char*) malloc(obj[num]->d_len);
-	read(fdd,buf, obj[num]->d_len);
-        obj[num]->d_part = buf;
-        obj[num]->d_fname = NULL; 	/* just now ### */
-	close(fdd);
-}
-
-void McFillLocalErrorObject(ObjEntry ** obj, int j, char *aurl, int status_code)
-{
-	char * buf=NULL;
-
-	buf = (char*)malloc(strlen(aurl)+ 100);
-	sprintf(buf, "GET %s HTTP/1.0\nContent-Length: 0\nStatus-Code: 404\n\n\n", aurl);
-
-	obj[j] = (ObjEntry *) calloc(1, sizeof(ObjEntry ));
-	obj[j]->h_part = buf;
-	obj[j]->h_len = strlen(buf);
-	obj[j]->h_fname = NULL;
-	if(obj[j]->h_len > 500)
-		fprintf(stderr,"Mc: header is long\n");
-
-        obj[j]->d_len = 0;
-        obj[j]->d_part = NULL;
-        obj[j]->d_fname = NULL; 	/* just now ### */
-}
-
-void McCreateDocEntry(char *fname, char* aurl_wa, MimeHeaderStruct *mhs)
-{
-        int i,n_docs ;                 
-                                       
-        i = mc_local_url_id;           
-        n_docs = mc_local_url_id +1;   
-        if ( !mc_local_docs) { /* create a tab of docs */
-                mc_local_docs = (DocEntry *)malloc(sizeof(DocEntry) *n_docs );
-        } else {                       
-                mc_local_docs = (DocEntry *)realloc(mc_local_docs,
-                         sizeof(DocEntry) * n_docs);
-        }
-/* #### just le HTML pour l'instant */
-        mc_local_docs[i].o_tab = (ObjEntry**)calloc(1, sizeof(ObjEntry*));
-        McFillLocalObject(mc_local_docs[i].o_tab, 0, fname, aurl_wa, mhs);
-        mc_local_docs[i].nobj = 1;              /* nombre d'objet */
-        mc_local_docs[i].o_tab[0]->o_num = 0;    /* numero de cet objet */
-        gettimeofday(&mc_local_docs[i].o_tab[0]->ts,0) ;
-} 
-
-void McCreateErrorEntry(char *aurl, int status_code)
-{
-        int i, j, n_obj;
-
-        i = mc_local_url_id;           
-	j = mc_local_object_id;
-	n_obj = mc_local_object_id +1;
-/* une entre pour la doc existe deja */
-
-/* #### just le HTML pour l'instant */
-        mc_local_docs[i].o_tab = (ObjEntry**)realloc(mc_local_docs[i].o_tab,
-				n_obj * sizeof(ObjEntry*));
-
-	McFillLocalErrorObject(mc_local_docs[i].o_tab, j, aurl, status_code);
-
-        mc_local_docs[i].nobj = n_obj;              /* nombre d'objet */
-        mc_local_docs[i].o_tab[j]->o_num = j;    /* numero de cet objet */
-        gettimeofday(&mc_local_docs[i].o_tab[j]->ts,0) ;
-}
-
-void McCreateObjectEntry(char *fname, char* aurl, MimeHeaderStruct *mhs)
-{                                      
-        int i, j, n_obj;
-                                       
-        i = mc_local_url_id;           
-	j = mc_local_object_id;
-	n_obj = mc_local_object_id +1;
-/* une entre pour la doc existe deja */
-
-/* #### just le HTML pour l'instant */
-        mc_local_docs[i].o_tab = (ObjEntry**)realloc(mc_local_docs[i].o_tab,
-				n_obj * sizeof(ObjEntry*));
-        McFillLocalObject(mc_local_docs[i].o_tab, j, fname, aurl, mhs);
-        mc_local_docs[i].nobj = n_obj;              /* nombre d'objet */
-        mc_local_docs[i].o_tab[j]->o_num = j;    /* numero de cet objet */
-        gettimeofday(&mc_local_docs[i].o_tab[j]->ts,0) ;
-} 
-
-void McObjectToPacket(int url_id, int o_id)
-{
-        DocEntry doc;
-        RtpPacket *ph;          /* one for header */
         RtpPacket **ptab;
         RtpPacket * deb_p, *end_p;
-        int s_dchunk; 
-        int i, n_d, n_t, s_oh, r_b, offset, d_off;
-        int p_d_l;
-        int rtp_ts;
-        int d_duration;
+        int s_dchunk, i, n_t, r_b, offset, p_d_l;
+        int rtp_ts, d_duration;
+	int object_size;
+	int fdd;
         double d_dur;
-        int next_time = 10;
+	char *buf=NULL;
+	char *do_buf=NULL;
+	char *odata;
+	char *fname;
+	char *aurl; 
+	MimeHeaderStruct * mhs; 
+	int moid;
+
+	fname = obs->fname;
+	aurl = obs->aurl;
+	mhs = obs->mhs;
+	moid = obs->moid;
+	object_size = obs->file_len;
  
         deb_p = mc_rtp_packets_list; /* pointe au debut de la liste  */
 	end_p = mc_rtp_packets_list;
         if (deb_p) { /* il y a une file d'attente */
-                /* volontary lost packet, un utilisateur va trop vite au regard
-                 * de la bande passante qu'il s'autorise... */
-                /* complique car il faut recuprer le seqno */   
-/*              next_time = UnSchedule(deb_plist, end_plist); */
-/*              deb_plist = ... */
-/*              end_plist = ... */
+/* volontary lost packet, un utilisateur va trop vite au regard de la bande */
+/* passante qu'il s'autorise. complique car il faut recuprer le seqno */   
+/* next_time = UnSchedule(deb_p, end_p); deb_p=... end_p=... */
 		while (end_p->next){
 			end_p = end_p->next;
 		}
-        }               
- 
-/* send the header in the first packet as a standalone packet */
+	}
+
+	odata = (char*) malloc(object_size +1);
+	fdd = open(fname,O_RDONLY);
+	read(fdd, odata, object_size);	/* append */
+	odata[object_size] = '\0';
+	close(fdd);
+/* send header and data in one contiguous stream */
         s_dchunk = DATA_CHUNK_SIZE;     /* size of data chunck ~512 */
-        doc = mc_local_docs[url_id];
-/* size of object include header */
-        s_oh = doc.o_tab[o_id]->h_len + doc.o_tab[o_id]->d_len;
-        if (doc.o_tab[o_id]->h_len <= 0 || doc.o_tab[o_id]->d_len<0)  /* impossible */
-                abort();
-/* nombre de packet pour les donnes */ 
-        n_d = (doc.o_tab[o_id]->d_len -1) / s_dchunk; /* division entiere */
-        if (doc.o_tab[o_id]->d_len > 0)
-		n_d++;                         
-/* total */                            
-        n_t = n_d + 1;                 
-                                       
-/* alloc packets include one for header . Plus one for NULL*/
+
+/* nombre total de packet pour l'objet */ 
+        n_t = (object_size -1) / s_dchunk; /* division entiere */
+        if (object_size > 0)
+		n_t++;
+/* alloc packets. Plus one for NULL*/
         ptab = (RtpPacket **) malloc(sizeof(RtpPacket*) * (n_t+1));
         for ( i = 0; i < n_t; i++ )    
                 ptab[i] = (RtpPacket *)malloc(sizeof(RtpPacket) );
         ptab[n_t] = NULL;              
                                        
-        r_b = s_oh;     /* remaining byte to send */
+        r_b = object_size;     /* remaining byte to send */
         offset = 0;                    
-        p_d_l = doc.o_tab[o_id]->h_len;    
-        rtp_ts = McRtpTimeStamp(doc.o_tab[o_id]->ts); /* sample time when file come */                                       
-/* fill first packets (header) */      
-                                       
-        d_dur = ((p_d_l + PROTO_OVERHEAD) * 8000)/BAND_WIDTH; /* en millisecond */        d_duration = (int) d_dur;      
-        if (d_duration < 2)            
-                d_duration = 2;        
-        ptab[0]->next = ptab[1];       
-        ptab[0]->url_id = url_id;      
-        ptab[0]->o_id = o_id;             
-        ptab[0]->d = doc.o_tab[o_id]->h_part;
-        ptab[0]->d_len = p_d_l;        
-        ptab[0]->is_end = n_t == 1 ? 0x80 : 0;           
-        ptab[0]->offset = offset;      
-                /* le temps qu'il faut pour envoyer ce packet*/
-                /* dependant de la bande passante qu'on s'autorise */
-        ptab[0]->rtp_ts = rtp_ts; /* sample time when file come */
-        ptab[0]->duration = d_duration; /* le temps qu'il faut pour envoie
-                                         * a la vitesse desiree  en millisec*/
-        offset += p_d_l;               
-        r_b = r_b - p_d_l;             
-                                       
         if (r_b <= s_dchunk) {         
                 p_d_l = r_b;            /* packet data len */
         } else {                       
                 p_d_l = s_dchunk;      
         }                              
-        d_off = 0;                     
-        for ( i = 1; i < n_t; i++ ) {  
+        rtp_ts = McRtpTimeStamp(mhs->ts); /* sample time when file come */                                       
+        for ( i = 0; i < n_t; i++ ) {  
                 d_dur = ((p_d_l + PROTO_OVERHEAD) * 8000)/BAND_WIDTH; /* en millisecond */                               
                 d_duration = (int) d_dur;
                 if (d_duration < 2)    
                         d_duration = 2;
                 ptab[i]->next = ptab[i+1];
-                ptab[i]->url_id = url_id;
-                ptab[i]->o_id = o_id;     
+                ptab[i]->id = moid;
+		ptab[i]->data_type = HTML_OBJECT_DATA_TYPE;
                 ptab[i]->d_len = p_d_l;
-                ptab[i]->d = &doc.o_tab[o_id]->d_part[d_off];
-                ptab[i]->is_end = 0;   
+                ptab[i]->d = &odata[offset];
+                ptab[i]->is_eod = 0;   
+		ptab[i]->to_free = NULL;
                 ptab[i]->offset = offset;
                         /* le temps qu'il faut pour envoyer ce packet*/
                         /* dependant de la bande passante qu'on s'autorise */
                 ptab[i]->rtp_ts = rtp_ts; /* sample time when file come */
-                ptab[i]->duration = d_duration;
-                                       
-                d_off += p_d_l;        
+                ptab[i]->duration = d_duration; /* le temps qu'il faut pour envoie
+                                         * a la vitesse desiree  en millisec*/
                 offset += p_d_l;       
                 r_b = r_b - p_d_l;     
                 if (r_b <= s_dchunk) { 
@@ -242,191 +109,282 @@ void McObjectToPacket(int url_id, int o_id)
                         p_d_l = s_dchunk;
                 }                      
         }                              
-        ptab[n_t -1]->is_end = 0x80;   
+        ptab[n_t -1]->is_eod = 1;   
+	ptab[n_t -1]->to_free = odata; /* free in McSendRtpDataTimeOutCb */
 	if (deb_p){
 		end_p->next = ptab[0];
 	} else {
         	mc_rtp_packets_list = ptab[0]; 
 	}
+        free(ptab);
+}
+
+void McSendOject(int moid)
+{
+	McObjectStruct *obs;
+	int rearm_timer = mc_rtp_packets_list ? False : True;
+
+        obs = &moid_sender_cache[moid];
+	McObjectToPacket(obs);
+
+/* a new object */
+	if (rearm_timer == True){
+		mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
+			mc_write_rtp_data_next_time,
+			McSendRtpDataTimeOutCb, NULL);
+	}
+}
+
+static void McErrorObjectToPacket(char *fname, char *aurl, MimeHeaderStruct *mhs, int moid)
+{
+        RtpPacket **ptab;
+        RtpPacket * deb_p, *end_p;
+        int s_dchunk, i, n_t, r_b, offset, p_d_l;
+        int rtp_ts, d_duration;
+	int object_size;
+        double d_dur;
+	char *buf;
+	char *odata;
+	
+        deb_p = mc_rtp_packets_list; /* pointe au debut de la liste  */
+	end_p = mc_rtp_packets_list;
+        if (deb_p) { /* il y a une file d'attente */
+		while (end_p->next){
+			end_p = end_p->next;
+		}
+	}
+	buf = (char*)malloc(strlen(aurl) + 220);
+	sprintf(buf, "ERROR %d %s HTTP/1.0\n\n\n", mhs->status_code, aurl);
+	object_size = strlen(buf);
+	odata = buf;
+	
+        s_dchunk = DATA_CHUNK_SIZE;     /* size of data chunck ~512 */
+
+/* nombre total de packet pour l'objet */ 
+        n_t = (object_size -1) / s_dchunk; /* division entiere */
+        if (object_size > 0)
+		n_t++;
+/* alloc packets. Plus one for NULL*/
+        ptab = (RtpPacket **) malloc(sizeof(RtpPacket*) * (n_t+1));
+        for ( i = 0; i < n_t; i++ )    
+                ptab[i] = (RtpPacket *)malloc(sizeof(RtpPacket) );
+        ptab[n_t] = NULL;              
+                                       
+        r_b = object_size;     /* remaining byte to send */
+        offset = 0;                    
+        if (r_b <= s_dchunk) {         
+                p_d_l = r_b;            /* packet data len */
+        } else {                       
+                p_d_l = s_dchunk;      
+        }                              
+        rtp_ts = McRtpTimeStamp(mhs->ts); /* sample time when file come */                                       
+        for ( i = 0; i < n_t; i++ ) {  
+                d_dur = ((p_d_l + PROTO_OVERHEAD) * 8000)/BAND_WIDTH; /* en millisecond */                               
+                d_duration = (int) d_dur;
+                if (d_duration < 2)    
+                        d_duration = 2;
+                ptab[i]->next = ptab[i+1];
+                ptab[i]->id = moid;
+		ptab[i]->data_type = HTML_OBJECT_DATA_TYPE;
+                ptab[i]->d_len = p_d_l;
+                ptab[i]->d = &odata[offset];
+                ptab[i]->is_eod = 0;   
+		ptab[i]->to_free = NULL;
+                ptab[i]->offset = offset;
+                        /* le temps qu'il faut pour envoyer ce packet*/
+                        /* dependant de la bande passante qu'on s'autorise */
+                ptab[i]->rtp_ts = rtp_ts; /* sample time when file come */
+                ptab[i]->duration = d_duration; /* le temps qu'il faut pour envoie
+                                         * a la vitesse desiree  en millisec*/
+                offset += p_d_l;       
+                r_b = r_b - p_d_l;     
+                if (r_b <= s_dchunk) { 
+                        p_d_l = r_b;            /* packet data len */
+                } else {               
+                        p_d_l = s_dchunk;
+                }                      
+        }                              
+        ptab[n_t -1]->is_eod = 1;   
+	ptab[n_t -1]->to_free = odata; /* free in McSendRtpDataTimeOutCb */
+	if (deb_p){
+		end_p->next = ptab[0];
+	} else {
+        	mc_rtp_packets_list = ptab[0]; 
+	}
+        free(ptab);
+}
+
+void McSendErrorOject(char *fname, char * aurl, MimeHeaderStruct *mhs, int moid)
+{
+	int rearm_timer = mc_rtp_packets_list ? False : True;
+
+	McErrorObjectToPacket(fname, aurl, mhs, moid);
+
+/* a new object */
+	if (rearm_timer == True){
+		mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
+			mc_write_rtp_data_next_time,
+			McSendRtpDataTimeOutCb, NULL);
+	}
+}
+
+void McStateToPacket( McStateStruct *s)
+{
+	RtpPacket **ptab;
+	RtpPacket * deb_p, *end_p;
+	int s_dchunk, i,n_t, r_b,offset, p_d_l;
+	int rtp_ts, d_duration;
+	double d_dur;
+	char *odata;
+	int object_size;
+
+	deb_p = mc_rtp_packets_list; /* pointe au debut de la liste  */
+	end_p = mc_rtp_packets_list;
+
+	if (deb_p) { /* il y a une file d'attente */
+                while (end_p->next){
+                        end_p = end_p->next;
+                }
+        }
+
+	odata = s->sdata;	/*  don't free this  */
+				/* a state is always in memory */
+	object_size = s->sdata_len;
+
+        s_dchunk = DATA_CHUNK_SIZE;     /* size of data chunck ~512 */
+                        
+/* nombre total de packet pour l'objet */
+        n_t = (object_size -1) / s_dchunk; /* division entiere */
+        if (object_size > 0)
+                n_t++;
+/* alloc packets. Plus one for NULL*/
+        ptab = (RtpPacket **) malloc(sizeof(RtpPacket*) * (n_t+1));
+        for ( i = 0; i < n_t; i++ )
+                ptab[i] = (RtpPacket *)malloc(sizeof(RtpPacket) );
+        ptab[n_t] = NULL;  
+                
+        r_b = object_size;     /* remaining byte to send */
+        offset = 0;
+        if (r_b <= s_dchunk) {
+                p_d_l = r_b;            /* packet data len */
+        } else {        
+                p_d_l = s_dchunk;
+        }       
+        rtp_ts = McRtpTimeStamp(s->ts); /* sample time when file come */
+                
+        for ( i = 0; i < n_t; i++ ) {
+                d_dur = ((p_d_l + PROTO_OVERHEAD) * 8000)/BAND_WIDTH; /* en millisecond */
+                d_duration = (int) d_dur;
+                if (d_duration < 2)
+                        d_duration = 2;
+                ptab[i]->next = ptab[i+1];
+                ptab[i]->id = s->statid;
+                ptab[i]->data_type = HTML_STATE_DATA_TYPE;
+                ptab[i]->d_len = p_d_l;
+                ptab[i]->d = &odata[offset];
+                ptab[i]->is_eod = 0;   
+		ptab[i]->to_free = NULL;
+                ptab[i]->offset = offset;
+                        /* le temps qu'il faut pour envoyer ce packet*/
+                        /* dependant de la bande passante qu'on s'autorise */
+                ptab[i]->rtp_ts = rtp_ts; /* sample time when file come */
+                ptab[i]->duration = d_duration; /* le temps qu'il faut pour envoie                                         * a la vitesse desiree  en millisec*/
+                offset += p_d_l;       
+                r_b = r_b - p_d_l;     
+                if (r_b <= s_dchunk) { 
+                        p_d_l = r_b;            /* packet data len */
+                } else {               
+                        p_d_l = s_dchunk;
+                }                      
+        }                              
+        ptab[n_t -1]->is_eod = 1;      
+	ptab[n_t -1]->to_free = NULL; /* Dont'free in McSendRtpDataTimeOutCb */
+        if (deb_p){                    
+                end_p->next = ptab[0]; 
+        } else {                       
+                mc_rtp_packets_list = ptab[0];
+        }                              
         free(ptab);                    
 }
 
-void McDocToPacket( int url_id)
+void McSendState(int stateid)
 {
-	McObjectToPacket(url_id, 0);
+	McStateStruct *state;
+	int rearm_timer = mc_rtp_packets_list ? False : True;
+
+	state = &mc_sender_state_tab[stateid];
+	McStateToPacket(state);
+/* a new state */
+	if (rearm_timer == True){
+		mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
+			mc_write_rtp_data_next_time,
+			McSendRtpDataTimeOutCb, NULL);
+	}
 }
 
-/* o_status:    
-        - complete : this packet full fill the embedded object
-        - incomplete: there is missing packet
-        - still_here: we have still see this data
-*/  
-int PutPacketInChkObj(Source *s, ChunkedObjEntry ** co_tab, int url_id,
-	int o_id, int offset, char * d, int d_len, int is_end)
-{
-	ChunkedObjEntry * coe;
-	MissRange * plmr;
-	int size, status;
-	PacketDataChunk *plpdc;
-	PacketDataChunk *last_lpdc;
 
-	coe = co_tab[o_id];
+/**************************************************************************/
+/* RECEIVER PART						          */
+/**************************************************************************/
 
-	if (coe->data) { /* the size of object is know, because mime
-				or is_end had been seen */
-		if ( is_end && coe->end ) {
-			return STILL_HERE;
-		}
-		status = UpdChkObj(coe, d, offset, d_len);
-		return status;
-	}
-/* the size of object is not know, because no mime or no is_end */
-/* 3 cas se presente                   
-        offset = 0, c'est le header mime
-        offset != 0 et !is_end packet du milieu
-        offset != 0 et is_end, fin qui permet de determine la taille de l'ojet
-                ( a calculer avec offset et taille du packet)
-*/ 
-
-	if (offset == 0) { /* the mime header, compute size */
-		char * tmp;
-		char * pmh;
-
-		tmp = strdup(d);
-		coe->mhs = (MimeHeaderStruct *) malloc(sizeof(MimeHeaderStruct));
-		pmh = strchr(tmp,'\n');
-		ParseMimeHeader(pmh, coe->mhs);
-		status = MergeChkObjLpdc(coe->mhs->content_length+d_len, coe, d,
-			offset, d_len);
-		free(tmp);
-		if (is_end) { /* only mime... */
-		/*	coe->data = strdup(d); */
-		/*	coe->size_data = d_len; */
-			if (status != COMPLETE) { /* bug */
-				abort();
-			}
-			return COMPLETE;
-		}
-		return status;
-	}
-	if (is_end) {	/* last packet, but no mime header, compute size */
-		size = offset + d_len;
-		status = MergeChkObjLpdc(size, coe, d, offset, d_len);
-		return status;
-	}
-	if (coe->lpdc == NULL) {
-		coe->lpdc = (PacketDataChunk*)calloc(1,sizeof(PacketDataChunk));
-		coe->lpdc->offset = offset;
-		coe->lpdc->d_len = d_len;
-		coe->lpdc->d = (char*)malloc(d_len);
-		memcpy(coe->lpdc->d, d, d_len);
-		return INCOMPLETE;
-	}
-	plpdc = coe->lpdc;
-	while (plpdc) {
-		if (plpdc->offset == offset)
-			return STILL_HERE;
-		last_lpdc = plpdc;
-		plpdc = plpdc->next;
-	}
-	last_lpdc->next = (PacketDataChunk*)calloc(1,sizeof(PacketDataChunk));
-	plpdc = last_lpdc->next;
-	plpdc->offset = offset;
-	plpdc->d_len = d_len;
-	plpdc->d = (char*)malloc(d_len);
-	memcpy(plpdc->d, d, d_len);
-	return INCOMPLETE;
-}
-
-/* lpdc must be merge in data , because the size of object is know */
-int MergeChkObjLpdc( int size, ChunkedObjEntry * coe, char * d , int offset, int d_len)
-{
-	PacketDataChunk *p, *plpdc;
-	int status = INCOMPLETE;
-	int f_status = INCOMPLETE;
-
-	coe->size_data = size;
-	coe->data = (char*) malloc(size + 1);
-	coe->lmr->to = size - 1 ;
-	coe->data[size] = '\0';
-	status = UpdChkObj(coe, d, offset, d_len);
-	f_status = status;
-	plpdc = coe->lpdc;
-	while (plpdc) {
-		status = UpdChkObj(coe, plpdc->d, plpdc->offset,
-			plpdc->d_len);
-		if (status == COMPLETE)
-			f_status = COMPLETE;
-		p = plpdc;
-		plpdc = plpdc->next;
-		free(p->d);
-		free(p);
-	}
-	coe->lpdc = NULL;
-	return f_status;
-}
-int UpdChkObj(ChunkedObjEntry * coe, char *d, unsigned int offset, unsigned int d_len)
+static int UpdChkBuf(ChunkedBufStruct *cbs, char *d, unsigned int offset,
+	unsigned int d_len)
 {
 	MissRange *plmr,*fmr;
 	MissRange cmr;
 
-	fprintf(stderr,"UpdChkObj: url_id = %d, o_id = %d, offset = %d, d_len = %d, size_data = %d, h_size = %d\n",
- coe->url_id, coe->o_id, offset, d_len, coe->size_data, coe->h_size);
-	if(offset + d_len > coe->size_data) { /* bug??? */
-		fprintf(stderr, "Complexe BUG in UpdChkObj offset+d_len > coe->size_data\007\n");
-		return INCOMPLETE;
+	fprintf(stderr,"UpdChkBuf: offset = %d, d_len = %d, size_data = %d\n",
+ 		offset, d_len, cbs->size_data);
+	if(offset + d_len > cbs->size_data) { /* bug??? */
+		fprintf(stderr, "Complexe BUG in UpdChkBuf offset+d_len > coe->size_data\007\n");
+		abort();
+		return CHUNKED_BUFFER;
 	}
-	if (offset == 0 ) { /* update h_size */
-		if (coe->h_size) { /* maybe a bug */
-			fprintf(stderr, "Complexe BUG in UpdChkObj coe->h_size!=0 \007\n");
-			return INCOMPLETE;
-		}
-		coe->h_size = d_len;
-	}
-	plmr = coe->lmr;
+
+	plmr = cbs->lmr;
 	if (!plmr)
-		return COMPLETE;
+		return COMPLETE_BUFFER;
 	while( plmr ) {
 		if ( !( offset >= plmr->from && offset <= plmr->to) ) {
 			plmr = plmr->next;
 			continue;
 		}
 /* update data plmr coe->beg coe->end lmr */
-		memcpy(&coe->data[offset], d, d_len);
+		memcpy(&cbs->data[offset], d, d_len);
 /* now fork or merge MissRange */
 		cmr = *plmr;
 		if ( cmr.from == offset) {
 			if (offset + d_len -1 < cmr.to) { /* adjust from*/
 				plmr->from = offset + d_len;
-				return INCOMPLETE;
+				return CHUNKED_BUFFER;
 			} 
 			/* remove MissRange */
 			free(plmr);
 			if (cmr.next == NULL && cmr.prev == NULL){
 				/* no range missing */
-				coe->lmr = NULL;
-				return COMPLETE;
+				cbs->lmr = NULL;
+				return COMPLETE_BUFFER;
 			}
 			if (cmr.next == NULL) {
 				/* remove at end */
 				cmr.prev->next = NULL;
-				return INCOMPLETE;
+				return CHUNKED_BUFFER;
 			}				
 			if (cmr.prev == NULL ) {
 				/* remove at begin */
-				coe->lmr = cmr.next;
-				coe->lmr->prev = NULL;
-				return INCOMPLETE;
+				cbs->lmr = cmr.next;
+				cbs->lmr->prev = NULL;
+				return CHUNKED_BUFFER;
 			}
 			/* remove in middle */
 			cmr.prev->next = cmr.next;
 			cmr.next->prev = cmr.prev;
-			return INCOMPLETE;
+			return CHUNKED_BUFFER;
 		}
 /* cas ou cmr.from < offset. Il ne peut etre > offset */
 		if (offset + d_len -1 >= cmr.to ) { /* adjust to */
 			plmr->to = offset -1;
-			return INCOMPLETE;
+			return CHUNKED_BUFFER;
 		}
 		/* fork this MissRange */
 		fmr = (MissRange *) malloc( sizeof (MissRange ));
@@ -436,290 +394,122 @@ int UpdChkObj(ChunkedObjEntry * coe, char *d, unsigned int offset, unsigned int 
 		fmr->to = plmr->to;
 		plmr->next = fmr;
 		plmr->to = offset -1;
-		return INCOMPLETE;
+		return CHUNKED_BUFFER;
 	}
-	return STILL_HERE;
+	return CHUNKED_BUFFER;
 }
 
-int CountEO( mo_window * win, struct mark_up *mptr )
+/* lpdc must be merge in data , because the size of object is know */
+static int MergeChkBufLpdc(int size, ChunkedBufStruct *cbs, char *d, int offset,
+	int d_len)
 {
-	int neo = 0;
-	ImageInfo * picd;
+	PacketDataChunk *p, *plpdc;
+	int status = CHUNKED_BUFFER;
+	int f_status = CHUNKED_BUFFER;
 
-	while( mptr) {
-		switch (mptr->type){
-		case M_IMAGE:
-			if (mptr->is_end)
-				break;
-			picd = (ImageInfo *) malloc(sizeof(ImageInfo ));
-			MMPreParseImageTag(win, picd, mptr);
-/* on return : two case on fetched:
- * - fetched = True => this is an internal , width height and image are ok
- * - fetched = False => remaing field is not uptodate and need to be updated
- *       MMPreParseImageTag returns a delayimage
- */
-			mptr->s_picd = picd; /* in all case display something*/
-			if ( picd->fetched) { /* internal image found */
-				break;
-			}
-			neo++;
-			break;
-		}
-		mptr = mptr->next;
+	cbs->size_data = size;
+	cbs->data = (char*) malloc(size + 1);
+	cbs->lmr->to = size - 1 ;
+	cbs->data[size] = '\0';
+	status = UpdChkBuf(cbs, d, offset, d_len);
+	f_status = status;
+	plpdc = cbs->lpdc;
+	while (plpdc) {
+		status = UpdChkBuf(cbs, plpdc->d, plpdc->offset,
+			plpdc->d_len);
+		if (status == COMPLETE_BUFFER)
+			f_status = COMPLETE_BUFFER;
+		p = plpdc;
+		plpdc = plpdc->next;
+		free(p->d);
+		free(p);
 	}
-	return neo;
+	cbs->lpdc = NULL;
+	return f_status;
 }
 
-void ChkDocToDoc(Source *s, int url_id)
+/* o_status:
+        - complete : this packet full fill the embedded object
+        - incomplete: there is missing packet
+        - still_here: we have still see this data
+*/  
+int PutPacketInChkBuf(ChunkedBufStruct *cbs, int is_end, int offset,
+	char * d, int d_len)
 {
-	char * fname;
-	int fd;
-	char buf[8192];
-	struct mark_up *mlist,*mptr;
-	DocEntry *doce;
-	ChunkedDocEntry *cdoce;
-	ObjEntry * oe;
-	int i;
-	int rneo ;	/* remaining number of embedded object */
-	int o_id;
-	ImageInfo * picd;
+	int size, status;
+	PacketDataChunk *plpdc;
+	PacketDataChunk *last_lpdc;
 
-	doce = s->doc[url_id];
-	cdoce = s->chkdoc[url_id];
-	rneo = doce->nobj -1;
-	for(i = 0; i < cdoce->nobj; i++) {
-		if (!cdoce->co_tab[i])
-			continue;
-		if (cdoce->co_tab[i]->lmr != NULL){
-			fprintf(stderr,"BUG in ChkDocToDoc: obj is INCOMPLETE\n");
-			continue;
+	if (cbs->data) { /* the size of object is know, is_end had been seen */
+		if ( is_end && cbs->end ) {
+			return CHUNKED_BUFFER;
 		}
-		if ( cdoce->co_tab[i]->data == NULL) {
-			continue;
-		}
-/* No missing range and data exist => obj is COMPLETE */
-/* fill object in doc */
-		fprintf(stderr, "Y a un pepin...ChkDocToDoc\n");
+		status = UpdChkBuf(cbs, d, offset, d_len);
+		return status;
 	}
-/* update embedded object in mlist */
-	mptr = mlist = doce->mlist;
-	o_id = 1;
-	while(mptr && ( rneo > 0 ) ){
-		switch (mptr->type){
-		case M_IMAGE:
-			if (mptr->is_end)
-				break;
-			picd = mptr->s_picd;
-			if ( picd->fetched) { /* internal image found */
-				break;
-			}
-			oe = doce->o_tab[o_id];
-/* oe->d_part oe->d_len oe->aurl_wa oe->h_part oe->h_len */
-			mptr->s_picd->src = oe->aurl_wa;
-			fname = NULL;
-			if (oe->d_part) {
-				fname = tempnam (mMosaicTmpDir,"mMo");
-				fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-				write(fd, oe->d_part, oe->d_len);
-				close(fd);
-			}
-/* mettre l'image dans picd a partir de oe */
-			MMPreloadImage(s->win, mptr, NULL /*oe->h_part*/, fname);
-			if (oe->d_part){
-				unlink(fname);
-				free(fname);
-			}
-			rneo--;
-			o_id++;
-			break;
-		}
-		mptr = mptr->next;
+/* the size of object is not know, because no is_end */
+/* 3 cas se presentent 
+        offset = 0 et is_end => 1 seul packet.
+	offset = i et !is_end => packet du milieu
+        offset = n et is_end, fin qui permet de determine la taille de l'ojet
+                ( a calculer avec offset et taille du packet)
+*/ 
+
+	if (offset == 0 && is_end ) { /* compute size */
+		cbs->data = (char*) malloc(d_len+1);
+		cbs->size_data = d_len;
+		memcpy(cbs->data, d, d_len);	
+		cbs->data[d_len] = '\0';	/* in case of text */
+		free(cbs->lmr);
+		cbs->lmr = NULL; 	/* sanity */
+		return COMPLETE_BUFFER;
 	}
+	if (is_end) {	/* last packet, compute size */
+		size = offset + d_len;
+		status = MergeChkBufLpdc(size, cbs, d, offset, d_len);
+		return status;
+	}
+
+/* size unknow, store packet */
+	if (cbs->lpdc == NULL) {
+		cbs->lpdc = (PacketDataChunk*)calloc(1,sizeof(PacketDataChunk));
+		cbs->lpdc->offset = offset;
+		cbs->lpdc->d_len = d_len;
+		cbs->lpdc->d = (char*)malloc(d_len);
+		memcpy(cbs->lpdc->d, d, d_len);
+		return CHUNKED_BUFFER;
+	}
+	plpdc = cbs->lpdc;
+	while (plpdc) {
+		if (plpdc->offset == offset)
+			return CHUNKED_BUFFER;
+		last_lpdc = plpdc;
+		plpdc = plpdc->next;
+	}
+
+	last_lpdc->next = (PacketDataChunk*)calloc(1,sizeof(PacketDataChunk));
+	plpdc = last_lpdc->next;
+	plpdc->offset = offset;
+	plpdc->d_len = d_len;
+	plpdc->d = (char*)malloc(d_len);
+	memcpy(plpdc->d, d, d_len);
+	return CHUNKED_BUFFER;
 }
 
-void ChkObjToDocObj(Source *s, unsigned int url_id, unsigned int o_id)
+/* input
+ *	cbs: chunked data to assemble
+ * output
+ *	buf_ret: malloced buffer when succes
+ * return:
+ *	len of malloced buf_ret
+ * REMARQUES: free cbs
+*/
+int ChkBufToBuf(ChunkedBufStruct *cbs, char ** buf_ret)
 {
-	char buf[8192];
-	DocEntry *doce;
-	ChunkedDocEntry *cdoce;
-	ObjEntry * oe;
-	ChunkedObjEntry * coe;
-	int ne_obj;	/* number of embedded object */
-	int status;
+	int len ;
 
-	doce = s->doc[url_id];
-	cdoce = s->chkdoc[url_id];
-
-	if (o_id == 0) { /* parse and compute number of object */
-		char * htext;
-		struct mark_up *mlist;
-
-		coe = cdoce->co_tab[o_id];
-		htext = coe->data + coe->h_size;
-		doce->mlist = HTMLParseRepair(htext);
-		ne_obj = CountEO(s->win, doce->mlist);
-		doce->o_tab = (ObjEntry**)calloc(ne_obj + 1, sizeof(ObjEntry*));
-		doce->nobj = ne_obj + 1 ;
-		status = SourceAllocObjs(s, url_id, ne_obj); /* ne_obj is equivalent to max_o_id */
-		if ( status == -1) {    /*invalide object number */
-			fprintf(stderr, "Invalid object number on recept\n");
-			return;
-		}
-		if ( ! status ) {
-			fprintf(stderr,"Out of mem\n");
-			abort();
-		}
-		cdoce->nobj = ne_obj + 1;
-		cdoce->h_nobj = ne_obj + 1;
-
-		doce->n_miss_o = doce->nobj;
-	}
-	if( doce->nobj == 0 )
-		return;
-/* fill object in doc */
-	oe = doce->o_tab[o_id] = (ObjEntry*) calloc(1,sizeof(ObjEntry));
-	coe = cdoce->co_tab[o_id];
-
-	sscanf(coe->data,"%*s %s", buf);
-	oe->aurl_wa = strdup(buf);
-	oe->h_part = (char*)malloc(coe->h_size+1);
-	memcpy(oe->h_part,coe->data, coe->h_size);
-	oe->h_part[coe->h_size] = '\0';
-	oe->h_len = coe->h_size;
-
-	oe->d_part = NULL;
-	oe->d_len =coe->size_data - oe->h_len ;
-	if (oe->d_len){	
-		oe->d_part = (char*)malloc(oe->d_len + 1);
-		memcpy(oe->d_part, coe->data + coe->h_size, oe->d_len);
-	}
-	free(coe->data);
-	coe->data = NULL;
-	oe->o_num = o_id;
-	oe->mhs = coe->mhs;
-
-/* ###	oe->ts = 1; */
-	memset(coe, 0, sizeof(coe));
-	free(coe);
-	cdoce->co_tab[o_id] = NULL;
-	doce->n_miss_o--;
-	if ( o_id == 0 && doce->n_miss_o ) {
-		/* because of html late packet, some object is maybe complete */
-		unsigned int i;
-
-		for(i = 1; i < cdoce->nobj; i++) {
-			if (!cdoce->co_tab[i])
-				continue;
-			if ((cdoce->co_tab[i]->lmr == NULL) && cdoce->co_tab[i]->data != NULL) { /* No missing range and data exist => obj is COMPLETE */
-				ChkObjToDocObj(s, url_id, i);
-			}
-		}
-	}
-}
-
-int SourceAllocDocs(Source *s, int url_id)
-{
-	DocEntry * doc;
-	ChunkedDocEntry * cdoc;
-	int i, from, to;
-
-	if (s->huid >= url_id)		/* still alloc */
-		return 1;
-	if (s->huid == -1) {		/* initial alloc */
-		from = 0;
-		to = url_id;
-		s->doc = (DocEntry **)calloc(url_id +1, sizeof(DocEntry *));
-		if (!s->doc) return 0;
-		s->chkdoc = (ChunkedDocEntry **)calloc(url_id +1,
-				sizeof(ChunkedDocEntry *));
-		if(!s->chkdoc) return 0;
-		s->huid = url_id;
-	} else { 			/* realloc space. */
-		from = s->huid+1;
-		to = url_id;
-		s->doc = (DocEntry **) realloc( s->doc,
-			sizeof(DocEntry *) * (url_id+1));
-		if (!s->doc) return 0;
-		s->chkdoc = (ChunkedDocEntry **) realloc( s->chkdoc,
-			sizeof(ChunkedDocEntry *) * (url_id+1));
-		if(!s->chkdoc) return 0;
-		s->huid = url_id;
-	}
-
-	for(i = from; i <= to; i++) { /* init all doc entry */
-		s->doc[i] = (DocEntry *) calloc(1, sizeof(DocEntry ));
-		if (!s->doc[i])
-			return 0;
-		doc = s->doc[i];
-		doc->url_id = url_id;
-		doc->nobj = 0;
-		doc->o_tab = NULL;
-		doc->n_miss_o = 0xffffffff;
-
-	/* ### all of this MUST be free when completed */
-		s->chkdoc[i] = (ChunkedDocEntry*) calloc(1,
-				sizeof(ChunkedDocEntry));
-		if (!s->chkdoc[i])
-			return 0;
-		cdoc = s->chkdoc[i]; 
-		cdoc->url_id = url_id;
-		cdoc->nobj = 0;
-		cdoc->h_nobj = 0;
-		cdoc->co_tab = NULL;
-	}
-	return 1;	
-}
-
-int SourceAllocObjs(Source *s, int url_id, int o_id)
-{
-	ChunkedObjEntry * coe;
-	ChunkedDocEntry * cdoce;
-	int f, t, i;
-
-	cdoce = s->chkdoc[url_id];
-	if (cdoce->nobj > 0) { /* we still have parse the html part */
-		if (o_id >= cdoce->nobj) { /* impossible */
-			fprintf(stderr, "SourceAllocObjs: url_id >= nobj\n");
-			return -1; 
-		}
-		return 1;
-	}
-/* alloc co_tab pointer. because nobj is NULL , play with h_nobj */
-	if (cdoce->h_nobj > o_id )	/* still alloc, do nothing */
-		return 1;
-	if (cdoce->h_nobj == 0) { /* first alloc, set all to NULL */
-		f = 0;
-		t = o_id;
-		cdoce->co_tab = (ChunkedObjEntry **) calloc( o_id+1,
-			sizeof(ChunkedObjEntry *));
-		if (!cdoce->co_tab) return 0;
-		cdoce->h_nobj = o_id+1;
-	} else { 		/* growing, realloc */
-		f = cdoce->h_nobj;
-		t = o_id;
-		cdoce->co_tab = (ChunkedObjEntry **) realloc(cdoce->co_tab,
-			(o_id + 1) * sizeof(ChunkedObjEntry *));
-		if (!cdoce->co_tab) return 0;
-		cdoce->h_nobj = o_id+1;
-	}
-	for ( i = f; i <= t; i++) {
-		coe = cdoce->co_tab[i] = (ChunkedObjEntry *) calloc(1,
-					sizeof(ChunkedObjEntry ));
-		if (! coe) return 0;
-		coe->url_id = url_id;
-		coe->o_id = i;
-		coe->size_data = 0;
-		coe->h_size = 0;
-		coe->data = NULL;
-		coe->lpdc =NULL;
-		coe->end = NULL;
-		coe->beg = NULL;
-		coe->lmr = (MissRange*) malloc(sizeof(MissRange));
-		coe->lmr->from = 0;
-		coe->lmr->to = 0xffffffff;
-		coe->lmr->next = NULL;
-		coe->lmr->prev = NULL;
-		coe->mhs = NULL;
-	}
-	return 1;
+	len = cbs->size_data;
+	*buf_ret = cbs->data;
+	free(cbs);
+	return len;
 }

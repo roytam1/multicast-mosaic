@@ -628,10 +628,8 @@ static struct mark_up begin_mark;
 #define SOP_NONE (0)
 
 /* sop: stack operation */
-int ParseElement(ParserContext *pc,
-        struct mark_up *pmptr, struct mark_up *mptr,
-        struct mark_up *lvm, struct mark_up *sbm, struct mark_up *ebm,
-        MarkType state, ParserContext *pc_ret, struct mark_up **im_ret,
+static int ParseElement(ParserContext *pc, struct mark_up *mptr,
+        MarkType state, struct mark_up **im_ret,
 	int *sop)
 {
 	struct mark_up *tmptr = NULL;
@@ -665,8 +663,6 @@ int ParseElement(ParserContext *pc,
 		case M_HTML:
 			if (mptr->is_end)
 				return REMOVE_TAG;
-/*RecurHTMLParseRepair(pc,mptr,mptr->next, mptr, mptr, NULL, mptr->type, pc_ret);
-/*if (mptr->next == NULL) /* NULL parse */ /*return REMOVE_TAG;return GOOD_TAG;*/
 			*sop = SOP_PUSH;
 			return GOOD_TAG;
 		case M_HEAD:
@@ -1242,19 +1238,16 @@ static void ParserEndStack(ParserContext *pc)
  */
 static void RecurHTMLParseRepair(ParserContext *pc,
 	struct mark_up *pmptr, struct mark_up *mptr,
-	struct mark_up *lvm, struct mark_up *sbm, struct mark_up *ebm,
-	MarkType state, ParserContext *pc_ret)
+	MarkType state)
 {
 	struct mark_up *im;		/* insert this markup in list */
 					/* for repair wish */
 	int retval;
 	int sop;			/* stack operation */
-	MarkType m_id;
 	struct mark_up *save_mptr;
 
 	while (mptr) { 		/* check , analyze and repair */
-		retval = ParseElement(pc, pmptr, mptr, lvm, sbm, ebm,
-			state, pc_ret, &im, &sop);
+		retval = ParseElement(pc, mptr, state, &im, &sop);
 		switch (sop) {		/* must be first test because a SOP_PUSH
 					 * and REMOVE_TAG at same time */
 		case SOP_POP_END:
@@ -1312,13 +1305,15 @@ static void RecurHTMLParseRepair(ParserContext *pc,
  * H1 H2 BODY HTML... Thoses elements is designing the structure of a page.
  * We don't check for <FONT> because is designing the apparance of page.
  */
-struct mark_up * HTMLParseRepair( char *str)
+HtmlTextInfo * HTMLParseRepair( char *str)
 {
 	struct mark_up * mptr;		/* current to analyze */
 	struct mark_up *pmptr;		/* previous analyze */
 	struct mark_up begm;		/* begin of list */
-	struct mark_up *sbm, *ebm;	/* start & and block marker */
-	ParserContext pc_ret;	/* return values found here */
+	char * base_url, *title_text, *title;
+	char * base_target =NULL;
+	HtmlTextInfo *htinfo;
+	int in_title;
 
 	if (str == NULL)
 		return(NULL);
@@ -1336,11 +1331,58 @@ struct mark_up * HTMLParseRepair( char *str)
 	Pcxt.has_body =0;
 	Pcxt.has_frameset = 0;
 	Pcxt.frameset_depth = 0;
-	pc_ret = Pcxt;
-	sbm = ebm = NULL;
-	RecurHTMLParseRepair(&Pcxt, pmptr, mptr, &begm, sbm, ebm,
-		M_INIT_STATE, &pc_ret);
-	return(begm.next);
+	RecurHTMLParseRepair(&Pcxt, pmptr, mptr, M_INIT_STATE);
+
+        mptr = begm.next;
+        base_url = NULL;
+        in_title =0;
+        title_text = NULL;
+        title = NULL;		/* #### */
+        while (mptr != NULL){ 
+/* if in_title, grab the text until end marker */
+                if (in_title && (mptr->type != M_TITLE) && (mptr->type !=M_NONE)){
+                        mptr = mptr->next;
+                        continue;
+                }       
+                switch (mptr->type){
+                case M_NONE:    
+                        if (in_title) {
+                                if ( !title_text) {
+                                        title_text = strdup(mptr->text);
+                                        break;
+                                }      
+                                title_text = (char*)realloc(title_text,
+                                        strlen(title_text)+ strlen(mptr->text)+2);
+                                strcat(title_text,mptr->text);
+                                break; 
+                        }              
+                        break;         
+                case M_TITLE:          
+                        if (mptr->is_end) {  
+                                in_title = 0;
+                                if (title_text)
+                                        title = title_text;
+                                break; 
+                        }              
+                        in_title = 1;  
+                        title_text = NULL;
+                        break;         
+/* take care of tag BASE */            
+                case M_BASE:           
+                        if (mptr->is_end)
+                                break; 
+                        base_url = ParseMarkTag(mptr->start, MT_BASE, "HREF");
+                        base_target = ParseMarkTag(mptr->start, MT_BASE,"target");
+                        break;
+                }                      
+                mptr = mptr->next;     
+        }
+	htinfo = (HtmlTextInfo *) malloc(sizeof(HtmlTextInfo));
+	htinfo->title = title;
+	htinfo->base_url = base_url;
+	htinfo->base_target = base_target;
+	htinfo->mlist = begm.next;
+	return htinfo ;
 }
 
 /* Determine mark type from the identifying string passed */
@@ -1387,6 +1429,10 @@ static MarkType ParseMarkType(char *str)
 		type = M_KEYBOARD;
 	} else if (!strcasecmp(str, MT_VARIABLE)) {
 		type = M_VARIABLE;
+	} else if (!strcasecmp(str, MT_ACRONYM)) {
+		type = M_ACRONYM;
+	} else if (!strcasecmp(str, MT_ABBR)) {
+		type = M_ABBR;
 	} else if (!strcasecmp(str, MT_CITATION)) {
 		type = M_CITATION;
 	} else if (!strcasecmp(str, MT_STRIKEOUT)) {
@@ -1467,6 +1513,12 @@ static MarkType ParseMarkType(char *str)
 		type = M_TH;
 	} else if (!strcasecmp(str, MT_TD)) {
 		type = M_TD;
+	} else if (!strcasecmp(str, MT_TBODY)) {
+		type = M_TBODY;
+	} else if (!strcasecmp(str, MT_THEAD)) {
+		type = M_THEAD;
+	} else if (!strcasecmp(str, MT_TFOOT)) {
+		type = M_TFOOT;
 	} else if (!strcasecmp(str, MT_APROG)){
 		type = M_APROG;
 	} else if (!strcasecmp(str, MT_APPLET)){

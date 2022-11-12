@@ -117,12 +117,16 @@ Source * newSource(u_int32_t srcid, IPAddr addr)
 
         s->gui_ent = CreateMemberGuiEntry(s);
                                        
-        s->huid = -1;
         s->cwuid = -1;
         s->cduid = -1;                 
-        s->last_valid_url_id = -1;     
-        s->doc = NULL;
-        s->chkdoc = NULL;              
+        s->last_valid_object_id = -1;     
+        s->last_valid_state_id = -1;     
+        s->states = NULL;
+        s->objects = NULL;              
+	s->states_tab_size = 0;
+	s->objects_tab_size = 0;
+
+	McSourceCacheInit(s,mMosaicRootDirName); /* create a cache for it */
         return s;
 }
 

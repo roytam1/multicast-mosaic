@@ -21,7 +21,13 @@ typedef struct _MimeHeaderStruct {
 	char * expires;
 	char * last_modified;
 	char * location;
-
+	int moid_ref;		/* Multicast object ID for this object*/
+	int is_stateless;	/* est-ce un etat ? */
+	int state_id;		/* si oui c'est le numero de cet etat */
+	int n_do;		/* number of depend object */
+	DependObjectTab dot;	/* Depend objects */
+	struct timeval ts;	/* time stamp for multicast */
+	int start_object_id;	/* html uppper object */
 } MimeHeaderStruct;
 
 extern const char * MMOSAIC_PRESENT;

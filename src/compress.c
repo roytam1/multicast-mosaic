@@ -4,7 +4,6 @@
 #endif
 #include <unistd.h>
 
-#
 #include "../libhtmlw/HTML.h"
 #include "../src/mosaic.h"
 #include "xresources.h"

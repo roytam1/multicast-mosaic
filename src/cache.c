@@ -1,5 +1,3 @@
-/* G.Dauphin 25/7/97 */
-
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -15,9 +13,11 @@
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
 #include "../libhtmlw/HTMLPutil.h"
+#include "mosaic.h"
 #include "mime.h"
 #include "cache.h"
 #include "util.h"
+#include "paf.h"
 
 typedef struct _CacheEntry {
 	char *url;              /* Canonical URL for this document. */
@@ -326,6 +326,9 @@ int MMCacheFindData(char *aurl_wa, char *aurl, int fdw, MimeHeaderStruct *mhs)
 			mhs->content_type = strdup(cid_cache[cid].content_type);
 			mhs->last_modified = strdup( 
 				rfc822ctime(cid_cache[cid].last_modify));
+			mhs->expires = strdup("never");  /* ### FIXME */
+			mhs->location = NULL;
+			mhs->status_code = HTTP_STATUS_INTERNAL_CACHE_HIT;
 			fdr = open(fname, O_RDONLY);
 			while ( (i = read(fdr,buf,CACHE_BUFSIZ)) >0)
 				write(fdw, buf, i);

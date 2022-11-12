@@ -28,7 +28,7 @@ static void ProcessOption( SelectInfo *sptr);
 
 /*</FORM> */
 void EndForm(HTMLWidget hw, struct mark_up ** mptr,
-	PhotoComposeContext * pcc, Boolean save_obj)
+	PhotoComposeContext * pcc)
 {
 	struct mark_up * mark = *mptr;
 
@@ -51,7 +51,7 @@ void EndForm(HTMLWidget hw, struct mark_up ** mptr,
 
 /* <FORM> */
 void BeginForm(HTMLWidget hw, struct mark_up ** mptr, 
-        PhotoComposeContext * pcc, Boolean save_obj)
+        PhotoComposeContext * pcc)
 {
 	struct mark_up * mark = *mptr;
 
@@ -90,7 +90,7 @@ void BeginForm(HTMLWidget hw, struct mark_up ** mptr,
  * Special case the type=image stuff to become a special IMG tag.
  */
 void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
-        PhotoComposeContext * pcc, Boolean save_obj)
+        PhotoComposeContext * pcc)
 {
 	struct mark_up * mark = *mptr;
 	char *tptr2, * tptr, *sptr;
@@ -240,7 +240,7 @@ void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
  * cols REQUIRED
  */             
 void FormTextAreaBegin(HTMLWidget hw, struct mark_up ** mptr,
-        PhotoComposeContext * pcc, Boolean save_obj)
+        PhotoComposeContext * pcc)
 {
 	char *buf;
 	int len;        
@@ -312,7 +312,7 @@ void FormTextAreaBegin(HTMLWidget hw, struct mark_up ** mptr,
 }
 
 void FormTextAreaEnd(HTMLWidget hw, struct mark_up ** mptr,
-        PhotoComposeContext * pcc, Boolean save_obj)
+        PhotoComposeContext * pcc)
 {
 	struct mark_up * mark = *mptr;
 	char *start;
@@ -351,7 +351,7 @@ void FormTextAreaEnd(HTMLWidget hw, struct mark_up ** mptr,
 
 /* Can only be inside a SELECT tag. */
 void FormSelectOptionField(HTMLWidget hw, struct mark_up ** mptr,
-        PhotoComposeContext * pcc, Boolean save_obj)
+        PhotoComposeContext * pcc)
 {
 	struct mark_up * mark = *mptr;
 	char *tptr;
@@ -404,7 +404,7 @@ void FormSelectOptionField(HTMLWidget hw, struct mark_up ** mptr,
  * code. As a result I combine SELECT and OPTION into a faked up INPUT mark.
  */
 void FormSelectBegin(HTMLWidget hw, struct mark_up ** mptr,
-        PhotoComposeContext * pcc, Boolean save_obj)
+        PhotoComposeContext * pcc)
 {
 	struct mark_up * mark = *mptr;
 
@@ -436,7 +436,7 @@ void FormSelectBegin(HTMLWidget hw, struct mark_up ** mptr,
 }
 
 void FormSelectEnd(HTMLWidget hw, struct mark_up ** mptr,
-        PhotoComposeContext * pcc, Boolean save_obj)
+        PhotoComposeContext * pcc)
 {
 	struct mark_up * mark = *mptr;
 	char *start;

@@ -1,0 +1,159 @@
+/* Author: Gilles Dauphin [Jan98]
+ *
+ * See the file "license.mMosaic" for information on usage and redistribution
+ * of this file, and for a DISCLAIMER OF ALL WARRANTIES. 
+ */
+
+#ifdef MULTICAST
+
+/* initialisation of multicast datas structure */
+/* called in gui.c after we open the first Mosaic window */
+/* this start the multicast in listen mode only */
+void McInit(mo_window * win)
+{
+	XGCValues gcv;
+	unsigned long gcm;
+	unsigned long fg;
+	unsigned long bg;
+	char * s;
+	unsigned short port;
+
+#ifdef IPV6
+/* inet_pton () */
+	if( ascii2addr(AF_INET6,mMosaicAppData.mc_dest,&mc_rtp_addr_ip_group) == -1){
+		fprintf(stderr,"invalid IPV6Multicast addr\n");
+		fprintf(stderr,"Multicast is disable\n");
+		return;
+	}
+#else   
+	mc_rtp_addr_ip_group = inet_addr(mMosaicAppData.mc_dest);
+#endif                                 
+}
+
+
+####### case of navigation ###########
+/* navigation in history never modify a doc or object... */
+/* juste update the 'RTPtimestamp' in SR. Back to the futur... */
+McSendOldDoc(...)
+{
+	DocEntry *doc_entry = NULL;
+
+	doc_entry = IsDocStillSend(aurl, mhs);
+	if ( doc_entry && ! reloading ) { /* dont resend */
+		McRescheduleSR(doc_entry);
+		return;
+	}
+}
+#####################################
+
+static void McSendNewObject(char *fname, char *aurl_wa, MimeHeaderStruct *mhs)
+{
+	if( IsObjStillInCurrentDoc(aurl) ) { /* we still send it in same doc */
+		return;			/* don't resend */
+	}
+/* a new object */
+	mc_local_object_id++;
+	McCreateObjectEntry(fname, aurl, mhs);
+	if ( obj_entry = IsObjStillSent(aurl,mhs) ) { /* we still sent this obj*/
+			/* just reschedule SR. Un client est capable de
+			 * determine si cette objet est dans son cache ou pas */
+			/* send the header to help the client because */
+			/* maybe we reload and modify this object */
+		McScheduleSendHeaderOject(mc_local_object_id);
+		return;
+	}
+	McScheduleSendOject(mc_local_object_id);
+}
+
+static void McSendGotoIdTimeOutCb(XtPointer clid, XtIntervalId * id)
+{
+	unsigned char code;
+	unsigned long gmt_send_time;
+	unsigned int html_goto_id;
+
+	mc_send_goto_id_time_out_id = XtAppAddTimeOut(
+                                mMosaicAppContext,
+                                MC_SEND_GOTO_ID_TIME_OUT,
+                                McSendGotoIdTimeOutCb,
+                                NULL);
+	if (mc_data_send_data_struct.is_send == 0)
+		return;	/* is it send Once ? No*/
+
+	code = MCR_HTML_GOTO_ID;
+	gmt_send_time = McDate();
+
+/* get the html_goto_id */
+
+	html_goto_id = HTMLPositionToId(mc_send_win->scrolled_win, 0, 3);
+
+        McSendRtpGotoId( code, mc_my_pid, mc_local_url_id,
+              gmt_send_time, html_goto_id);
+
+}
+
+void McSendAllDataOnlyOnce(McSendDataStruct * d)
+{
+	int mask, omask;
+	int i;
+
+/* #### don't work yet #### */
+
+#ifdef SVR4
+	if( sighold(SIGUSR1) != 0){
+		perror("error in sig hold: ");
+	}
+#else
+	mask = sigmask(SIGUSR1);
+	omask = sigblock(mask);
+#endif
+	d->id = mc_local_url_id;
+	d->alias = mc_alias_name;
+	d->url = mc_local_url;
+	d->is_send = 0;
+	McSendAllDataInBandWidth(d);
+#ifdef SVR4
+	if( sigrelse(SIGUSR1) != 0) {
+		perror("error in sigrelse: ");
+	}
+#else
+	sigsetmask(omask);
+#endif
+}
+
+/*############################################################# */
+/*fd write multicast socket ###### */
+
+/* create the virtual cursor */
+/*
+	hw = (HTMLWidget) win->scrolled_win;
+	fg = hw->html.foreground_SAVE;
+	bg = hw->html.background_SAVE;
+       	VirCursorPix = XCreatePixmapFromBitmapData (mMosaicDisplay,
+                       DefaultRootWindow(mMosaicDisplay),
+                       (char*)vir_cursor_bits, vir_cursor_width,
+                       vir_cursor_height, fg^bg, 0, 
+		DefaultDepth( mMosaicDisplay,
+		              DefaultScreen( mMosaicDisplay ) 
+		            ) );
+	gcm = GCFunction | GCForeground | GCPlaneMask | GCBackground |
+		GCSubwindowMode ;
+       	gcv.function = GXxor;
+       	gcv.foreground = /*fg ^ bg*/0;
+       	gcv.plane_mask = AllPlanes;
+       	gcv.background = 0;
+	gcv.subwindow_mode = IncludeInferiors;
+
+	gc_vc = XCreateGC(mMosaicDisplay,
+			XtWindow(mMosaicToplevelWidget),gcm,&gcv);
+*/
+/* #### */
+
+void McSetCursorPos(Widget w, int x, int y)
+{
+	HTMLWidget hw = (HTMLWidget) w;
+	XCopyArea(mMosaicDisplay,VirCursorPix,XtWindow(hw->html.view),
+		gc_vc,0,0,vir_cursor_width,vir_cursor_height,
+		x,y);
+}
+
+#endif /* MULTICAST */

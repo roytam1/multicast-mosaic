@@ -177,8 +177,6 @@ static XtResource resources[] = {
   { "newsBackgroundFlushTime", "NewsBackgroundFlushTime", XtRInt,
     sizeof(int), offset(newsBackgroundFlushTime), XtRString, "300" },
 #ifdef MULTICAST
-    {"debug", "Debug", XtRBoolean, sizeof(Boolean),
-    offset(mc_debug), XtRBoolean, (caddr_t) & faux},
     {"sessionName", "sessionName", XtRString, sizeof(char *),
     offset(mc_sess_name), XtRString, (caddr_t) "Mosaic Multicast Session"},
     {"mediaName", "mediaName", XtRString, sizeof(char *),

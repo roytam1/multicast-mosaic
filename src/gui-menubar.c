@@ -30,10 +30,10 @@
 extern void McPopdownMemberList(void);
 extern void McPopupMemberList(void);
 
-extern int selectedAgent;		/* SWP -- Spoof Agents Stuff */
-extern int numAgents;
-extern char **agent;
-static void loadAgents(void) ;
+#define MAX_AGENTS		20
+int	selectedAgent = 0;		/* SWP -- Spoof Agents Stuff */
+int 	numAgents;	 /* SWP -- Agent Spoofing */
+char 	**agent;
 
 #ifdef MULTICAST
 extern Widget mc_list_top_w;
@@ -46,26 +46,6 @@ static XmxCallback (exit_confirm_cb);
 static void mo_post_exitbox (void);
 static XmxCallback (clear_history_confirm_cb);
 static XmxCallback (agent_menubar_cb);
-
-/* --------------------------- Colleen menubar ---------------------------- */
-static XmxMenubarStruct *file_menuspec;
-static XmxMenubarStruct *fnts_menuspec;
-static XmxMenubarStruct *undr_menuspec;
-static XmxMenubarStruct *agent_menuspec;
-static XmxMenubarStruct *opts_menuspec;
-static XmxMenubarStruct *navi_menuspec;
-static XmxMenubarStruct *help_menuspec;
-#ifdef NEWS
-static XmxMenubarStruct *newsfmt_menuspec;
-static XmxMenubarStruct *newsgrpfmt_menuspec;
-static XmxMenubarStruct *newsartfmt_menuspec;
-#endif
-static XmxMenubarStruct *news_menuspec;
-#ifdef MULTICAST
-static XmxMenubarStruct *multicast_menuspec;
-#endif
-static XmxMenubarStruct *menuspec;
-
 
 /* --------------------------- mo_post_exitbox ---------------------------- */
 
@@ -485,7 +465,6 @@ static void mo_agent_spoofs(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window *win= (mo_window*)clid;
 	Widget menu;
-	int separators = 0;
 	int i;
 	XmString xmstr;
 
@@ -496,22 +475,18 @@ static void mo_agent_spoofs(Widget w, XtPointer clid, XtPointer calld)
 
 	
 	for(i=0; i<numAgents; i++){
-		if (agent_menuspec[i].namestr[0] != '<'){
-			separators++;
-			continue;
-		}
 		Xmx_n = 0;
 		XmxSetArg (XmNindicatorType, (XtArgVal)XmONE_OF_MANY);
-		xmstr = XmxMakeXmstrFromString( &(agent_menuspec[i].namestr[1]));
+		xmstr = XmxMakeXmstrFromString( agent[i]);
 		XmxSetArg (XmNlabelString, (XtArgVal)xmstr);
-		win->agspd_cbd[i-separators].w = XtCreateManagedWidget("togglebutton",
+		win->agspd_cbd[i].w = XtCreateManagedWidget("togglebutton",
 				xmToggleButtonGadgetClass,menu, Xmx_wargs, Xmx_n);
-		win->agspd_cbd[i-separators].d= i-separators;
-		win->agspd_cbd[i-separators].win = win;
+		win->agspd_cbd[i].d= i;
+		win->agspd_cbd[i].win = win;
 		XmStringFree (xmstr);
-		XtAddCallback(win->agspd_cbd[i-separators].w, 
+		XtAddCallback(win->agspd_cbd[i].w, 
 			XmNvalueChangedCallback,agent_menubar_cb,
-			(XtPointer) &win->agspd_cbd[i-separators]);
+			(XtPointer) &win->agspd_cbd[i]);
 	}
 	XmToggleButtonGadgetSetState(win->agspd_cbd[win->agent_state].w,
 		True , False);
@@ -731,7 +706,7 @@ void mo_news_flushgroup(Widget w, XtPointer clid, XtPointer calld)
 
 	gui_news_flushgroup(win);
 }
-#endif
+#endif /* NEWS */
 
 void mo_clear_passwd_cache(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -749,6 +724,7 @@ void mo_home_document(Widget w, XtPointer clid, XtPointer calld)
 	rds.post_data = NULL;
 	rds.ct = NULL;
 	rds.is_reloading = False;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	MMPafLoadHTMLDocInWin (win, &rds);
 }
 void mo_history_list(Widget w, XtPointer clid, XtPointer calld)
@@ -803,6 +779,7 @@ void mo_new_window(Widget w, XtPointer clid, XtPointer calld)
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
 	rds.req_url = mMosaicAppData.home_document;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window( pwin,MC_MO_TYPE_UNICAST);
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
@@ -816,6 +793,7 @@ void mo_clone_window(Widget w, XtPointer clid, XtPointer calld)
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
 	rds.req_url = win->current_node->aurl;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window(win,MC_MO_TYPE_UNICAST);
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
@@ -844,6 +822,7 @@ void mo_network_starting_points(Widget w, XtPointer clid, XtPointer calld)
 	rds.post_data = NULL;
 	rds.ct = NULL;
 	rds.is_reloading = False;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	MMPafLoadHTMLDocInWin (win, &rds);
 }
 void mo_internet_metaindex(Widget w, XtPointer clid, XtPointer calld)
@@ -855,6 +834,7 @@ void mo_internet_metaindex(Widget w, XtPointer clid, XtPointer calld)
 	rds.post_data = NULL;
 	rds.ct = NULL;
 	rds.is_reloading = False;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	MMPafLoadHTMLDocInWin (win, &rds);
 }
 void mo_help_about(Widget w, XtPointer clid, XtPointer calld)
@@ -866,6 +846,7 @@ void mo_help_about(Widget w, XtPointer clid, XtPointer calld)
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
 	rds.req_url = "http://sig.enst.fr/~dauphin/mMosaic/index.html";
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
@@ -878,6 +859,7 @@ void mo_mosaic_manual(Widget w, XtPointer clid, XtPointer calld)
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
 	rds.req_url = mo_assemble_help_url("mosaic-docs.html");
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
@@ -891,6 +873,7 @@ void mo_whats_new(Widget w, XtPointer clid, XtPointer calld)
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = True;
 	rds.req_url = WHATSNEW_PAGE_DEFAULT;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
@@ -1191,333 +1174,238 @@ void mo_multicast_show_participant(Widget w, XtPointer clid, XtPointer calld)
 }
 #endif
 
+/* --------------------------- Colleen menubar ---------------------------- */
+/* typedef struct _XmxMenubarStruct {
+ *        String namestr;
+ *        char mnemonic;
+ *        void (*func)(Widget, XtPointer, XtPointer);
+ *        XtPointer data;
+ *        struct _XmxMenubarStruct *sub_menu;
+ *} XmxMenubarStruct;
+
+/* File Menu */
+static XmxMenubarStruct file_menuspec[30] = {
+	{ "New",	'N',	mo_new_window,	NULL, NULL },
+        { "Clone",	'C',	mo_clone_window,NULL, NULL },
+	{ "----", 	'\0', 	NULL, 		NULL, NULL }, 	/* spacer */
+
+        { "Open URL...", 'O',	mo_open_document,NULL, NULL},
+        { "Open Local...", 'L',	mo_open_local_document,NULL, NULL},
+	{ "----", 	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+        { "Reload Current", 'R',mo_reload_document,NULL, NULL},
+        { "Reload Images", 'a',	mo_reload_document_and_object, NULL, NULL},
+        { "Refresh Current", 'f', mo_refresh_document,NULL, NULL},
+	{ "----",	 '\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+        { "Find In Current", 'I', mo_search,	NULL, NULL},
+        { "View Source...", 'V',mo_document_source,NULL, NULL},
+        { "Edit Source...", 'E',mo_document_edit,NULL, NULL},
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+        { "Save As...",	'S',	mo_save_document,NULL, NULL},
+        { "Print...",	'P',	mo_print_document,NULL, NULL},
+        { "Mail To...", 'M',	mo_mail_document,NULL, NULL},
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+#ifdef KRB5
+        { "Kerberos v5 Login...", '5', mo_kerberosv5_login,NULL, NULL},
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+#endif  
+        { "Proxy List...", '0',	mo_proxy,	NULL, NULL},
+        { "No Proxy List...", '1', mo_no_proxy,	NULL, NULL},
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+        { "Close",	'W',	mo_close_window, NULL, NULL},
+        { "Exit Program...", 'x', mo_exit_program, NULL, NULL},
+        { NULL,		'\0',	NULL,		NULL, NULL }	/* end */
+};
+
+/* Fonts Sub-Menu */
+static XmxMenubarStruct fnts_menuspec[16] = {
+	{ "<Times Regular", 'T',mo_regular_fonts_cb,NULL, NULL },
+	{ "<Times Small", 'S',mo_small_fonts_cb,NULL, NULL },
+	{ "<Times Large", 'L',mo_large_fonts_cb,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "<Helvetica Regular", 'H',mo_regular_helvetica_cb,NULL, NULL },
+	{ "<Helvetica Small", 'e',mo_small_helvetica_cb,NULL, NULL },
+	{ "<Helvetica Large", 'v',mo_large_helvetica_cb,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "<New Century Regular", 'N',mo_regular_newcentury_cb,NULL, NULL },
+	{ "<New Century Small", 'w',mo_small_newcentury_cb,NULL, NULL },
+	{ "<New Century Large", 'C',mo_large_newcentury_cb,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "<Lucida Regular", 'L',mo_regular_lucidabright_cb,NULL, NULL },
+	{ "<Lucida Small", 'u',mo_small_lucidabright_cb,NULL, NULL },
+	{ "<Lucida Large", 'i',mo_large_lucidabright_cb,NULL, NULL },
+        { NULL,		'\0',	NULL,		NULL, NULL }	/* end */
+};
+
+/* Underline Sub-Menu */
+static XmxMenubarStruct undr_menuspec[6] = {
+	{ "<Default Underlines",'D',	mo_default_underlines_cb,NULL, NULL },
+	{ "<Light Underlines",	'L',	mo_l1_underlines_cb,NULL, NULL },
+	{ "<Medium Underlines",	'M',	mo_l2_underlines_cb,NULL, NULL },
+	{ "<Heavy Underlines",	'H',	mo_l3_underlines_cb,NULL, NULL },
+	{ "<No Underlines",	'N',	mo_no_underlines_cb,NULL, NULL },
+        { NULL,		'\0',	NULL,		NULL, NULL }	/* end */
+};
+
+/* Options Menu */
+static XmxMenubarStruct opts_menuspec[16] = {
+	{ "#Body Color", 'y',	mo_body_color,	NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "#Delayed Image",'D',	mo_delay_object_loads,NULL, NULL },
+	{ "Load Images",'L',	mo_expand_object_current,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "Flush Cache",'I',	mo_clear_cache,NULL, NULL },
+        { "Flush Password Cache",'P',mo_clear_passwd_cache,NULL, NULL },
+	{ "Clear Global History...",'C',mo_clear_global_history,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "Fonts",	'F',	NULL,		NULL, fnts_menuspec },
+	{ "Anchor Underlines",'A',NULL,		NULL, undr_menuspec },
+	{ "+Agent Spoofs",'g',	mo_agent_spoofs,NULL, NULL },
+        { NULL,		'\0',	NULL,		NULL, NULL }	/* end */
+};
+
+/* Navigation Menu */
+static XmxMenubarStruct navi_menuspec[15] = {
+	{ "Back",	'B',	mo_back,	NULL, NULL },
+	{ "Forward",	'F',	mo_forward,	NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "Home Document",'D',	mo_home_document,NULL, NULL },
+	{ "Window History...",'W',mo_history_list,NULL, NULL },
+	{ "Document Links...",'L',mo_links_window,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "Hotlist...",'H',	mo_hotlist_postit,NULL, NULL },
+	{ "Add To Hotlist",'A',	mo_register_node_in_default_hotlist,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "Internet Starting Points",'I',mo_network_starting_points,NULL, NULL },
+	{ "Internet Resource Meta-Index",'M',mo_internet_metaindex,NULL, NULL },
+        { NULL,		'\0',	NULL,		NULL, NULL }	/* end */
+};
+
+/* Help Menu */
+static XmxMenubarStruct help_menuspec[17] = {
+	{ "About mMosaic ...",'A',mo_help_about,NULL, NULL },
+	{ "Manual XMosaic...",'M',mo_mosaic_manual,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "What's New XMosaic...",'W',mo_whats_new,NULL, NULL },
+	{ "Demo XMosaic...",'D',mo_mosaic_demopage,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "Help on Version 2.7b5...",'V',mo_help_onversion,NULL, NULL },
+	{ "On Window XMosaic...",'O',mo_help_onwindow,NULL, NULL },
+	{ "On FAQ XMosaic...",'F',mo_help_faq,	NULL, NULL},
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "On HTML XMosaic...",'H',mo_help_html,NULL, NULL },
+	{ "On URLS XMosaic...",'U',mo_help_url,	NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "Mail Tech Support...",'M',mo_techsupport,NULL, NULL },
+        { NULL,		'\0',	NULL,		NULL, NULL }	/* end */
+};
+
+#ifdef MULTICAST
+/* Muticast Menu */
+static XmxMenubarStruct multicast_menuspec[3] = {
+	{ "#Send Enable",	'S', mo_multicast_send_tog,NULL, NULL },
+	{ "#Show Particpants",	'P', mo_multicast_show_participant,NULL, NULL },
+        { NULL,		'\0',	NULL,		NULL, NULL }	/* end */
+};
+#endif /*MULTICAST */
+
+#ifdef NEWS
+/* News Format Sub-Menu */
+static XmxMenubarStruct newsfmt_menuspec[3] = {
+	{ "<Thread View",	'T', mo_news_fmt0,NULL, NULL },
+	{ "<Article View",	'G', mo_news_fmt1,NULL, NULL },
+        { NULL,		'\0',	NULL,		NULL, NULL }	/* end */
+};
+
+/* News Menu */
+static XmxMenubarStruct news_menuspec[27] = {
+	{ "Next",	'N',	mo_news_next,	NULL, NULL },
+	{ "Prev",	'P',	mo_news_prev,	NULL, NULL },
+	{ "Next Thread",'t',	mo_news_nextt,	NULL, NULL },
+	{ "Prev Thread",'v',	mo_news_prevt,	NULL, NULL },
+	{ "Article Index",'I',	mo_news_index,	NULL, NULL },
+	{ "Group Index",'G',	mo_news_groups,	NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "Post",	'o',	mo_news_post,	NULL, NULL },
+	{ "Followup",	'F',	mo_news_follow,	NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "Subscribe",	's',	mo_news_sub,	NULL, NULL },
+	{ "Unsubscribe",'u',	mo_news_unsub,	NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "<Show All Groups",'A',mo_news_grp0,	NULL, NULL },
+        { "<Show Unread Subscribed Groups",'S',mo_news_grp1,NULL, NULL },
+        { "<Show All Subscribed Groups','R",mo_news_grp2,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "<Show All Articles",'l',mo_news_art0,NULL, NULL },
+        { "<Show Only Unread Articles",'n',mo_news_art1,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+	{ "Mark Group Read",'e',mo_news_mread,	NULL, NULL },
+	{ "Mark Group Unread",'d',mo_news_munread,NULL, NULL },
+	{ "Mark Article Unread",'M',mo_news_maunread,NULL, NULL },
+	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
+
+/*	{ "Flush News Data",'F',mo_news_flush,	NULL)*/
+	{ "Flush Group Data",'D',mo_news_flushgroup,NULL, NULL },
+	{ "Thread Style",'T',	NULL,		NULL, newsfmt_menuspec},
+        { NULL,		'\0',	NULL,		NULL, NULL }	/* end */
+#endif /* NEWS */
+
+
+/* The Menubar */
+static XmxMenubarStruct menuspec[9] = {
+	{ "File",	'F',	NULL,		NULL, file_menuspec},
+	{ "Options",	'O',	NULL,		NULL, opts_menuspec},
+	{ "Navigate",	'N',	NULL,		NULL, navi_menuspec},
+#ifdef NEWS
+	{ "News",	'w',	NULL,		NULL, news_menuspec},
+#endif
+#ifdef MULTICAST
+	{ "Multicast",	'M',	NULL,		NULL, multicast_menuspec},
+#endif
+	{ "Help",	'H',	NULL,		NULL, help_menuspec},
+/* Dummy submenu. */
+        { NULL,		'\0',	NULL,		NULL, NULL },	/* end */
+        { NULL,		'\0',	NULL,		NULL, NULL }	/* end */
+};
 
 
 /* --------------------------- format options ----------------------------- */
-extern XmxOptionMenuStruct *format_opts;
-
-/* ----------------------- macros for menubar stuff ----------------------- */
-#define ALLOC_MENUBAR(menuPtr,numEntries) \
-{ \
-	(menuPtr)=(XmxMenubarStruct *)calloc((numEntries),sizeof(XmxMenubarStruct)); \
-	memset((menuPtr),0,((numEntries)*sizeof(XmxMenubarStruct))); \
-	maxMenuCnt=(numEntries); \
-	menuCnt=0; \
-	current=(menuPtr); \
-}
-#define ALLOC_OPTIONS(optPtr,numOpts) \
-{ \
-	(optPtr)=(XmxOptionMenuStruct *)calloc((numOpts),sizeof(XmxOptionMenuStruct)); \
-	memset((optPtr),0,((numOpts)*sizeof(XmxOptionMenuStruct))); \
-	maxMenuCnt=(numOpts); \
-	menuCnt=0; \
-	ocurrent=(optPtr); \
-}
-#define DEFINE_MENUBAR(nameStr,mnemonicStr,cb,subMenu) \
-{ \
-	if (menuCnt>=maxMenuCnt) { \
-		fprintf(stderr,"Trying to allocate more option menu entries than allowed!\n\n"); \
-		exit(1); \
-	} \
-	if ((nameStr) && *(nameStr)) { \
-		current[menuCnt].namestr=strdup((nameStr)); \
-	} else { \
-		current[menuCnt].namestr=NULL; \
-	} \
-	if ((mnemonicStr) && *(mnemonicStr)) { \
-		current[menuCnt].mnemonic=(*(mnemonicStr)); \
-	} else { \
-		current[menuCnt].mnemonic='\0'; \
-	} \
-	if ((cb)!=NULL) { \
-		current[menuCnt].func=(cb); \
-	} \
-	current[menuCnt].sub_menu=(subMenu); \
-	menuCnt++; \
-}
-#define DEFINE_OPTIONS(nameStr,optData,optState) \
-{ \
-	if (menuCnt>=maxMenuCnt) { \
-		fprintf(stderr,"Trying to allocate more menu entries than allowed!\n\n"); \
-		exit(1); \
-	} \
-	if ((nameStr) && *(nameStr)) { \
-		ocurrent[menuCnt].namestr=strdup((nameStr)); \
-	} else { \
-		ocurrent[menuCnt].namestr=NULL; \
-	} \
-	ocurrent[menuCnt].data=(optData); \
-	ocurrent[menuCnt].set_state=(optState); \
-	menuCnt++; \
-}
-#define NULL_MENUBAR() \
-{ \
-	current[menuCnt].namestr=NULL; \
-	current[menuCnt].mnemonic='\0'; \
-	current[menuCnt].func=NULL; \
-	current[menuCnt].data=0; \
-	current[menuCnt].sub_menu=NULL; \
-	menuCnt++; \
-}
-#define NULL_OPTIONS() \
-{ \
-	ocurrent[menuCnt].namestr=NULL; \
-	ocurrent[menuCnt].data=0; \
-	ocurrent[menuCnt].set_state=XmxNotSet; \
-	menuCnt++; \
-}
-#define SPACER() \
-{ \
-	current[menuCnt].namestr=strdup("----"); \
-	current[menuCnt].mnemonic='\0'; \
-	current[menuCnt].func=NULL; \
-	current[menuCnt].data=0; \
-	current[menuCnt].sub_menu=NULL; \
-	menuCnt++; \
-}
-
-/* -------------------------- mo_init_menubar ----------------------------- */
-/*
-   This function allocates the menubar variables and properly defines them
-   according to the international resources set.
-
-   ALLOC_MENUBAR(menuPtr,numEntries) allows you to give it an address and
-     it will autocate the specified numbber of pointers for the menubar.
-     menuPtr -- XmxMenubarStruct *
-     numEntries -- int
-
-   ALLOC_OPTIONS(optPtr,numOpts) allows you to autocate the number of options
-     in the option menu.
-     optPtr -- XmxOptionMenuStruct *
-     numOpts -- int
-
-   DEFINE_MENUBAR(nameStr,mnemonic,cb,cbData,subMenu) allows you to
-     actually fill in the menubar struct.
-     nameStr -- char *
-     mnemonic -- char *   (only first character is used)
-     cb -- void (*func)()
-     subMenu -- XmxMenubarStruct *
-
-   DEFINE_OPTIONS(nameStr,optData,optState) allows you to
-     actually fill in the option menu struct.
-     nameStr -- char *
-     optData -- int
-     optState -- int
-
-   NULL_MENUBAR() defines the current menu entry to be NULL, thus ending
-     the current definition.
-
-   NULL_OPTIONS() defines the current menu entry to be NULL, thus ending
-     the current definition.
-
-   SPACER() defines a <hr> for a menu.
-
-   Note: To create submenus, you use ALLOC_MENUBAR on the "sub_menu" attribute
-     of the XmxMenubarStruct (on an already allocated menubar). Also, the
-     XmxMenubarStruct for the sub_menu must already be allocated...
+/* typedef struct _XmxOptionMenuStruct {
+ *        String namestr;
+ *        XtCallbackProc data;
+ *        int set_state;
+ *        struct _mo_window * win; 
+ * } XmxOptionMenuStruct;
 */
-void mo_init_menubar() 
-{
-	int maxMenuCnt,menuCnt,i;
-	XmxMenubarStruct *current;
-	XmxOptionMenuStruct *ocurrent;
-	char buf[BUFSIZ];
-
-/* --------------------------- format options ------------------------------ */
-	ALLOC_OPTIONS(format_opts,5)
-	DEFINE_OPTIONS("Plain Text",mo_plaintext_cb,XmxNotSet)
-	DEFINE_OPTIONS("Formatted Text",mo_formatted_text_cb,XmxNotSet)
-	DEFINE_OPTIONS("PostScript",mo_postscript_cb,XmxNotSet)
-	DEFINE_OPTIONS("HTML",mo_html_cb,XmxNotSet)
-	NULL_OPTIONS()
-
-/* ----------------------- full menubar interface -------------------------- */
-	/* File Menu */
-	ALLOC_MENUBAR(file_menuspec,32)
-	DEFINE_MENUBAR("New" ,"N" ,mo_new_window,NULL)
-	DEFINE_MENUBAR("Clone" ,"C",mo_clone_window,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Open URL..." ,"O",mo_open_document,NULL)
-	DEFINE_MENUBAR("Open Local..." ,"L",mo_open_local_document,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Reload Current" ,"R",mo_reload_document,NULL)
-	DEFINE_MENUBAR("Reload Images" ,"a",mo_reload_document_and_object,NULL)
-	DEFINE_MENUBAR("Refresh Current" ,"f",mo_refresh_document,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Find In Current" ,"I",mo_search,NULL)
-	DEFINE_MENUBAR("View Source..." ,"V",mo_document_source,NULL)
-	DEFINE_MENUBAR("Edit Source..." ,"E",mo_document_edit,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Save As..." ,"S",mo_save_document,NULL)
-	DEFINE_MENUBAR("Print..." ,"P",mo_print_document,NULL)
-	DEFINE_MENUBAR("Mail To..." ,"M",mo_mail_document,NULL)
-	SPACER()
-/*SWP -- 7/17/95*/
-#ifdef KRB5
-	SPACER()
-	DEFINE_MENUBAR("Kerberos v5 Login..." ,"5",mo_kerberosv5_login,NULL)
-#endif
-	SPACER()
-	DEFINE_MENUBAR("Proxy List..." ,"0",mo_proxy,NULL)
-	DEFINE_MENUBAR("No Proxy List..." ,"1",mo_no_proxy,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Close" ,"W",mo_close_window,NULL)
-	DEFINE_MENUBAR("Exit Program..." ,"x",mo_exit_program,NULL)
-	NULL_MENUBAR()
-
-	/* Fonts Sub-Menu */
-	ALLOC_MENUBAR(fnts_menuspec,16);
-	DEFINE_MENUBAR("<Times Regular" ,"T",mo_regular_fonts_cb,NULL)
-	DEFINE_MENUBAR("<Times Small" ,"S",mo_small_fonts_cb,NULL)
-	DEFINE_MENUBAR("<Times Large" ,"L",mo_large_fonts_cb,NULL)
-	SPACER()
-	DEFINE_MENUBAR("<Helvetica Regular" ,"H",mo_regular_helvetica_cb,NULL)
-	DEFINE_MENUBAR("<Helvetica Small" ,"e",mo_small_helvetica_cb,NULL)
-	DEFINE_MENUBAR("<Helvetica Large" ,"v",mo_large_helvetica_cb,NULL)
-	SPACER()
-	DEFINE_MENUBAR("<New Century Regular" ,"N",mo_regular_newcentury_cb,NULL)
-	DEFINE_MENUBAR("<New Century Small" ,"w",mo_small_newcentury_cb,NULL)
-	DEFINE_MENUBAR("<New Century Large" ,"C",mo_large_newcentury_cb,NULL)
-	SPACER()
-	DEFINE_MENUBAR("<Lucida Bright Regular" ,"L",mo_regular_lucidabright_cb,NULL)
-	DEFINE_MENUBAR("<Lucida Bright Small" ,"u",mo_small_lucidabright_cb,NULL)
-	DEFINE_MENUBAR("<Lucida Bright Large" ,"i",mo_large_lucidabright_cb,NULL)
-	NULL_MENUBAR()
-
-	/* Underline Sub-Menu */
-	ALLOC_MENUBAR(undr_menuspec,6)
-	DEFINE_MENUBAR("<Default Underlines" ,"D",mo_default_underlines_cb,NULL)
-	DEFINE_MENUBAR("<Light Underlines" ,"L",mo_l1_underlines_cb,NULL)
-	DEFINE_MENUBAR("<Medium Underlines" ,"M",mo_l2_underlines_cb,NULL)
-	DEFINE_MENUBAR("<Heavy Underlines" ,"H",mo_l3_underlines_cb,NULL)
-	DEFINE_MENUBAR("<No Underlines" ,"N",mo_no_underlines_cb,NULL)
-	NULL_MENUBAR()
-
-	/* Agent Spoofing Sub-Menu */
-	loadAgents();
-	ALLOC_MENUBAR(agent_menuspec,numAgents+1);
-	for (i=0; i<numAgents; i++) {
-		sprintf(buf,"<%s",agent[i]);
-		DEFINE_MENUBAR(buf," ",NULL,NULL) /* later callback */
-	}
-	NULL_MENUBAR()
-
-	/* Options Menu */
-	ALLOC_MENUBAR(opts_menuspec,16)
-	DEFINE_MENUBAR("#Body Color" ,"y",mo_body_color,NULL)
-	SPACER()
-	DEFINE_MENUBAR("#Delay Image Loading" ,"D",mo_delay_object_loads,NULL)
-	DEFINE_MENUBAR("Load Images In Current" ,"L",mo_expand_object_current,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Flush Cache" ,"I",mo_clear_cache,NULL)
-        DEFINE_MENUBAR("Flush Password Cache" ,"P",mo_clear_passwd_cache,NULL)
-	DEFINE_MENUBAR("Clear Global History..." ,"C",mo_clear_global_history,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Fonts" ,"F",NULL,fnts_menuspec)
-	DEFINE_MENUBAR("Anchor Underlines" ,"A",NULL,undr_menuspec)
-	DEFINE_MENUBAR("+Agent Spoofs","g",mo_agent_spoofs,NULL)
-	NULL_MENUBAR()
-
-	/* Navigation Menu */
-	ALLOC_MENUBAR(navi_menuspec,15)
-	DEFINE_MENUBAR("Back" ,"B",mo_back,NULL)
-	DEFINE_MENUBAR("Forward" ,"F",mo_forward,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Home Document" ,"D",mo_home_document,NULL)
-	DEFINE_MENUBAR("Window History..." ,"W",mo_history_list,NULL)
-	DEFINE_MENUBAR("Document Links..." ,"L",mo_links_window,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Hotlist..." ,"H",mo_hotlist_postit,NULL)
-	DEFINE_MENUBAR("Add Current To Hotlist" ,"A",mo_register_node_in_default_hotlist,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Internet Starting Points" ,"I",mo_network_starting_points,NULL)
-	DEFINE_MENUBAR("Internet Resource Meta-Index" ,"M",mo_internet_metaindex,NULL)
-	NULL_MENUBAR()
-
-	/* Help Menu */
-	ALLOC_MENUBAR(help_menuspec,17)
-	DEFINE_MENUBAR("About mMosaic ..." ,"A",mo_help_about,NULL)
-	DEFINE_MENUBAR("Manual XMosaic..." ,"M",mo_mosaic_manual,NULL)
-	SPACER()
-	DEFINE_MENUBAR("What's New XMosaic..." ,"W",mo_whats_new,NULL)
-	DEFINE_MENUBAR("Demo XMosaic..." ,"D",mo_mosaic_demopage,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Help on Version 2.7b5..." ,"V",mo_help_onversion,NULL)
-	DEFINE_MENUBAR("On Window XMosaic..." ,"O",mo_help_onwindow,NULL)
-	DEFINE_MENUBAR("On FAQ XMosaic..." ,"F",mo_help_faq,NULL)
-	SPACER()
-	DEFINE_MENUBAR("On HTML XMosaic..." ,"H",mo_help_html,NULL)
-	DEFINE_MENUBAR("On URLS XMosaic..." ,"U",mo_help_url,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Mail Tech Support mMosaic..." ,"M",mo_techsupport,NULL)
-	NULL_MENUBAR()
-
-#ifdef NEWS
-	/* News Format Sub-Menu */
-	ALLOC_MENUBAR(newsfmt_menuspec,3)
-	DEFINE_MENUBAR("<Thread View" ,"T",mo_news_fmt0,NULL)
-	DEFINE_MENUBAR("<Article View" ,"G",mo_news_fmt1,NULL)
-	NULL_MENUBAR()
-
-	/* News Menu */
-	ALLOC_MENUBAR(news_menuspec,27)
-	DEFINE_MENUBAR("Next" ,"N",mo_news_next,NULL)
-	DEFINE_MENUBAR("Prev" ,"P",mo_news_prev,NULL)
-	DEFINE_MENUBAR("Next Thread" ,"t",mo_news_nextt,NULL)
-	DEFINE_MENUBAR("Prev Thread" ,"v",mo_news_prevt,NULL)
-	DEFINE_MENUBAR("Article Index" ,"I",mo_news_index,NULL)
-	DEFINE_MENUBAR("Group Index" ,"G",mo_news_groups,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Post" ,"o",mo_news_post,NULL)
-	DEFINE_MENUBAR("Followup" ,"F",mo_news_follow,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Subscribe to Group" ,"s",mo_news_sub,NULL)
-	DEFINE_MENUBAR("Unsubscribe Group" ,"u",mo_news_unsub,NULL)
-	SPACER()
-	DEFINE_MENUBAR("<Show All Groups" ,"A",mo_news_grp0,NULL)
-/*	DEFINE_MENUBAR("<Show Subscribed Groups" ,"S",mo_news_grp1,NULL)*/
-/*	DEFINE_MENUBAR("<Show Read Groups" ,"R",mo_news_grp2,NULL)*/
-        DEFINE_MENUBAR("<Show Unread Subscribed Groups" ,"S",mo_news_grp1,NULL)
-        DEFINE_MENUBAR("<Show All Subscribed Groups" ,"R",mo_news_grp2,NULL)
-	SPACER()
-	DEFINE_MENUBAR("<Show All Articles" ,"l",mo_news_art0,NULL)
-/*	DEFINE_MENUBAR("<Show Unread Articles" ,"n",mo_news_art1,NULL)*/
-        DEFINE_MENUBAR("<Show Only Unread Articles" ,"n",mo_news_art1,NULL)
-	SPACER()
-	DEFINE_MENUBAR("Mark Group Read" ,"e",mo_news_mread,NULL)
-	DEFINE_MENUBAR("Mark Group Unread" ,"d",mo_news_munread,NULL)
-	DEFINE_MENUBAR("Mark Article Unread" ,"M",mo_news_maunread,NULL)
-	SPACER()
-/*	DEFINE_MENUBAR("Flush News Data" ,"F",mo_news_flush,NULL)*/
-	DEFINE_MENUBAR("Flush Group Data" ,"D",mo_news_flushgroup,NULL)
-	DEFINE_MENUBAR("Thread Style" ,"T",NULL,newsfmt_menuspec)
-	NULL_MENUBAR()
-#endif
-
-#ifdef MULTICAST
-	/* Muticast Menu */
-	ALLOC_MENUBAR(multicast_menuspec,3)
-	DEFINE_MENUBAR("#Send Enable" ,"S",mo_multicast_send_tog,NULL)
-	DEFINE_MENUBAR("#Show Particpants" ,"P",mo_multicast_show_participant,NULL)
-	NULL_MENUBAR()
-#endif
-
-	/* The Menubar */
-	ALLOC_MENUBAR(menuspec,9)
-	DEFINE_MENUBAR("File" ,"F",NULL,file_menuspec)
-	DEFINE_MENUBAR("Options" ,"O",NULL,opts_menuspec)
-	DEFINE_MENUBAR("Navigate" ,"N",NULL,navi_menuspec)
-#ifdef NEWS
-	DEFINE_MENUBAR("News" ,"w",NULL,news_menuspec)
-#endif
-#ifdef MULTICAST
-	DEFINE_MENUBAR("Multicast","M",NULL,multicast_menuspec)
-#endif
-	DEFINE_MENUBAR("Help" ,"H",NULL,help_menuspec)
-	/* Dummy submenu. */
-	NULL_MENUBAR()
-	NULL_MENUBAR()
-}
+XmxOptionMenuStruct format_opts[5] = {
+	{ "Plain Text",	mo_plaintext_cb,	XmxNotSet, NULL},
+	{ "Format Text", mo_formatted_text_cb,	XmxNotSet, NULL},
+	{ "PostScript",	mo_postscript_cb,	XmxNotSet, NULL},
+	{ "HTML",	mo_html_cb,	XmxNotSet, NULL},
+	{ NULL, 	NULL, 		XmxNotSet, NULL}
+};
 
 /* -------------------- mo_make_document_view_menubar --------------------- */
 
@@ -1554,11 +1442,6 @@ XmxMenuRecord *mo_make_document_view_menubar (Widget form, mo_window * win)
 }
 
 /* ---------------------------- Agent Spoofing ---------------------------- */
-#define MAX_AGENTS		51
-
-int 		numAgents;	 /* SWP -- Agent Spoofing */
-char 		**agent;
-int 		selectedAgent=0;
 
 char * MMGetUserAgent()
 {
@@ -1570,7 +1453,7 @@ char * MMGetUserAgent()
  * called ".mosaic-spoof-agents".
  */
 
-static void loadAgents(void) 
+void loadAgents(void) 
 {
 	FILE *fp;
 	char fname[BUFSIZ],buf[512];

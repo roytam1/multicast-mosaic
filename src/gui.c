@@ -39,6 +39,7 @@
 #ifdef MULTICAST
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
+extern XmxCallback (mc_frame_callback);
 #endif
 
 #ifdef DEBUG
@@ -94,8 +95,6 @@ extern Pixmap 	*IconPix,*IconPixSmall,*IconPixBig;
 Widget 		mo_fill_toolbar(mo_window *win, Widget top, int w, int h);
 char *		MakeFilename();
 static void 	mo_extra_buttons(mo_window *win, Widget top);
-mo_window * 	MMMakeSubWindow(mo_window *parent, Widget htmlw,
-			char *url, char *frame_name);
 
 /* ------------------------------ variables ------------------------------- */
 
@@ -381,6 +380,7 @@ static XmxCallback (url_field_cb)
 	mo_convert_newlines_to_spaces (url);
 	xurl=UrlGuess(url);
 	rds.req_url = xurl;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
 	MMPafLoadHTMLDocInWin (win, &rds);
@@ -440,7 +440,7 @@ static mo_window * get_frame_target( mo_window *win, char *base_target, char* ta
  *   Call mo_open_another_window or MMPafLoadHTMLDocInWin to get
  *   the actual work done.
  */
-static XmxCallback (anchor_cb)
+static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 {
 	char *href, *reftext;
 	mo_window *win = (mo_window*)client_data;
@@ -451,6 +451,9 @@ static XmxCallback (anchor_cb)
 	RequestDataStruct rds;
 	int is_shifted = event->state & ShiftMask;
 
+/* check if w is equal to win->scrolled_win */
+	if ( w != win->scrolled_win)
+		abort();
 	
 	if (wacd->href)
 		href = strdup (wacd->href);
@@ -508,6 +511,7 @@ static XmxCallback (anchor_cb)
 	rds.is_reloading = False;
 	if (!force_newwin){
 		rds.req_url = href;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 		win = get_frame_target(win, win->current_node->base_target, wacd->target);
 		MMPafLoadHTMLDocInWin (win, &rds);
 	} else {
@@ -522,6 +526,7 @@ static XmxCallback (anchor_cb)
 
 			nwin = mo_make_window(win, MC_MO_TYPE_UNICAST);
 			rds.req_url = url;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 			MMPafLoadHTMLDocInWin(nwin, &rds);
 /* Now redisplay this window. because visited url*/
 /*			mo_redisplay_window (win);*/
@@ -678,17 +683,15 @@ XmxCallback (submit_form_callback)
 		}
 	}
 	if (do_post_urlencoded) {
-		char * post_data;
-/*		mo_post_access_document (win, url, 
-				"application/x-www-form-urlencoded", query);
-*/
 		rds.req_url = url;
+		rds.gui_action = HTML_LOAD_CALLBACK;
 		rds.ct = "application/x-www-form-urlencoded";
 		rds.post_data = query;
 		rds.is_reloading = True;
 		MMPafLoadHTMLDocInWin(win, &rds);
 	} else {
 		rds.req_url = query;
+		rds.gui_action = HTML_LOAD_CALLBACK;
 		rds.ct = NULL;
 		rds.post_data = NULL;
 		rds.is_reloading = True;
@@ -729,8 +732,19 @@ XmxCallback (frame_callback)
 		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMECREATE\n");
 #endif
 		break;
+	case XmCR_HTML_FRAMESET_INIT:
+#ifdef DEBUG_FRAME
+		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMESET_INIT\n");
+#endif
+                win->frame_name = NULL;
+                win->frame_parent =NULL;
+                win->frame_sons = NULL;
+		win->frame_sons_nbre =0;
+		/*??? = cbs.nframe */
+		break;
 	default:
 #ifdef DEBUG_FRAME
+		abort();
 		fprintf(stderr, "frame_callback: reason: Unknowed...\n");
 #endif
 		break;
@@ -754,6 +768,7 @@ XmxCallback (frame_callback)
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
 	rds.req_url = url;
+	rds.gui_action = FRAME_CALLBACK;
 	MMPafLoadHTMLDocInWin (sub_win, &rds);
 	free(url);
 }
@@ -985,6 +1000,7 @@ static void mo_view_keypress_handler(Widget w, XtPointer clid,
 			rds.ct = rds.post_data = NULL;
 			rds.is_reloading = False;
 			rds.req_url = win->current_node->aurl_wa;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 			neww = mo_make_window(win,MC_MO_TYPE_UNICAST);
 			MMPafLoadHTMLDocInWin (neww, &rds);
 		}
@@ -1615,8 +1631,17 @@ static mo_status mo_fill_window (mo_window *win)
 	XtAddCallback (win->scrolled_win, WbNanchorCallback, anchor_cb, win);
 	XtAddCallback (win->scrolled_win, WbNsubmitFormCallback,
 					submit_form_callback, win);
-	XtAddCallback (win->scrolled_win, WbNframeCallback,
-                                        frame_callback, win);
+#ifdef MULTICAST
+	if ( win->mc_type == MC_MO_TYPE_RCV_ALL) {
+		XtAddCallback (win->scrolled_win, WbNframeCallback,
+			mc_frame_callback, win);
+	} else {
+#endif
+		XtAddCallback (win->scrolled_win, WbNframeCallback,
+                        frame_callback, win);
+#ifdef MULTICAST
+	}
+#endif
 	XtVaGetValues(win->scrolled_win, WbNview, (long)(&win->view), NULL);
 	XtAddEventHandler(win->view, KeyPressMask, False, 
 			mo_view_keypress_handler, win);
@@ -1831,11 +1856,11 @@ mo_status mo_delete_window (mo_window *win)
 	win->base=NULL;
 
 #ifdef MULTICAST
-	if(win->mc_user){
+/*	if(win->mc_user){ */
 /*		win->mc_user->win = NULL; ### */
 /*		McRemoveMoWin(win->mc_user); */
 /*####      McDeleteUser(win->mc_user,win->mc_user->mc_list_number);*/
-	}
+/*	} */
 #endif
 
 /*################ */
@@ -1994,11 +2019,14 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	swin->base = parent->base;
 	swin->mode = moMODE_PLAIN;
 #ifdef MULTICAST
-	swin->mc_type = mc_t;	/* ????? ############# */
-	swin->mc_user = NULL;
+	swin->mc_type = parent->mc_type;	/* ????? ############# */
+	swin->dot = NULL;
+	swin->n_do = 0;
+	swin->moid_ref = -1;
 #endif
 	swin->frame_name = strdup(frame_name);
 	swin->frame_parent =parent;
+	swin->frame_dot_index = parent->frame_sons_nbre;
 	parent->frame_sons = (mo_window **) realloc(parent->frame_sons,
 		(parent->frame_sons_nbre + 1) * sizeof(mo_window *));
 	parent->frame_sons[parent->frame_sons_nbre] = swin;
@@ -2051,42 +2079,9 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 
 /*	mo_fill_window (win);		/* Install all the GUI bits & pieces. */
 
-/*	win->smalllogo = 0;
-/*	win->texttools = 0;
-/*	win->slabpart[0] = SLAB_MENU;
-/*	win->slabpart[1] = SLAB_GLOBE;
-/*	win->slabpart[2] = SLAB_TOOLS;
-/*	win->slabpart[3] = SLAB_URL;
-/*	win->slabpart[4] = SLAB_VIEW;
-/*	win->slabpart[5] = SLAB_STATUS;
-/*	win->biglogo=1;
-	/* no active toolset, horiz, not detached */
-
 /*********************** SLAB_GLOBE ****************************/
-/*	win->slab[SLAB_GLOBE] = XtVaCreateWidget("slab_globe",
-/*                                       xmFormWidgetClass, form, NULL);
-/*	mo_make_globe(win,win->slab[SLAB_GLOBE],0);
-*/
 	swin->logo = parent->logo;
 	swin->biglogo = parent->biglogo;
-
-/*********************** SLAB_URL ****************************/
-/*	win->slab[SLAB_URL] = XtVaCreateWidget("slab_url",
-/*					xmFormWidgetClass, form,
-/*					XmNheight, 36, NULL);
-/*	url_label = XtVaCreateManagedWidget("URL:",xmLabelWidgetClass,
-/*					win->slab[SLAB_URL],
-/*					XmNleftOffset, 3,
-/*					NULL);
-/*	win->url_widget = XtVaCreateManagedWidget("text",xmTextFieldWidgetClass,
-/*					win->slab[SLAB_URL],
-/*					XmNrightOffset, 3,
-/*					XmNleftOffset, 3,
-/*					XmNtopOffset, 3,
-/*					NULL);
-	/* DO THIS WITH THE SLAB MANAGER - BJS */
-/*	XtAddCallback (win->url_widget, XmNactivateCallback, url_field_cb, (XtPointer)win);
-*/
 
 	swin->scrolled_win= htmlw;
 /*######	WbNpreviouslyVisitedTestFunction, anchor_visited_predicate, */
@@ -2096,18 +2091,25 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	XtAddCallback (swin->scrolled_win, WbNanchorCallback, anchor_cb, swin);
 	XtAddCallback (swin->scrolled_win, WbNsubmitFormCallback,
 					submit_form_callback, swin);
-	XtAddCallback (swin->scrolled_win, WbNframeCallback,
-                                        frame_callback, swin);
+#ifdef MULTICAST
+	if ( swin->mc_type == MC_MO_TYPE_RCV_ALL) {
+		XtAddCallback (swin->scrolled_win, WbNframeCallback,
+			mc_frame_callback, swin);
+	} else {
+#endif
+		XtAddCallback (swin->scrolled_win, WbNframeCallback,
+                        frame_callback, swin);
+#ifdef MULTICAST
+	}
+#endif
 	XtVaGetValues(swin->scrolled_win, WbNview, (long)(&swin->view), NULL);
 	XtAddEventHandler(swin->view, KeyPressMask, False, 
 			mo_view_keypress_handler, swin);
 	/* now that the htmlWidget is created we can do this  */
 /*############################################################*/
 	mo_make_popup(swin); /* c'est pour le cut&paste */
-/*
+
 /*********************** SLAB_STATUS ****************************/
-/*	win->slab[SLAB_STATUS] = XtVaCreateWidget("slab_status",
-/*					xmFormWidgetClass, form, NULL);
 	/* meter */
 	swin->meter_text = parent->meter_text;
 	swin->meter_notext = parent->meter_notext;
@@ -2116,33 +2118,8 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	swin->meter = parent->meter;
 	swin->meter_level = parent->meter_level;
 	swin->meter_width = parent->meter_width;
-
 	swin->tracker_widget = parent->tracker_widget;
-/*
-/*	for(i=0;i<SLABCOUNT;i++)
-/*		XtManageChild(win->slab[win->slabpart[i]]);
-/*	XtManageChild(form);
-/*
-/* Can't go back or forward if we haven't gone anywhere yet... */
-/*	mo_back_impossible (win);
-/*	mo_forward_impossible (win);
-/*	return mo_succeed;
-/* end mo_fill_window */
 
-/*	if (win->font_size != mo_regular_fonts_tkn)	/* Set the font size. */
-/*		mo_set_fonts (win, win->font_size);
-/*	mo_set_underlines (win, win->underlines_state);
-/*	mo_set_agents(win, win->agent_state);
-*/
-#ifdef ISINDEX
-/*	win->keyword_search_possible = -1;	/* We don't know yet. */
-#endif
-/*	XmxRSetToggleState (win->menubar, (XtPointer)win->font_size, XmxSet);
-/*						/* setup news default states */
-#ifdef NEWS
-/*	gui_news_updateprefs (win); */
-#endif
-/*
 /*	XmxRSetToggleState (win->menubar, (XtPointer)mo_delay_object_loads,
 /*		 win->delay_object_loads ? XmxSet : XmxNotSet);
 /*	XmxRSetSensitive (win->menubar, (XtPointer)mo_expand_object_current,
@@ -2158,36 +2135,6 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	XFlush (mMosaicDisplay);
 	XSync (mMosaicDisplay, False);
 
-/*###	mo_add_window_to_list (win); /*Register win with internal window list.*/
-/*  	if(parent) {                        
-/*		win->body_color = parent->body_color;
-/*		XtVaSetValues(win->scrolled_win,
-/*			WbNbodyColors, win->body_color,
-/*			NULL);
-/*		XmxRSetToggleState (win->menubar, (char*)mo_body_color,
-/*			win->body_color ? XmxSet : XmxNotSet);
-/*
-/*		win->delay_object_loads = parent->delay_object_loads;
-/*		XmxRSetSensitive (win->menubar, (char*)mo_expand_object_current,
-/*			win->delay_object_loads ? XmxSensitive : XmxNotSensitive);
-/*		XmxRSetToggleState (win->menubar, (char*)mo_delay_object_loads,
-/*			win->delay_object_loads ? XmxSet : XmxNotSet);
-/*	}
-/*
-/* register icon */
-/*
-/*	XtVaSetValues(win->base,
-/*		XmNiconMask, mMosaicWinIconMaskPixmap,
-/*		XmNiconPixmap, mMosaicWinIconPixmap,
-/*		NULL);
-/*
-/* set/notset boby color and body image */
-/*
-/*	XtVaGetValues(win->scrolled_win,
-/*		WbNbodyColors, &(win->body_color),
-/*		NULL);
-/*	XmxRSetToggleState (win->menubar, (XtPointer)mo_body_color,
-/*			(win->body_color ? XmxSet : XmxNotSet));
 /* init paf data */
 	swin->pafd = NULL;
 	return swin;
@@ -2238,10 +2185,13 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 	win->frame_parent =NULL;
 	win->frame_sons = NULL;
 	win->frame_sons_nbre = 0;
+	win->frame_dot_index = -1;
 
 #ifdef MULTICAST
 	win->mc_type = mc_t;
-	win->mc_user = NULL;
+	win->dot = NULL;
+	win->n_do = 0;
+	win->moid_ref = -1;
 #endif
 	WM_DELETE_WINDOW = XmInternAtom(mMosaicDisplay, "WM_DELETE_WINDOW", False);
 	XmAddWMProtocolCallback(base,WM_DELETE_WINDOW,delete_cb,(XtPointer)win);
@@ -2371,6 +2321,7 @@ void mo_open_another_window (mo_window *win, char *url)
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
 	rds.req_url = url;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
 
@@ -2416,6 +2367,7 @@ void mo_process_external_directive (char *directive, char *url)
 	if (!strncmp (directive, "goto", 4)) {
 		CLIP_TRAILING_NEWLINE(url);
 		rds.req_url = url;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;

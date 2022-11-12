@@ -15,6 +15,8 @@ typedef enum _MarkType {
 	M_INIT_STATE = -2,
 	M_UNKNOWN = -1,		/* the first two must have this value */
 	M_NONE = 0,		/* for compatibility		*/
+	M_ABBR,
+	M_ACRONYM,
 	M_ANCHOR,
 	M_ADDRESS,
 	M_APPLET,
@@ -72,10 +74,13 @@ typedef enum _MarkType {
 	M_PREFORMAT,
 	M_BUGGY_TABLE,
 	M_TABLE,
+	M_TBODY,
 	M_TD,
 	M_TD_CELL_PAD,
 	M_TD_CELL_FREE,
+	M_TFOOT,
 	M_TH,
+	M_THEAD,
 	M_TR,
 	M_TEXTAREA,
 	M_TITLE,
@@ -95,6 +100,8 @@ typedef enum _MarkType {
 
 				/* syntax of Mark types */
 
+#define MT_ABBR		"abbr"
+#define MT_ACRONYM	"acronym"
 #define	MT_ANCHOR	"a"
 #define	MT_ADDRESS	"address"
 #define MT_APPLET	"applet"
@@ -158,9 +165,12 @@ typedef enum _MarkType {
 #define MT_SUB          "sub"
 #define MT_SUP          "sup"
 #define MT_TABLE	"table"
+#define MT_TBODY	"tboby"
 #define MT_TD		"td"
 #define MT_TEXTAREA	"textarea"
+#define MT_TFOOT	"tfoot"
 #define MT_TH		"th"
+#define MT_THEAD	"thead"
 #define	MT_TITLE	"title"
 #define MT_TR		"tr"
 #define MT_FIXED	"tt"
@@ -196,9 +206,16 @@ struct mark_up {
 	char * anc_target;
 };
 
+typedef struct _HtmlTextInfo {
+	char * title;
+	char * base_url;
+	char * base_target;
+	struct mark_up *mlist;
+} HtmlTextInfo;
+
 
 extern void 		clean_white_space(char *txt);
-extern struct mark_up * HTMLParseRepair(char *str);
+extern HtmlTextInfo * HTMLParseRepair(char *str);
 extern struct mark_up * HTMLLexem(char *str);
 extern char * 		ParseMarkTag(char *text, char *mtext, char *mtag);
 

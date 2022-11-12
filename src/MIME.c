@@ -58,6 +58,7 @@ const char * MMOSAIC_PRESENT = "mmosaic_presentation" ;
 
 void FreeMimeStruct( MimeHeaderStruct *mhs)
 {
+/* ### FIXME don't know where to free mhs...*/
 /*	if( mhs->content_type ) free(mhs->content_type); */
 /*	if( mhs->expires ) free(mhs->expires ); */
 /*	if( mhs->last_modified ) free(mhs->last_modified); */
@@ -112,6 +113,24 @@ static void SetMimeToken(MimeHeaderStruct *mhs, char *token, char *value)
 			}
 		}
 		return;
+	case 'D':
+		if ( !strncasecmp(token, "Depend-Object",13)) {
+			int i;
+
+			mhs->n_do = atoi(value);
+			mhs->dot = (int*) malloc(mhs->n_do* sizeof(int));
+			while (*value && *value != ' ')
+				value++;
+			for(i = 0; i < mhs->n_do; i++){
+				if (*value == ' ')
+					value++;
+				mhs->dot[i] = atoi(value);
+				while (*value && *value !=' ') {
+					value++;
+				}
+			}
+			return;
+		}
 	case 'E':
 		if ( !strncasecmp(token, "Expires",7)) {
 			mhs->expires = strdup(value);
@@ -128,6 +147,15 @@ static void SetMimeToken(MimeHeaderStruct *mhs, char *token, char *value)
 			return;
 		}
 		return;
+	case 'S' :
+		if ( !strncasecmp(token,"State-ID",8)) {
+			mhs->state_id = atoi(value);
+			return;
+		}
+		if ( !strncasecmp(token,"Start-ObjectID", 14) ) {
+			mhs->start_object_id = atoi(value);
+			return;
+		}
 	default:
 		return;
 	}
@@ -158,6 +186,10 @@ void ParseMimeHeader(char * b, MimeHeaderStruct * mhs)
 	mhs->location = NULL;
 	mhs->cache_control = CACHE_CONTROL_NONE;
 	mhs->status_code = 200 ;	/* extension for MULTICAST */
+	mhs->n_do = 0;
+	mhs->dot = NULL;
+	mhs->state_id = -1;
+	mhs->start_object_id = -1;
 
 /* parse the block and override default */
 
@@ -220,6 +252,8 @@ void ParseMimeHeader(char * b, MimeHeaderStruct * mhs)
 		ts = rfc822ctime(t);
 		mhs->last_modified = strdup(ts);
 	}
+	if (!mhs->expires)
+		mhs->expires = strdup("never");
 }
 
 /* ############################################## */

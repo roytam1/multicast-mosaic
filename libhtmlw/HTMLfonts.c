@@ -113,20 +113,30 @@ static FontRec* loadAndCacheFont(HTMLWidget hw,
 
 /* A new font, try 1st a pixel size */
 	xfont = XLoadQueryFont(XtDisplay(hw), xlfd_name_pixel);
+#ifdef DEBUG_FONT
 	fprintf(stderr, "Request: %s ",xlfd_name_pixel);
+#endif
 
 /* A new font, try 2sd a point size */
 	if ( xfont == NULL) {
+#ifdef DEBUG_FONT
 		fprintf(stderr," Ans: NO\n");
+#endif
 		xfont = XLoadQueryFont(XtDisplay(hw), xlfd_name_point);
+#ifdef DEBUG_FONT
 		fprintf(stderr, "Request: %s ",xlfd_name_point);
+#endif
 	}
 
 	if ( xfont == NULL) {
+#ifdef DEBUG_FONT
 		fprintf(stderr," Ans: NO\n");
+#endif
 		return NULL;
 	}
+#ifdef DEBUG_FONT
 	fprintf(stderr," Ans: YES\n");
+#endif
 
 /* store it if successfull */
 	frbuf->xfont = xfont;	/* update Xfont */

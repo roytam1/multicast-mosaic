@@ -173,12 +173,6 @@ static XtResource resources[] = {
 	{ WbNview, WbCView, XtRWidget, sizeof (Widget),
 	  XtOffset (HTMLWidget, html.view), XtRImmediate, NULL
 	},
-/*
-	{ XtNfont, XtCFont, XtRFontStruct, sizeof (XFontStruct *),
-	  XtOffset (HTMLWidget, html.font),
-	  XtRString, "-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"
-	},
-*/
 	{ XtNfont, XtCFont, XtRFontStruct, sizeof (XFontStruct *),
 	  XtOffset (HTMLWidget, html.cur_font),
 	  XtRString, "-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"
@@ -187,12 +181,6 @@ static XtResource resources[] = {
 	  XtOffset (HTMLWidget, html.default_font),
 	  XtRString, "-adobe-times-medium-r-normal-*-14-*-*-*-*-*-*-*"
 	},
-/*
-        { WbNsupSubFont, WbCSupSubFont, XtRFontStruct, sizeof (XFontStruct *),
-          XtOffset (HTMLWidget, html.supsub_font),
-          XtRString, "-adobe-courier-medium-r-normal-*-10-*-*-*-*-*-*-*"
-        },
-*/
         { WbNpreviouslyVisitedTestFunction, WbCPreviouslyVisitedTestFunction, 
 	  XtRPointer, sizeof (XtPointer),
           XtOffset (HTMLWidget, html.previously_visited_test),
@@ -2162,9 +2150,6 @@ static void _HTMLInput( Widget w, XEvent *event,
 		return;
 	/* If motif is defined, we don't want to process this button press
 	 * if it is on a gadget */
-/*	on_gadget = (_XmInputForGadget((Widget)hw,
-				event->xbutton.x, event->xbutton.y) != False);
-*/
 	on_gadget = (_XmInputInGadget((Widget)hw,
 				event->xbutton.x, event->xbutton.y) != False);
 	if (on_gadget)

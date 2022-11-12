@@ -723,6 +723,7 @@ static void mo_visit_hotlist_position (mo_window *win, int position)
 		if (hotnode->any.position == position)
 			if (hotnode->type == mo_t_url){
 				rds.req_url = hotnode->hot.url;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 				rds.post_data = NULL;
 				rds.ct = NULL;
 				rds.is_reloading = False;

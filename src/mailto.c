@@ -129,6 +129,7 @@ static XmxCallback (mailto_win_cb2)		/* help */
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
 	rds.req_url = mo_assemble_help_url ("help-on-mailto.html");
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window(win,MC_MO_TYPE_UNICAST);
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
@@ -203,6 +204,7 @@ static XmxCallback (mailto_form_win_cb2)		/* help */
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
 	rds.req_url = mo_assemble_help_url ("help-on-mailto-form.html");
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window(win,MC_MO_TYPE_UNICAST);
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }

@@ -1,5 +1,5 @@
 /* Author: Gilles Dauphin
- * Version 3.3.0 [Jan98]
+ * Version 3.4.0 [Jan99]
  */
 #ifdef MULTICAST
 
@@ -11,6 +11,8 @@
 
 #include "mc_rtp.h"
 
+#define HTML_OBJECT_DATA_TYPE (0x02)
+#define HTML_STATE_DATA_TYPE  (0)
 
 #define MC_MAX_SDES_NAME_LEN 255	/* max len of a name */
 
@@ -18,16 +20,17 @@
 
 #define DATA_CHUNK_SIZE 512
 #define PROTO_OVERHEAD (52)	/* IP + UDP + RTP + specific PT */
-#define BAND_WIDTH (20000)      /* 20 Kb/s */
+#define BAND_WIDTH (1000000)      /* 1 Mbits/s */
 
    
 typedef struct _RtpPacket {     
-        unsigned char is_end;
 	u_int16_t seqn;
         u_int32_t rtp_ts;
 	u_int32_t ssrc;
-        int url_id;
-        int o_id;
+        unsigned char is_eod;
+	char *to_free;		/* when is_eod is true, free data */
+	int data_type;
+        int id;
         int offset;  
         char *d;
         int d_len;
@@ -58,35 +61,6 @@ typedef struct _SdesStruct {
 
 /* ####################################### */
 
-
-#define STILL_HERE 1
-#define INCOMPLETE 2
-#define COMPLETE 3
-
-typedef struct _ObjEntry {
-        char * h_part;          /* header before data */
-        int h_len;
-        char *h_fname;
-        char *d_part;           /* data */
-        int d_len;
-        char *d_fname;
-        struct timeval ts;      /* timstamp (struct timeval) */
-        int o_num;              /* object number */
-	char *aurl_wa;
-	MimeHeaderStruct *mhs;
-} ObjEntry;
-
-typedef struct _DocEntry {
-        int url_id;
-        int nobj;  	/* dimension of o_tab */
-			/* we know the number of object in parsing o_tab[0]->d_part */
-        ObjEntry **o_tab;	/* tab of pointer to ObjEntry */
-				/* all pointer is NULL at init. */
-	unsigned int n_miss_o;	/* number of missing object */
-			/* this decrease when ChkToObj */
-	struct mark_up * mlist;
-} DocEntry;
-
 typedef struct _PacketDataChunk {
 	int offset;
 	int d_len;
@@ -107,11 +81,8 @@ typedef struct _MissRange {
 	struct _MissRange *prev;
 } MissRange ;
 
-typedef struct _ChunkedObjEntry {
-	int url_id;
-	int o_id;	/* object id. if 0, this is html part */
-	int size_data;	/* size of data */
-	int h_size;  /* len of mime header + request */
+typedef struct _ChunkedBufStruct {
+	int size_data;		/* size of data */
 	char * data;		/* partial data when size is knowed */
 	PacketDataChunk *lpdc;	/* list of chunck of data */
 				/* order by offset. The first packet # 0 */
@@ -120,20 +91,51 @@ typedef struct _ChunkedObjEntry {
 	PacketDataChunk *end;	/* pointer to is_end packet (end)*/
 	PacketMiss *lpmiss; /* list of missing packet */
 	MissRange * lmr;	/* range missing data */
-	char *aurl_wa;
 	MimeHeaderStruct *mhs;
-} ChunkedObjEntry;
+} ChunkedBufStruct;
 
-typedef struct _ChunkedDocEntry {	/* need to assemble packet */
-					/* data struct for PacketToDoc */
-	int url_id;
-	int nobj;			/* number of object for this doc */
-					/* we know the number when we have */
-					/* the html part */
-	int h_nobj;			/* temporary number of nobj, because */
-					/* some time the html part come late */
-	ChunkedObjEntry **co_tab;	/* tempory space to assemble object */
-} ChunkedDocEntry;
+
+typedef struct _McStateStruct {
+	int statid;		/* the stateid */
+	int start_moid;		/* begin with this object */
+	int n_do;		/* number of depend object */
+	DependObjectTab dot;	/* liste of dependant object */
+	struct timeval ts;      /* timstamp (struct timeval) */
+
+	int len_buffer;
+	char * buffer;		/* buffer containing temp data (receiver)*/
+	int buffer_status;	/* status of buffer (receiver) */
+	ChunkedBufStruct *chkbuf; /* chunked data. must be assemble in buffer (receiver) */
+	char *sdata;		/* sender data */
+	int sdata_len;		/* len sender data */
+} McStateStruct;
+
+typedef struct _McObjectStruct {
+	int moid;		/* multicast object id */
+	int statid;		/* even if is a stateless */
+	int stateless;
+	int n_do;               /* number of depend object */
+	DependObjectTab dot;    /* liste of dependant object */
+	struct timeval ts;      /* timstamp (struct timeval) */
+
+	int len_buffer;
+	char * buffer;          /* buffer containing temp data (receiver)*/
+	int buffer_status;      /* status of buffer */
+	ChunkedBufStruct *chkbuf; /* chunked data. must be assemble in buffer */
+
+        int exist;              /* Is this entry in used ? (sender) */
+        char *aurl;             /* Canonical URL for this document. */
+        char *fname;            /* multicast cache file name for data */
+	int file_len;		/* len of all data head+body(sender) */
+        time_t last_modify;
+        MimeHeaderStruct * mhs; /* associated MIME info (sender)*/
+} McObjectStruct;
+
+#define EMPTY_BUFFER 1
+#define CHUNKED_BUFFER 2
+#define COMPLETE_BUFFER 3
+#define PARSED_BUFFER 4
+#define PARSED_ALL_DEPEND_BUFFER 5
 
 
 /* #######################################*/
@@ -145,6 +147,17 @@ typedef struct _GuiEntry {
 	struct _Source * source;
 } GuiEntry;
 
+/* An entry in a hash bucket, containing a URL (in canonical, absolute form) */
+typedef struct _McHashEntry {
+        char *aurl;              /* Canonical URL for this document. */
+        int moid;
+        struct _McHashEntry *next;
+} McHashEntry;
+
+typedef struct _McBucket {
+        McHashEntry *head;
+        int count;
+} McBucket;
 
 typedef struct _Source {
 	int 		mute;	/* displayed ? */
@@ -173,14 +186,29 @@ typedef struct _Source {
 	GuiEntry 	* gui_ent; /* graphique interface for this source */
 				/* only for the user list */
 
-	int huid;		/* highter url_id we hear for this source */
 	int cwuid;		/* current wanted url_id doc */
 	int cduid;		/* current display url_id doc */
-	int last_valid_url_id;	/* the last full doc we see */
+	int last_valid_state_id;	/* the last full state we see */
+	int last_valid_object_id;	/* the last full object we see */
+					/* sequential */
 
 	long		lts;	/* local time stamp (unixtime) */
-	DocEntry ** doc;	/* store the completed data here */
-	ChunkedDocEntry ** chkdoc; /* assemble packet here */
+
+/* cache for source */
+	char *source_cachedir_name;
+	int source_len_cachedir_name;
+
+	int states_tab_size;	/* number of state in states tab */
+	McStateStruct *states;	/* states tab */
+	int objects_tab_size;	/* number of object in object tab */
+	McObjectStruct *objects;	/* objects tab */
+
+	McBucket *hash_tab;
+
+/* frame stuff */
+	int frameset_moid;
+	int frameset_dot_count;
+
 } Source;
 
 typedef struct _CnflcAddr {
@@ -209,11 +237,14 @@ extern IPAddr		mc_local_ip_addr;
 extern char		*mc_local_ip_addr_string;
 extern char		mc_local_cname[];
 
-extern int		mc_local_url_id;
+extern int		mc_local_state_id;
 extern int		mc_local_object_id;
-extern int		mc_state_report_url_id;
-extern int		mc_state_report_o_id;
-extern int		mc_state_report_len;
+
+extern int		mc_status_report_state_id;
+extern int		mc_status_report_object_id;
+
+extern McStateStruct	*mc_sender_state_tab;
+extern McObjectStruct	*moid_sender_cache;
 
 extern RtpPacket	*mc_rtp_packets_list;
 extern int		mc_write_rtp_data_next_time;
@@ -228,6 +259,8 @@ extern int		mc_collision_with_me;
 extern int		mc_third_party_loop;
 
 extern u_int32_t	rtp_init_time;
+
+extern mo_window	*mc_send_win;
 
 extern timeval unixtime();
 
@@ -245,34 +278,23 @@ extern Source* mc_rtp_demux(u_int32_t srcid, IPAddr addr_from);
 extern Source* uc_rtp_demux(u_int32_t srcid, IPAddr addr_from, unsigned short port_from);
 extern Source* mc_rtcp_demux(u_int32_t srcid, IPAddr addr_from, RtcpPacket* rcs);
 extern Source* uc_rtcp_demux(u_int32_t srcid, IPAddr addr_from, unsigned short port_fgrom, RtcpPacket* rcs);
-extern void McUpdateDataSource(Source *s, int is_end, u_int16_t seqn,
+extern void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
         u_int32_t rtp_ts, u_int32_t ssrc,
-        u_int16_t url_id, u_int16_t o_id, u_int32_t offset, char *d,
+        u_int32_t state_id, u_int32_t offset, char *d,
+        u_int32_t d_len);
+extern void McUpdateDataSourceWithObject(Source *s, int is_end, u_int16_t seqn,
+        u_int32_t rtp_ts, u_int32_t ssrc,
+        u_int32_t object_id, u_int32_t offset, char *d,
         u_int32_t d_len);
 extern void McProcessRtcpData(unsigned char *buf, int len, IPAddr addr_from);
 extern void UcProcessRtcpData(unsigned char *buf, int len, IPAddr addr_from,
         unsigned short port_from);
 extern void ProcessRtcpSdes(Source *s, RtcpPacket* rcs);
-extern void McRepairFromStatr(Source *s, RtcpPacket* rcs);
+extern void McQueryRepairFromStatr(Source *s, RtcpPacket* rcs);
 
-extern DocEntry *mc_local_docs;
-extern void McCreateDocEntry(char *fname, char* aurl_wa, MimeHeaderStruct *mhs);
-extern void McDocToPacket(int url_id);
-
-
-extern int PutPacketInChkObj(Source * s, ChunkedObjEntry ** co_tab,
-	int url_id, int o_id, int offset, char * d, int d_len, int is_end);
-
-extern int IsAllObjectHere(DocEntry *doce);
-extern void ChkObjToDocObj(struct _Source *s, unsigned int url_id, unsigned int o_id);
-extern int UpdChkObj(ChunkedObjEntry * coe, char *d, unsigned int offset, unsigned int d_len);
-extern int MergeChkObjLpdc( int size, ChunkedObjEntry * coe, char * d , int offset, int d_len);
-extern void McCreateObjectEntry(char *fname, char* aurl, MimeHeaderStruct *mhs);
-extern void McCreateErrorEntry(char *aurl, int status_code);
-extern void McObjectToPacket(int url_id, int o_id);
-extern int SourceAllocDocs(Source * s, int url_id);
-extern int SourceAllocObjs(Source * s, int url_id, int o_id);
-extern void ChkDocToDoc(Source * s, int url_id);
+extern int PutPacketInChkBuf(ChunkedBufStruct *cbs,
+	int is_end, int offset, char * d, int d_len);
+extern int ChkBufToBuf(ChunkedBufStruct *cbs, char ** buf_ret);
 
 extern IPAddr GetLocalIpAddr(void);
 extern int McOpenRead(IPAddr ip,unsigned short port,unsigned char ttl);
@@ -285,10 +307,43 @@ extern int DewrapRtpData( unsigned char *buf, int len_buf, RtpPacket *rs_ret);
 extern int DewrapRtcpData( unsigned char *buf, int len_buf, RtcpPacket *rcs_ret);
 extern int UcRead(int fd, unsigned char ** buf, IPAddr * ipfrom,
         unsigned short* port_from);
-extern void UcRtpSendDataPacket(Source * s, RtpPacket *p);
-extern void UcRtpSendData(Source * s , RtcpPacket* rcs);
 
 extern GuiEntry * CreateMemberGuiEntry(Source *s);
 
 u_int32_t ntptime(void);
+
+/* Cache stuff */
+
+extern void McSenderCacheInit( char * root_name);
+extern int McSenderCacheFindData(char *aurl,
+	char **fname_ret, MimeHeaderStruct *mhs_ret);
+extern void McSenderCachePutDataInCache(char *fname, char *aurl,
+	MimeHeaderStruct *mhs, int moid, DependObjectTab dot, int ndo,
+	char **fname_ret, MimeHeaderStruct * mhs_ret);
+extern void McSenderCachePutErrorInCache( char *aurl, int status_code,
+		int moid, char ** fname_ret, MimeHeaderStruct *mhs_ret);
+
+
+extern void MakeSenderState(MimeHeaderStruct *mhs, int sid);
+extern void McSendOject(int moid ) ;
+
+extern void McSendErrorOject(char *fname, char * aurl, MimeHeaderStruct *mhs, int moid);
+extern void McSendState(int stateid);
+extern int McCheckStateQuery(int sid, int offset, int len);
+extern int McCheckObjectQuery(int moid, int offset, int len);
+
+extern int McRcvrSrcAllocObject(Source * s, int moid);
+extern int McRcvrSrcAllocState(Source * s, int state_id);
+
+extern void McRcvSrcScheduleCheckState( Source *s, int state_id);
+
+extern void McStoreQueryRepair(Source *s , RtcpPacket* rcs);
+
+extern void UcRtpSendDataPacketTo(IPAddr addr, unsigned short port , RtpPacket *p);
+
+extern void McSourceCacheInit( Source *src, char * root_name);
+
+extern void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
+        char *aurl, MimeHeaderStruct *mhs, int moid,
+        char **fname_ret, MimeHeaderStruct *mhs_ret);
 #endif

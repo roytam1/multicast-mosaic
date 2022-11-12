@@ -1,13 +1,4 @@
-/* mc_action.c
- * Author: Gilles Dauphin
- * Version 2.7b4m3 [May96]
- *
- * Copyright (C) 1996 - G.Dauphin, P.Dax
- * See the file "license.mMosaic" for information on usage and redistribution
- * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * Bug report :  dauphin@sig.enst.fr dax@inf.enst.fr
- */
+/* mc_action.c */
 
 #ifdef MULTICAST
 
@@ -48,11 +39,6 @@ unsigned short 	mc_my_pid;
 time_t 		mc_init_local_time;
 
 
-extern void McUpdateWidgetObject();
-
-void McRemoveMoWin(McUser * u);
-void ClearRcvData(McUser * d);
-
 McUserList mc_ulist=NULL;
 
 Widget mc_list_top_w = NULL;
@@ -69,8 +55,6 @@ typedef struct _mc_w_u_lst {
 McWULst * mc_wulst;
 int mc_wulst_cnt = 0;
 
-
-static McUser * SolveUser(IPAddr uip_addr, unsigned short upid);
 
 /*########### remove the user too #########*/
 
@@ -154,10 +138,8 @@ void McActionRtcpByeData(McRtcpByeDataStruct * rbye)
 	}
 	user = SolveUser(uip_addr,upid);	/* get user struct*/
 	if (user == NULL){
-		fprintf(stderr,"McActionByeData: PB getting user\n");
 		return;
 	}
-
 	t = time(NULL);
 	win = user->win;
 	if(win) 
@@ -224,9 +206,6 @@ void McCreateMoWin(McUser * u)
 	mo_node *node ;
 
 	win = mo_make_window(NULL, MC_MO_TYPE_RCV_ALL);
-	u->win = win;
-	win->mc_user = u;
-
 /*	node= (mo_node *)malloc (sizeof (mo_node)); */
 /*	node->title=NULL;	*/
 /*	node->url=NULL;     /* c'est l'url de reference sous forme canonique*/
@@ -263,19 +242,6 @@ void PopUpOrDownMosaicMcUser(Widget w, XtPointer clid, XtPointer calld)
 	if (u->rcv_enable == 0) {	/* create an mo_window for user */
 		McCreateMoWin(u);
 		u->rcv_enable = 1;
-		if (u->neo == 0) return;
-		if (!u->eos) return;
-		if (!u->eos[1]) return;
-/* mettre la doc dans la widget html ##### */ /*
-                mo_do_window_text(     
-                        u->win,         /* an mo_window */ /*
-                        u->url,      	/* url */ /*
-                        u->eos[1],   	/* le texte */ /*
-                        False,          /* register_visit */ /*
-                        NULL,           /* ref */ /*
-                        NULL,           /* last_modified */ /*
-                        NULL); 		/* expires */ /*
-*/
 	} else {			/* delete the user's mo_window */
 		McRemoveMoWin(u);
 	}
@@ -309,33 +275,6 @@ void McInitUser( McUser * u)
 
 static McUser * SolveUser(IPAddr uip_addr, unsigned short upid)
 {
-	McUser * user;
-	McUser * puser;
-
-	if (mc_ulist == NULL){		/* create the first */
-		user = (McUser *) malloc(sizeof(McUser));
-		McInitUser(user);
-		user->next = NULL;
-		user->prev = NULL;
-		user->ip_addr = uip_addr;
-		user->pid = upid;
-		mc_ulist = user;
-		return user;
-	}
-	user = mc_ulist;
-	while(user != NULL){
-		if( ADDRCMP(user->ip_addr, uip_addr) && (user->pid == upid) )
-			return user;
-		puser = user;
-		user = user->next;
-	}
-	user = (McUser *) malloc(sizeof(McUser));
-	McInitUser(user);
-	puser->next = user;
-	user->next = NULL;
-	user->prev = puser;
-	user->ip_addr = uip_addr;
-	user->pid = upid;
 #ifdef IPV6
 	sprintf(user->alias,"Unknow@ipv6.domain");
 #else
@@ -343,53 +282,6 @@ static McUser * SolveUser(IPAddr uip_addr, unsigned short upid)
 		(uip_addr >> 24) & 0xFF, (uip_addr >> 16) & 0xFF,
 		(uip_addr >> 8 ) & 0xFF, uip_addr & 0xFF);
 #endif
-	user->len_alias = strlen(user->alias);
-	McUpdMcList(user);	/* MAJ de la mc_liste dans le cas d'un*/
-				/* petit nouveau */
-	return user;
-}
-
-void ClearRcvData(McUser * d)
-{
-	int i,j;
-
-	if(d->neo == 0) return;
-
-	for(i = 0; i< d->neo;i++){
-		if( d->eos[i] != NULL) {
-			free(d->eos[i]);
-			d->eos[i] = NULL;
-		}
-		if ( d->filename[i] != NULL){
-			unlink(d->filename[i]);
-			free(d->filename[i]);
-			d->filename[i] = NULL;
-		}
-	}
-	free(d->seo);
-	free(d->eos);
-	free(d->filename);
-	d->eos=NULL;
-	d->filename=NULL;
-	d->seo=NULL;
-	for(i=0; i< d->neo; i++){
-		if (d->pds[i].nalloc == 0)
-			continue;
-		for(j=0; j<d->pds[i].nalloc; j++){
-			free(d->pds[i].pdata[j]);
-			d->pds[i].pdata[j] = NULL;
-		}
-		free(d->pds[i].pdata);
-		d->pds[i].pdata = NULL;
-	}
-
-	free (d->pds);
-	d->pds = NULL;
-	d->neo = 0;
-	d->url[0] = '\0';
-	d->url_id = 0;
-	d->oldx = -100;
-	d->oldy = -100;
 }
 
 /*
@@ -404,31 +296,14 @@ void McActionHearBeatData(Mcs_alldata* alldata)
 	McUser * user;
 
 	/* Process a directive that we received by multicast. */
-	mo_window *win;
-        unsigned int ugmts;
-        unsigned int uurl_id;
-        IPAddr  uip_addr;
-        unsigned short upid;
-	unsigned int ussrc;
-	char * tmp;
-	time_t t;
-	int u_is_upd = 0;
-
         if(ADDRCMP(alldata->ipaddr, mc_local_ip_addr) && (alldata->pid==mc_my_pid))
                  return;                        /* It's Me */
-#ifdef MDEBUG
-	printf("RTP have a hearbeat\n");
-#endif
 	ugmts = alldata->gmt_send_time;
 	uurl_id = alldata->url_id;
 	uip_addr = alldata->ipaddr;
 	upid =  alldata->pid;
 	ussrc = alldata->ssrc;
 	user = SolveUser(uip_addr,upid);	/* get user struct*/
-	if (user == NULL){
-		fprintf(stderr,"McActionHearBeatData: PB getting user\n");
-		return;
-	}
 	/* We know on Unix system that ip_addr/pid is unique in World */
 	/* So the url_id can only grown up */
 
@@ -443,59 +318,6 @@ void McActionHearBeatData(Mcs_alldata* alldata)
         user->last_rcv_time = user->last_sender_time = t; /* Last time i hear him */
 	user->my_fdata_time = t;   	/* Last msg rcv by this user*/
 	user->player_fdata_time = alldata->gmt_send_time;/* Player last upd gmt*/
-
-	if(strcmp(user->url,alldata->data)){
-		strcpy(user->url,alldata->data);
-		McUpdMcList(user);	/* MAJ de la mc_liste */
-	}
-        win = user->win;                /* la mo_window du user */
-        if(user->neo == 0){     /* allocate space in 'user'*/
-                user->neo = alldata->nombre_eo;
-                user->seo = (unsigned int *) malloc(user->neo *
-                                                        sizeof(unsigned int));
-                user->eos = (char**) malloc(user->neo * sizeof(char *));
-		user->filename = (char**) malloc(user->neo * sizeof(char *));
-                user->pds = (McPacketData*) malloc(user->neo *
-                                                        sizeof(McPacketData));
-                for(i=0; i < user->neo; i++){
-                        user->seo[i] = 0;
-                        user->eos[i] = NULL;
-                        user->filename[i] = NULL;
-                        user->pds[i].nalloc = 0;
-                        user->pds[i].nbre_rcv = 0;
-                        user->pds[i].pdata = NULL;
-                }                      
-        }                              
-	if (!user->rcv_enable) return;
-
-	user->eos[0] = strdup(user->url);
-	for(i=1; i < user->neo; i++){ /* look at what is missing */
-		if (user->eos[i] != NULL )          /* on a deja tout eu */
-                	continue; 
-		if (user->pds[i].pdata == NULL){ /* il manque tout l'objet i*/
-					/*Le reclammer */
-			McSendRtcpNackAll( uip_addr, upid, uurl_id,i,
-				ussrc);
-				/* l'envoie est imediat ### revoir LRMP */
-				/* pour mettre des delais */
-			continue;
-		}
-		/* sinon regarder tous les packets de l'objet */
-		McInitNackPacketData(uip_addr, upid, uurl_id,i,ussrc);
-		for(j = 0; j < user->pds[i].nalloc; j++){
-			if (user->pds[i].pdata[j] == NULL) {
-				/*reclamer ce packet ######## */
-				McPushNackPacketData( uip_addr, upid, uurl_id,i,j,
-					ussrc);
-				/* l'envoie est imediat ### revoir LRMP */
-				/* pour mettre des delais */
-				continue;
-			}
-				/* sinon on l'a */
-			continue;	/* ne rien faire */
-		}
-		McFlushNackPacketData();
-	}
 }
 
 /*
@@ -523,32 +345,13 @@ void McActionAllData(Mcs_alldata* alldata)
 	uip_addr = alldata->ipaddr;
 	upid =  alldata->pid;
 	user = SolveUser(uip_addr,upid);	/* get user struct*/
-	if (user == NULL){
-		fprintf(stderr,"McActionAllData: PB getting user\n");
-		return;
-	}
 	/* We know on Unix system that ip_addr/pid is unique in World */
 	/* So the url_id can only grown up */
-
 	if((user->url_id < alldata->url_id) && 	/* a new text  */
 	   user->rcv_enable)
 		ClearRcvData(user);		/*clean the struct & free block */
-
 	/* now fill the 'user' structure with the 'alldata' struct */
-
 	t = time(NULL);
-	/*user->ip_addr; 		set by SolveUser()*/
-	/*user->pid; 			set by SolveUser()*/
-	/*user->rcv_enable;		set by SolveUser and a switch */
-        /*user-> mc_list_number;       	set by SolveUser() */
-        /*user->next;
-        /*user->prev;
-	/*user->url[MC_MAX_URL_SIZE+1];	set when i rcv url ot goto */
-	/*user->player_goto_time;	"	"		   */
-	/*user->my_goto_time;		"	"		   */
-	/*user->len_alias;		set when i rcv alias */
-	/*user->alias[MC_MAX_ALIAS_SIZE+1];  "		"    */
-        /*user->win ;			set to NULL byt SolveUser() */
 	user->url_id = alldata->url_id;
         user->last_rcv_time = user->last_sender_time = t;/*Last time i hear him */
 	user->my_fdata_time = t;   	/* Last msg rcv by this user*/
@@ -558,124 +361,9 @@ void McActionAllData(Mcs_alldata* alldata)
 		strcpy(user->url,"Url Path Not Available Yet");
 		u_is_upd++;
 	}
-
 	num_eo = alldata->num_eo;
-	if( num_eo == 0){		/* URL */
-		strcpy(user->url,alldata->data);
-		McUpdMcList(user);	/* MAJ de la mc_liste */
-		return;
-	}
-	if(u_is_upd)
-		McUpdMcList(user);	/* MAJ de la mc_liste dans le cas d'un*/
-					/* petit nouveau */
-
 	win = user->win;		/* la mo_window du user */
 	if(user->neo == 0){	/* allocate space in 'user'*/
-		user->neo = alldata->nombre_eo;
-		user->seo = (unsigned int *) malloc(user->neo * 
-							sizeof(unsigned int));
-		user->eos = (char**) malloc(user->neo * sizeof(char *));
-		user->filename = (char**) malloc(user->neo * sizeof(char *));
-		user->pds = (McPacketData*) malloc(user->neo * 
-							sizeof(McPacketData));
-		for(i=0; i < user->neo; i++){
-			user->seo[i] = 0;
-			user->eos[i] = NULL;
-			user->filename[i] = NULL;
-			user->pds[i].nalloc = 0;
-			user->pds[i].nbre_rcv = 0;
-			user->pds[i].pdata = NULL;
-		}
-	}
-	seo = alldata->seo;
-	nombre_packet = alldata->nombre_packet;
-	num_packet = alldata->num_packet;
-	data = alldata->data;
-	len_data = alldata->len_data;
-	if (user->eos[num_eo] != NULL ) 	 /* on a deja tout eu */
-		return;
-	if(user->pds[num_eo].pdata == NULL ){ /* initialise pointeur */
-		user->pds[num_eo].pdata = (char **) malloc(nombre_packet *
-						sizeof(char*));
-		for(i=0; i< nombre_packet;i++)
-			user->pds[num_eo].pdata[i]=NULL;
-		user->pds[num_eo].nalloc = nombre_packet;
-		user->seo[num_eo] = seo;
-	}
-#ifdef MDEBUG
-	printf ("rcv data for num_eo %d, num_packet %d\n",
-		num_eo,num_packet);
-#endif
-	if (user->pds[num_eo].pdata[num_packet] != NULL) /* we have it */
-		return;
-	/* update the data and test if complete */
-	user->pds[num_eo].pdata[num_packet] = (char*) malloc (MC_PACKET_SIZE);
-	memcpy(user->pds[num_eo].pdata[num_packet],data,len_data);
-	user->pds[num_eo].nbre_rcv++;
-#ifdef MDEBUG
-	printf("num_eo = %d , nbre_rvc/nalloc = %d/%d\n",
-		num_eo, user->pds[num_eo].nbre_rcv,user->pds[num_eo].nalloc);
-#endif
-	if( user->pds[num_eo].nbre_rcv < user->pds[num_eo].nalloc )
-		return;			/* not enought data */
-	if (user->pds[num_eo].nbre_rcv > user->pds[num_eo].nalloc ){
-		printf("Ca merde dans le nombre de packet\007\n");
-		return;
-	}
-
-	/* Assemble le packet et faire le necessaire dans Mosaic */
-	switch (num_eo) {
-	case 1:		/* le texte */
-		user->eos[1] =(char*)malloc(user->pds[1].nalloc * MC_PACKET_SIZE);
-		tmp = user->eos[1];
-		for(i = 0; i< user->pds[1].nalloc; i++){ /* reassemble packet */
-			memcpy(tmp, user->pds[1].pdata[i],MC_PACKET_SIZE);
-			tmp = tmp + MC_PACKET_SIZE;
-			free(user->pds[1].pdata[i]);
-			user->pds[1].pdata[i] = NULL;
-		}
-		free(user->pds[1].pdata);
-		user->pds[1].pdata = NULL;
-		user->pds[1].nalloc = user->pds[1].nbre_rcv = 0;
-		/* in user->eos[1] we have the texte . put in Mosaic */
-		if (!user->rcv_enable) return;
-/* mettre la doc dans la widget html */
-/*
-		mo_do_window_text(
-			win,		/* an mo_window */ /*
-			user->url,	/* url */ /*
-			user->eos[1],	/* le texte */ /*
-			False,		/* register_visit */ /*
-			NULL,		/* ref */ /*
-			NULL,		/* last_modified */ /*
-			NULL);		/* expires */ /*
-*/
-		break;
-	default:		/* the embedded oject */
-#ifdef MDEBUG
-		printf("OBJECT is complete...! num_eo = %d\n",num_eo);
-#endif
-		if ( user->eos[1] == NULL ) { /* need to have the text before */
-			printf("Have object but not the TEXT\n");
-			return;
-		}
-		user->eos[num_eo] = (char*) malloc(user->pds[num_eo].nalloc * 
-							MC_PACKET_SIZE);
-		tmp = user->eos[num_eo];
-		for(i=0; i< user->pds[num_eo].nalloc; i++){/* reassemble packet */
-                        memcpy(tmp, user->pds[num_eo].pdata[i],MC_PACKET_SIZE);
-                        tmp = tmp + MC_PACKET_SIZE;
-			free(user->pds[num_eo].pdata[i]);
-			user->pds[num_eo].pdata[i] = NULL;
-                }
-		free(user->pds[num_eo].pdata);
-		user->pds[num_eo].pdata = NULL;
-		user->pds[num_eo].nalloc = user->pds[num_eo].nbre_rcv = 0;
-		if (!user->rcv_enable) return;
-/*		mo_do_window_text(win, user->url, user->eos[1], 
-                        False, NULL, NULL, NULL);     */
-                break;
-	}
 }
 
 /*
@@ -777,68 +465,6 @@ void McActionGotoIdData(McRtpGotoIdDataStruct * hgid)
 	}
 /* now goto */
 	HTMLGotoId(win->scrolled_win, hgid->html_goto_id,0);
-}
-
-/*
- * affiche le membre  dans la fenetre idoine
- */
-void McActionRtcpSdesCnameData(McRtcpSdesCnameDataStruct * rscd)
-{
-	unsigned int i;
-	char * data;
-	McUser * user;
-
-	/* Process a directive that we received by multicast. */
-	mo_window *win;
-        unsigned int ugmts;
-        IPAddr uip_addr;
-        unsigned short upid;
-	char * tmp;
-	char b[MC_MAX_ALIAS_SIZE+1];
-	time_t t;
-	int u_is_upd = 0;
-
-
-        if(ADDRCMP(rscd->ipaddr, mc_local_ip_addr) && (rscd->pid==mc_my_pid)){
-#ifdef MDEBUG
-		printf("McActionRtcpSdesCnameData: It's Me\n");
-#endif
-                return;			/* It's Me */
-	}
-	uip_addr = rscd->ipaddr;
-	upid =  rscd->pid;
-	user = SolveUser(uip_addr,upid);	/* get user struct*/
-	if (user == NULL){
-		fprintf(stderr,"McActionRtcpSdesCnameData: PB getting user\n");
-		return;
-	}
-	/* We know on Unix system that ip_addr/pid is unique in World */
-	/* now fill the 'user' structure with the 'rscd' struct */
-
-	t = time(NULL);
-        user->last_rcv_time = t;   		/* Last time i hear him */
-
-	/*user->ip_addr; 		set by SolveUser()*/
-	/*user->pid; 			set by SolveUser()*/
-	/*user->rcv_enable;		set by SolveUser and a switch */
-        /*user-> mc_list_number;       	set by SolveUser() */
-        /*user->next;
-        /*user->prev;
-	/*user->url[MC_MAX_URL_SIZE+1];	set when i rcv url ot goto */
-	/*user->player_goto_time;	"	"		   */
-	/*user->my_goto_time;		"	"		   */
-	/*user->len_alias;		set when i rcv alias */
-	/*user->alias[MC_MAX_ALIAS_SIZE+1];  "		"    */
-        /*user->win ;			set to NULL byt SolveUser() */
-	/*user->my_fdata_time = t;   	/* Last msg rcv by this user*/
-
-	if (strcmp(user->alias, rscd->alias) == 0)
-		return;			/* c'est la meme chose */
-
-	strcpy(user->alias,rscd->alias);
-	user->len_alias = rscd->len_alias;
-
-	McUpdMcList(user);	/* MAJ de la mc_liste */
 }
 
 void McActionRtcpLrmpNackAllData(McRtcpLrmpNackAllDataStruct * rlnad)

@@ -1,5 +1,4 @@
-/* MD5C.C - RSA Data Security, Inc., MD5 message-digest algorithm
- */
+/* MD5C.C - RSA Data Security, Inc., MD5 message-digest algorithm */
 
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
 rights reserved.
@@ -21,13 +20,13 @@ without express or implied warranty of any kind.
 
 These notices must be retained in any copies of any part of this
 documentation and/or software.
- */
+*/
 
 #include "md5-global.h"
 #include "md5.h"
 
-/* Constants for MD5Transform routine.
- */
+/* Constants for MD5Transform routine. */
+
 #define S11 7
 #define S12 12
 #define S13 17

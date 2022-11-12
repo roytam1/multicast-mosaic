@@ -1,9 +1,4 @@
-/* Author: Gilles Dauphin [Jan98]
- *
- * See the file "license.mMosaic" for information on usage and redistribution
- * of this file, and for a DISCLAIMER OF ALL WARRANTIES. 
- */
-
+/* G.D. [Jan98] */
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -50,21 +45,21 @@ IPAddr		uc_rtcp_addr_ip;
 unsigned short	uc_rtcp_addr_port = 0;
 
 			/* delay timer */
-unsigned long uc_rtcp_w_sdes_time = 20000; /* in millisec */
-unsigned long mc_rtcp_w_time = 4000; /* in millisec */
+unsigned long	uc_rtcp_w_sdes_time = 20000; 	/* in millisec */
+unsigned long	mc_rtcp_w_time = 4000;		/* in millisec */
 
 			/* Events */
-XtInputId		mc_rtp_r_input_id;
-XtInputId		mc_rtcp_r_input_id;
-XtInputId		uc_rtp_r_input_id;
-XtIntervalId		uc_rtcp_w_sdes_timer_id;
+XtInputId	mc_rtp_r_input_id;
+XtInputId	mc_rtcp_r_input_id;
+XtInputId	uc_rtp_r_input_id;
+XtIntervalId	uc_rtcp_w_sdes_timer_id;
 
-XtInputId		uc_rtcp_r_input_id;
-XtIntervalId		mc_rtcp_w_timer_id;
+XtInputId	uc_rtcp_r_input_id;
+XtIntervalId	mc_rtcp_w_timer_id;
 
-XtIntervalId		mc_write_rtp_data_timer_id;
+XtIntervalId	mc_write_rtp_data_timer_id;
 
-u_int32_t		rtp_init_time;
+u_int32_t	rtp_init_time;
 
 		/* callbacks */
 static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id);
@@ -73,61 +68,27 @@ static void McRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id);
 static void UcRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id);
 
 		/* Actions */
-static void McSendNewDoc(char *fname, char *aurl_wa, MimeHeaderStruct *mhs);
-static void McSendNewObject(char *fname, char *aurl_wa, MimeHeaderStruct *mhs);
-static void McSendNewErrorObject(char *aurl, int status_code);
+static void McSendNewObject(char *fname, char *aurl, MimeHeaderStruct *mhs,
+	DependObjectTab dot, int ndo, int stateless, int *moid_ret);
+static void McSendNewErrorObject(char *aurl, int status_code,
+	int * moid_ret);
+static void McSendNewState(mo_window * win, int moid_ref, DependObjectTab dot, int ndo);
 
-
-DocEntry *mc_local_docs = NULL;
 
 int mc_len_alias = 0;
 
-int mc_local_url_id = -1;
+int mc_local_state_id = -1;
 int mc_local_object_id = -1;
-int mc_state_report_url_id = -1; 
-int mc_state_report_o_id = -1; 
-int mc_state_report_len = 0;
 
-/*
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/param.h>
-#include <signal.h>
+int mc_status_report_state_id = -1;
+int mc_status_report_object_id = -1;
 
-#include "../libhtmlw/HTML.h"
-#include "../libhtmlw/HTMLP.h"
-#include "../src/gui-documents.h"
-#include "mc_rtp.h"
-#include "mc_misc.h"
-#include "mc_action.h"
-#include "vir_cursor.xbm"
-
-static XtIntervalId 		mc_send_all_data_in_bd_time_out_id;
-static XtIntervalId 		mc_send_hear_beat_time_out_id;
-static XtIntervalId 		mc_send_goto_id_time_out_id;
-XtIntervalId		mc_check_senderstime_time_out_id;
-XtIntervalId		mc_check_rcvstime_time_out_id;
-Pixmap			VirCursorPix;
-GC			gc_vc;
-*/
-
-/*
-McGlobalEo *		mc_global_embedded_object_tab= NULL;
-unsigned int		mc_global_eo_count = 0 ;
-int			mc_fdwrite;
-int			mc_rtcp_fdwrite;
-*/
 
 /* initialisation of multicast datas structure */
 /* called in gui.c after we open the first Mosaic window */
 /* this start the multicast in listen mode only */
 void McInit(mo_window * win)
 {
-	XGCValues gcv;
-	unsigned long gcm;
-	unsigned long fg;
-	unsigned long bg;
 	char * s;
 	unsigned short port;
 	struct in_addr ina;
@@ -150,10 +111,10 @@ void McInit(mo_window * win)
 	mc_rtp_addr_port = htons(port);
 	mc_rtcp_addr_port = htons(port + 1);
 
-	if (mMosaicAppData.mc_debug)
-		printf("dest/port: %s/%d, ttl=%d\n",
-			mMosaicAppData.mc_dest, port,
+#ifdef DEBUG_MULTICAST
+	printf("dest/port: %s/%d, ttl=%d\n", mMosaicAppData.mc_dest, port,
 			mMosaicAppData.mc_ttl);
+#endif
 #ifdef IPV6
 /* inet_pton () */
 	if( ascii2addr(AF_INET6,mMosaicAppData.mc_dest,&mc_rtp_addr_ip_group) == -1){
@@ -174,11 +135,9 @@ void McInit(mo_window * win)
 	
 
 /* initialise global variable for Multicast */
-/*	mMosaicAppData.mc_debug; */
 /*	mMosaicAppData.mc_sess_name; */
 /*	mMosaicAppData.mc_media_name; */
 /*	mMosaicAppData.mc_ttl; */
-/*	mMosaicAppData.mc_alias_name; */
 /*mc_dest become mc_rtp_addr_ip_group and mc_rtp_addr_port */
 	if( mMosaicAppData.mc_alias_name == NULL ){
 		mMosaicAppData.mc_alias_name = (char*) malloc(MC_MAX_SDES_NAME_LEN + 1);
@@ -188,7 +147,6 @@ void McInit(mo_window * win)
 	if (strlen(mMosaicAppData.mc_alias_name) >= MC_MAX_SDES_NAME_LEN )
 		mMosaicAppData.mc_alias_name[MC_MAX_SDES_NAME_LEN] = '\0';
 	mc_len_alias = strlen(mMosaicAppData.mc_alias_name);
-	win->mc_callme_on_new_doc = NULL;
 	win->mc_callme_on_new_object = NULL;
 	win->mc_callme_on_error_object = NULL;
 
@@ -295,11 +253,14 @@ void McStartSender(mo_window * main_win)
 {
 	mc_send_win = main_win;
 /* for collecting data */
-	main_win->mc_callme_on_new_doc = McSendNewDoc;
-	main_win->mc_callme_on_new_object = McSendNewObject;
+	main_win->mc_callme_on_new_object = McSendNewObject; /* html or image */
 	main_win->mc_callme_on_error_object = McSendNewErrorObject;
-	mc_local_url_id = -1;
-	mc_local_docs = NULL;	/* table of doc to send */
+	main_win->mc_callme_on_new_state = McSendNewState; /* new state */
+	mc_local_state_id = -1;
+
+/* Initialize multicast cache for sender */
+	McSenderCacheInit(mMosaicRootDirName);
+
 /* initialise sender part */
 	mc_fd_rtp_w = McOpenWrite(mc_rtp_addr_ip_group,mc_rtp_addr_port,
 		mMosaicAppData.mc_ttl);
@@ -314,10 +275,10 @@ void McStartSender(mo_window * main_win)
 /* add a callback on uc_fd_rtcp_r */
 	uc_rtcp_r_input_id = XtAppAddInput(mMosaicAppContext, uc_fd_rtcp_r,
                 (XtPointer)XtInputReadMask, UcRtcpReadCb, NULL);
-/* we reload, and via McSendNewDoc and McSendNewObject , on est prevenu
+/* we reload, and via McSendNewState and McSendNewObject , on est prevenu
  * qu'une nouvelle doc ou objet est chargee */
 	mo_reload_document (main_win->scrolled_win, (XtPointer) main_win, NULL);
-#ifdef MDEBUG
+#ifdef DEBUG_MULTICAST
 	printf(" in McStartSendHyperText ... setting is_send... 0\n");
 #endif
 /* Remarques:
@@ -326,55 +287,78 @@ void McStartSender(mo_window * main_win)
 */
 }
 
-/* we load a new doc in the sender window */
-/* copy and cache data for multicast. re-arrange data */
-static void McSendNewDoc(char *fname, char *aurl_wa, MimeHeaderStruct *mhs)
+static void McSendNewState(mo_window * win, int moid_ref, DependObjectTab dot, int ndo)
 {
-	int rearm_timer = mc_rtp_packets_list ? False : True;
+	MimeHeaderStruct mhs;
+	int stateid =0;
 
-/* a new doc or reloading */
-	mc_local_url_id++;
-	mc_local_object_id = 0;
-	McCreateDocEntry(fname, aurl_wa, mhs);
-	McDocToPacket(mc_local_url_id);	/* start to send this doc */
-				/* remember to re-schedule other timer */
-	if (rearm_timer == True){
-		mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
-                                mc_write_rtp_data_next_time,
-				McSendRtpDataTimeOutCb, NULL);
+	mc_local_state_id++;
+	stateid = mc_local_state_id;
+/* complete la partie mhs et creer un nouvelle etat */
+/* L'etat est dans un cache: peut etre recupere par un nouvel arrivant */
+/* qui demande un repair de cet etat */
+	mhs.state_id = stateid;
+	mhs.moid_ref = moid_ref;
+	mhs.n_do = ndo;
+	mhs.dot = dot;
+/* mhs_ret.is_stateless = True;*/
+
+	MakeSenderState(&mhs, stateid);
+	McSendState(stateid);
+}
+
+/* Un nouvel objet est charge dans la fenetre d'emission */
+/* fname contient les donnees recu via le protocol HTTP TCP/IP */
+/* mhs contient le MIME associe a ce fichier (partie head de HTTP) */
+/* aurl contient une url absolue avec les ponctuations, mais sans anchor */
+
+static void McSendNewObject(char *fname, char *aurl, MimeHeaderStruct *mhs,
+	DependObjectTab dot, int ndo, int stateless, int *moid_ret)
+{
+	int cache_found;
+	int moid = 0;
+	int stateid =0;
+	MimeHeaderStruct mhs_ret;
+	char * fname_ret;
+
+	cache_found = McSenderCacheFindData(aurl, &fname_ret, &mhs_ret);
+	*moid_ret = mhs_ret.moid_ref;	/* un object a toujours un moid */
+
+/* ### CAS d'une IMAGE par exemple */
+/* cet objet n'a pas de dependance (objet atomique)  */
+/* il ne decrit pas un etat */
+/* lui attribue un MOID si il n'en a pas deja un dans le cache multicast*/
+/* sinon le mettre dans le cache multicast avec son MOID */
+/* et son entete mhs(multicast) dans un fichier separe. */
+/* il faut faire ceci avant la decompression ou transformation du fichier
+/* ### CAS d'une page HTML sans frameset => stateless = True  */
+/* peut avoir des dependance */
+/* ### CAS d'une page HTML dans un frame => stateless = False */
+/* peut avoir des dependance */
+/* ### cas d'un FRAMESET => stateless = True et dot est != NULL */
+/* A obligatoirement au moins une dependance */
+
+	if (!cache_found) {
+		mc_local_object_id++;
+		moid = mc_local_object_id;
+		McSenderCachePutDataInCache(fname,aurl,mhs, moid, dot, ndo,
+			&fname_ret, &mhs_ret);
+		*moid_ret = mhs_ret.moid_ref;
+	}
+
+/* si stateless == TRUE */
+/* ajouter stateless dans la partie MIME */
+/* composer un etat */
+	if (stateless) {
+		abort();
+	}
+
+/* Si objet pas dans le cache , on peut maintenant envoyer l'objet */
+	if (!cache_found) {
+		McSendOject(moid);
 	}
 }
 
-
-static void McSendNewObject(char *fname, char *aurl, MimeHeaderStruct *mhs)
-{
-	int rearm_timer = mc_rtp_packets_list ? False : True;
-
-/* a new object */
-	mc_local_object_id++;
-	McCreateObjectEntry(fname, aurl, mhs);
-	McObjectToPacket(mc_local_url_id, mc_local_object_id);
-	if (rearm_timer == True){
-		mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
-                                mc_write_rtp_data_next_time,
-				McSendRtpDataTimeOutCb, NULL);
-	}
-}
-
-static void McSendNewErrorObject(char *aurl, int status_code)
-{
-	int rearm_timer = mc_rtp_packets_list ? False : True;
-
-/* a new oject as an error (empty oject) */
-	mc_local_object_id++;
-	McCreateErrorEntry(aurl, status_code);
-	McObjectToPacket(mc_local_url_id, mc_local_object_id);
-	if (rearm_timer == True){
-		mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
-                                mc_write_rtp_data_next_time,
-				McSendRtpDataTimeOutCb, NULL);
-	}
-}
 
 void RegisterSender(Source * s, RtpPacket *rs)
 {                       
@@ -412,8 +396,19 @@ static void UcRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 	}
 
 /* Show the source data in the window */
-	McUpdateDataSource(s, rs.is_end, rs.seqn=0, rs.rtp_ts, rs.ssrc,
-		rs.url_id, rs.o_id, rs.offset, rs.d, rs.d_len);
+	switch (rs.data_type){
+	case HTML_STATE_DATA_TYPE:
+		McUpdateDataSourceWithState(s, rs.is_eod, rs.seqn=0,
+			rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
+		break;
+	case HTML_OBJECT_DATA_TYPE:
+		McUpdateDataSourceWithObject(s, rs.is_eod, rs.seqn=0,
+                        rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
+		break;
+	default:
+		abort();        /* let me know !!! */
+
+	}
 }
 
 static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
@@ -428,10 +423,11 @@ static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
         len = McRead(mc_fd_rtp_r, &buf, &addr_from);
 	status = DewrapRtpData(buf, len, &rs);
         if (status <= 0 ) {
+#ifdef DEBUG_MULTICAT
 		fprintf(stderr, "error in RtpData Packet\n");
+#endif
                 return;
 	}
-
 	s = mc_rtp_demux( rs.ssrc, addr_from);
 
 /* do nothing until the source is well know */
@@ -443,8 +439,18 @@ static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 	}
 
 /* Show the source data in the window */
-	McUpdateDataSource(s, rs.is_end, rs.seqn, rs.rtp_ts, rs.ssrc,
-		rs.url_id, rs.o_id, rs.offset, rs.d, rs.d_len);
+	switch (rs.data_type){
+	case HTML_STATE_DATA_TYPE:
+		McUpdateDataSourceWithState(s, rs.is_eod, rs.seqn=0,
+			rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
+		break;
+	case HTML_OBJECT_DATA_TYPE:
+		McUpdateDataSourceWithObject(s, rs.is_eod, rs.seqn=0,
+                        rs.rtp_ts, rs.ssrc, rs.id, rs.offset, rs.d, rs.d_len);
+		break;
+	default:
+		abort();	/* let me know !!! */
+	}
 }
  
 static void UcRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
@@ -477,93 +483,99 @@ static void McRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 	McProcessRtcpData(buf, len, addr_from);
 }
 
+static void McSendNewErrorObject(char *aurl, int status_code,
+	int * moid_ret)
+{
+	int cache_found;
+	char * fname_ret;
+	MimeHeaderStruct mhs_ret;
+	int moid;
+
+        cache_found = McSenderCacheFindData(aurl, &fname_ret, &mhs_ret);
+	*moid_ret = mhs_ret.moid_ref;   /* un object a toujours un moid */
+					/* meme les erreurs !!! */
+	if (!cache_found) {
+		mc_local_object_id++;
+		moid = mc_local_object_id;
+		McSenderCachePutErrorInCache(aurl, status_code, moid,
+			&fname_ret, &mhs_ret);
+		*moid_ret = mhs_ret.moid_ref;
+	}
+/* Si objet pas dans le cache , on peut maintenant envoyer l'objet */
+	if (!cache_found) {            
+		McSendErrorOject(fname_ret, aurl, &mhs_ret, moid);
+	}                              
+}
+
+/*#include "vir_cursor.xbm"
+/*static XtIntervalId 		mc_send_goto_id_time_out_id;
+/*Pixmap			VirCursorPix;
+/*GC			gc_vc;
+/*	XGCValues gcv;		*/
+/*	unsigned long gcm;	*/
+/*	unsigned long fg;	*/
+/*	unsigned long bg;	*/
 /* ###########
-
-void McSendAllDataOnlyOnce(McSendDataStruct * d)
-{
-	int mask, omask;
-	int i;
-
-/* #### don't work yet #### */
-/*
-#ifdef SVR4
-	if( sighold(SIGUSR1) != 0){
-		perror("error in sig hold: ");
-	}
-#else
-	mask = sigmask(SIGUSR1);
-	omask = sigblock(mask);
-#endif
-
+/*void McSendAllDataOnlyOnce(McSendDataStruct * d)
+/*{
+/*	int mask, omask;
+/*	int i;
+/*#ifdef SVR4
+/*	if( sighold(SIGUSR1) != 0){
+/*		perror("error in sig hold: ");
+/*	}
+/*#else
+/*	mask = sigmask(SIGUSR1);
+/*	omask = sigblock(mask);
+/*#endif
 /*	McFillData( d,  mc_send_win);
-#ifdef MDEBUG
-	printf(" in McSendAllDataTimeOutCb ... setting is_send... 0\n");
-#endif
-	McSendAllDataInBandWidth(d);
-#ifdef SVR4
-	if( sigrelse(SIGUSR1) != 0) {
-		perror("error in sigrelse: ");
-	}
-#else
-	sigsetmask(omask);
-#endif
-}
-
+/*	McSendAllDataInBandWidth(d);
+/*#ifdef SVR4
+/*	if( sigrelse(SIGUSR1) != 0) {
+/*		perror("error in sigrelse: ");
+/*	}
+/*#else
+/*	sigsetmask(omask);
+/*#endif
+/*}
 /* create the virtual cursor */
+/*	hw = (HTMLWidget) win->scrolled_win;
+/*	fg = hw->html.foreground_SAVE;
+/*	bg = hw->html.background_SAVE;
+/*      	VirCursorPix = XCreatePixmapFromBitmapData (mMosaicDisplay,
+/*                     DefaultRootWindow(mMosaicDisplay),
+/*                       (char*)vir_cursor_bits, vir_cursor_width,
+/*                    vir_cursor_height, fg^bg, 0, 
+/*		DefaultDepth( mMosaicDisplay,
+/*		              DefaultScreen( mMosaicDisplay ) 
+/*		            ) );
+/*	gcm = GCFunction | GCForeground | GCPlaneMask | GCBackground |
+/*		GCSubwindowMode ;
+/*      	gcv.function = GXxor;
+/*     	gcv.foreground = /*fg ^ bg*/ /* 0;
+/*      	gcv.plane_mask = AllPlanes;
+/*    	gcv.background = 0;
+/*	gcv.subwindow_mode = IncludeInferiors;
 /*
-	hw = (HTMLWidget) win->scrolled_win;
-	fg = hw->html.foreground_SAVE;
-	bg = hw->html.background_SAVE;
-       	VirCursorPix = XCreatePixmapFromBitmapData (mMosaicDisplay,
-                       DefaultRootWindow(mMosaicDisplay),
-                       (char*)vir_cursor_bits, vir_cursor_width,
-                       vir_cursor_height, fg^bg, 0, 
-		DefaultDepth( mMosaicDisplay,
-		              DefaultScreen( mMosaicDisplay ) 
-		            ) );
-	gcm = GCFunction | GCForeground | GCPlaneMask | GCBackground |
-		GCSubwindowMode ;
-       	gcv.function = GXxor;
-       	gcv.foreground = /*fg ^ bg*/ /* 0;
-/*       	gcv.plane_mask = AllPlanes;
-       	gcv.background = 0;
-	gcv.subwindow_mode = IncludeInferiors;
-
-	gc_vc = XCreateGC(mMosaicDisplay,
-			XtWindow(mMosaicToplevelWidget),gcm,&gcv);
-*/
+/*	gc_vc = XCreateGC(mMosaicDisplay,
+/*			XtWindow(mMosaicToplevelWidget),gcm,&gcv);
 /* #### */
-/*
-void McSetCursorPos(Widget w, int x, int y)
-{
-	HTMLWidget hw = (HTMLWidget) w;
-	XCopyArea(mMosaicDisplay,VirCursorPix,XtWindow(hw->html.view),
-		gc_vc,0,0,vir_cursor_width,vir_cursor_height,
-		x,y);
-}
-
-*/
-
+/*void McSetCursorPos(Widget w, int x, int y)
+/*{
+/*	HTMLWidget hw = (HTMLWidget) w;
+/*	XCopyArea(mMosaicDisplay,VirCursorPix,XtWindow(hw->html.view),
+/*		gc_vc,0,0,vir_cursor_width,vir_cursor_height,
+/*		x,y);
+/*}
 /*#####################
 /*	if ( obj_entry = IsObjStillSent(aurl,mhs) ) { /* we still sent this obj*/
 /*			/* just reschedule SR. Un client est capable de
-			 * determine si cette objet est dans son cache ou pas */
-			/* send the header to help the client because */
-			/* maybe we reload and modify this object */
+/*			 * determine si cette objet est dans son cache ou pas */
+/*			/* send the header to help the client because */
+/*			/* maybe we reload and modify this object */
 /*		McScheduleSendHeaderOject(mc_local_object_id);
-		return;
-	}
+/*		return;
+/*	}
 /*####### case of navigation ########### */
 /* navigation in history never modify a doc or object... */
 /* juste update the 'RTPtimestamp' in SR. Back to the futur... */
-/*McSendOldDoc(...)
-{
-	DocEntry *doc_entry = NULL;
-
-	doc_entry = IsDocStillSend(aurl, mhs);
-	if ( doc_entry && ! reloading ) { /* dont resend */
-/*		McRescheduleSR(doc_entry);
-		return;
-	}
-}
-*/

@@ -481,8 +481,7 @@ works on my linux box, hopefully on solaris, too */
 
 	mMosaicBusyCursor = XCreateFontCursor (mMosaicDisplay, XC_watch);
 
-/* canvas data to create a mMosaic window */
-	mo_init_menubar();      /* definie les boutons avec cb etc... */
+	loadAgents();      /* Agent Spoofing */
 
 /* register balloon_action */
 	XtAppAddActions(mMosaicAppContext, balloon_action, 2);
@@ -504,7 +503,6 @@ works on my linux box, hopefully on solaris, too */
 	win = mo_make_window(NULL, mc_t);
 #ifdef MULTICAST
 	McInit(win);	/* Initialize the multicast database listen mode*/
-			/* mc_send_enable become 0 */
 #endif                               
 
 /* we have build an empty mo_window. Now we need to fill it with an HTML doc. */
@@ -515,6 +513,7 @@ works on my linux box, hopefully on solaris, too */
 	rds.ct = NULL;
 	rds.is_reloading = False;
 	rds.post_data = NULL;
+	rds.gui_action = HTML_LOAD_CALLBACK;
 	MMPafLoadHTMLDocInWin(win, &rds);
 
 /* GO ! */

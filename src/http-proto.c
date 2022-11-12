@@ -216,7 +216,6 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 	int client_status;
 	char *lf_ptr;
 	char *lfcrlf_ptr;
-	int doing_redirect;
 
 /* La requete est parti. On a une reponse (qques choses a lire). On regarde ce
  * qu'on doit faire et ou on en est. Autrement dit : dans quel etat on est,
@@ -305,6 +304,7 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 /* now Action on status. Decode full HTTP/1.0 response */
 
 		pafd->format_in = strdup("text/html");
+		pafd->http_status = server_status;
 		switch (server_status) {
 /* 1xx Informationnal */
 		case 100:
@@ -334,14 +334,11 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		case 202:	/* Accepted */
 		case 203:	/* Non-Authoritative Information */
 		case 204:	/* No-Content */
-				/* return_nothing = 1; */
 			break;
 		case 205:	/* Reset Content */
 		case 206:	/* Partial Content */
 			break;
 /* 3xx forms of redirection */
-/* We now support this in the parser, at least. */
-/* doing_redirect = 1; */
 		case 300:
 		case 301:
 		case 302:
@@ -451,18 +448,6 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 			return;
 		} /* Switch on server_status */
 
-/*		if (return_nothing) { /* return_nothing is high. */
-/*			(*target->isa->put_string) (target, "",appd);
-*		}
-*		if (doing_redirect) {
- * OK, now we've got the redirection URL temporarily stored in external variable
- * redirecting_url, exported from HTMIME.c, since there's no straightforward way
- * to do this in the library currently.  Do the right thing. */
-/*			status = HT_REDIRECTING;
-*		} else {
-*			status = HT_LOADED;
-*		}
-*/
 		pafd->read_stat = HAVE_READ_STATUS;
 		pafd->http_status = server_status;
 	}

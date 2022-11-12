@@ -96,20 +96,16 @@ typedef struct fcall_rec {
 * these enumeration values.
 *****/
 enum{
-        XmCR_HTML_ANCHORTRACK = 16384,          /* XmNanchorTrackCallback       */
-        XmCR_HTML_DOCUMENT,                                     /* XmNdocumentCallback          */
         XmCR_HTML_FORM,                                         /* XmNformCallback                      */
         XmCR_HTML_FRAMEDONE,                                        /* XmNframeCallback                     */
         XmCR_HTML_FRAMECREATE,                          /* XmNframeCallback                     */
         XmCR_HTML_FRAMEDESTROY,                         /* XmNframeCallback                     */
+	XmCR_HTML_FRAMESET_INIT,		/* XmNframeCallback */
         XmCR_HTML_IMAGEMAPACTIVATE,                     /* XmNimagemapCallback          */
         XmCR_HTML_IMAGEMAP,                                     /* XmNimagemapCallback          */
         XmCR_HTML_LINK,                                         /* XmNlinkCallback                      */
         XmCR_HTML_MODIFYING_TEXT_VALUE,         /* XmNmodifyVerifyCallback      */                      
         XmCR_HTML_MOTIONTRACK,                          /* XmNmotionTrackCallback       */              
-        XmCR_HTML_PARSER,                                       /* XmNparserCallback            */
-        XmCR_HTML_EVENT,                                        /* XmNeventCallback                     */
-        XmCR_HTML_EVENTDESTROY,                         /* XmNeventCallback                     */
         XmCR_HTML_OBJECT,                                       /* XmNobjectCallback            */
         XmCR_HTML_OBJECTCREATE,                         /* XmNobjectCallback            */
         XmCR_HTML_OBJECTDESTROY                         /* XmNobjectCallback            */
@@ -133,7 +129,8 @@ typedef struct _XmHTMLFrameCallbackStruct
         String src;                     /* requested document                                           */
         String name;            /* frame name                                                           */
         Widget html;            /* XmHTML widget id                                                     */
-        Boolean doit;           /* destroy/create vetoing flag                          */
+        Boolean doit;           /* destroy/create vetoing flag         */
+	int nframe;
 } XmHTMLFrameCallbackStruct;
 
 typedef struct form_rec {
