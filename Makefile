@@ -10,7 +10,7 @@
 #	- NetWinder (StrongArm based machine)
 #	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.6.1
+MCVER=3.6.2
 
 ##
 ## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
@@ -43,7 +43,7 @@ CC = CC
 # GCC : Linux Intel optimised (does not work well)
 #prereleaseflags = -O3 -fomit-frame-pointer -funroll-loops -finline-functions -m486 -malign-double
 # GCC : Linux, FreeBSD, NetBSD compiler flags (recommended)
-# prereleaseflags = -Wall -g
+#prereleaseflags = -Wall -g
 # Qnx
 #prereleaseflags = -Oeax
 # SGI Mipspro

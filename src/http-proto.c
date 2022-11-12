@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+
+#if defined(SOLARIS)
 #include <stropts.h>
-#include <sys/conf.h>
+#endif
 
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
@@ -238,7 +240,12 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 	server_version[0] = '\0';
 
 /* lire les donnes */
+#if defined(SOLARIS) 
 	n_message = ioctl(pafd->www_con_type->prim_fd, I_NREAD, &a_lire);
+#else
+	a_lire = sizeof(ibuf);
+/*	n_message = ioctl(pafd->www_con_type->prim_fd, FIONREAD, &a_lire); */
+#endif
 
 /*#define DEBUG_READ 1 */
 
