@@ -221,7 +221,7 @@ static int error_handler (Display *dsp, XErrorEvent *event)
 		return 0;
 	} else {
 		printf("Press RETURN\007\n");
-		gets(ans);
+		fgets(ans, sizeof(ans), stdin);
 /* All other errors are 'fatal'. */ 
 		XGetErrorText (dsp, event->error_code, buf, 128);
 		fprintf (stderr, "X Error: %s\n", buf);

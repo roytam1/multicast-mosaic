@@ -452,6 +452,7 @@ void HTExtensionMapInit (void)
 	HTSetSuffix(".xwd",	"image/x-xwindowdump", 1.0);
 	HTSetSuffix(".htm",	"text/html", 1.0);
 	HTSetSuffix(".html",	"text/html", 1.0);
+	HTSetSuffix(".shtml",   "text/html", 1.0);
 	HTSetSuffix(".text",	"text/plain", 1.0);
 	HTSetSuffix(".c",	"text/plain", 1.0);
 	HTSetSuffix(".cc",	"text/plain", 1.0);

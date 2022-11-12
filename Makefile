@@ -1,19 +1,19 @@
 # Toplevel Makefile for mMosaic.
-#This Release 3.4.5 compile on:
+#This Release 3.4.6 compile on:
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
 #	- FreeBSD3.1
 
-MCVER=3.4.5
+MCVER=3.4.6
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
 #### your compiler (ANSI required). And options
 #### Gnu C, C++, local C.
-CC = gcc
+#CC = gcc
 #CC = cc
-#CC = CC
+CC = CC
 
 # for building a shared lib
 #ldflags = -G
@@ -21,7 +21,7 @@ CC = gcc
 #### Linux Intel optimised (does not work well)
 #prereleaseflags = -O3 -fomit-frame-pointer -funroll-loops -finline-functions -m486 -malign-double
 #### Standard gcc Linux FreeBSD NetBSD compiler flags (recommanded )
-prereleaseflags = -Wall -g -fwritable-strings  -O0
+#prereleaseflags = -Wall -g -fwritable-strings  -O0
 # for building a shared lib
 # prereleaseflags = $prereleaseflags -fPIC
 #### Qnx
@@ -29,7 +29,7 @@ prereleaseflags = -Wall -g -fwritable-strings  -O0
 #### Sun Workshop C Compiler
 #prereleaseflags = -v -g
 #### Sun Workshop C++ Compiler
-#prereleaseflags = +w -g
+prereleaseflags = +w -g
 
 # for building a shared lib
 # prereleaseflags = $prereleaseflags -fPIC
@@ -155,9 +155,9 @@ krbflags  = $(krb4flags) $(krb5flags)
 krblibs   = $(krb4libs) $(krb5libs) 
 
 #### MULTICAST support
-#mcdir = $(PWD)/libmc
-#mcflag = -I$(mcdir) -DMULTICAST
-#mclib = $(mcdir)/libmc.a
+mcdir = $(PWD)/libmc
+mcflag = -I$(mcdir) -DMULTICAST
+mclib = $(mcdir)/libmc.a
 
 #### APROG support (obsolete)
 #adir = $(PWD)/libaprog

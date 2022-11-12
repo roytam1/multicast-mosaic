@@ -77,6 +77,8 @@ if (pcc->cw_only) {	/* compute width only , dont create Element*/
 		septr = eptr;
 		while( septr && (septr->type != E_CR) ){
 			septr->x = septr->x + adjx;
+			if(septr->widget_data) /* Also move the widget */
+				septr->widget_data->x = septr->x;
 			septr = septr->prev;
 		}
 		pcc->x = pcc->x + adjx;

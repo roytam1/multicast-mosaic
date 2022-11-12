@@ -136,6 +136,9 @@ static XtResource resources[] = {
 	{ WbNbodyColors, WbCBodyColors, XtRBoolean, sizeof (Boolean),
 	  XtOffset (HTMLWidget, html.body_colors), XtRString, "True"
 	},
+	{ WbNbodyImages, WbCBodyImages, XtRBoolean, sizeof (Boolean),
+	  XtOffset (HTMLWidget, html.body_images), XtRString, "True"
+	},
 	{ WbNanchorUnderlines, WbCAnchorUnderlines, XtRInt, sizeof (int),
 	  XtOffset (HTMLWidget, html.num_anchor_underlines), XtRString, "0"
 	},

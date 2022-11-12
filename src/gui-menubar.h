@@ -19,6 +19,7 @@ extern void mo_print_document(Widget w, XtPointer clid, XtPointer calld);
 extern void mo_delay_object_loads(Widget w, XtPointer clid, XtPointer calld);
 extern void mo_expand_object_current(Widget w, XtPointer clid, XtPointer calld);
 extern void mo_body_color(Widget w, XtPointer clid, XtPointer calld);
+extern void mo_body_image(Widget w, XtPointer clid, XtPointer calld);
 extern void mo_search(Widget w, XtPointer clid, XtPointer calld);
 extern void mo_news_groups(Widget w, XtPointer clid, XtPointer calld);
 extern void mo_news_index(Widget w, XtPointer clid, XtPointer calld);

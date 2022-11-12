@@ -1094,6 +1094,17 @@ void mo_body_color(Widget w, XtPointer clid, XtPointer calld)
 		NULL);
 }
 
+void mo_body_image(Widget w, XtPointer clid, XtPointer calld)
+{                                    
+       mo_window * win = (mo_window*) clid;
+                                     
+       win->body_image = (win->body_image ? 0 : 1);
+       XtVaSetValues(win->scrolled_win,  
+               WbNbodyImages, win->body_image,
+               NULL);                
+}                                    
+  
+
 void mo_expand_object_current(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
@@ -1252,8 +1263,9 @@ static XmxMenubarStruct undr_menuspec[6] = {
 };
 
 /* Options Menu */
-static XmxMenubarStruct opts_menuspec[16] = {
+static XmxMenubarStruct opts_menuspec[17] = {
 	{ "#Body Color", 'y',	mo_body_color,	NULL, NULL },
+	{ "#Body Image", 'y',   mo_body_image,  NULL, NULL },
 	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
 
 	{ "#Delayed Image",'D',	mo_delay_object_loads,NULL, NULL },

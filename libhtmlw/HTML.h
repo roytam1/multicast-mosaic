@@ -487,6 +487,7 @@ struct ele_rec {
 #define WbNpointerMotionCallback "pointerMotionCallback"
 #define WbNview			 "view"
 #define WbNbodyColors            "bodyColors"
+#define WbNbodyImages            "bodyImages"
 /*
  * New resource classes
  */

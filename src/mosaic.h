@@ -178,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.4.5"
+#define MO_VERSION_STRING "3.4.6"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@sig.enst.fr"
@@ -498,6 +498,7 @@ typedef struct _mo_window {
 	int delay_object_loads;
 /*SWP*/
 	Boolean body_color;
+	Boolean body_image;
 	int image_view_internal;
 
 /* PLB */

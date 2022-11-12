@@ -572,9 +572,14 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 					}
 				}
 			}
-			if (mark->s_picd) {
+			if (hw->html.body_images && mark->s_picd) {
 				hw_do_bg(hw,pcc,mark);
-			}
+			} else {        
+                                /* Make sure these are clear SAM */
+                                hw->html.bg_image=0;
+                                hw->html.bgmap_SAVE=None;
+                                hw->html.bgclip_SAVE=None;
+                        } 
 /*##### */
 		        InDocHead = 0;   /* end <head> section */
 			pcc->ignore = 0;

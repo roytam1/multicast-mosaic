@@ -6,7 +6,7 @@
 #include "util.h"
 
 static char *const days[7]= {"Sun","Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-static char month_snames[12][4] = {
+static char *const month_snames[12] = {
 	"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
 
 static char ts[50];

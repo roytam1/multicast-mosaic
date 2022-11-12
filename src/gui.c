@@ -2326,6 +2326,13 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 		XmxRSetToggleState (win->menubar, (char*)mo_body_color,
 			win->body_color ? XmxSet : XmxNotSet);
 
+                win->body_image = parent->body_image;
+                XtVaSetValues(win->scrolled_win,
+                        WbNbodyImages, win->body_image,
+                        NULL);        
+                XmxRSetToggleState (win->menubar, (char*)mo_body_image,
+                        win->body_image ? XmxSet : XmxNotSet);
+
 		win->delay_object_loads = parent->delay_object_loads;
 		XmxRSetSensitive (win->menubar, (char*)mo_expand_object_current,
 			win->delay_object_loads ? XmxSensitive : XmxNotSensitive);
@@ -2347,6 +2354,12 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 		NULL);
 	XmxRSetToggleState (win->menubar, (XtPointer)mo_body_color,
 			(win->body_color ? XmxSet : XmxNotSet));
+
+        XtVaGetValues(win->scrolled_win,
+                WbNbodyImages, &(win->body_image),
+                NULL);                
+        XmxRSetToggleState (win->menubar, (XtPointer)mo_body_image,
+                        (win->body_image ? XmxSet : XmxNotSet));
 /* init paf data */
 	win->pafd = NULL;
 	return win;

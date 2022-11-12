@@ -209,6 +209,7 @@ typedef struct _HTMLPart {
 	Pixel			activeAnchor_bg;
 
         Boolean                 body_colors;
+	Boolean                 body_images;
 
 	int			max_colors_in_image;
 	int			bg_image;
