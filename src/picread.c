@@ -121,8 +121,8 @@ unsigned char *_MMReadXpmPixmap( FILE *fp, char *datafile,
 	}
 	pixels = (unsigned char *)malloc((*w) * (*h));
 	if (pixels == NULL) {
-		fprintf(stderr, "Not enough memory for data.\n");
-		return((unsigned char *)NULL);
+		fprintf(stderr, "Out of memory\n");
+		abort();
 	}
 
 	line[0] = '\0';

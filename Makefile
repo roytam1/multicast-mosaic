@@ -1,75 +1,71 @@
 # Toplevel Makefile for mMosaic.
-#This Release 3.4.1 compile on:
-#	- a Linux debian sparc with Lesstif
+#This Release 3.4.2 compile on:
+#	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
+#	- NetBSD 1.4 sparc
+#	- FreeBSD3.1
 
-MCVER=3.4.1
+MCVER=3.4.2
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
-#### your compiler (ANSI required).
+#### your compiler (ANSI required). And options
 #### Gnu C, C++, local C.
 #CC = gcc
-#CC = CC
+#CC = cc
 
-CC = cc
+CC = CC
 
-#### On BSDI, OSF1, IBM , SunOS4this should be ranlib.
-# RANLIB = ranlib
-#### ranlib for SVR4, indy , linux Qnx, Solaris2.x
-
-RANLIB = /bin/true
-
-#### Linux Intel optimised
+#### Linux Intel optimised (does not work well)
 #prereleaseflags = -O3 -fomit-frame-pointer -funroll-loops -finline-functions -m486 -malign-double
+#### Standard gcc Linux FreeBSD NetBSD compiler flags (recommanded )
+#prereleaseflags = -Wall -g -fwritable-strings  -O0
 #### Qnx
 #prereleaseflags = -Oeax
 #### Sun Workshop C Compiler
 #prereleaseflags = -xsb -v -g
 #### Sun Workshop C++ Compiler
-#prereleaseflags = +w -g
-#### Standard Linux compiler flags
-prereleaseflags = -Wall -g -fwritable-strings  -O0
 
+prereleaseflags = +w -g
 
-#### Linker Flags -- Primarily for linking static on linux-elf.
-#ldflags = -static
-#### linux static
-#ldflags = -s
-#### QNX
-#ldflags = -N256k
-#ldflags =
+#### On NetBSD, FreeBSD, BSDI, OSF1, IBM , SunOS4this should be ranlib.
+#RANLIB = ranlib
+#### ranlib for SVR4, indy , linux Qnx, Solaris2.x
+RANLIB = /bin/true
+
 
 #### Random system configuration flags.
 #### --> *** For Motif 1.2 ON ANY PLATFORM, do -DMOTIF1_2 *** <--
-#### For IBM AIX 3.2, do -D_BSD
 #### For NeXT, do -DNEXT
-#### For HP/UX, do -Aa -D_HPUX_SOURCE -DMOTIF1_2
-#### For Dell SVR4, do -DSVR4
-#### For SunOS4 -DSUNOS
-#### For Solaris, do -DSVR4 -DSOLARIS
-#### For Esix 4.0.4 and Solaris x86 2.1, do -DSVR4
-#### For Convex whatever, do -DCONVEX
-#### For SCO ODT 3.0, do -DSCO -DSVR4 -DMOTIF1_2
-#### For Motorola SVR4, do -DSVR4 -DMOTOROLA -DMOTIF1_2
-#### For Linux -Dlinux -DLINUX -DMOTIF1_2
-#### For OSF1 -DMOTIF1_2 -std1 -DDECOSF1
-#### For Qnx -DMOTIF1_2 -DQNX
-#sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
+#### For HP/UX, do -Aa -D_HPUX_SOURCE
+#### For SCO ODT 3.0, do -DSCO -DSVR4
+#### For Motorola SVR4 , Esix 4.0.4, do -DSVR4
+#### For Linux 
+#sysconfigflags = -DLINUX -Dlinux -DSVR4
+#### For OSF1 -std1 -DDECOSF1
+#### For Qnx  -DQNX
+#### for FreeBSD
+#sysconfigflags = -DFreeBSD -DMOTIF1_2
+#### for NetBSD
+#sysconfigflags = -DNETBSD -DMOTIF1_2
+#### For Solaris2.5 & 2.5.1, do
+sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
 
-sysconfigflags = -DLINUX -Dlinux -DSVR4 -DMOTIF1_2
+#### Add some debug option for developper
+#### -DHTMLTRACE for verbose about html tag
+#sysconfigflags += -DHTMLTRACE
 
 #### System libraries SunOS.
 # syslibs = -lPW -lsun -lmalloc
+#### For Sun's with no DNS:
+# syslibs = -lresolv
+# syslibs = -lresolv -l44bsd
 #### For AIX 3.2
 # syslibs = -lPW -lbsd
 #### For most other Motif platforms:
 # syslibs = -lPW
 #### For Sun's and Ultrix and HP and BSD/386:
 # syslibs =
-#### For Sun's with no DNS:
-# syslibs = -lresolv
-# syslibs = -lresolv -l44bsd
 #### For SCO ODT:
 # syslibs = -lPW -lsocket -lmalloc
 #### For Dell SVR4:
@@ -79,73 +75,57 @@ sysconfigflags = -DLINUX -Dlinux -DSVR4 -DMOTIF1_2
 #### For QNX 4.XX
 #syslibs = -lsocket
 #### For Solaris (2.x) and Motorola SVR4  .
-#syslibs = -lnsl -lsocket -lgen
+syslibs = -lsocket -lnsl
 
 #### X include file locations -- if your platform puts the X include
 #### files in a strange place, set this variable appropriately.  Else
 #### don't worry about it.
-#### HP X11R4 version:
-# xinc = -I/usr/include/Motif1.1 -I/usr/include/X11R4
-#### HP X11R5 version:
 # xinc = -I/usr/include/Motif1.2 -I/usr/local/X11R5/include
-#### NeXT version:
 # xinc = -I/usr/include/X11
-#### BSD/386
 # xinc = -I/usr/X11/include
-#### Solaris 2.x (Patched X11R5 and Motif libs)
-#xinc = -I/usr/openwin/include -I/usr/dt/include
-#xinc = -I/usr/openwin/include -I$(HOME)/mbone-dev/mMosaic/lesstif-0.77/include
 #### Linux Debian
+#xinc = -I/usr/X11R6/include
+#FreeBSD
+#xinc = -I/usr/X11R6/include -I$(HOME)/fpkg/include
+#### Solaris 2.x (Patched X11R5 and Motif libs)
 
-xinc = -I/usr/X11R6/include
+xinc = -I/usr/openwin/include -I/usr/dt/include
 
 #### X library locations.
-# xlibs = -lXm_s -lXmu -lXt_s -lX11_s
-#### For HP-UX 8.00:
-# xlibs = -L/usr/lib/Motif1.1 -lXm -L/usr/lib/X11R4 -lXmu -lXt -lX11
+#### For nearly everyone:
+# xlibs = -lXm -lXmu -lXt -lX11
 #### For HP-UX 9.01: The X11R5 libraries are here on our systems
 # xlibs = -L/usr/lib/Motif1.2 -lXm -L/usr/lib/X11R5 -L/usr/lib/X11R4 -lXmu -lXt -lX11
 #### For NeXT:
 # xlibs = -L/usr/lib/X11 -lXm -lXmu -lXt -lX11
 #### For Dell SVR4:
 # xlibs = -L/usr/X5/lib -lXm -lXmu -lXt -lXext -lX11
-#### For Solaris (2.x) (Use static to go from machine to machine)
-xlibs = -R/usr/openwin/lib -L/usr/openwin/lib 
-xlibs += -L/usr/dt/lib -R/usr/dt/lib -lXm
-xlibs += -lXmu -lXt
-xlibs += -lXext -lX11
-xlibs += -lm
-#### For SCO ODT 3.0 (I'm told that -lXtXm_s is *not* a typo :-):
-# xlibs = -lXtXm_s -lXmu -lX11_s
-#### For nearly everyone else:
-# xlibs = -lXm -lXmu -lXt -lX11
-#### For BSD/386:
-# xlibs = -L/usr/X11/lib -lXm -lXmu -lXt -lX11
-#### X11R6 Linux
-# xlibs = -L/usr/X11/lib -lXm -lXmu -lXt -lXext -lX11 -lSM -lICE -lXpm -lm
 #### For Motorola SVR4:
 # xlibs = -lXm -lXmu -lXt -lXext -lX11 -lm
 #### QNX
 #xlibs =  -L/usr/X11/lib -lXm_s -lXt_s -lX11_s -lXqnx_s  -lXt -lXmu -lXext
-# Linux Debian with Lesstif
-
-xlibs = -L/usr/X11R6/lib -lXm -lXmu -lXt -lXext -lX11 -lm 
+#### Linux Debian, FreeBSD, NetBSD with Lesstif
+#xlibs = -L/usr/X11R6/lib -lXm -lXmu -lXt -lXext -lX11 -lm 
+#### For Solaris (2.x) (Use static to go from machine to machine)
+xlibs = -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/dt/lib -R/usr/dt/lib
+xlibs += -lXm -lXmu -lXt -lXext -lX11 -lm
 
 #### PNG SUPPORT
 #### For inline PNG support, the following should be defined:
 #### The libraries currently used are PNGLIB 0.99d and ZLIB 1.0.9
 
-pngdir = /usr
+zlibdir = /usr/local/lib
+pngdir = /usr/local
 pnglibdir = $(pngdir)/lib
 pngincludedir = /$(pngdir)/include
-pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/libz.a
+pnglibs = $(pnglibdir)/libpng.a $(zlibdir)/libz.a
 pngflags =  -I$(pngincludedir) -DHAVE_PNG
 
 #### JPEG SUPPORT
 #### For inline JPEG support, the following should be defined:
 #### The library used is Independent JPEG Group (IJG's) jpeg-6a.  
 
-jpegdir = /usr
+jpegdir = /usr/local
 jpeglibs = $(jpegdir)/lib/libjpeg.a
 jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
 

@@ -15,6 +15,7 @@
 #include <dirent.h>
 #include <sys/time.h>
 
+
 #if defined(SVR4) && !defined(SCO) && !defined(linux)
 #include <sys/filio.h>
 #include <unistd.h>
@@ -24,6 +25,10 @@
 #include <sys/ioctl.h>	/* mjr 12/Jan/1998 : for FIONBIO FNDELAY */
 #include <sys/fcntl.h>
 #include <stdlib.h>
+#endif
+
+#if defined(NETBSD) || defined(FreeBSD)
+#include <sys/filio.h>
 #endif
 
 #ifndef FD_SETSIZE
@@ -50,10 +55,6 @@ extern int errno;
 #endif
 
 static void doc_connect_succes(PafDocDataStruct * pafd);
-
-/*	Module-Wide variables */
-
-static char *hostname=0;		/* The name of this host */
 
 /*	Produce a string for an Internet address
 **
@@ -136,7 +137,7 @@ static int HTParseInet (SockA *sin, const char *str)
 /* manage only non numeric adresses */
 /* RFC 2133 */
 /*          phost = gethostbyname2 (host,AF_INET6);
-/* not yet on solaris */
+ * not yet on solaris */
 
 	if (cached_host && (strcmp (cached_host, host) == 0)) {
 		memcpy(&sin->sin6_addr,
@@ -524,7 +525,7 @@ void PostRequestAndGetTypedData( char * aurl, PafDocDataStruct * pafd)
  * that when we issue the connect we should NOT have to wait for the accept
  * on the other end.
  */
-#ifdef linux
+#if defined(linux)
 	status = fcntl(soc,F_SETFL,O_NONBLOCK); /* set socket to non-blocking */
 #else
 	status = ioctl(soc, FIONBIO, &one);

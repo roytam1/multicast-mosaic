@@ -135,9 +135,6 @@ static XtResource resources[] = {
   { "wwwTrace", "WwwTrace", XtRBoolean, sizeof (Boolean),
       offset (wwwTrace), XtRString, "False" },
 
-  { "htmlwTrace", "HtmlwTrace", XtRBoolean, sizeof (Boolean),
-      offset (htmlwTrace), XtRString, "False" },
-
   { "srcTrace", "SrcTrace", XtRBoolean, sizeof (Boolean),
       offset (srcTrace), XtRString, "False" },
 

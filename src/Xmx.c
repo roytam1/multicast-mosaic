@@ -1294,7 +1294,7 @@ void _XmxRCreateMenubar (Widget menu, XmxMenubarStruct *menulist,
 					(XtPointer)menulist[_i].data);
 				continue;
 			} else { /* regular button */
-				XmString xmstr = XmStringCreateLtoR
+				xmstr = XmStringCreateLtoR
 					(menulist[_i].namestr, 
 					XmSTRING_DEFAULT_CHARSET);
 				XmxSetArg (XmNlabelString, (XtArgVal)xmstr);

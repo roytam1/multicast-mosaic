@@ -766,7 +766,7 @@ do_presentation:
 	return;
 }
 
-static ProcessMailcapFile(char *file)
+static int ProcessMailcapFile(char *file)
 {
 	FILE *fp;
 
@@ -944,10 +944,10 @@ got_subtype:
   access = URLParse (url, "", PARSE_ACCESS);
   host = URLParse (url, "", PARSE_HOST);
 
-/*  if (st) {
-      /* Uppercase type, to start sentence. */
-/*      t[0] = toupper(t[0]);
-      /* Crop x- from subtype. */
+  if (st) {
+/* Uppercase type, to start sentence. */
+/*      t[0] = toupper(t[0]); */
+/* Crop x- from subtype. */
 /*      if (st[0] == 'x' && st[1] == '-')
         st = &(st[2]);
       sprintf (line, "%s%s, type %s, on host %s, via %s.", t, 
@@ -966,8 +966,8 @@ got_subtype:
 /*
 static int partial_wildcard_matches (char * r1, char * r2)
 {
-  /* r1 is the presentation format we're currently looking at out
-     of the list we understand.  r2 is the one we need to get to. */
+/* r1 is the presentation format we're currently looking at out
+   of the list we understand.  r2 is the one we need to get to. */
 /*  char *s1, *s2, *subtype1 = NULL, *subtype2 = NULL;
   int i;
 
@@ -980,11 +980,9 @@ static int partial_wildcard_matches (char * r1, char * r2)
         /* Now s1 contains the main type and subtype1 contains the subtype. */
 /*        goto done1;
     }
-
 done1:
   if (!subtype1)
     goto nope;
-  
   /* Bail if we don't have a wildcard possibility. */
 /*  if (subtype1[0] != '*')
     goto nope;

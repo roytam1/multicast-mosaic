@@ -74,35 +74,6 @@ char *ctime(const time_t *);
 #endif
 #endif
 
-#if defined(NEED_SUNOS_PROTOS)
-#if defined(__cplusplus)
-extern "C" {
-#endif
-struct timeval;
-struct timezone;
-struct msghdr;
-struct sockaddr;
-int bind(int s, struct sockaddr*, int);
-int close(int);
-int connect(int s, struct sockaddr*, int);
-int gethostid();
-int gethostname(char*, int);
-int getpid();
-int getsockname(int, struct sockaddr*, int*);
-int gettimeofday(struct timeval*, struct timezone*);
-int ioctl(int fd, int request, ...);
-int recv(int, void*, int len, int flags);
-int recvfrom(int, void*, int len, int flags, struct sockaddr*, int*);
-int send(int s, void*, int len, int flags);
-int sendmsg(int, struct msghdr*, int);
-int setsockopt(int s, int level, int optname, void* optval, int optlen);
-int socket(int, int, int);
-int strcasecmp(const char*, const char*);
-#if defined(__cplusplus)
-}
-#endif
-#endif
-
 #ifdef WIN32
 
 #include <winsock.h>

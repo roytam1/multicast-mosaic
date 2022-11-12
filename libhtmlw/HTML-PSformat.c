@@ -1466,12 +1466,10 @@ static void PSimage(HTMLWidget hw, struct ele_rec *eptr, int fontfamily)
  *	3: lucida
  */
 String ParseTextToPSString(HTMLWidget	 	hw, 
-			   struct ele_rec	*elist,
 			   struct ele_rec	*startp,
 			   struct ele_rec	*endp,
 			   int			start_pos, 
 			   int			end_pos,
-			   int			space_width,
 			   int			lmargin,
 			   int			fontfamily,
 			   char   		*url,

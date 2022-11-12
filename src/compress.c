@@ -1,8 +1,12 @@
 #include <stdio.h>
+#ifdef FreeBSD
+#include <sys/time.h>
+#endif
 #ifndef __QNX__
 #include <sys/resource.h>
 #endif
 #include <unistd.h>
+
 
 #include "../libhtmlw/HTML.h"
 #include "../src/mosaic.h"

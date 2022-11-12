@@ -119,7 +119,6 @@ typedef struct {
 	float screen_gamma;
 					/* newer in 2.7 */
 	Boolean wwwTrace;
-	Boolean htmlwTrace;
 	Boolean srcTrace;
 	Boolean install_colormap;
 	int urlExpired;
@@ -179,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.4.1"
+#define MO_VERSION_STRING "3.4.2"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@sig.enst.fr"
@@ -262,15 +261,8 @@ typedef enum {
 #if defined(VMS)
 #define MO_MACHINE_TYPE "VMS"
 #endif
-#if defined(NeXT)
-#define MO_MACHINE_TYPE "NeXT"
-#endif
 #if defined (SCO)
-#if defined (_SCO_DS)
-#define MO_MACHINE_TYPE "SCO OpenServer 5"
-#else /* _SCO_DS */
 #define MO_MACHINE_TYPE "SCO Unix"
-#endif /* _SCO_DS */
 #endif /* SCO */
 
 #ifndef MO_MACHINE_TYPE

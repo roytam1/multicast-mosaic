@@ -489,8 +489,9 @@ void MMPopFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc)
 	FontStack *ofstack;
 
 	if (hw->html.font_stack->next == NULL) {
-		if (htmlwTrace)
-			fprintf(stderr, "Warning, pop empty font stack!\n");
+#ifdef HTMLTRACE
+		fprintf(stderr, "Warning, pop empty font stack!\n");
+#endif
 		return;
 	}
 	ofstack = hw->html.font_stack;

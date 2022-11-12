@@ -260,7 +260,9 @@ static void clean_text(char *txt)
 			ptr++;
 		}
 		if (*ptr == '\0') {
+#ifdef HTMLTRACE
 			fprintf(stderr,"warning: unterminated & (%s)\n", start);
+#endif
 			ptr = start;
 			*ptr2++ = *ptr++;
 /* Copy forward remaining text until next escape sequence */
@@ -517,7 +519,9 @@ struct mark_up * HTMLLexem( char *str)
 /* star is on '<' */
 		mark = get_mark(start, &end);
 		if (mark == NULL) {
+#ifdef HTMLTRACE
 			fprintf(stderr, "error parsing mark, missing '>'\n");
+#endif
 			mark = (struct mark_up *)malloc(sizeof(struct mark_up));
 			CHECK_OUT_OF_MEM(mark);
 			mark->type = M_END_STATE;	/* it's finish */
@@ -1544,7 +1548,9 @@ static MarkType ParseMarkType(char *str)
 	} else if (!strcasecmp(str, MT_NOFRAMES)){
 		type = M_NOFRAMES;
 	} else {
+#ifdef HTMLTRACE
 		fprintf(stderr, "warning: unknown mark (%s)\n", str);
+#endif
 		type = M_UNKNOWN;
 	}
 	*tptr = tchar;

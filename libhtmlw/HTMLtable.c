@@ -336,8 +336,10 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 		AddPadAtEndColList(cl,n_rl_free_cell - ncell_for_this_cl); 
 	}
 	if (ncell_for_this_cl > n_rl_free_cell){
+#ifdef HTMLTRACE
 		printf("BUG: number of TD/TH is false for this TABLE or span count is false.\n");
 		printf("     padding the TABLE!!! Adjust....\n");
+#endif
 		AddPadAtEndRowList(rl,
 				ncell_for_this_cl - n_rl_free_cell );
 		/* de low_cur_line_num inclu a row_count-1 mettre FREE */
@@ -464,7 +466,9 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 		free(tptr);
 	}
 	if ( (tptr=ParseMarkTag(mptr->start,MT_TABLE,"ALIGN")) ) {
+#ifdef HTMLTRACE
 		printf("[MakeTable] %s not yet implemented\n","ALIGN");
+#endif
 		free(tptr);
 	}
 	if ( (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLSPACING")) ) {
@@ -523,12 +527,16 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			caption_end_mark = caption_end_mark->next;
 		}
 		if (!end_caption_found){
+#ifdef HTMLTRACE
 			printf("</CAPTION> not found\n");
+#endif
 			return NULL;
 		}
 		lt.caption_start_mark = caption_start_mark;
 		lt.caption_end_mark = caption_end_mark;
+#ifdef HTMLTRACE
 		printf("<CAPTION> not yet fully implemented\n");
+#endif
 	}
 
 	/* now find the first <TR> */
@@ -566,7 +574,9 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 		if( ((sm->type == M_TD) || (sm->type == M_TH))&&
 		    (!sm->is_end) ) { 		/* <TH> or <TD> */
 			if (!tr_start_found){
+#ifdef HTMLTRACE
 				printf("A <TD> <TH> is outside a <TR>\n");
+#endif
 				psm = sm;
 				sm = sm->next;
 				continue;
@@ -610,13 +620,17 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 		if( ((sm->type == M_TD) || (sm->type == M_TH))&&
 		    (sm->is_end) ) { 		/* </TH> or </TD> */
 			if (!tr_start_found){
+#ifdef HTMLTRACE
                                 printf("A <TD> <TH> is outside a <TR>\n");
+#endif
 				psm = sm;
 				sm = sm->next;
                                 continue;
                         }
 			if (!td_start_found){
+#ifdef HTMLTRACE
                                 printf("A </TD> is without a <TD>\n");
+#endif
 				psm = sm;
 				sm = sm->next;
                                 continue;
@@ -651,9 +665,12 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 					FreeColList(col_list);
 					col_list = NULL;
 					td_count =0;
-				}else{
+				}
+#ifdef HTMLTRACE
+				else{
 					printf("<TR> without<TD>: empty line!\n");
 				}
+#endif
 			}
 			tr_start_found = 1;
 			tr_start_mark = sm;
@@ -663,7 +680,9 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 		}
 		if ((sm->type == M_TR) && (sm->is_end)){
 			if (!tr_start_found){
+#ifdef HTMLTRACE
 				printf("A </TR> without <TR>\n");
+#endif
 				psm = sm;
 				sm = sm->next;
 				continue;
@@ -683,9 +702,12 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 				FreeColList(col_list);
 				col_list = NULL;
 				td_count =0;
-			} else {
+			}
+#ifdef HTMLTRACE
+			 else {
 				printf("<TR> without<TD>: empty line!\n");
 			}
+#endif
 			tr_start_found = 0;
 			psm = sm;
 			sm = sm->next;
@@ -712,7 +734,9 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 					col_list = NULL;
 					td_count =0;
 				} else {
+#ifdef HTMLTRACE
 					printf("<TR> without<TD> and </TABLE> see!: Buggy TABLE !!!\n");
+#endif
 					break;
 				}
 			}
@@ -736,7 +760,9 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 
 			tt = FirstPasseTable(hw, sm, pcc); /* be recursive */
 			if (!tt){
+#ifdef HTMLTRACE
 				printf("Buggy Table in Table !\n");
+#endif
 				sm->type = M_BUGGY_TABLE; /* change type */
 						/* don't rescan */
 			} else {
@@ -751,7 +777,9 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 		sm=sm->next;
 	}
 	if(!tb_end_mark){
+#ifdef HTMLTRACE
 		printf("Probleme the end table </TABLE> is not see\n");
+#endif
 		if(col_list)
 			FreeColList(col_list);
 		if(row_list)
@@ -904,7 +932,9 @@ void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc,
 	if (!sm->t_p1){		/* do the prepasse */
 		t = FirstPasseTable(hw,sm,pcc);	/* the First passe */
 		if (!t){
+#ifdef HTMLTRACE
 			printf("Invalid table structure !\n");
+#endif
 			return;
 		}
 		sm->t_p1= t;
@@ -1112,7 +1142,10 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 					+ t->cellPadding + 1;
 				break;
 			default:
+#ifdef HTMLTRACE
 				printf("BUG: Unknow cell type in TABLE\n");
+#endif
+				break;
 			}
 			cell_offset += add_offset ;
 /* if (cellule_seule ou cellule_fin_rowspan) */
@@ -1182,10 +1215,6 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	LinefeedPlace(hw,t->tb_end_mark,pcc);
 
 	sm->t_p1=NULL;
-#if 0
-	if (htmlwTrace)
-		TableDump(t);
-#endif
 }
 
 /* put this in widget ! #### */
@@ -1443,28 +1472,3 @@ h=%d\n"
 	}                              
 }
 
-#if 0
-
-/* print out the table to stdout */
-void TableDump( TableInfo *t)
-{
-	register int x,y;
-
-	if (htmlwTrace) {
-		fprintf(stderr,"Table dump:\n");
-		fprintf(stderr,"Border width is %d\n",t->borders);
-		fprintf(stderr,"numColumns=%d, numRows=%d\n",
-				t->num_col,t->num_row);
-		fprintf(stderr,"----------------------------------------\n");
-		for (y = 0; y < t->num_row; y++ ) {
-			fprintf(stderr,"|");
-			for (x = 0; x < t->num_col; x++ ) {
-				fprintf(stderr,"colWidth=%d,rowHeight=%d | ",
-					t->row_list->cells_lines[y][x].width,
-				       t->row_list->cells_lines[y][x].height);
-			}
-			fprintf(stderr,"\n----------------------------------\n");
-		}
-	}
-}
-#endif

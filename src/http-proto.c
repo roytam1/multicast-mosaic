@@ -213,7 +213,6 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 	int nfields;
 	char * deb_from, *deb_to, *end_from;
 	int lcut;
-	int client_status;
 	char *lf_ptr;
 	char *lfcrlf_ptr;
 
@@ -377,15 +376,15 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 			return;
 		case 402:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Payment Required");
+				"Code 402:\nPayment Required\nBad news :-(");
 			return;
 		case 403:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Forbiden");
+				"Code 403:\nForbiden");
 			return;
 		case 404:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Not found");
+				"Code 404:\nNot found");
 			return;
 		case 405:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
@@ -425,17 +424,20 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 			return;
 		case 414:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Request Uri Too Large");
+				"Code 414:\nRequest Uri Too Large");
 			return;
 		case 415:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Unsupported Media Type");
+				"Code 415:\nUnsupported Media Type");
 			return;
 /* Server Error */
+		case 503:
+			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
+				"Code 503:\nService Unavailable\nCheck address or proxy");
+			return;
 		case 500:
 		case 501:
 		case 502:
-		case 503:
 		case 504:
 		case 505:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,

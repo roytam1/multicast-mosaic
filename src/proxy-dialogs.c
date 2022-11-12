@@ -24,6 +24,7 @@
 #endif
 #include <string.h>
 #include "proxy.h"
+#include "URLParse.h"
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
 #include "gui.h"
@@ -1093,13 +1094,17 @@ void ClearTempBongedProxies()
 }
 
 static char senv[100];
-static struct Proxy proxy_env;
+static struct Proxy *http_proxy_env = NULL;
+static struct Proxy *ftp_proxy_env = NULL;
+static struct Proxy *gopher_proxy_env = NULL;
+static struct Proxy *wais_proxy_env = NULL;
 
 struct Proxy * GetProxy(char *acc)
 {
 	struct Proxy *p = proxy_list;
 	char * port;
 	char * renv;
+	char *hap;
 
 	if (acc == NULL)
 		return NULL;
@@ -1114,17 +1119,65 @@ struct Proxy * GetProxy(char *acc)
 	renv = getenv(senv);
 	if (renv == NULL)
 		return NULL;
-	if ((port = strchr(renv,':')) != NULL) {
-		*port++ = 0;
-		proxy_env.port = port;
-	} else {
-		if      (!strcmp(acc,"http"))    proxy_env.port = "80";
-		else if (!strcmp(acc,"gopher"))  proxy_env.port = "70";
-		else if (!strcmp(acc,"ftp"))     proxy_env.port = "21";
-		else if (!strcmp(acc,"wais"))    proxy_env.port = "210";
+
+	if (!strcmp(acc,"http")) {
+		if (http_proxy_env)
+			return http_proxy_env;
+		http_proxy_env = (struct Proxy *) malloc(sizeof(struct Proxy ));
+		hap = URLParse(renv, "", PARSE_HOST);
+		if (port=strchr(hap, ':')) {
+			*port++ = 0;
+			http_proxy_env->port = port;
+		} else {
+			http_proxy_env->port = "80";
+		}
+		http_proxy_env->address = hap;
+		return http_proxy_env;
 	}
-	proxy_env.address = renv;
-	return &proxy_env;
+		
+	if (!strcmp(acc,"gopher")) {
+		if (gopher_proxy_env)
+			return gopher_proxy_env;
+		gopher_proxy_env = (struct Proxy *) malloc(sizeof(struct Proxy ));
+		hap = URLParse(renv, "", PARSE_HOST);
+		if (port=strchr(hap, ':')) {
+			*port++ = 0;
+			gopher_proxy_env->port = port;
+		} else {
+			gopher_proxy_env->port = "70";
+		}
+		gopher_proxy_env->address = hap;
+		return gopher_proxy_env;
+	}
+	if (!strcmp(acc,"ftp")) { 
+		if (ftp_proxy_env)
+			return gopher_proxy_env;
+		ftp_proxy_env = (struct Proxy *) malloc(sizeof(struct Proxy ));
+		hap = URLParse(renv, "", PARSE_HOST);
+		if (port=strchr(hap, ':')) {
+			*port++ = 0;
+			ftp_proxy_env->port = port;
+		} else {
+			ftp_proxy_env->port = "21";
+		}
+		ftp_proxy_env->address = hap;
+		return ftp_proxy_env;
+	}
+	if (!strcmp(acc,"wais")) {
+		if (wais_proxy_env)
+			return wais_proxy_env;
+		wais_proxy_env = (struct Proxy *) malloc(sizeof(struct Proxy ));
+		hap = URLParse(renv, "", PARSE_HOST);
+		if (port=strchr(hap, ':')) {
+			*port++ = 0;
+			wais_proxy_env->port = port;
+		} else {
+			wais_proxy_env->port = "210";
+		}
+		wais_proxy_env->address = hap;
+		return wais_proxy_env;
+	}
+	return NULL;
 }
 
 struct Proxy * FindProxyEntry(struct EditInfo *pEditInfo, char *txt)

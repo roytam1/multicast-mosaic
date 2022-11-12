@@ -797,7 +797,7 @@ void ftp_read_third_fd_file_cb(XtPointer clid, int * fd, XtInputId * id)
 void ftp_read_third_fd_dir_nlstlla_cb(XtPointer clid, int * fd, XtInputId * id)
 {
 	PafDocDataStruct * pafd = (PafDocDataStruct *) clid;
-	int len_w, syserror, len_read;
+	int syserror, len_read;
 	char info[256];         /* large enought... */
 	char ibuf[IBUF_SIZE];
 	char *ct;
@@ -1034,7 +1034,7 @@ void ftp_read_third_fd_dir_nlst_cb(XtPointer clid, int * fd, XtInputId * id)
 {
 	/*only name*/
 	PafDocDataStruct * pafd = (PafDocDataStruct *) clid;
-	int len_w, syserror, len_read; 
+	int syserror, len_read; 
 	char info[256];         /* large enought... */
 	char ibuf[IBUF_SIZE];          
 	char *ct;                      
@@ -1323,7 +1323,7 @@ link*/
  
 static int ParseFileSizeAndName(char *szBuffer, char *szFileName, char *szSize)
 {
-        char *szPtr,*szName,*szEndPtr,*szLength;
+        char *szPtr;
         static char *tmpbuf=NULL;
 
         if (!szBuffer)

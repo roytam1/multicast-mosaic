@@ -55,7 +55,9 @@ void BeginForm(HTMLWidget hw, struct mark_up ** mptr,
 
 	if(pcc->cw_only){	/* just compute the size of a form */
 		if(pcc->in_form) { /* we are still in a form. Error!!! */
+#ifdef HTMLTRACE
 			fprintf(stderr,"Warning: A Form in Form !!!\n");
+#endif
 			return;
 		}
 		pcc->in_form = True;
@@ -63,7 +65,9 @@ void BeginForm(HTMLWidget hw, struct mark_up ** mptr,
 	}
 
 	if ( pcc->in_form || pcc->cur_form){ /* its an error */
+#ifdef HTMLTRACE
 		fprintf(stderr,"Warning: A Form in Form !!!\n");
+#endif
 		return;
 	}
 

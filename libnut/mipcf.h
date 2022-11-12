@@ -14,6 +14,10 @@
 # include <sys/types.h>
 #endif
 
+#if defined(NETBSD) || defined(FreeBSD)
+#include <db.h>
+#endif
+
 #include <netinet/in.h>
 
 #include "mosaic-types.h"

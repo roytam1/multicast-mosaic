@@ -35,8 +35,6 @@ typedef struct link_rec {
 	char *href;
 } LinkInfo;
 
-extern int htmlwTrace;
-
 /*
  * Public functions
  */

@@ -286,7 +286,7 @@ void main (int argc, char **argv, char **envp)
 
 	InitChildProcessor();
 
-#if defined(SVR4) || defined(__QNX__)
+#if defined(SVR4) || defined(__QNX__) || defined(NETBSD) || defined(FreeBSD)
 	signal(SIGCHLD, (void (*)(int))ChildTerminated);
 #else
 	signal(SIGCLD, (void (*)())ChildTerminated);
@@ -355,7 +355,6 @@ void main (int argc, char **argv, char **envp)
 	HTExtensionMapInit();
 
 /* debug options */
-        htmlwTrace = mMosaicAppData.htmlwTrace;
         mMosaicSrcTrace = mMosaicAppData.srcTrace;
 
 /* First get the hostname. Then find out the full name, if possible. */

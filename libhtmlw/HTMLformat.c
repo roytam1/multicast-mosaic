@@ -949,10 +949,14 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		break;
 #endif
 	case M_MAP:
-		printf("Tag <MAP> not yet implemented\n");
+#ifdef HTMLTRACE
+		fprintf(stderr,"Tag <MAP> not yet implemented\n");
+#endif
 		break;
 	case M_AREA:
-		printf("Tag <AREA> not yet implemented\n");
+#ifdef HTMLTRACE
+		fprintf(stderr,"Tag <AREA> not yet implemented\n");
+#endif
 		break;
 
 	case M_HTML:			/* don't know what to do with */
@@ -974,8 +978,10 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	case M_THEAD:
 		break;
 	default:
+#ifdef HTMLTRACE
 		fprintf(stderr,"[TriggerMarkChanges] Unknow marker %d\n",
 			mark->type);
+#endif
 		break;
 	}
 } /* TriggerMarkChanges() */
@@ -1176,7 +1182,7 @@ void RefreshElement(HTMLWidget hw,struct ele_rec *eptr)
 		TableRefresh(hw, eptr);
 		break;
 	case E_CELL_TABLE:
-		printf("Refresh E_CELL_TABLE\n");
+/*		printf("Refresh E_CELL_TABLE\n"); */
 		break;
 #ifdef APROG
 	case E_APROG:
@@ -1189,7 +1195,9 @@ void RefreshElement(HTMLWidget hw,struct ele_rec *eptr)
 		break;
 #endif
 	default:
+#ifdef HTMLTRACE
 		fprintf(stderr,"[PlaceLine] Unknow Element %d\n",eptr->type);
+#endif
 		break;
 	}
 }
@@ -1432,8 +1440,7 @@ char * ParseTextToString( struct ele_rec *startp, struct ele_rec *endp,
  * to show headers and the like.
  * space_width and lmargin tell us how many spaces to indent lines.
  */
-char * ParseTextToPrettyString( HTMLWidget hw,
-	struct ele_rec *startp, struct ele_rec *endp,
+char * ParseTextToPrettyString(struct ele_rec *startp, struct ele_rec *endp,
 	int start_pos, int end_pos,
 	int space_width, int lmargin)
 {

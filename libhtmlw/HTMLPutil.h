@@ -46,8 +46,7 @@ extern char * 		ParseTextToString(
 				struct ele_rec *startp, struct ele_rec *endp,
         			int start_pos, int end_pos,
         			int space_width, int lmargin);
-extern char * 		ParseTextToPrettyString( HTMLWidget hw,
-        			struct ele_rec *startp,
+extern char * 		ParseTextToPrettyString(struct ele_rec *startp,
 				struct ele_rec *endp,
         			int start_pos, int end_pos,
         			int space_width, int lmargin);
@@ -89,10 +88,10 @@ extern void		WidgetRefresh( HTMLWidget hw, struct ele_rec *eptr);
 
 
 
-extern String 		ParseTextToPSString(HTMLWidget hw, struct ele_rec *el,
+extern String 		ParseTextToPSString(HTMLWidget hw,
                            	struct ele_rec *startp, struct ele_rec *endp,
-                           	int start_pos, int end_pos, int space_width,
-                           	int lmargin, int fontfamily,
+                           	int start_pos, int end_pos, int lmargin,
+                           	int fontfamily,
                            	char *url, char *time_str);
 
 

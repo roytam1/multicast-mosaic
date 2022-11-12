@@ -564,16 +564,27 @@ static HTMLWidget getRootFrameset(HTMLWidget hw)
         return(frame);
 }
 
+/* length is :
+	nn	: number of pixel
+	nn%	: relative to lenght available
+	n*	: option relative to remaining space
+*/
 
 static void adjustFramesetRows(HTMLWidget parent, int *p_width, int *p_height)
 {
         HTMLWidget child = NULL ;
         int width, height ;
         int cum_fixed_size = 0, cum_rel_size = 0, cum_opt_size = 0 ;
-        int nb_opt = 0;
+        int nb_opt = 0, nb_rel =0, nb_fix =0;
 
-        /* Begin with fixed-sized children */
-        cum_fixed_size = 0 ;
+/* Begin with fixed-sized children */
+/* Then do relative-sized children */
+/* Finally, end up with optional-sized children */
+        cum_fixed_size = 0 ;	/* pixel */
+        cum_rel_size = 0 ;	/* % */
+        cum_opt_size = 0 ;	/* * */
+/* IL FAUT AJUSTER LES POURCENT POUR QUE CA TIENNE... */
+
         for (child = parent->html.frame_children ; child != NULL ; child = child->html.frame_next) {
                 if(IS_FRAME_SIZE_FIXED(child)) {
                         width = *p_width ;
@@ -582,62 +593,105 @@ static void adjustFramesetRows(HTMLWidget parent, int *p_width, int *p_height)
                         child->html.frame_width = width ;
                         child->html.frame_height = height ;
                         cum_fixed_size += height ;
-                }
-        }
+			nb_fix++;
+                } else if(IS_FRAME_SIZE_RELATIVE(child)) {
 
-        /* Then do relative-sized children */
-        cum_rel_size = 0 ;
-        for (child = parent->html.frame_children ; child != NULL ; child = child->html.frame_next) {
-                if(IS_FRAME_SIZE_RELATIVE(child)) {
                         width = *p_width ;
                         height = child->html.frame_size_s * (*p_height) / 100 ;
                         adjustFrame(child, &width, &height);
                         child->html.frame_width = width ;
                         child->html.frame_height = height ;
                         cum_rel_size += height ;
-                }
+			nb_rel++;
+                } else if(IS_FRAME_SIZE_OPTIONAL(child)) {
+/* count how many optional they are */
+                        ++nb_opt;
+			child->html.frame_height = 1 ;
+			child->html.frame_width = *p_width;
+		}
         }
 
-/* Finally, end up with optional-sized children */
-        cum_opt_size = 0 ;
+/* tout l'espace n'est pas utilise */
+	if ( cum_fixed_size + cum_rel_size < *p_height ) {
+/* distribue le reste sur les espaces optionnel */
+        	if(nb_opt > 0) {
+                	int cum_size, remain_size, mean_opt_size ;
 
-/* count how many optional they are */
-        for (child = parent->html.frame_children ; child != NULL ; child = child->html.frame_next)
-                if(IS_FRAME_SIZE_OPTIONAL(child))
-                        ++nb_opt;
-
-        if(nb_opt > 0) {
-                int cum_size, remain_size, mean_opt_size ;
-
-/*****
- * stupid hack : equal sizes for all optional fields.
- * FIXME! find sth smarter than that!
- *****/
-                cum_size = cum_fixed_size + cum_rel_size ;
-                remain_size = *p_height - cum_size ;
-                if(remain_size <= nb_opt)
-                        remain_size = nb_opt ;
-                mean_opt_size = remain_size / nb_opt ;
+                	cum_size = cum_fixed_size + cum_rel_size ;
+                	remain_size = *p_height - cum_size ;
+                	if(remain_size <= nb_opt)
+                        	remain_size = nb_opt ;
+                	mean_opt_size = remain_size / nb_opt ;
 
                 /* go adjust */
-                for(child = parent->html.frame_children ; child != NULL ; child = child->html.frame_next) {
-                        if(IS_FRAME_SIZE_OPTIONAL(child)) {
-                                width = *p_width ;
-                                height = mean_opt_size ;
-                                adjustFrame(child, &width, &height);
-                                child->html.frame_width = width ;
-                                child->html.frame_height = height ;
-                                cum_opt_size += height ;
-                        }
-                }
-        }
-/* end of optional-sized children mgt */
+                	for(child = parent->html.frame_children ; child != NULL ; child = child->html.frame_next) {
+                        	if(IS_FRAME_SIZE_OPTIONAL(child)) {
+                                	width = *p_width ;
+                                	height = mean_opt_size ;
+                                	adjustFrame(child, &width, &height);
+                                	child->html.frame_width = width ;
+                                	child->html.frame_height = height ;
+                        	}
+                	}
+        	} else if ( cum_rel_size >0 ) {
+/* pas d'espace optionel, distribue sur les % */ /* go adjust */
+			int to_add;
 
-#ifdef FEEDBACK_SIZES
-        *p_height = cum_fixed_size + cum_rel_size + cum_opt_size ;
-        if(*p_height <= 0)
-                *p_height = 1 ;
-#endif
+			to_add = (*p_height - cum_fixed_size - cum_rel_size) / nb_rel;
+			for(child = parent->html.frame_children ; child != NULL ;
+child = child->html.frame_next) {
+				if(IS_FRAME_SIZE_RELATIVE(child)){
+					width = *p_width ;
+					height = child->html.frame_height + to_add;
+					adjustFrame(child, &width, &height);
+					child->html.frame_width = width ;
+					child->html.frame_height = height ;
+				}
+			}
+		} else { /* distribue sur les pixels */
+			int to_add;
+
+			to_add = (*p_height - cum_fixed_size) / nb_fix;
+			for(child = parent->html.frame_children ; child != NULL ;
+child = child->html.frame_next) { 
+				width = *p_width ;
+				height = child->html.frame_height + to_add;
+				adjustFrame(child, &width, &height);
+				child->html.frame_width = width ;
+				child->html.frame_height = height ;
+			}
+		}
+	} else if (cum_fixed_size + cum_rel_size > *p_height) { /* too much space is allocated */
+				/* on reduit l'espace */
+		if (cum_fixed_size <= *p_height ) { /* on reduit le % */
+			int to_sub;
+
+			to_sub =(*p_height - cum_fixed_size );
+			for(child = parent->html.frame_children ; child != NULL ;
+child = child->html.frame_next) {
+				if(IS_FRAME_SIZE_RELATIVE(child)){
+					width = *p_width ;
+					height = (child->html.frame_height * to_sub)/cum_rel_size;
+					if ( height<1)
+						height = 1;
+					adjustFrame(child, &width, &height);
+					child->html.frame_width = width ;
+					child->html.frame_height = height ;
+				}
+			}
+		} else { /* to much pixel */
+			for(child = parent->html.frame_children ; child != NULL ;
+child = child->html.frame_next) { 
+				width = *p_width;
+				height = (child->html.frame_height* *p_height)/(cum_fixed_size+cum_rel_size);
+				if ( height<1)
+                                	height = 1;
+				adjustFrame(child, &width, &height);
+				child->html.frame_width = width ; 
+                                child->html.frame_height = height ;
+			}
+		}
+	}
 }
 
 static void adjustFramesetColumns(HTMLWidget parent, int *p_width, int *p_height)
@@ -645,10 +699,14 @@ static void adjustFramesetColumns(HTMLWidget parent, int *p_width, int *p_height
         HTMLWidget child = NULL ;
         int width, height ;
         int cum_fixed_size = 0, cum_rel_size = 0, cum_opt_size = 0 ;
-        int nb_opt = 0;
+        int nb_opt = 0, nb_rel =0, nb_fix =0;
 
-        /* Begin with fixed-sized children */
+/* Begin with fixed-sized children */
+/* Then do relative-sized children */
+/* Finally, end up with optional-sized children */
         cum_fixed_size = 0 ;
+        cum_rel_size = 0 ;
+        cum_opt_size = 0 ;
         for(child = parent->html.frame_children ; child != NULL ; child = child->html.frame_next) {
                 if(IS_FRAME_SIZE_FIXED(child)) {
                         width = child->html.frame_size_s ;
@@ -657,65 +715,109 @@ static void adjustFramesetColumns(HTMLWidget parent, int *p_width, int *p_height
                         child->html.frame_width = width ;
                         child->html.frame_height = height ;
                         cum_fixed_size += width ;
-                }
-        }
-
-        /* Then do relative-sized children */
-        cum_rel_size = 0 ;
-        for (child = parent->html.frame_children ; child != NULL ; child = child->html.frame_next) {
-                if(IS_FRAME_SIZE_RELATIVE(child)) {
+			nb_fix++;
+                } else if(IS_FRAME_SIZE_RELATIVE(child)) {
                         width = child->html.frame_size_s * (*p_width) / 100 ;
                         height = *p_height ;
                         adjustFrame(child, &width, &height);
                         child->html.frame_width = width ;
                         child->html.frame_height = height ;
                         cum_rel_size += width ;
-                }
-        }
-
-        /* Finally, end up with optional-sized children */
-        cum_opt_size = 0 ;
-
-        /* count how many optional they are */
-        for (child = parent->html.frame_children ; child != NULL ; child = child->html.frame_next)
-                if(IS_FRAME_SIZE_OPTIONAL(child))
+			nb_rel ++;
+                } else if(IS_FRAME_SIZE_OPTIONAL(child)) {
                         ++nb_opt;
+			child->html.frame_height = *p_height;
+			child->html.frame_width = 1;
+		}
+	}
 
-        if(nb_opt > 0) {
-                int cum_size, remain_size, mean_opt_size ;
+/* tout l'espace n'est pas utilise */  
+        if ( cum_fixed_size + cum_rel_size < *p_width ) {
 
-/*****
- * stupid hack : equal sizes for all optional fields.
- * FIXME! find sth smarter than that!
- *****/
-                cum_size = cum_fixed_size + cum_rel_size ;
-                remain_size = *p_width - cum_size ;
-                if(remain_size <= nb_opt)
-                        remain_size = nb_opt ;
-                mean_opt_size = remain_size / nb_opt ;
-
-                /* go adjust */
-                for(child = parent->html.frame_children ; child != NULL ; child = child->html.frame_next) {
-                        if(IS_FRAME_SIZE_OPTIONAL(child)) {
-                                width = mean_opt_size ;
-                                height = *p_height ;
-
+/* distribue le reste sur les espaces optionnel */
+                if(nb_opt > 0) {       
+                        int cum_size, remain_size, mean_opt_size ;
+                                       
+                        cum_size = cum_fixed_size + cum_rel_size ;
+                        remain_size = *p_width - cum_size ;
+                        if(remain_size <= nb_opt)
+                                remain_size = nb_opt ;
+                        mean_opt_size = remain_size / nb_opt ;
+                                       
+                /* go adjust */        
+                        for(child = parent->html.frame_children ; child != NULL ;
+child = child->html.frame_next) {      
+                                if(IS_FRAME_SIZE_OPTIONAL(child)) {
+                                        width = mean_opt_size ;
+                                        height = *p_height ;
+                                        adjustFrame(child, &width, &height);
+                                        child->html.frame_width = width ;
+                                        child->html.frame_height = height ;
+                                }      
+                        }              
+                } else if ( cum_rel_size >0 ) {
+/* pas d'espace optionel, distribue sur les % */ /* go adjust */
+                        int to_add;    
+                                       
+                        to_add = (*p_width - cum_fixed_size - cum_rel_size) / nb_rel;                                   
+                        for(child = parent->html.frame_children ; child != NULL ;
+child = child->html.frame_next) {      
+                                if(IS_FRAME_SIZE_RELATIVE(child)){
+					height = *p_height;
+					width = child->html.frame_width + to_add;
+                                        adjustFrame(child, &width, &height);
+                                        child->html.frame_width = width ;
+                                        child->html.frame_height = height ;
+                                }      
+                        }              
+                } else { /* distribue sur les pixels */
+                        int to_add;    
+                                       
+                        to_add = (*p_width - cum_fixed_size) / nb_fix;
+                        for(child = parent->html.frame_children ; child != NULL ;
+child = child->html.frame_next) {      
+				height = *p_height;
+				width = child->html.frame_width + to_add;
                                 adjustFrame(child, &width, &height);
                                 child->html.frame_width = width ;
                                 child->html.frame_height = height ;
-                                cum_opt_size += width ;
-                        }
-                }
-        }
-/* end of optional-sized children mgt */
-
-#ifdef FEEDBACK_SIZES
-        *p_width = cum_fixed_size + cum_rel_size + cum_opt_size ;
-        if(*p_width <= 0)
-                *p_width = 1 ;
-#endif
+                        }              
+                }                      
+        } else if (cum_fixed_size + cum_rel_size > *p_width) { /* too much space
+is allocated */                        
+                                /* on reduit l'espace */
+                if (cum_fixed_size <= *p_width ) { /* on reduit le % */
+                        int to_sub;    
+                                       
+                        to_sub =(*p_width - cum_fixed_size );
+                        for(child = parent->html.frame_children ; child != NULL ;
+child = child->html.frame_next) { 
+                                if(IS_FRAME_SIZE_RELATIVE(child)){
+                                        height = *p_height ;
+                                        width = (child->html.frame_width * to_sub)/cum_rel_size;                       
+                                        if ( width<1)
+                                                width = 1;
+                                        adjustFrame(child, &width, &height);
+                                        child->html.frame_width = width ;
+                                        child->html.frame_height = height ;
+                                }      
+                        }              
+                } else { /* to much pixel */ 
+                        for(child = parent->html.frame_children ; child != NULL ;
+child = child->html.frame_next) {      
+                                height = *p_height;
+                                width = (child->html.frame_width* *p_width)/(cum_fixed_size+cum_rel_size);            
+                                if ( width<1)
+                                        width = 1;
+                                adjustFrame(child, &width, &height);
+                                child->html.frame_width = width ;
+                                child->html.frame_height = height ;
+                        }              
+                }                      
+        } 
 }
 
+ 
 static void adjustFrame(HTMLWidget parent, int *p_width, int *p_height)
 {
         if(*p_width <= 0)
@@ -757,7 +859,7 @@ static void locateFrame(HTMLWidget parent, int x, int y)
         }
 }
 
-static void adjustConstraints(HTMLWidget hw /* top XmHTMLWidget */)
+static void adjustConstraints(HTMLWidget hw /* top HTMLWidget */)
 {
         HTMLWidget root_frame;
         int work_width, work_height;

@@ -2,6 +2,7 @@
 #include "../Copyrights/copyright.ncsa"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <malloc.h>
 #include <ctype.h>
 
@@ -32,8 +33,6 @@
 #ifndef ABS
 #define ABS(x)  (((x) > 0) ? (x) : ((x) * -1))
 #endif
-
-int htmlwTrace = 0;
 
 static void		SelectStart(Widget w, XEvent *event,
 				String * params, Cardinal * num_params);
@@ -687,18 +686,19 @@ static void ConfigScrollBars( HTMLWidget hw)
 		if (hw->html.doc_height == 0) {
 			ss = 1;
 		} else {
-			if (htmlwTrace) {
-			      fprintf(stderr,"view_height %d, doc_height %d\n",
-				    hw->html.view_height, hw->html.doc_height);
-			}
+#ifdef HTMLTRACE
+		      fprintf(stderr,"view_height %d, doc_height %d\n",
+			    hw->html.view_height, hw->html.doc_height);
+#endif
 /* Added by marca: this produces results *very* close (~1 pixel)
  * to the original scrolled window behavior. */
                         ss = hw->html.view_height;
 		}
 		if (ss < 1)
 			ss = 1;
-		if (htmlwTrace)
-			fprintf (stderr, "computed ss to be %d\n", ss);
+#ifdef HTMLTRACE
+		fprintf (stderr, "computed ss to be %d\n", ss);
+#endif
 /* If resizing of the document has made scroll_y
  * greater than the max, we want to hold it at the max.
  */
@@ -727,10 +727,10 @@ static void ConfigScrollBars( HTMLWidget hw)
                          hw->html.view_height > DEFAULT_INCREMENT ? 
                            hw->html.view_height - DEFAULT_INCREMENT :1); argcnt++;
 		XtSetValues(hw->html.vbar, arg, argcnt);
-		if (htmlwTrace) {
-			XtVaGetValues(hw->html.vbar, XmNsliderSize, &ss, NULL);
-			fprintf (stderr, "real slider size %d\n", ss);
-		}
+#ifdef HTMLTRACE
+		XtVaGetValues(hw->html.vbar, XmNsliderSize, &ss, NULL);
+		fprintf (stderr, "real slider size %d\n", ss);
+#endif
 	}
 /* Set up horizontal scrollbar */
 	if (hw->html.use_hbar == True) {
@@ -790,11 +790,13 @@ static void ConfigScrollBars( HTMLWidget hw)
                          hw->html.view_width - DEFAULT_INCREMENT : 1); argcnt++;
 		XtSetValues(hw->html.hbar, arg, argcnt);
 	}
-	if (htmlwTrace) {
+#ifdef HTMLTRACE
+	{
 		int ss;
 		XtVaGetValues(hw->html.vbar, XmNsliderSize, &ss, NULL);
 		fprintf (stderr, "real slider size %d\n", ss);
         }
+#endif
 }
 
 /* Reformat the window and scrollbars. May be called because of a changed document
@@ -942,6 +944,10 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 		nw->html.num_visitedAnchor_underlines = 0;
 	if (nw->html.num_visitedAnchor_underlines > MAX_UNDERLINES)
 		nw->html.num_visitedAnchor_underlines = MAX_UNDERLINES;
+
+	nw->html.view_width = nw->core.width;
+	nw->html.view_height = nw->core.height;
+
 /* Parse the raw text with the HTML parser.  And set the formatted 
  * element list to NULL. */
 	nw->html.html_objects = NULL;
@@ -2018,8 +2024,8 @@ static void ExtendEnd( Widget w, XEvent *event,
 
 		atoms = (Atom *)malloc(*num_params * sizeof(Atom));
 		if (atoms == NULL) {
-			fprintf(stderr, "cannot allocate atom list\n");
-			return;
+			fprintf(stderr, "Out of memory\n");
+			abort();
 		}
 		XmuInternStrings(XtDisplay((Widget)hw),params, *num_params,atoms);
 		hw->html.selection_time = BuEvent->time;
@@ -2134,7 +2140,7 @@ static void TrackMotion( Widget w, XEvent *event,
  * Currently only processes an anchor-activate when Button1 is pressed
  */
 static void _HTMLInput( Widget w, XEvent *event,
-	String * params,		/* unused */
+	String * params,	/* unused */
 	Cardinal * num_params)	/* unused */
 {
 	HTMLWidget hw = (HTMLWidget)XtParent(w);
@@ -2404,11 +2410,11 @@ char * HTMLGetText(Widget w, int pretty, char *url, char *time_str)
 		end = end->next;
 
 	if (pretty >= 2) {
-		tptr = ParseTextToPSString(hw, start, start, end, 0, 0,
-				hw->html.cur_font->max_bounds.width,
-				hw->html.margin_width , pretty-2, url, time_str);
+		tptr = ParseTextToPSString(hw, start, end, 0, 0,
+				hw->html.margin_width,
+				pretty-2, url, time_str);
 	} else if (pretty) {
-		tptr = ParseTextToPrettyString(hw, start, end, 0, 0,
+		tptr = ParseTextToPrettyString(start, end, 0, 0,
 				hw->html.cur_font->max_bounds.width,
 				hw->html.margin_width);
 	} else {
@@ -2972,8 +2978,8 @@ void HTMLSetSelection(Widget w, ElementRef *start, ElementRef *end)
 	params[1] = "CUT_BUFFER0";
 	atoms = (Atom *)malloc(2 * sizeof(Atom));
 	if (atoms == NULL) {
-		fprintf(stderr, "cannot allocate atom list\n");
-		return;
+		fprintf(stderr, "Out of memory\n");
+		abort();
 	}
 	XmuInternStrings(XtDisplay((Widget)hw), params, 2, atoms);
 	hw->html.selection_time = CurrentTime;
@@ -3060,8 +3066,8 @@ char * HTMLGetTextAndSelection(Widget w,char **startp,char **endp,char **insertp
 	}
 	text = (char *)malloc(length + 1);
 	if (text == NULL) {
-		fprintf(stderr, "No space for return string\n");
-		return(NULL);
+		fprintf(stderr, "Out of memory\n");
+		abort();
 	}
 	strcpy(text, "");
 	tptr = text;
@@ -3207,9 +3213,9 @@ void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 		newy = 0;
 	hw->html.scroll_x = 0;
 	hw->html.scroll_y = newy;
-	if (htmlwTrace)
-		fprintf (stderr, "calling in HTMLSetText\n");
-
+#ifdef HTMLTRACE
+	fprintf (stderr, "calling in HTMLSetText\n");
+#endif
 	ConfigScrollBars(hw);
 	ScrollWidgets(hw);
 	ViewClearAndRefresh(hw); 		/* Display the new text */
