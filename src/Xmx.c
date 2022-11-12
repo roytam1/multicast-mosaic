@@ -1232,6 +1232,7 @@ void _XmxRCreateMenubar (Widget menu, XmxMenubarStruct *menulist,
 	int _separators = 0, _nitems;
 	Widget _sub_menu;
 	XmString xmstr;
+	char * name;
 
 	_nitems = 0;
 	while (menulist[_nitems].namestr)
@@ -1258,8 +1259,7 @@ void _XmxRCreateMenubar (Widget menu, XmxMenubarStruct *menulist,
 					/* option/toggle button */
               				/* A toggle button is diamond-shaped. */
 				if (menulist[_i].namestr[0] == '<')
-					XmxSetArg (XmNindicatorType, (XtArgVal)XmONE_OF_MANY);
-
+					XmxSetArg (XmNvisibleWhenOff, True);
 /* Make sure the button shows up even when toggled off. */
 				if (menulist[_i].namestr[0] == '#')
 					XmxSetArg(XmNvisibleWhenOff, 
@@ -1322,22 +1322,31 @@ void _XmxRCreateMenubar (Widget menu, XmxMenubarStruct *menulist,
 				Xmx_wargs, Xmx_n);
 			continue;
 		}
-/* If all if fails, it's a submenu. */
- 		_sub_menu = XmCreatePulldownMenu(menu, "pulldownmenu", 
+/*-------------- If all fails, it's a submenu. ----------------*/
+		name=menulist[_i].namestr;
+		if(*name == '!') {
+			Arg al[5];
+
+			XtSetArg(al[0],XmNnumColumns, 1);
+			XtSetArg(al[1],XmNradioBehavior,True);
+			_sub_menu = XmCreatePulldownMenu(menu, "pulldownmenu",
+                    		al,2);
+			++name;
+   		} else
+ 			_sub_menu = XmCreatePulldownMenu(menu, "pulldownmenu", 
 					NULL, 0);
 		Xmx_n = 0;
 		XmxSetArg (XmNsubMenuId, (XtArgVal)_sub_menu);
 		if (menulist[_i].mnemonic)
 			XmxSetArg(XmNmnemonic, (XtArgVal)(menulist[_i].mnemonic));
-		xmstr = XmStringCreateLtoR
-				(menulist[_i].namestr, XmSTRING_DEFAULT_CHARSET);
+		xmstr = XmStringCreateLtoR(name, XmSTRING_DEFAULT_CHARSET);
 		XmxSetArg (XmNlabelString, (XtArgVal)xmstr);
 		_buttons[_i - _separators] = XtCreateWidget("cascadebutton", 
 				xmCascadeButtonGadgetClass,
 				menu, Xmx_wargs, Xmx_n);
 		XmStringFree (xmstr);
 				/* If name is "Help", put on far right. */
-		if (strcmp (menulist[_i].namestr, "Help") == 0) {
+		if (strcmp (name, "Help") == 0) {
 			Xmx_n = 0;
 			XmxSetArg (XmNmenuHelpWidget, 
 					(XtArgVal)_buttons[_i - _separators]);

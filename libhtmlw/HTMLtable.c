@@ -14,6 +14,7 @@
 #include <X11/Xlib.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "HTMLmiscdefs.h"
 #include "HTMLparse.h"
@@ -142,9 +143,14 @@ void UpdateColList( ColumnList ** col_list, int td_count,
 	*col_list = cl;
 }
 
-void AddPadAtEndColList(ColumnList ** cl, int toadd)
+void AddPadAtEndColList(ColumnList ** cl, int toadd, int first_free)
 {
 	int i;
+	int j;
+	int nrc;
+	int cols, bcs;
+	CellStruct last_cell;
+	CellStruct ref_cell;
 
 	if (!(*cl)->cells) {	/* because Solaris Bug */
 		(*cl)->cells = (CellStruct*)malloc(
@@ -153,22 +159,53 @@ void AddPadAtEndColList(ColumnList ** cl, int toadd)
 		(*cl)->cells = (CellStruct*)realloc((*cl)->cells,
 			sizeof(CellStruct) * ((*cl)->cell_count+toadd));
 	}
-	for(i=(*cl)->cell_count; i< ((*cl)->cell_count+toadd); i++){
-			(*cl)->cells[i].td_count = 0;
-			(*cl)->cells[i].colspan = 1;
-			(*cl)->cells[i].rowspan = 1;
-			(*cl)->cells[i].back_cs = 0;
-			(*cl)->cells[i].back_rs = 0;
-			(*cl)->cells[i].td_start = NULL;
-			(*cl)->cells[i].td_end = NULL;
-			(*cl)->cells[i].height = 0;
-			(*cl)->cells[i].width = 0;
-			(*cl)->cells[i].line_bottom = 0;
-			(*cl)->cells[i].is_colspan = 0;
-			(*cl)->cells[i].is_rowspan = 0;
-			(*cl)->cells[i].cell_type = M_TD_CELL_PAD;
-			(*cl)->cells[i].have_bgcolor = False;
-			(*cl)->cells[i].bgcolor = 0;
+
+	i = (*cl)->cell_count;
+	last_cell = (*cl)->cells[i-1];
+
+/* on pad le dernier TD dans la ligne (entre deux TR) */
+/* on est ici parcequ'on a vu un /TR  ou le dedut d'un autre*/
+	switch(last_cell.cell_type){
+	case M_TH:
+	case M_TD:
+	case M_TD_CELL_PAD:	/* recalcul de back_cs et colspan */
+		nrc= i -1 - last_cell.back_cs;
+		assert(nrc>=0);
+		ref_cell = (*cl)->cells[nrc];
+		cols = ref_cell.colspan+toadd-first_free;
+		for(j=nrc; j < (*cl)->cell_count + toadd-first_free; j++) {
+			(*cl)->cells[j].colspan = cols;
+			cols--;
+		}
+		break;
+	case M_TD_CELL_FREE:	/* don't know */
+		break;;
+	default:
+		assert(0);
+	}
+
+	i = (*cl)->cell_count;
+	cols = (*cl)->cells[i-1].colspan -1-first_free;
+	bcs = (*cl)->cells[i-1].back_cs +1;
+
+	for(i=(*cl)->cell_count; i< ((*cl)->cell_count+toadd-first_free); i++){
+		(*cl)->cells[i].td_count = 0;
+		(*cl)->cells[i].colspan = cols;
+		cols--;
+		(*cl)->cells[i].rowspan = 1;
+		(*cl)->cells[i].back_cs = bcs;
+		bcs++;
+		(*cl)->cells[i].back_rs = 0;
+		(*cl)->cells[i].td_start = NULL;
+		(*cl)->cells[i].td_end = NULL;
+		(*cl)->cells[i].height = 0;
+		(*cl)->cells[i].width = 0;
+		(*cl)->cells[i].line_bottom = 0;
+		(*cl)->cells[i].is_colspan = 0;
+		(*cl)->cells[i].is_rowspan = 0;
+		(*cl)->cells[i].cell_type = M_TD_CELL_PAD;
+		(*cl)->cells[i].have_bgcolor = False;
+		(*cl)->cells[i].bgcolor = 0;
 	}
 	(*cl)->cell_count = (*cl)->cell_count+toadd;
 }
@@ -193,12 +230,16 @@ static void AddPadAtEndRowList(
 	}
 /* add PAD */
 	for(i=0; i<rl->low_cur_line_num;i++){
+		int bcs;
+
+		bcs = rl->cells_lines[i][rl->max_cell_count_in_line-1].back_cs +1;
 		for(j=rl->max_cell_count_in_line;
 		    j<(rl->max_cell_count_in_line+toadd); j++){
 			rl->cells_lines[i][j].td_count = 0;
 			rl->cells_lines[i][j].colspan = 1;
 			rl->cells_lines[i][j].rowspan = 1;
-			rl->cells_lines[i][j].back_cs = 0;
+			rl->cells_lines[i][j].back_cs = bcs;
+			bcs++;
 			rl->cells_lines[i][j].back_rs = 0;
 			rl->cells_lines[i][j].td_start = NULL;
 			rl->cells_lines[i][j].td_end = NULL;
@@ -249,8 +290,8 @@ static void AddFreeLineToRow(RowList * rl, int toadd)
 				sizeof(CellStruct*) * (rl->row_count+toadd));
 	}
 	for(j = 0; j< toadd; j++){
-		ncl =(CellStruct*)malloc(
-				sizeof(CellStruct) * rl->max_cell_count_in_line);
+		ncl =(CellStruct*)calloc(rl->max_cell_count_in_line,
+				sizeof(CellStruct) );
 		for (i=0; i<rl->max_cell_count_in_line; i++){
 			ncl[i].td_count = 0;
 			ncl[i].colspan = 1;
@@ -278,7 +319,7 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 	RowList * rl;
 	CellStruct work_cell;
 	CellStruct ref_cell;
-	CellStruct * rcl;
+	CellStruct * rcl=NULL;
 	CellStruct * this_line = NULL;
 	int ncell_for_this_cl;
 	int nrow_for_this_cl;
@@ -288,6 +329,7 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 	int next_low_cur_line_num;
 	int free_cell_found;
 	int n_rl_free_cell;
+	int first_free_cell;
 
 
 	rl = *row_list;
@@ -317,7 +359,8 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 				work_cell = ref_cell;
 				if (ref_cell.rowspan > i ){
 					work_cell.rowspan -= i;
-					work_cell.back_rs++ ;
+					/* work_cell.back_rs++ ;*/
+					work_cell.back_rs = i; /* winfried 15/06/00 */
 					work_cell.is_rowspan = 1;
 					work_cell.td_start = NULL;
 					work_cell.td_end = NULL;
@@ -359,14 +402,34 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 		if (rcl[i].cell_type == M_TD_CELL_FREE)
 			n_rl_free_cell++;
 	}
+	first_free_cell = 0;
+	for (i=0; i<rl->max_cell_count_in_line; i++){
+		if (rcl[i].cell_type == M_TD_CELL_FREE) {
+			first_free_cell = i;
+			break;
+		}
+	}
 	if (n_rl_free_cell == 0){	/* add an empty line */
 		AddFreeLineToRow(rl,1);
 		low_cur_line_num++;
 		rl->low_cur_line_num = low_cur_line_num;
 		n_rl_free_cell = rl->max_cell_count_in_line;
+		rcl = rl->cells_lines[low_cur_line_num];
+		n_rl_free_cell = 0;
+		for (i=0; i<rl->max_cell_count_in_line; i++){
+			if (rcl[i].cell_type == M_TD_CELL_FREE)
+				n_rl_free_cell++;
+		}
+		first_free_cell = 0;
+		for (i=0; i<rl->max_cell_count_in_line; i++){
+			if (rcl[i].cell_type == M_TD_CELL_FREE) {
+				first_free_cell = i;
+				break;
+			}
+		}
 	}
 	if (ncell_for_this_cl< n_rl_free_cell){
-		AddPadAtEndColList(cl,n_rl_free_cell - ncell_for_this_cl); 
+		AddPadAtEndColList(cl,n_rl_free_cell - ncell_for_this_cl,first_free_cell); 
 	}
 	if (ncell_for_this_cl > n_rl_free_cell){
 #ifdef HTMLTRACE
@@ -763,9 +826,9 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 					thtd_have_bgcolor, thtd_bgcolor);
 				td_start_found = 0;
 			}
-			tr_count++;
-			tr_end_mark = sm;
 			if(col_list){
+				tr_count++;
+				tr_end_mark = sm;
 				UpdateRowList(&row_list,tr_count,&col_list);
 				FreeColList(col_list);
 				col_list = NULL;
@@ -1176,7 +1239,7 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 					w_in_cell = w_in_cell + t->col_w[j+k];
 				}
 				w_in_cell += (cell.colspan -1)*
-				    (t->cellSpacing + 2 + 2 * t->cellPadding+1);
+				    (t->cellSpacing + 2 + 2 * t->cellPadding)+1;
 				work_pcc.left_margin = t->cellPadding + 1;
 				work_pcc.right_margin = t->cellPadding + 1;
 				work_pcc.cur_line_width = w_in_cell;
@@ -1323,7 +1386,7 @@ void TableRefresh( HTMLWidget hw, struct ele_rec *eptr,
 	GC ltopGC, lbotGC;             
 #define MAX_SEG 128                  
 	XSegment segT[MAX_SEG], segB[MAX_SEG];
-	int iseg;
+	int iseg=0;
 	int rfr_x, rfr_y, rfr_w, rfr_h;
                                        
 	t = eptr->table_data; 

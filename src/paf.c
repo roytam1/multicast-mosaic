@@ -731,8 +731,11 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		int i;
 
 		for(i = 0; i < win->frame_sons_nbre; i++) {
-			MMStopPlugins(win->frame_sons[i],
-				win->frame_sons[i]->htinfo->mlist);
+/* stop old plugins if exist */
+			if (win->frame_sons[i]->htinfo) {
+				MMStopPlugins(win->frame_sons[i],
+					win->frame_sons[i]->htinfo->mlist);
+			}
 			MMDestroySubWindow(win->frame_sons[i]);
 			win->frame_sons[i] = NULL; /* sanity */
 		}
@@ -842,7 +845,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 			htinfo);
 
 		mo_set_win_headers(win, spafd.aurl_wa, title);
-		MMUpdateGlobalHistory(spafd.aurl);
+		MMUpdateGlobalHistory(spafd.aurl_wa);
 		XFlush(XtDisplay(win->scrolled_win));
 
 /* init parent FRAMESET */
@@ -1043,7 +1046,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	}
 
 /* MAJ de l'history etc... */
-	MMUpdateGlobalHistory(spafd.aurl);
+	MMUpdateGlobalHistory(spafd.aurl_wa);
 
 /* HTMLWidget create a window for htmlObject, now run the plugin */
 #ifdef OBJECT

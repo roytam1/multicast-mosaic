@@ -25,11 +25,11 @@
 #include <string.h>
 #include <assert.h>
 
-#include "proxy.h"
 #include "URLParse.h"
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
 #include "gui.h"
+#include "proxy.h"
 
 #define EDIT_ERROR "No entry in the proxy list is currently selected.\n\nTo edit an entry in the proxy list, select\nit with a double mouse click."
 

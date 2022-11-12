@@ -1,3 +1,4 @@
+/* Copyrightd ENST Jun 2000 */
 /* Please read copyright.ncsa. Don't remove next line */
 #include "../Copyrights/copyright.ncsa"
 
@@ -428,9 +429,9 @@ static mo_window * get_frame_target( mo_window *win, char *base_target, char* ta
 		pwin = win->frame_parent;
 		return pwin;
 	}
-	if ( !strcmp(target, "_blank") ) {     /* like top */
-		pwin = win->frame_parent;
-		return pwin;
+	if ( !strcmp(target, "_blank") ) {     /* open new top */
+		return NULL;
+		/* pwin = win->frame_parent; return pwin; */
 	}
 	if ( !strcmp(target, "_parent") ) {	/* like top */
 		pwin = win->frame_parent;
@@ -444,8 +445,8 @@ static mo_window * get_frame_target( mo_window *win, char *base_target, char* ta
 			return son;
 		}
 	}
-/* not found=> equiv to top */
-	return pwin;
+/* not found=> open a new one */
+	return NULL;
 }
 
 /*
@@ -552,16 +553,30 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
 	if (!force_newwin){
+		mo_window *owin = win;
+
 		rds.req_url = href;
 		rds.gui_action = HTML_LOAD_CALLBACK;
 		rds.req_url = mo_url_canonicalize_keep_anchor(href,
 				win->current_node->base_url);
-		win = get_frame_target(win, win->current_node->htinfo->base_target, wacd->target);
 		win->navigation_action = NAVIGATE_NEW;
-		if (win->frame_type != FRAME_TYPE) {
-			MMPafLoadHTMLDocInWin (win, &rds);
-		} else {	/* clic in FRAME */
-			MMPafLoadHTMLDocInFrame(win, &rds);
+		win = get_frame_target(win, win->current_node->htinfo->base_target, wacd->target);
+		if (win){
+			if (win->frame_type != FRAME_TYPE) {
+				MMPafLoadHTMLDocInWin (win, &rds);
+			} else {	/* clic in FRAME */
+				MMPafLoadHTMLDocInFrame(win, &rds);
+			}
+		} else {	/* win is NULL open a new one */
+			mo_window * nwin;
+			char *url = mo_url_canonicalize_keep_anchor(href,
+				owin->current_node->base_url);
+
+			nwin = mo_make_window(owin, MC_MO_TYPE_UNICAST);
+			rds.req_url = url;
+			rds.gui_action = HTML_LOAD_CALLBACK;
+			nwin->navigation_action = NAVIGATE_NEW;
+			MMPafLoadHTMLDocInWin(nwin, &rds);
 		}
 	} else {
 		if (is_shifted) {
@@ -576,10 +591,8 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 			nwin = mo_make_window(win, MC_MO_TYPE_UNICAST);
 			rds.req_url = url;
 			rds.gui_action = HTML_LOAD_CALLBACK;
-			win->navigation_action = NAVIGATE_NEW;
+			nwin->navigation_action = NAVIGATE_NEW;
 			MMPafLoadHTMLDocInWin(nwin, &rds);
-/* Now redisplay this window. because visited url*/
-/*			mo_redisplay_window (win);*/
 		}
 	}
 	free (href);
@@ -609,7 +622,10 @@ int anchor_visited_predicate (Widget w, char *href, char * base_url)
 	/* This doesn't do special things for data elements inside
 	 * an HDF file, because it's faster this way. */
 
-	href = mo_url_canonicalize (href, base_url);
+	if (*href == '#' )
+		href= mo_url_canonicalize_keep_anchor(href,base_url);
+	else
+		href = mo_url_canonicalize (href, base_url);
 	rv = (mo_been_here_before_huh_dad (href) == mo_succeed ? 1 : 0);
 	free (href);
 	return rv;
