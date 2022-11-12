@@ -730,6 +730,7 @@ static void mo_visit_hotlist_position (mo_window *win, int position)
 				rds.post_data = NULL;
 				rds.ct = NULL;
 				rds.is_reloading = False;
+		win->navigation_action = NAVIGATE_NEW;
 				MMPafLoadHTMLDocInWin(win,&rds);
 			} else {
 				char *path =mo_compute_hot_path(&(hotnode->list));

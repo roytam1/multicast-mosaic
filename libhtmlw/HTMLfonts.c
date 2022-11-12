@@ -415,6 +415,7 @@ void MMPushFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc)
         case M_FIXED:
  	case M_PREFORMAT:
 		newfont = _LoadFont(hw, NULL, "courier", NULL, NULL, NULL, NULL, ofptr);
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
         case M_EMPHASIZED:
         case M_VARIABLE:
@@ -423,17 +424,21 @@ void MMPushFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc)
 	case M_DFN:
 	case M_ADDRESS:
 		newfont = _LoadFont(hw, NULL, NULL, NULL, "i", NULL, NULL, ofptr);
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
         case M_STRONG:          
         case M_BOLD:
 	case M_CAPTION:
 		newfont = _LoadFont(hw, NULL, NULL, "bold", NULL, NULL, NULL, ofptr);
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
 	case M_BIG:
 		newfont = _LoadFont(hw, NULL, NULL, NULL, NULL, "8", NULL, ofptr);
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
 	case M_SMALL:
 		newfont = _LoadFont(hw, NULL, NULL, NULL, NULL, "1", NULL, ofptr);
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
 	case M_FONT:
 		fndry = NULL;
@@ -468,32 +473,39 @@ void MMPushFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc)
 	case M_HEADER_1:
 		newfont = _LoadFont(hw, "adobe", "times", "bold", "r",
 			"7", NULL, ofptr);
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
 	case M_HEADER_2:
 		newfont = _LoadFont(hw, "adobe", "times", "bold", "r",
 			"6", NULL, ofptr);
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
 	case M_HEADER_3:
 		newfont = _LoadFont(hw, "adobe", "times", "bold", "r",
 			"5", NULL, ofptr);
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
 	case M_HEADER_4:
 		newfont = _LoadFont(hw, "adobe", "times", "bold", "r",
 			"4", NULL, ofptr);
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
 	case M_HEADER_5:
 		newfont = _LoadFont(hw, "adobe", "times", "bold", "r",
 			"3", NULL, ofptr);
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
 	case M_HEADER_6:
 		newfont = _LoadFont(hw, "adobe", "times", "bold", "r",
 			"2", NULL, ofptr);
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
 
 	/* should never be reached */
 	default:
 		/* this will always succeed */
 		newfont = _LoadFont(hw, "*", "times", "*", "*", "3", NULL, ofptr); 
+		pcc->fg_text = MMPushColorFg(hw, pcc->fg_text);
 		break;
 	}
 	ofstack = hw->html.font_stack;

@@ -394,6 +394,7 @@ static XmxCallback (url_field_cb)
 	rds.gui_action = HTML_LOAD_CALLBACK;
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
+	win->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (win, &rds);
 
 	if (xurl==url) {
@@ -579,6 +580,7 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 		rds.req_url = href;
 		rds.gui_action = HTML_LOAD_CALLBACK;
 		win = get_frame_target(win, win->current_node->base_target, wacd->target);
+		win->navigation_action = NAVIGATE_NEW;
 		MMPafLoadHTMLDocInWin (win, &rds);
 	} else {
 		if (is_shifted) {
@@ -592,7 +594,8 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 
 			nwin = mo_make_window(win, MC_MO_TYPE_UNICAST);
 			rds.req_url = url;
-	rds.gui_action = HTML_LOAD_CALLBACK;
+			rds.gui_action = HTML_LOAD_CALLBACK;
+			win->navigation_action = NAVIGATE_NEW;
 			MMPafLoadHTMLDocInWin(nwin, &rds);
 /* Now redisplay this window. because visited url*/
 /*			mo_redisplay_window (win);*/
@@ -789,6 +792,7 @@ XmxCallback (submit_form_callback)
 		rds.ct = "application/x-www-form-urlencoded";
 		rds.post_data = query;
 		rds.is_reloading = True;
+		win->navigation_action = NAVIGATE_NEW;
 		MMPafLoadHTMLDocInWin(win, &rds);
 	} else {
 		rds.req_url = query;
@@ -796,6 +800,7 @@ XmxCallback (submit_form_callback)
 		rds.ct = NULL;
 		rds.post_data = NULL;
 		rds.is_reloading = True;
+		win->navigation_action = NAVIGATE_NEW;
 		MMPafLoadHTMLDocInWin (win, &rds);
 	}
 	if (query)
@@ -891,6 +896,7 @@ XmxCallback (frame_callback)
 	rds.is_reloading = False;
 	rds.req_url = url;
 	rds.gui_action = FRAME_CALLBACK;
+	sub_win->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (sub_win, &rds);
 	free(url);
 }
@@ -1122,6 +1128,7 @@ static void mo_view_keypress_handler(Widget w, XtPointer clid,
 			rds.req_url = win->current_node->aurl_wa;
 	rds.gui_action = HTML_LOAD_CALLBACK;
 			neww = mo_make_window(win,MC_MO_TYPE_UNICAST);
+	neww->navigation_action = NAVIGATE_NEW;
 			MMPafLoadHTMLDocInWin (neww, &rds);
 		}
 		break;
@@ -2435,6 +2442,7 @@ void mo_open_another_window (mo_window *win, char *url)
 	rds.is_reloading = False;
 	rds.req_url = url;
 	rds.gui_action = HTML_LOAD_CALLBACK;
+	neww->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
 
@@ -2484,6 +2492,7 @@ void mo_process_external_directive (char *directive, char *url)
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
+		win->navigation_action = NAVIGATE_NEW;
 		MMPafLoadHTMLDocInWin (win, &rds);
 		XFlush(mMosaicDisplay);
 		return;

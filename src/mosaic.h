@@ -178,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.5.0"
+#define MO_VERSION_STRING "3.5.1"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@tsi.enst.fr"
@@ -324,8 +324,12 @@ typedef int * DependObjectTab;	/* tab of moid */
 #define moMODE_NEWS   0x0004
 #define moMODE_ALL    0x0007
 
-typedef enum _NavigationType {NAVIGATE_NEW, NAVIGATE_OVERWRITE,
-	NAVIGATE_BACK, NAVIGATE_FORWARD } NavigationType;
+/* we don't set to 0 because i want to check and crash if somethings is false */
+typedef enum _NavigationType {
+	NAVIGATE_NEW=1,
+	NAVIGATE_OVERWRITE=2,
+	NAVIGATE_BACK=3, 
+	NAVIGATE_FORWARD=4 } NavigationType;
 
 /* mo_window contains everything related to a single Document View
  * window, including subwindow details. */

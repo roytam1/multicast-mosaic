@@ -52,6 +52,7 @@ static void fmenu_cb ( Widget w , XtPointer clid, XtPointer calld)
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
+	win->navigation_action = NAVIGATE_NEW;
                MMPafLoadHTMLDocInWin(win, &rds);
                do_meta=0;             
                break;    
@@ -607,6 +608,7 @@ void metadata_cb(Widget w, XtPointer client_data, XtPointer call_data)
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
+	win->navigation_action = NAVIGATE_NEW;
                MMPafLoadHTMLDocInWin(win, &rds);
                do_meta=0;   
                break; 
@@ -622,6 +624,7 @@ void metadata_cb(Widget w, XtPointer client_data, XtPointer call_data)
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
+	win->navigation_action = NAVIGATE_NEW;
                MMPafLoadHTMLDocInWin(win, &rds);
                do_meta=0;   
                break;       
@@ -665,6 +668,7 @@ void image_cb(Widget w, XtPointer client_data, XtPointer call_data)
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
+	win->navigation_action = NAVIGATE_NEW;
                MMPafLoadHTMLDocInWin(win, &rds);
 		break;
 	case I_ViewInternal:
@@ -678,6 +682,7 @@ void image_cb(Widget w, XtPointer client_data, XtPointer call_data)
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
+	win->navigation_action = NAVIGATE_NEW;
                MMPafLoadHTMLDocInWin(win, &rds);
 /*
 		imageViewInternal=tmp;
@@ -806,6 +811,7 @@ static void session_cb(Widget w, XtPointer clid, XtPointer calld)
 	rds.post_data = NULL;
 	rds.ct = NULL;
 	rds.is_reloading = False;
+	win->navigation_action = NAVIGATE_NEW;
         MMPafLoadHTMLDocInWin(win, &rds);
 }                                     
 

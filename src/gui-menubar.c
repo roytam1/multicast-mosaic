@@ -725,6 +725,7 @@ void mo_home_document(Widget w, XtPointer clid, XtPointer calld)
 	rds.ct = NULL;
 	rds.is_reloading = False;
 	rds.gui_action = HTML_LOAD_CALLBACK;
+	win->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (win, &rds);
 }
 void mo_history_list(Widget w, XtPointer clid, XtPointer calld)
@@ -781,6 +782,7 @@ void mo_new_window(Widget w, XtPointer clid, XtPointer calld)
 	rds.req_url = mMosaicAppData.home_document;
 	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window( pwin,MC_MO_TYPE_UNICAST);
+	neww->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
 
@@ -795,6 +797,7 @@ void mo_clone_window(Widget w, XtPointer clid, XtPointer calld)
 	rds.req_url = win->current_node->aurl;
 	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window(win,MC_MO_TYPE_UNICAST);
+	neww->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
 
@@ -823,6 +826,7 @@ void mo_network_starting_points(Widget w, XtPointer clid, XtPointer calld)
 	rds.ct = NULL;
 	rds.is_reloading = False;
 	rds.gui_action = HTML_LOAD_CALLBACK;
+	win->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (win, &rds);
 }
 void mo_internet_metaindex(Widget w, XtPointer clid, XtPointer calld)
@@ -835,6 +839,7 @@ void mo_internet_metaindex(Widget w, XtPointer clid, XtPointer calld)
 	rds.ct = NULL;
 	rds.is_reloading = False;
 	rds.gui_action = HTML_LOAD_CALLBACK;
+	win->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (win, &rds);
 }
 void mo_help_about(Widget w, XtPointer clid, XtPointer calld)
@@ -848,6 +853,7 @@ void mo_help_about(Widget w, XtPointer clid, XtPointer calld)
 	rds.req_url = "http://sig.enst.fr/~dauphin/mMosaic/index.html";
 	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
+	neww->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
 void mo_mosaic_manual(Widget w, XtPointer clid, XtPointer calld)
@@ -861,6 +867,7 @@ void mo_mosaic_manual(Widget w, XtPointer clid, XtPointer calld)
 	rds.req_url = mo_assemble_help_url("mosaic-docs.html");
 	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
+	neww->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
 
@@ -875,6 +882,7 @@ void mo_whats_new(Widget w, XtPointer clid, XtPointer calld)
 	rds.req_url = WHATSNEW_PAGE_DEFAULT;
 	rds.gui_action = HTML_LOAD_CALLBACK;
 	neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
+	neww->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (neww, &rds);
 }
 

@@ -528,6 +528,7 @@ works on my linux box, hopefully on solaris, too */
 	rds.is_reloading = False;
 	rds.post_data = NULL;
 	rds.gui_action = HTML_LOAD_CALLBACK;
+	win->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin(win, &rds);
 
 /* GO ! */

@@ -353,6 +353,7 @@ static XmxCallback (open_local_win_cb)
 	rds.post_data = NULL;
 	rds.is_reloading = True;
 	rds.gui_action = HTML_LOAD_CALLBACK;
+	win->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (win, &rds);
 	free (fname);
 	return;
@@ -395,6 +396,7 @@ static XmxCallback (open_win_cb0)
 	rds.post_data = NULL;
 	rds.is_reloading = False;
 	rds.gui_action = HTML_LOAD_CALLBACK;
+	win->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (win, &rds);
 }
 
@@ -486,6 +488,7 @@ static void mail_win_cb2(Widget w, XtPointer clid, XtPointer calld)
         rds.req_url = mo_assemble_help_url ("docview-menubar-file.html");
 	rds.gui_action = HTML_LOAD_CALLBACK;
         neww = mo_make_window( win,MC_MO_TYPE_UNICAST);
+	neww->navigation_action = NAVIGATE_NEW;
         MMPafLoadHTMLDocInWin (neww, &rds);
 }
 
@@ -1648,6 +1651,7 @@ void mo_done_editing(EditFile *e, int pid)
 	rds.post_data = NULL;
 	rds.is_reloading = True;
 	rds.gui_action = HTML_LOAD_CALLBACK;
+	e->win->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (e->win, &rds);
 
 	/* should I stay or should I go...du du dun da dun da da */

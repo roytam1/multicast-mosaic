@@ -160,17 +160,15 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 		mo_node *Cur = win->current_node;
 		switch (nt) {
 		case NAVIGATE_NEW: /* Node becomes end of history list. */
-			node->previous = win->current_node; /* Point back at current node. */
-			node->next = NULL; /* Point forward to nothing. */
 				/*Kill descendents of current node,since we'll 
 				 *never be able to go forward to them again. */
 			mo_kill_node_descendents (win, Cur);
-				/* Current node points forward to this. */
-			Cur->next = node;
+			node->previous = Cur; /* Point back at current node. */
+			Cur->next = node; /* Current node points forward to this. */
+			node->next = NULL; /* Point forward to nothing. */
 /* position in the history list widget */
 			node->position = Cur->position + 1;
-				/* Current node now becomes new node. */
-			win->current_node = node;
+			win->current_node = node; /* Current node now becomes new node. */
 			if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) try to enable navigation in frame..*/
 				return;
 			}

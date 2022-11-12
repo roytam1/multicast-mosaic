@@ -32,7 +32,8 @@ static XmxCallback (links_win_cb0)		 /* GOTO */
 				rds.post_data = NULL;
 				rds.ct = NULL;
 				rds.is_reloading = True;
-	rds.gui_action = HTML_LOAD_CALLBACK;
+				rds.gui_action = HTML_LOAD_CALLBACK;
+				win->navigation_action = NAVIGATE_NEW;
 				MMPafLoadHTMLDocInWin(win, &rds);
 			}
 			XtFree(text);
@@ -92,7 +93,8 @@ static void links_list_cb(Widget w, XtPointer client, XtPointer call)
 			rds.post_data = NULL;
 			rds.ct = NULL;
 			rds.is_reloading = True;
-	rds.gui_action = HTML_LOAD_CALLBACK;
+			rds.gui_action = HTML_LOAD_CALLBACK;
+			win->navigation_action = NAVIGATE_NEW;
 			MMPafLoadHTMLDocInWin(win, &rds);
 		}
 		XtFree(text);

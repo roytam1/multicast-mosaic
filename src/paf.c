@@ -108,10 +108,7 @@ void MMFinishPafSaveData(PafDocDataStruct * pafd)
 
 /* stop the twirl */                  
 	XtRemoveTimeOut(pafd->twirl_struct->time_id);
-/*	free(pafd->twirl_struct);	*/
-/*	free(pafd->sps.accept);		*/
 	FreePafDocDataStruct(pafd);
-/*	free(pafd);			*/
 	win->pafd = NULL;
 	XtPopdown(win->base);
 	XtDestroyWidget(win->base);
@@ -150,10 +147,6 @@ void MMStopPafSaveData(PafDocDataStruct * pafd)
         }
 	
 /*        pafd->www_con_type = NULL;	*/
-/*	free(pafd->twirl_struct);	*/
-/*	free(pafd->sps.accept);	*/
-/*	free(pafd->aurl);	*/
-/*	free(pafd->aurl_wa);	*/
 
 	assert(pafd->fd >= 0); 	/* let me know */
 
@@ -353,7 +346,6 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 					win, win->moid_ref, win->dot, win->n_do);
 					/* stop the twirl */
 				XtRemoveTimeOut(pafd->twirl_struct->time_id);                                     
-/*				free(pafd->twirl_struct);		*/
 /*				free(pafd->sps.accept);			*/
 				assert(pafd->fd == -1 ); /* let me know */
 				unlink(pafd->fname);
@@ -362,6 +354,7 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 				free(pafd);
 				win->pafd = NULL;
 					/* securityType=HTAA_UNKNOWN; */
+				return;	/* ### hum!!! */
 			}
 			break;
 		default:      
@@ -371,22 +364,13 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 #endif
 	XmxMakeErrorDialog(win->base, reason , "Net Error");
 /* stop the twirl */
+/*#################################*/
+/* traite le cas d'un frame */
 	XtRemoveTimeOut(pafd->twirl_struct->time_id);
-
 /*	free(pafd->twirl_struct);			*/
-/*	if (pafd->post_ct && pafd->post_data){		*/
-/*		free(pafd->post_data);		*/
-/*		free(pafd->post_ct);		*/
-/*		pafd->post_ct = NULL;		/* sanity */
-/*		pafd->post_data = NULL;		/* sanity */
-/*	}					*/
-/*	free(pafd->sps.accept);			*/
-/*	free(pafd->aurl);			*/
-/*	free(pafd->aurl_wa);			*/
-/*	if (pafd->goto_anchor)			*/
-/*		free(pafd->goto_anchor);	*/
-	if (pafd->fd < 0)
-		assert(0);
+
+	assert(pafd->fd >= 0);
+
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
@@ -909,7 +893,8 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	pafc = pafd->paf_child;
 	pafc->mhs = (MimeHeaderStruct*) calloc(1, sizeof(MimeHeaderStruct));
 /* inherit from parent */
-        pafc->twirl_struct = pafd->twirl_struct;
+/*        pafc->twirl_struct = pafd->twirl_struct; */
+	pafc->twirl_struct = NULL;	/* only top twirl */
 /* don't inherit from parent */
         pafc->proxent = NULL;;
         pafc->pragma_no_cache = False;  /* pafd->pragma_no_cache ; */  

@@ -1,5 +1,5 @@
 # Toplevel Makefile for mMosaic.
-#This Release 3.5.0 compile on:
+#This Release 3.5.1 compile on:
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
@@ -7,7 +7,7 @@
 #	- Mandrake6.1
 #	- NetWinder (StrongArm based machine)
 
-MCVER=3.5.0
+MCVER=3.5.1
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
@@ -187,6 +187,7 @@ mclib = $(mcdir)/libmc.a
 #### . Other things you can define are spelled out in src/mosaic.h.
 ####
 #### . If you run on IPV6 native kernel set -DIPV6
+####    IPV6 is incompatible with MULTICAST. (just now)
 #### . For NEWS support -DNEWS (obsolete)
 #### . For APPLET support -DAPPLET (don't use)
 #### . -DLOOSE_PACKET for testing multicast packet lost.
@@ -234,7 +235,7 @@ clean:
 	cd libmc; $(MAKE) clean
 	cd src; $(MAKE) clean MOSAIC="Mosaic"
 	cd libaprog; $(MAKE) clean
-	rm -f core
+	rm -f *.core core
 	@echo "Done cleaning..."
 
 archive:
@@ -246,6 +247,7 @@ archive:
 	(cd /tsi/archive/ftp/pub/multicast/mMosaic; ln -s mMosaic-$(MCVER).tar.gz mMosaic-src.tar.gz)
 
 archive-bin :
+	- strip src/mMosaic
 	- cp src/mMosaic /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
 	- gzip -9 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25
 	chmod 444 /tsi/archive/ftp/pub/multicast/mMosaic/mMosaic-$(MCVER)-bin-solaris-25.gz
