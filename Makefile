@@ -10,7 +10,7 @@
 #	- NetWinder (StrongArm based machine)
 #	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.6.0
+MCVER=3.6.1
 
 ##
 ## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
@@ -266,7 +266,7 @@ mclib = $(mcdir)/libmc.a
 #
 # Common
 
-customflags = -DOBJECT
+customflags = 
 
 ##
 ## ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------

@@ -79,6 +79,7 @@ IPAddr GetLocalIpAddr(void)
 {
 #ifdef IPV6         
         struct sockaddr_in6 fakesockaddr;
+	int error_num;
 #else               
         struct sockaddr_in fakesockaddr;
 #endif
@@ -99,7 +100,9 @@ IPAddr GetLocalIpAddr(void)
                 exit(1);
         }
 /*        hp = gethostbyname2(hostname,AF_INET6); */
-        hp = hostname2addr(hostname,AF_INET6);
+/*        hp = hostname2addr(hostname,AF_INET6); */
+	hp = getipnodebyname(hostname,AF_INET6,AI_DEFAULT,&error_num);
+	
 	if (!hp) {
                 fprintf(stderr,"IPV6 gasp no hosts \n");
                 exit(1) ;

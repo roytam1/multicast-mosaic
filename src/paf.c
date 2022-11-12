@@ -732,10 +732,12 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 
 		for(i = 0; i < win->frame_sons_nbre; i++) {
 /* stop old plugins if exist */
+#ifdef OBJECT
 			if (win->frame_sons[i]->htinfo) {
 				MMStopPlugins(win->frame_sons[i],
 					win->frame_sons[i]->htinfo->mlist);
 			}
+#endif
 			MMDestroySubWindow(win->frame_sons[i]);
 			win->frame_sons[i] = NULL; /* sanity */
 		}
@@ -750,11 +752,12 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	}
 
 /* stop old plugins if exist */
+#ifdef OBJECT
 	if (win->htinfo) {
 		old_mlist = win->htinfo->mlist;
 		MMStopPlugins(win, old_mlist);
 	}
-
+#endif
 /* dans le fichier decompresse (eventuellement) on a de l'HTML */
 /* Faire un Parse pour le decomposer en objet */
 	pafd->html_text = data;

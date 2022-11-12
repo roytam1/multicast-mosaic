@@ -160,6 +160,7 @@ static enum InIpV HTParseInet (SockA4 *sin4, const char *str)
 	static char *cached6_phost_h_addr = NULL;
 	static int cached6_phost_h_length = 0;
 	char * ph6addr, *ph6cl;
+	int err_num;
 #endif
 	static char *cached4_host = NULL;
 	static char *cached4_phost_h_addr = NULL;
@@ -223,7 +224,9 @@ static enum InIpV HTParseInet (SockA4 *sin4, const char *str)
 	}
 /* manage only non numeric adresses for IPV6 */
 /* RFC 2133 */
-	phost = gethostbyname2 (host,AF_INET6);
+/*	phost = gethostbyname2 (host,AF_INET6); */
+	phost = getipnodebyname( host, AF_INET6, AI_DEFAULT, &err_num);
+
 	if (phost) {			/* try IPV6 */
 #ifdef DEBUG_IPV6
 		fprintf(stderr, "Talking to IPv6 host...\n");
@@ -266,8 +269,9 @@ static enum InIpV HTParseInet (SockA4 *sin4, const char *str)
 			if (cached4_host && (strcmp (cached4_host, host) == 0)){
 				memcpy(&sin4->sin_addr, cached4_phost_h_addr, cached4_phost_h_length);
 			} else {
-				phost = gethostbyname2 (host,AF_INET);
+/*				phost = gethostbyname2 (host,AF_INET); */
 /*				phost = gethostbyname (host); */
+				phost = getipnodebyname( host, AF_INET6, AI_DEFAULT, &err_num);
 				if (!phost) {
 					fprintf (stderr, "Can't find internet node name `%s'.\n",host);
 					return IN_IPV_UNKNOWN;  /* Fail */
