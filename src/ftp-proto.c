@@ -121,8 +121,9 @@ static int parse_respons (PafDocDataStruct *pafd)
 	return 0;
 }
 
-#ifdef IPV6                            
-static const struct in6_addr anyaddr = IPV6ADDR_ANY_INIT;
+#ifdef IPV6
+/* static const struct in6_addr anyaddr = IPV6ADDR_ANY_INIT; */
+static const struct in6_addr anyaddr = IN6ADDR_ANY_INIT;
 #endif                                 
 static int get_listen_socket_and_port_command(char *cmd, PafDocDataStruct *pafd )
 {
@@ -243,14 +244,21 @@ void MMCancelFTPReadDocOnStop(PafDocDataStruct *pafd)
 	pafd->iobs.size_iobuf = 0;
 	pafd->iobs.len_iobuf = 0;
 	pafd->read_stat =0;
-	XtRemoveInput(pafd->www_prim_fd_read_id);
-	close(pafd->www_con_type->prim_fd);
-
+	if (pafd->www_prim_fd_read_id) {
+		XtRemoveInput(pafd->www_prim_fd_read_id);
+		close(pafd->www_con_type->prim_fd);
+	}
 	close(pafd->www_con_type->second_fd);
+
+	pafd->www_prim_fd_read_id = 0;		/* sanity */
+	pafd->www_con_type->prim_fd = -1;
+	pafd->www_con_type->second_fd = -1;
 
 	if (pafd->www_con_type->third_fd >= 0 ) {
 		XtRemoveInput(pafd->www_third_fd_read_id);
 		close(pafd->www_con_type->third_fd);
+		pafd->www_third_fd_read_id = 0;		/* sanity */
+		pafd->www_con_type->third_fd = -1;		/* sanity */
 	}
 
 	free(pafd->www_con_type);
@@ -266,14 +274,22 @@ void MMCancelFTPReadDocOnError(PafDocDataStruct *pafd, char * reason)
         pafd->iobs.len_iobuf = 0;      
         pafd->read_stat =0;            
 /*      FreeMimeStruct(pafd->mhs); */  
-        XtRemoveInput(pafd->www_prim_fd_read_id);
         XmxMakeErrorDialog(pafd->win->base, reason, "Net Error");
+	if (pafd->www_prim_fd_read_id) {	
+        	XtRemoveInput(pafd->www_prim_fd_read_id);
+        	close(pafd->www_con_type->prim_fd); 
+	}
+	pafd->www_prim_fd_read_id = 0;		/* sanity */
+	pafd->www_con_type->prim_fd = -1;
+	pafd->www_con_type->second_fd = -1;
                                        
-        close(pafd->www_con_type->prim_fd); 
 
 	if (pafd->www_con_type->third_fd >= 0 ) {
 		XtRemoveInput(pafd->www_third_fd_read_id);
 		close(pafd->www_con_type->third_fd);
+
+		pafd->www_third_fd_read_id = 0;		/* sanity */
+		pafd->www_con_type->third_fd = -1;		/* sanity */
 	}
 
         free(pafd->www_con_type);      
@@ -551,6 +567,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 				(XtPointer) XtInputReadMask,
 				ftp_read_third_fd_file_cb, pafd);
 		XtRemoveInput(pafd->www_prim_fd_read_id);  
+		pafd->www_prim_fd_read_id = 0;		/* sanity */
 		return;
 	}
 	if (pafd->read_stat == FTP_READING_DATASOC_FILE){
@@ -580,6 +597,10 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		pafd->iobs.len_iobuf = 0; 
 		XtRemoveInput(pafd->www_prim_fd_read_id);  
 		close(pafd->www_con_type->prim_fd); 
+
+		pafd->www_prim_fd_read_id = 0;		/* sanity */
+		pafd->www_con_type->prim_fd = -1;
+
 		free(pafd->www_con_type); 
 		pafd->www_con_type = NULL; 
 		ct = HTFileName2ct (pafd->aurl, "text/plain", &comp);
@@ -663,6 +684,7 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 				ftp_read_third_fd_dir_nlstlla_cb, pafd);
 /* while reading data soc, lock the master channel */
 		XtRemoveInput(pafd->www_prim_fd_read_id);  
+		pafd->www_prim_fd_read_id = 0; /* sanity */
 		return;
 	}
 
@@ -722,6 +744,10 @@ void read_ftp_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
                 pafd->iobs.len_iobuf = 0;  
                 XtRemoveInput(pafd->www_prim_fd_read_id);
                 close(pafd->www_con_type->prim_fd);
+
+		pafd->www_prim_fd_read_id = 0;       /* sanity */
+		pafd->www_con_type->prim_fd = -1;
+
                 free(pafd->www_con_type);  
                 pafd->www_con_type = NULL; 
                                       

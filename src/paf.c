@@ -232,8 +232,8 @@ void MMPafSaveData(Widget top, char * aurl, char * fname)
 	XmxSetConstraints(dest_label,XmATTACH_WIDGET, XmATTACH_NONE,
 					XmATTACH_FORM, XmATTACH_NONE,
 					url_label, NULL, NULL, NULL);
-	XmxSetOffsets(win->url_widget, 10,10,10,10);
-	XmxSetConstraints(win->url_widget,XmATTACH_WIDGET, XmATTACH_NONE,
+	XmxSetOffsets(win->dest_widget, 10,10,10,10);
+	XmxSetConstraints(win->dest_widget,XmATTACH_WIDGET, XmATTACH_NONE,
 					XmATTACH_WIDGET, XmATTACH_FORM,
 					url_label, NULL, dest_label, NULL);
 
@@ -539,6 +539,8 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		char * command = (char*)malloc(6*l);
 		char * cmd = (char*)malloc(10*l);
 
+/* winfried propal is: if (strstr(presentation, "%%s")){ */
+/* but dont' understand why ##### 28/02/2000 */
 		if (strstr(presentation, "%s")){
 			sprintf (command, presentation,
 				pafd->fname, pafd->fname, pafd->fname,
@@ -972,6 +974,7 @@ void MMPafLoadHTMLDocInWin( mo_window * win, RequestDataStruct * rds)
 	pafd->aurl_wa = new_url_with_a;
 	pafd->aurl = new_canon_url;
 	pafd->goto_anchor = URLParse (pafd->aurl_wa,"", PARSE_ANCHOR);
+	pafd->http_status = 0;
 	if ( !(*pafd->goto_anchor) ) {
 		free(pafd->goto_anchor);
 		pafd->goto_anchor = NULL;

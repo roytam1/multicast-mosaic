@@ -179,6 +179,8 @@ void MMStopHTTPReadDoc(PafDocDataStruct * pafd)
 	pafd->www_con_type->call_me_on_error_cb = NULL;
 	XtRemoveInput(pafd->www_prim_fd_read_id);
 	close(pafd->www_con_type->prim_fd);
+	pafd->www_prim_fd_read_id = 0;		 /* sanity */
+	pafd->www_con_type->prim_fd = -1;	 /* sanity */
 	free(pafd->www_con_type);
 	pafd->www_con_type = NULL;
 }
@@ -190,10 +192,14 @@ void MMCancelHTTPReadDocOnError(PafDocDataStruct * pafd, char * msg)
 	pafd->iobs.len_iobuf = 0;
 	pafd->read_stat =0;
 /*	FreeMimeStruct(pafd->mhs); */
-	XtRemoveInput(pafd->www_prim_fd_read_id);
 /*	XmxMakeErrorDialog(pafd->win->base, msg, "Net Error"); */
 
+	XtRemoveInput(pafd->www_prim_fd_read_id);
+
 	close(pafd->www_con_type->prim_fd);
+	pafd->www_prim_fd_read_id = 0; /* sanity */
+	pafd->www_con_type->prim_fd = -1; /* sanity */
+
 	free(pafd->www_con_type);
 	pafd->www_con_type = NULL;
 	(*pafd->call_me_on_error)(pafd,msg);
@@ -565,6 +571,10 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 			pafd->read_stat =0;
 			XtRemoveInput(pafd->www_prim_fd_read_id);
 			close(pafd->www_con_type->prim_fd);
+
+			pafd->www_prim_fd_read_id = 0; /* sanity */
+			pafd->www_con_type->prim_fd = -1; /* sanity */
+
 			free(pafd->www_con_type);
 			pafd->www_con_type = NULL;
 

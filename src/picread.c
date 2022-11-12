@@ -19,7 +19,7 @@
 
 #define DEF_BLACK       BlackPixel(mMosaicDisplay, DefaultScreen(mMosaicDisplay))
 #define DEF_WHITE       WhitePixel(mMosaicDisplay, DefaultScreen(mMosaicDisplay))
-#define	MAX_LINE	81
+#define	MAX_LINE	1024
 
 
 unsigned char nibMask[8] = { 1, 2, 4, 8, 16, 32, 64, 128 };

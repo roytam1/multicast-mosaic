@@ -52,7 +52,7 @@ void read_file_local(PafDocDataStruct * pafd)
 	int cmpr;
 	char buf[LBUF];
 	MimeHeaderStruct mhs;
-	int soc,i;
+	int soc,i,statresult;
 
 	local_name = HTLocalName(pafd->aurl);
 	if (!local_name){
@@ -108,7 +108,7 @@ void read_file_local(PafDocDataStruct * pafd)
 				continue;
 /* If its .. *and* the current directory is / dont show anything, otherwise
  * print out a nice Parent Directory entry. */
-		if(strcmp(dataptr,"..") == 0) {
+			if(strcmp(dataptr,"..") == 0) {
 				if(strcmp(local_name,"/") == 0)
 					continue;
 				buffer = strdup(local_name);
@@ -119,17 +119,19 @@ void read_file_local(PafDocDataStruct * pafd)
 				fprintf(fp,"<DD><A HREF=\"%s",buffer);
 				fprintf(fp,"\"><IMG SRC=\"%s",
 					HTgeticonname(NULL,"directory"));
-				fprintf(fp,"\"> Parent Directory</a>");
+				fprintf(fp,"\"> Parent Directory</a>\n");
 				free(buffer);
+				continue;
 			}
 /* Get the filesize information from a stat, if we cant stat it, we probably */
 /* cant read it either, so ignore it. */
 			filepath = (char*)malloc(
 				strlen(local_name)+strlen(dataptr)+10);
 			sprintf(filepath,"%s/%s",local_name, dataptr);
-			if(stat(filepath, &statbuf) == -1)
-				continue;
+			statresult=stat(filepath, &statbuf);
 			free(filepath);
+			if(statresult == -1)
+				continue;
 
 			fprintf(fp,"<DD><A HREF=\"%s",local_name);
 			if(local_name[strlen(local_name)-1] != '/')
