@@ -61,7 +61,7 @@ void LinefeedPlace(HTMLWidget hw, struct mark_up * mptr,
 		return;
 #ifdef REMEMBER
 if (pcc->cw_only) {	/* compute width only , dont create Element*/
-/* deb_pcc.computed_min_x = 0; /* celui-ci pour MOT IMAGE APROG APPLET*/
+/* deb_pcc.computed_min_x = 0; */ /* celui-ci pour MOT IMAGE APROG APPLET*/
 /* attention aussi au increment genre MENU*/
 /* UL OL etc... */
 }

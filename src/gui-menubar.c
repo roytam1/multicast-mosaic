@@ -42,9 +42,7 @@ int mc_show_participant_flag = 0;
 
 static Widget exitbox = NULL;
 
-static XmxCallback (exit_confirm_cb);
 static void mo_post_exitbox (void);
-static XmxCallback (clear_history_confirm_cb);
 static XmxCallback (agent_menubar_cb);
 
 /* --------------------------- mo_post_exitbox ---------------------------- */
@@ -422,8 +420,6 @@ mo_status mo_set_underlines (mo_window *win, int choice)
   
   return mo_succeed;
 }
-
-/* --------------------------- exit_confirm_cb ---------------------------- */
 
 static XmxCallback (clear_history_yes_cb)
 {
@@ -981,7 +977,7 @@ void mo_no_proxy(Widget w, XtPointer clid, XtPointer calld)
 }
 void mo_exit_program(Widget w, XtPointer clid, XtPointer calld)
 {
-	mo_window * win = (mo_window*) clid;
+/*	mo_window * win = (mo_window*) clid; */
 
 	mo_post_exitbox ();
 }
@@ -1182,6 +1178,7 @@ void mo_multicast_show_participant(Widget w, XtPointer clid, XtPointer calld)
  *        XtPointer data;
  *        struct _XmxMenubarStruct *sub_menu;
  *} XmxMenubarStruct;
+ */
 
 /* File Menu */
 static XmxMenubarStruct file_menuspec[30] = {

@@ -566,13 +566,12 @@ void CBPasswordModify( Widget w, caddr_t client_data, caddr_t call_data)
  * RETURN was hit in a textfield in a form.
  * If this is the only textfield in this form, submit the form.
  */
-void CBActivateField( Widget w, caddr_t client_data, caddr_t call_data)
+void CBActivateField( Widget w, caddr_t clid, caddr_t calld)
 {
-	FormInfo *fptr = (FormInfo *)client_data;
+	FormInfo *fptr = (FormInfo *)clid;
 	HTMLWidget hw = (HTMLWidget)(fptr->hw);
 	WidgetInfo *wptr;
 	int cnt, count;
-	XmAnyCallbackStruct *cb = (XmAnyCallbackStruct *)call_data;
 
 	/*
 	 * Terminate the form if it was never properly terminated.
@@ -619,17 +618,15 @@ void CBActivateField( Widget w, caddr_t client_data, caddr_t call_data)
 	 * If this is the only textfield in this form, submit the form.
 	 */
 	if (cnt == 1)
-		CBSubmitForm(w, client_data, call_data);
+		CBSubmitForm(w, clid, calld);
 }
 
-void CBResetForm( Widget w, caddr_t client_data, caddr_t call_data)
+void CBResetForm( Widget w, caddr_t clid, caddr_t calld)
 {
-	FormInfo *fptr = (FormInfo *)client_data;
+	FormInfo *fptr = (FormInfo *)clid;
 	HTMLWidget hw = (HTMLWidget)(fptr->hw);
 	WidgetInfo *wptr;
 	int widget_count, cnt;
-	XmPushButtonCallbackStruct *pb =
-		(XmPushButtonCallbackStruct *)call_data;
 
 	if (fptr->end == -1)  /* unterminated FORM tag */
 	{

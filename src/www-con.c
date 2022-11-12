@@ -32,16 +32,6 @@
 
 extern int errno;
 
-#ifdef SOLARIS
-#ifdef  __cplusplus
-extern "C" {
-#endif
-int gethostname(char *name, int namelen); /* because solaris 2.5 include bug */
-#ifdef  __cplusplus
-}
-#endif
-#endif
-
 #include "../libnut/system.h"
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
@@ -221,43 +211,6 @@ found_non_numeric_or_done:
 #endif
 #endif /* IPV6 */
 	return 0;	/* OK */
-}
-
-/*	Derive the name of the host on which we are */
-
-#ifndef MAXHOSTNAMELEN
-#define MAXHOSTNAMELEN 64		/* Arbitrary limit */
-#endif
-static const char * HTHostName(void)
-{
-	char name[MAXHOSTNAMELEN+1];	/* The name of this host */
-	int namelength = sizeof(name);
-/* no -- needs name server! */
-/* ###    struct hostent * phost;	/* Pointer to host -- See netdb.h */
-    
-	if (hostname)
-		return hostname;		/* Already done */
-	gethostname(name, namelength);	/* Without domain */
-#ifdef DEBUG_HTTP
-	fprintf(stderr, "TCP: Local host name is %s\n", name);
-#endif
-
-	hostname = strdup(name);
-
-/* no -- needs name server! */
-/*    phost=gethostbyname(name);		/* See netdb.h */
-/*    if (!phost) {
-/*	fprintf(stderr, "Can't find my own internet node address for `%s'!!\n",
-/*		name);
-/*	return hostname;  /* Fail! */
-/*    }
-/*    hostname= strdup(phost->h_name);
-/*    memcpy(&HTHostAddress, &phost->h_addr, phost->h_length);
-/*    if (mMosaicAppData.wwwTrace) 
-/*	fprintf(stderr, "     Name server says that I am `%s' = %s\n",
-/*	    hostname, HTInetString(&HTHostAddress));
-*/
-	return hostname;
 }
 
 /* ############################## */

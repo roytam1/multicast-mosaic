@@ -286,14 +286,8 @@ typedef struct _HTMLPart {
         int		frame_y;        /* computed frame y-position */
         Dimension	frame_width;    /* computed frame width */
         Dimension	frame_height;   /* computed frame height */
-/*        Dimension      	frame_xs;       /* saved x-position */
-/*        Dimension      	frame_ys;       /* saved y-position */
-/*        Dimension	frame_width_s;  /* saved frame width */
-/*        Dimension	frame_height_s; /* saved frame height */
 	Dimension       frame_size_s;		/* saved frame size */
 	FrameSize       frame_size_type;	/* horizontal frame size specification */
-/*        FrameSize	frame_width_type; /* horizontal frame size specification */
-        FrameSize	frame_height_type; /* vertical frame size specification */
         String   	frame_src;      /* source document */
         String   	frame_name;     /* internal frame name */
         Dimension	frame_margin_width;   /* frame margin width */

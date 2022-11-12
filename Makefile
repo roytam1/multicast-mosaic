@@ -1,29 +1,35 @@
 # Toplevel Makefile for mMosaic.
+#This Release 3.4.1 compile on:
+#	- a Linux debian sparc with Lesstif
+#	- Solaris 2.5.1 sparc with Motif
 
-MCVER=3.4.0
+MCVER=3.4.1
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
 #### your compiler (ANSI required).
+#### Gnu C, C++, local C.
 #CC = gcc
-CC = CC
-#CC = cc
+#CC = CC
 
-# On BSDI, OSF1, IBM , SunOS4this should be ranlib.
+CC = cc
+
+#### On BSDI, OSF1, IBM , SunOS4this should be ranlib.
 # RANLIB = ranlib
-# ranlib for SVR4, indy , linux Qnx
+#### ranlib for SVR4, indy , linux Qnx, Solaris2.x
+
 RANLIB = /bin/true
 
-#### Linux
+#### Linux Intel optimised
 #prereleaseflags = -O3 -fomit-frame-pointer -funroll-loops -finline-functions -m486 -malign-double
 #### Qnx
 #prereleaseflags = -Oeax
-#
-#prereleaseflags = -O
+#### Sun Workshop C Compiler
 #prereleaseflags = -xsb -v -g
-#prereleaseflags = -DMDEBUG -v -g
-prereleaseflags = +w -g
-#prereleaseflags =  -v -g
+#### Sun Workshop C++ Compiler
+#prereleaseflags = +w -g
+#### Standard Linux compiler flags
+prereleaseflags = -Wall -g -fwritable-strings  -O0
 
 
 #### Linker Flags -- Primarily for linking static on linux-elf.
@@ -32,7 +38,7 @@ prereleaseflags = +w -g
 #ldflags = -s
 #### QNX
 #ldflags = -N256k
-ldflags =
+#ldflags =
 
 #### Random system configuration flags.
 #### --> *** For Motif 1.2 ON ANY PLATFORM, do -DMOTIF1_2 *** <--
@@ -46,10 +52,12 @@ ldflags =
 #### For Convex whatever, do -DCONVEX
 #### For SCO ODT 3.0, do -DSCO -DSVR4 -DMOTIF1_2
 #### For Motorola SVR4, do -DSVR4 -DMOTOROLA -DMOTIF1_2
-#### For Linux -Dlinux  -DMOTIF1_2 -DSOLARIS25
+#### For Linux -Dlinux -DLINUX -DMOTIF1_2
 #### For OSF1 -DMOTIF1_2 -std1 -DDECOSF1
 #### For Qnx -DMOTIF1_2 -DQNX
-sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
+#sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
+
+sysconfigflags = -DLINUX -Dlinux -DSVR4 -DMOTIF1_2
 
 #### System libraries SunOS.
 # syslibs = -lPW -lsun -lmalloc
@@ -71,7 +79,7 @@ sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
 #### For QNX 4.XX
 #syslibs = -lsocket
 #### For Solaris (2.x) and Motorola SVR4  .
-syslibs = -lnsl -lsocket -lgen
+#syslibs = -lnsl -lsocket -lgen
 
 #### X include file locations -- if your platform puts the X include
 #### files in a strange place, set this variable appropriately.  Else
@@ -85,13 +93,14 @@ syslibs = -lnsl -lsocket -lgen
 #### BSD/386
 # xinc = -I/usr/X11/include
 #### Solaris 2.x (Patched X11R5 and Motif libs)
-xinc = -I/usr/openwin/include -I/usr/dt/include
+#xinc = -I/usr/openwin/include -I/usr/dt/include
 #xinc = -I/usr/openwin/include -I$(HOME)/mbone-dev/mMosaic/lesstif-0.77/include
+#### Linux Debian
+
+xinc = -I/usr/X11R6/include
 
 #### X library locations.
 # xlibs = -lXm_s -lXmu -lXt_s -lX11_s
-#### For Sun's (at least running stock X/Motif as installed on our machines):
-# xlibs = /usr/lib/libXm.a /usr/lib/libXmu.a /usr/lib/libXt.a /usr/lib/libXext.a /usr/lib/libX11.a -lm
 #### For HP-UX 8.00:
 # xlibs = -L/usr/lib/Motif1.1 -lXm -L/usr/lib/X11R4 -lXmu -lXt -lX11
 #### For HP-UX 9.01: The X11R5 libraries are here on our systems
@@ -103,7 +112,6 @@ xinc = -I/usr/openwin/include -I/usr/dt/include
 #### For Solaris (2.x) (Use static to go from machine to machine)
 xlibs = -R/usr/openwin/lib -L/usr/openwin/lib 
 xlibs += -L/usr/dt/lib -R/usr/dt/lib -lXm
-#xlibs += -L$(HOME)/mbone-dev/mMosaic/lesstif-0.77/libXm -lXm
 xlibs += -lXmu -lXt
 xlibs += -lXext -lX11
 xlibs += -lm
@@ -119,34 +127,27 @@ xlibs += -lm
 # xlibs = -lXm -lXmu -lXt -lXext -lX11 -lm
 #### QNX
 #xlibs =  -L/usr/X11/lib -lXm_s -lXt_s -lX11_s -lXqnx_s  -lXt -lXmu -lXext
+# Linux Debian with Lesstif
+
+xlibs = -L/usr/X11R6/lib -lXm -lXmu -lXt -lXext -lX11 -lm 
 
 #### PNG SUPPORT
 #### For inline PNG support, the following should be defined:
 #### The libraries currently used are PNGLIB 0.99d and ZLIB 1.0.9
 
-pngdir = /usr/local
+pngdir = /usr
 pnglibdir = $(pngdir)/lib
-pngincludedir = $(pngdir)/include
-pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/libz.a -lm
+pngincludedir = /$(pngdir)/include
+pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/libz.a
 pngflags =  -I$(pngincludedir) -DHAVE_PNG
-
-#pngdir = $(HOME)/mbone-dev/mMosaic/libpng-0.89c
-#pnglibdir = $(pngdir)
-#pngincludedir = $(pngdir)
-#pnglibs = $(pnglibdir)/libpng.a $(pnglibdir)/../zlib-1.0.4/libz.a -lm
-#pngflags =  -I$(pngincludedir) -I$(pngincludedir)/../zlib-1.0.4 -DHAVE_PNG
 
 #### JPEG SUPPORT
 #### For inline JPEG support, the following should be defined:
 #### The library used is Independent JPEG Group (IJG's) jpeg-6a.  
 
-jpegdir = /usr/local
+jpegdir = /usr
 jpeglibs = $(jpegdir)/lib/libjpeg.a
 jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
-
-#jpegdir = $(HOME)/mbone-dev/mMosaic/jpeg-6a
-#jpeglibs = $(jpegdir)/libjpeg.a
-#jpegflags = -I$(jpegdir) -DHAVE_JPEG
 
 #### KERBEROS SUPPORT
 ####
@@ -206,7 +207,7 @@ all: libhtmlw libnut $(mclib) $(alib) src
 
 libhtmlw::
 	@echo --- Building libhtmlw
-	(cd libhtmlw; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc) -DMOTIF")
+	(cd libhtmlw; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc)" )
 
 libnut::
 	@echo --- Building libnut

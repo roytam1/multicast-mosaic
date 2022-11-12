@@ -73,10 +73,10 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 		/* baseline unchanged */
 	} else if ( picd->align == HALIGN_LEFT) {
 		halignment = HALIGN_LEFT;
-		/* baseline unchanged ######??? /* */
+		/* baseline unchanged ######???  */
 	} else if ( picd->align == HALIGN_RIGHT) {
 		halignment = HALIGN_RIGHT;
-		/* baseline unchanged ######??? /* */
+		/* baseline unchanged ######???  */
 	}
 		
 /* Now look if the image is too wide, if so insert a linebreak. */
@@ -183,14 +183,14 @@ void ImageRefresh(HTMLWidget hw, struct ele_rec *eptr)
 	XChangeGC(XtDisplay(hw), hw->html.drawGC, valuemask, &values);
 
 /*	if((eptr->pic_data.delayed)&&
-/*	   (eptr->anchor_tag_ptr->anc_href != NULL)&&
-/*	   (!IsIsMapForm(hw, eptr->anchor_tag_ptr->anc_href))) {
-/*		XSetForeground(XtDisplay(hw), hw->html.drawGC, eptr->fg);
-/*		XFillRectangle(XtDisplay(hw->html.view),
-/*			       XtWindow(hw->html.view),
-/*			       hw->html.drawGC,
-/*			       x, (y + AnchoredImage_height + IMAGE_DEFAULT_BORDER),
-/*			       (eptr->width + (2 * extra)), extra);
-/*	}
+ *	   (eptr->anchor_tag_ptr->anc_href != NULL)&&
+ *	   (!IsIsMapForm(hw, eptr->anchor_tag_ptr->anc_href))) {
+ *		XSetForeground(XtDisplay(hw), hw->html.drawGC, eptr->fg);
+ *		XFillRectangle(XtDisplay(hw->html.view),
+ *			       XtWindow(hw->html.view),
+ *			       hw->html.drawGC,
+ *			       x, (y + AnchoredImage_height + IMAGE_DEFAULT_BORDER),
+ *			       (eptr->width + (2 * extra)), extra);
+ *	}
 */
 }

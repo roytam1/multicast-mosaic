@@ -216,7 +216,7 @@ static void mo_remove_window_from_list (mo_window *win)
 	case MC_MO_TYPE_UNICAST:
 	case MC_MO_TYPE_MAIN:
 #endif
-		while (w = mo_main_next_window (w)) {
+		while ( (w = mo_main_next_window (w)) ) {
 			if (w == win) { /* Delete w. */
 				if (!prev) { /* No previous window. */
 					main_winlist = w->next;
@@ -371,7 +371,6 @@ static XmxCallback (url_field_cb)
 {
 	mo_window *win=(mo_window*)client_data;
 	char *url,*xurl;
-	XmTextVerifyCallbackStruct *cbs =(XmTextVerifyCallbackStruct *) call_data;
 	RequestDataStruct rds;
 
 	url = XmTextGetString (win->url_widget);
@@ -787,22 +786,6 @@ void mo_gui_notify_progress (char *msg, mo_window * win)
 	XmStringFree (xmstr);
 	XmUpdateDisplay (win->base);
 	return;
-}
-
-static void UpdateButtons (mo_window * win)
-{
-	XEvent event;
-  
-	XSync (mMosaicDisplay, 0);
-	while (XCheckMaskEvent(mMosaicDisplay,(ButtonPressMask|ButtonReleaseMask),
-                         &event)) {
-		XButtonEvent *bevent = &(event.xbutton);
-		if (bevent->window == XtWindow (win->logo)) 
-			XtDispatchEvent(&event);
-
-		/* else just throw it away... users shouldn't be pressing buttons
-		in the middle of transfers anyway... */
-	}
 }
 
 /*SWP 7/3/95*/
@@ -1430,7 +1413,6 @@ static void mo_extra_buttons(mo_window *win, Widget top)
 /* create topform and fill it with toolbar bits'n'pieces */
 Widget mo_fill_toolbar(mo_window *win, Widget top, int w, int h)
 {
-	int tmp = 25;
 	Widget tearbutton;
 	int i,vert = win->toolbarorientation && win->toolbardetached;
 	int textbuttons = win->texttools;
@@ -2011,7 +1993,6 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	char *url, char *frame_name)
 {
 	mo_window *swin;
-	McMoWType mc_t = MC_MO_TYPE_UNICAST;	/* just now #### */
 
 	Xmx_n = 0;
 
@@ -2035,38 +2016,36 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	swin->source_win = 0;
 	swin->save_win = 0;
 
-/*  ########### */
-/*	for(i=0;i<BTN_COUNT;i++)
-/*		win->tools[i].gray = XmxSensitive;
-/*	win->open_win = win->open_text = win->open_local_win = 0;
-/*	win->mail_win = win->mailhot_win = 0;
-/*	win->edithot_win = win->mailhist_win = win->inserthot_win = 0;
-/*	win->print_win = 0;
-/*	win->history_win = win->history_list = 0;
-/*	win->hotlist_win = win->hotlist_list = 0;
-/*	win->techsupport_win = win->techsupport_text = 0;
-/*	win->mailto_win = win->mailto_text = 0;
-/*	win->mailto_form_win = win->mailto_form_text = 0;
-/*	win->post_data=0;
-/*	win->news_win = 0;
-/*	win->links_win = 0;
-/*	win->news_fsb_win = 0;
-/*	win->mail_fsb_win = 0;
-/*	win->search_win = win->search_win_text = 0;
-/*	win->src_search_win=0;
-/*	win->src_search_win_text=0;
-/*	win->first_node = NULL;
+/*  ################################################ 
+ *	win->open_win = win->open_text = win->open_local_win = 0;
+ *	win->mail_win = win->mailhot_win = 0;
+ *	win->edithot_win = win->mailhist_win = win->inserthot_win = 0;
+ *	win->print_win = 0;
+ *	win->history_win = win->history_list = 0;
+ *	win->hotlist_win = win->hotlist_list = 0;
+ *	win->techsupport_win = win->techsupport_text = 0;
+ *	win->mailto_win = win->mailto_text = 0;
+ *	win->mailto_form_win = win->mailto_form_text = 0;
+ *	win->post_data=0;
+ *	win->news_win = 0;
+ *	win->links_win = 0;
+ *	win->news_fsb_win = 0;
+ *	win->mail_fsb_win = 0;
+ *	win->search_win = win->search_win_text = 0;
+ *	win->src_search_win=0;
+ *	win->src_search_win_text=0;
+ *	win->first_node = NULL;
 */
 	swin->current_node = parent->current_node;
 /*	win->source_text = 0;
-/*	win->format_optmenu = 0;
+ *	win->format_optmenu = 0;
 */
 	swin->save_format = parent->save_format;
 	swin->agent_state=parent->agent_state;
 /*
-/*	win->underlines_snarfed = 0;
-/*	win->mail_format = 0;
-/*	win->print_text = 0;
+ *	win->underlines_snarfed = 0;
+ *	win->mail_format = 0;
+ *	win->print_text = 0;
 */
 	swin->print_format = parent->print_format;
 	swin->search_start = (void *)malloc (sizeof (ElementRef));
@@ -2076,8 +2055,6 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	swin->font_size = parent->font_size;
 	swin->underlines_state = parent->underlines_state;
 	swin->font_family = parent->font_family;
-
-/*	mo_fill_window (win);		/* Install all the GUI bits & pieces. */
 
 /*********************** SLAB_GLOBE ****************************/
 	swin->logo = parent->logo;
@@ -2120,17 +2097,13 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	swin->meter_width = parent->meter_width;
 	swin->tracker_widget = parent->tracker_widget;
 
-/*	XmxRSetToggleState (win->menubar, (XtPointer)mo_delay_object_loads,
-/*		 win->delay_object_loads ? XmxSet : XmxNotSet);
-/*	XmxRSetSensitive (win->menubar, (XtPointer)mo_expand_object_current,
-/*		win->delay_object_loads ? XmxSensitive : XmxNotSensitive);
 
 /* take care of session history for rbm */
 /*     	win->session_menu = NULL;       
-/*     	win->num_session_items = 0;     
-/*   	win->session_items = (Widget*) malloc(sizeof(Widget) *
-/*                   mMosaicAppData.numberOfItemsInRBMHistory);
-/*	XtPopup (win->base, XtGrabNone);
+ *     	win->num_session_items = 0;     
+ *   	win->session_items = (Widget*) malloc(sizeof(Widget) *
+ *                   mMosaicAppData.numberOfItemsInRBMHistory);
+ *	XtPopup (win->base, XtGrabNone);
 */
 	XFlush (mMosaicDisplay);
 	XSync (mMosaicDisplay, False);

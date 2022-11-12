@@ -45,14 +45,10 @@ static mo_status mo_snarf_scrollbar_values (mo_window *win)
 
 void mo_set_win_headers (mo_window *win, char* aurl_wa)
 {
-	char *buf=NULL;
-
-
         if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) */
                                      /* try to enable multicast in frame..*/
                 return;
         }
-
 	XmxTextSetString (win->url_widget, aurl_wa);
 	XtVaSetValues(win->base, XmNtitle, win->current_node->title, NULL);
 }

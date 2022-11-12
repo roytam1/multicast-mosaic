@@ -33,13 +33,15 @@ static struct mark_up NULL_ANCHOR = {
 	0,			/* is_white_text */
 	NULL,			/* end */
 	NULL,			/* next */
+	0,			/* line */
 	NULL,			/* s_aps */
 	NULL,			/* s_ats */
 	NULL,			/* s_picd */
 	NULL,			/* t_p1 */
 	NULL,			/* anchor_name */
 	NULL,			/* anchor_href */
-	NULL			/* anchor_title */
+	NULL,			/* anchor_title */
+	NULL			/* anc_target */
 };
 
 struct mark_up * NULL_ANCHOR_PTR = &NULL_ANCHOR ;
@@ -51,7 +53,6 @@ static int in_title;
 /* ##############  This is maybe in a context stack ####*/
 static DescRec BaseDesc;
 static DescRec *DescType;
-static MapInfo *CurrentMap=NULL; /* csi stuff -- swp */
 /* ############ */
 
 /* GD ########## */
@@ -221,7 +222,6 @@ void ListNumberPlace( HTMLWidget hw, PhotoComposeContext * pcc, int val)
 	XCharStruct all;
 	char buf[20];
 	int x= pcc->x;
-	int y = pcc->y;
 	struct ele_rec * eptr;
 	int font_height;
 	int baseline;
@@ -1102,7 +1102,7 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 	InDocHead = 0;
 	in_title = 0;
 /* Free up previously formatted elements */
-	FreeLineList(hw->html.formatted_elements,(Widget)hw);
+	FreeLineList(hw->html.formatted_elements,hw);
 /* Start a null element list, to be filled in as we go. */
 	hw->html.cur_elem_to_format = NULL;
         hw->html.last_formatted_elem = NULL;
@@ -1211,7 +1211,7 @@ struct ele_rec * LocateElement( HTMLWidget hw, int x, int y, int *pos)
 
 
 	/* Search element by element, for now we only search
-	 * text elements, images, and linefeeds.
+	 * text elements and images.
 	 */
 	eptr = hw->html.formatted_elements;
 
@@ -1234,25 +1234,15 @@ struct ele_rec * LocateElement( HTMLWidget hw, int x, int y, int *pos)
 			break;
 		case E_CR:
 		case E_LINEFEED:
-/*########################
-			if ((x >= tx1)&&(y >= ty1)&&(y <= ty2)) {
-				rptr = eptr;
-				break;
-			}
-			 else if (eptr->next == NULL) {
-				rptr = eptr;
-				break;
-			} else if (eptr->next != NULL) {
-				int tmpy;
-
-				tmpy = eptr->next->y + eptr->next->height;
-				tx2 = eptr->next->x;
-				if ((x < tx2)&&(y >= ty2)&&(y <= tmpy)) {
-					rptr = eptr;
-					break;
-				}
-			}
-########*/
+		case E_BULLET:
+		case E_ANCHOR:
+		case E_WIDGET:
+		case E_HRULE:
+		case E_TABLE:
+		case E_CELL_TABLE:
+		case E_APROG:
+		case E_APPLET:
+		case E_MAP:
 			break;
 		}
 		if (rptr)
@@ -1260,10 +1250,9 @@ struct ele_rec * LocateElement( HTMLWidget hw, int x, int y, int *pos)
 		eptr = eptr->next;
 	} /* while */
 
-	/*
-	 * If we found an element, locate the exact character position within
-	 * that element.
-	 */
+/* If we found an element, locate the exact character position within
+ * that element.
+ */
 	if ( (rptr != NULL) && rptr->type == E_TEXT) {
 		int dir, ascent, descent;
 		XCharStruct all;

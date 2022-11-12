@@ -30,8 +30,6 @@ static void ProcessOption( SelectInfo *sptr);
 void EndForm(HTMLWidget hw, struct mark_up ** mptr,
 	PhotoComposeContext * pcc)
 {
-	struct mark_up * mark = *mptr;
-
 	if (pcc->cw_only) {	/* just compute the size of a form */
 				/* but the tag by itself have no size */
 		pcc->in_form = False; /* always put False on end Form */
@@ -92,7 +90,6 @@ void BeginForm(HTMLWidget hw, struct mark_up ** mptr,
 void FormInputField(HTMLWidget hw, struct mark_up ** mptr,
         PhotoComposeContext * pcc)
 {
-	struct mark_up * mark = *mptr;
 	char *tptr2, * tptr, *sptr;
 	int dir, ascent, descent;
 	XCharStruct all;
@@ -251,7 +248,6 @@ void FormTextAreaBegin(HTMLWidget hw, struct mark_up ** mptr,
 	char * text;
 	int m_w, def_w, def_h;
 	int cols, rows;
-	FormInputType input_type= InputTypeTextArea;
 
 	if ( !pcc->in_form)		/* error */
 		return;
@@ -406,8 +402,6 @@ void FormSelectOptionField(HTMLWidget hw, struct mark_up ** mptr,
 void FormSelectBegin(HTMLWidget hw, struct mark_up ** mptr,
         PhotoComposeContext * pcc)
 {
-	struct mark_up * mark = *mptr;
-
 	if (!pcc->in_form)
 		return;
         if(pcc->cw_only ) {             /* compute size only */
@@ -438,7 +432,6 @@ void FormSelectBegin(HTMLWidget hw, struct mark_up ** mptr,
 void FormSelectEnd(HTMLWidget hw, struct mark_up ** mptr,
         PhotoComposeContext * pcc)
 {
-	struct mark_up * mark = *mptr;
 	char *start;
 	int len;  
 	char *buf;  

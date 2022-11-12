@@ -1165,7 +1165,6 @@ void ViewClearAndRefresh( HTMLWidget hw)
  */
 static void Redisplay( HTMLWidget hw, XEvent * event, Region region)
 {
-	XExposeEvent *ExEvent = (XExposeEvent *)event;
 	int dx, dy;
 
 	/* find out where the shadow is based on scrollbars */
@@ -2863,6 +2862,16 @@ void HTMLRetestAnchors(Widget w, visitTestProc testFunc, char * base_url)
 		case E_LINEFEED:
 			LinefeedRefresh(hw, start);
 			break;
+		case E_CR:
+		case E_ANCHOR:
+		case E_WIDGET:
+		case E_HRULE:
+		case E_TABLE:
+		case E_CELL_TABLE:
+		case E_APROG:
+		case E_APPLET:
+		case E_MAP:
+			break;
 		}
 		start = start->next;
 	}
@@ -3083,64 +3092,6 @@ char * HTMLGetTextAndSelection(Widget w,char **startp,char **endp,char **insertp
 	return(text);
 }
 
-/* Convenience function to set the raw text into the widget.
- * Forces a reparse and a reformat.
- * If any pointer is passed in as NULL that text is unchanged,
- * if a pointer points to an empty string, that text is set to NULL;
- * Also pass an element ID to set the view area to that section of the new
- * text.  Finally pass an anchor NAME to set position of the new text
- * to that anchor.
- */
-/*
-void HTMLSetText(Widget w, char *text, int element_id, 
-	char *target_anchor, char * base_url)
-{
-	hw->html.base_url = base_url;
-	hw->html.widget_list = NULL;
-	hw->html.form_list = NULL;
-	FreeColors(XtDisplay(hw), mMosaicColormap);
-/* Reformat the new text */ /*
-	hw->html.max_pre_width = DocumentWidth(hw, hw->html.html_objects);
-	ReformatWindow(hw,False); /* here we rescan all tag and make all */ /*
-/* If a target anchor is passed, override the element id
-	 * with the id of that anchor.  */ /*
-	if (target_anchor != NULL) {
-		int id;
-		id = HTMLAnchorToId(w, target_anchor);
-		if (id != 0)
-			element_id = id;
-	}
-	/* Position text at id specified, or at top if no position specified.
-	 * Find the element corrsponding to the id passed in.  */ /*
-	eptr = NULL;
-	if (element_id != 0) {
-		start = hw->html.formatted_elements;
-		while (start != NULL) {
-			if (start->ele_id == element_id) {
-				eptr = start;
-				break;
-			}
-			start = start->next;
-		}
-	}
-	if (eptr == NULL)
-		newy = 0;
-	else
-		newy = eptr->y - 2;
-	if (newy < 0)
-		newy = 0;
-	if (newy > (hw->html.doc_height - (int)hw->html.view_height))
-		newy = hw->html.doc_height - (int)hw->html.view_height;
-	if (newy < 0)
-		newy = 0;
-	hw->html.scroll_x = 0;
-	hw->html.scroll_y = newy;
-	ConfigScrollBars(hw);
-	ScrollWidgets(hw);
-	ViewClearAndRefresh(hw); 		/* Display the new text */ /*
-	hw->html.select_start = NULL;	 /* Clear any previous selection */
-/* } */
-
 /* Convenience function to set the makup list into the widget.
  * Forces a reformat.
  * If any pointer is passed in as NULL that text is unchanged,
@@ -3157,10 +3108,8 @@ void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 	int newy;
 
 	hw->html.base_url = base_url;
-
 	if (mlist == NULL)
 		return;
-
 	InitBody(hw); /*init body stuff. in case they have no body tag*/
 
 /* restore default colors as required */
@@ -3213,9 +3162,8 @@ void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 	/*FreeColors(XtDisplay(hw), mMosaicColormap);*/
 				/* Parse the raw text with the HTML parser */
 /* just now. do nothing for test ############ */
-/* ####	FreeMarkUpList(hw->html.html_objects); /* clear previous*/
-/* ####
-*/
+/* ####	FreeMarkUpList(hw->html.html_objects);*/ /* clear previous*/
+/* #### */
 	hw->html.html_objects = mlist;
 				/* Reformat the new text */
 	hw->html.max_pre_width = DocumentWidth(hw, hw->html.html_objects);
@@ -3277,8 +3225,7 @@ void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 	hw->html.active_anchor = NULL;
 }
 
-/* Allows us to jump to the bottom of a document (or very close).
- */
+/* Allows us to jump to the bottom of a document (or very close).  */
 int HTMLLastId(Widget w)
 {
 	HTMLWidget hw = (HTMLWidget)w;

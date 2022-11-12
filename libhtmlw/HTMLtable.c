@@ -452,26 +452,26 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	lt.min_width =0;
 	lt.max_width =0;
 	lt.is_tint = 0;
-	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"BORDER")){
+	if ( (tptr=ParseMarkTag(mptr->start,MT_TABLE,"BORDER")) ){
 		lt.borders = atoi(tptr);
 		free(tptr);
 	}
-	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"WIDTH")){
+	if ( (tptr=ParseMarkTag(mptr->start,MT_TABLE,"WIDTH")) ){
 		lt.relative_width = atoi(tptr);	/* the width wanted by user */
 		if (strchr(tptr,'%') == NULL){ /* absolute value */
 			lt.relative_width = (lt.relative_width*100)/pcc->cur_line_width;
 		}
 		free(tptr);
 	}
-	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"ALIGN")) {
+	if ( (tptr=ParseMarkTag(mptr->start,MT_TABLE,"ALIGN")) ) {
 		printf("[MakeTable] %s not yet implemented\n","ALIGN");
 		free(tptr);
 	}
-	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLSPACING")) {
+	if ( (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLSPACING")) ) {
 		lt.cellSpacing = atoi(tptr);
 		free(tptr);
 	}
-	if (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLPADDING")) {
+	if ( (tptr=ParseMarkTag(mptr->start,MT_TABLE,"CELLPADDING")) ) {
 		lt.cellPadding = atoi(tptr);
 		free(tptr);
 	}
@@ -485,7 +485,7 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	while ( sm ){
 		if((sm->type== M_CAPTION) && (!sm->is_end)){
 			lt.captionAlignment = VALIGN_BOTTOM;
-			if (tptr = ParseMarkTag(sm->start,MT_CAPTION,"top")){
+			if ( (tptr = ParseMarkTag(sm->start,MT_CAPTION,"top")) ){
 				lt.captionAlignment = VALIGN_TOP;
 				free(tptr);
 			}

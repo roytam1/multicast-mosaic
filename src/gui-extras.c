@@ -235,7 +235,7 @@ mo_status mo_update_links_window(mo_window *win)
 void System(char *cmd, char *title) 
 {
 	char buf[BUFSIZ], final[BUFSIZ*2];
-	int retValue,skip_output=0;
+	int retValue;
 
 	*final='\0';
 

@@ -413,7 +413,7 @@ static struct mark_up * get_mark(char *start, char **endp)
  * clean it of escapes, and odd white space.
  */
 	tchar = *ptr;
-	*ptr = '\0';
+	*ptr = '\000';
 	text = (char *)malloc(strlen(start) + 1);
 	CHECK_OUT_OF_MEM(text);
 	strcpy(text, start);
@@ -557,24 +557,6 @@ struct mark_up * HTMLLexem( char *str)
 				start++;
 		}
 	}
-/*	mark = (struct mark_up *)malloc(sizeof(struct mark_up));
-/*	CHECK_OUT_OF_MEM(mark);
-/*	mark->type = M_END_STATE;	/* it's finish */
-/*	mark->is_end = 0;
-/*	mark->start = NULL;
-/*	mark->text = NULL;
-/*	mark->is_white_text = 0;
-/*	mark->end = NULL;
-/*	mark->next = NULL;
-/*	mark->s_aps = NULL;
-/*	mark->s_ats = NULL;
-/*	mark->s_picd = NULL;
-/*	mark->t_p1 = NULL;
-/*	mark->anc_name = NULL;
-/*	mark->anc_href = NULL;
-/*	mark->anc_title = NULL;
-/*	current = AddObj(&list, current, mark);
-*/
 	return(list);
 }
 
@@ -593,17 +575,6 @@ typedef struct _ParserContext {
 	int has_body;				/* body seen */
 	int has_frameset;			/* frameset seen */
 	int frameset_depth;			/* nested frameset */
-/*struct mark_up *head;/* head of object list       */
-/*struct mark_up *cur;/* lastly inserted element*/
-/*struct mark_up *last;/* last valid element */
-/* running list of inserted elements */
-/*int num_elements;/* no of tags inserted so far  */
-/*int num_text;/* no of text elements inserted so far  */
-/*Cardinal loop_count;/* no of loops made so far*/
-/*Boolean have_body; /* indicates presence of <body> tag*/
-/*Boolean bad_html;  /* bad HTML document flag */
-/*Boolean automatic; /* when in automatic mode */
-
 } ParserContext;
 
 static  ParserContext Pcxt = {
@@ -641,6 +612,8 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 	case M_DOCTYPE:
 	case M_NOFRAMES:		/* we are configured with FRAME */
 		return REMOVE_TAG;
+	default:
+		break;
 	}
 
 /* autorized state stack:
@@ -913,6 +886,11 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		case M_KEYBOARD:
 		case M_VARIABLE:
 		case M_PARAGRAPH:
+		case M_ABBR:
+		case M_ACRONYM:
+		case M_TBODY:
+		case M_TFOOT:
+		case M_THEAD:
 			return GOOD_TAG;
 					/* BLOCK */
 		case M_TABLE:
@@ -1026,6 +1004,8 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 				return INSERT_TAG;
 			}
 			return REMOVE_TAG;
+		default:
+			break;
 		}
 		return GOOD_TAG;
 	case M_TR:			/* table row state */
@@ -1071,6 +1051,8 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 				return INSERT_TAG;
 			}
 			return REMOVE_TAG;
+		default:
+			break;
 		}
 		return REMOVE_TAG;
 		break;
@@ -1121,6 +1103,8 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 				return INSERT_TAG;
 			}
 			return REMOVE_TAG;
+		default:
+			break;
 		}
 		return GOOD_TAG;
 	case M_TD:			/* table data */
@@ -1170,6 +1154,8 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 				return INSERT_TAG;
 			}
 			return REMOVE_TAG;
+		default:
+			break;
 		}
 		return GOOD_TAG;
 	case M_CAPTION:			/* CAPTION of table */
@@ -1185,6 +1171,8 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		default:
 			return REMOVE_TAG;
 		}
+	default:
+		break;
 	}
 	
 	abort(); /* that is a unknow state!!!! */
@@ -1374,6 +1362,8 @@ HtmlTextInfo * HTMLParseRepair( char *str)
                         base_url = ParseMarkTag(mptr->start, MT_BASE, "HREF");
                         base_target = ParseMarkTag(mptr->start, MT_BASE,"target");
                         break;
+		default:
+			break;
                 }                      
                 mptr = mptr->next;     
         }

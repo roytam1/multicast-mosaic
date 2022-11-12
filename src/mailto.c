@@ -52,7 +52,7 @@ mo_window *win = (mo_window*)client_data;
         char *buf, *final, tmpbuf[80];
 	int final_len;
 
-        buf=my_strerror(errno);
+        buf=strerror(errno);
         if (!buf || !*buf || !strcmp(buf,"Error 0")) {
                 sprintf(tmpbuf,"Unknown Error");
                 buf=tmpbuf;

@@ -4,7 +4,7 @@
 
 
 extern void 		FreeMarkUpList(struct mark_up *List);
-extern void 		FreeLineList(struct ele_rec *, Widget );
+extern void 		FreeLineList(struct ele_rec *, HTMLWidget );
 extern int 		ElementLessThan(struct ele_rec *s, struct ele_rec *e,
 				int start_pos, int end_pos);
 extern int 		SwapElements( struct ele_rec *start, struct ele_rec *end,

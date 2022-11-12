@@ -277,7 +277,7 @@ static void mo_gui_add_hot_item (mo_hotlist *list, mo_hot_item *item)
 	mo_window *win = NULL;
 
 		/* Now we've got to update all active hotlist_list's. */
-	while (win = mo_main_next_window (win))
+	while ( (win = mo_main_next_window (win)) )
 		if (win->hotlist_list && win->current_hotlist == list) {
 			char *highlight = NULL;
 
@@ -527,7 +527,6 @@ static void mo_parse_hotlist_list(mo_hotlist *list, struct mark_up  **current)
 /* Read a hotlist from a file. fill the hotlist list given as parameter */
 static void mo_read_hotlist(mo_hotlist *list, FILE *fp)
 {
-	char *ptr;
 	int done, normal, has_list, depth;
 	long size;
 	struct mark_up *hot_mark_up, *mptr;
@@ -806,7 +805,7 @@ static XmxCallback (edit_or_insert_hot_cb0)		/* Commit Edit */
 	hotnode->any.title = title;
 /*Save the hotlist before we screw something up.*/
 	mo_write_default_hotlist ();
-	while (ww = mo_main_next_window (ww)) { /* Change the extant hotlists. */
+	while ((ww = mo_main_next_window(ww))) { /* Change the extant hotlists. */
 		if(ww->hotlist_list && ww->current_hotlist ==win->current_hotlist) {
 			char *highlight = NULL;
 			xmstr = XmxMakeXmstrFromString(hotnode->type == mo_t_url ?
@@ -1249,7 +1248,7 @@ static XmxCallback (save_hot_cb)
 		char *buf, *final, tmpbuf[80];
 		int final_len;
 
-		buf=my_strerror(errno);
+		buf=strerror(errno);
 		if (!buf || !*buf || !strcmp(buf,"Error 0")) {
 			sprintf(tmpbuf,"Unknown Error");
 			buf=tmpbuf;
@@ -1289,7 +1288,7 @@ static XmxCallback (load_hot_cb)
 	if (!fp) {
 		char *buf, *final, tmpbuf[80];
 		int final_len;
-		buf=my_strerror(errno);
+		buf=strerror(errno);
 		if (!buf || !*buf || !strcmp(buf,"Error 0")) {
 			sprintf(tmpbuf,"Unknown Error");
 			buf=tmpbuf;
@@ -1362,7 +1361,7 @@ static void delete_hot_from_list (mo_hotlist *list, mo_hot_item *hotnode,
 	if (hotnode == NULL)
 		return;
 	if (hotnode->type == mo_t_list)
-		while (win = mo_main_next_window (win)) {
+		while ((win = mo_main_next_window (win)) ) {
 			if (win->hotlist_list &&
 			mo_is_ancestor (&(hotnode->list), win->current_hotlist)) {
 				char *path = mo_compute_hot_path(list);
@@ -1381,7 +1380,7 @@ static void delete_hot_from_list (mo_hotlist *list, mo_hot_item *hotnode,
 	mo_recalculate_hotlist_positions (list);
   
 			/* Do the GUI stuff. */
-	while (win = mo_main_next_window (win)) {
+	while ( (win = mo_main_next_window(win)) ) {
 		if (win->hotlist_list && win->current_hotlist == list)
 			XmListDeletePos (win->hotlist_list, position);
 		if (win->hot_cut_buffer == hotnode)
@@ -1491,18 +1490,6 @@ oops:
 
 static mo_status mo_post_mailhot_win (mo_window *win)
 {
-/*
-############
-	if (!win->annotate_win) make_annotate_win (win);
-	XmxTextSetString (win->annotate_author, author);
-	XmxTextSetString (win->annotate_title, title);
-	XmxTextSetString (win->annotate_text, text);
-	XmTextSetTopCharacter (win->annotate_text, 0);
-/* Finally, we manage. */
-/*
-	XmxManageRemanage (win->annotate_win);
-###########
-*/
   /* This shouldn't happen. */
   if (!win->hotlist_win)
     return mo_fail;
@@ -1772,18 +1759,6 @@ static XmxCallback (hotlist_list_cb)
 /* Pop up a hotlist window for an mo_window.  */
 mo_status mo_post_hotlist_win (mo_window *win)
 {
-/*
-############
-	if (!win->annotate_win) make_annotate_win (win);
-	XmxTextSetString (win->annotate_author, author);
-	XmxTextSetString (win->annotate_title, title);
-	XmxTextSetString (win->annotate_text, text);
-	XmTextSetTopCharacter (win->annotate_text, 0);
-/* Finally, we manage. */
-/*
-	XmxManageRemanage (win->annotate_win);
-###########
-*/
   if (!win->hotlist_win) {
       Widget dialog_frame/*, toto*/;
       Widget dialog_sep, buttons_form, buttons1_form, buttons2_form;

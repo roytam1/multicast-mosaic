@@ -179,7 +179,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.4.0"
+#define MO_VERSION_STRING "3.4.1"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@sig.enst.fr"
@@ -622,7 +622,6 @@ extern mo_status mo_post_open_window (mo_window *);
 extern mo_status mo_post_mail_window (mo_window *);
 extern mo_status mo_post_print_window (mo_window *);
 extern mo_status mo_post_search_window (mo_window *);
-extern char *my_strerror(int);
 extern mo_status mo_post_subscribe_win (mo_window *);
 
 /* gui-menubar.c */

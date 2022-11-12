@@ -11,7 +11,6 @@
 
 #define offset(x) XtOffset (AppDataPtr, x)
 
-static Boolean faux = False;
 static int Izero = 0;
 static int ttl192 = 192;
 

@@ -44,7 +44,6 @@ static int PseudoXFontSize[] = {
 };
 
 static int num_PseudoXFontSize = sizeof(PseudoXFontSize)/sizeof(int);
-static int size3 = 6;	/* default html size is 3 , and point is 14 */
 static int f_off3 = 3;	/* index offset to size 14 pica */
 
 /* looks for a font in the fontcache;
@@ -487,7 +486,6 @@ void MMPushFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc)
 
 void MMPopFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc)
 {
-	FontRec *fptr;
 	FontStack *ofstack;
 
 	if (hw->html.font_stack->next == NULL) {

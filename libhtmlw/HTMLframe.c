@@ -68,7 +68,8 @@ __XmHTMLWarning(w, module, line, routine, fmt, va_alist)
 
 /*##############################################*/
 /* Come from XmHTML Widget :
-/* Copyright (C) 1994-1997 by Ripley Software Development */
+ * Copyright (C) 1994-1997 by Ripley Software Development
+ */
 
 /*** External Function Prototype Declarations ***/
 
@@ -1229,51 +1230,4 @@ Widget XmHTMLFrameGetChild(Widget w, String name)
                         return(html->html.frames[i]->html.frame_wid);
         }
         return(NULL);
-}
-
-static Boolean areAllSizesOptional(HTMLWidget frameset)
-{
-        Boolean all_opt = True ;
-        if (IS_FRAMESET(frameset))  {
-                HTMLWidget frame;
-
-                for(frame = frameset->html.frame_children ; frame != NULL ; frame = frame->html.frame_next) {
-                        if(IS_FRAME_SIZE_OPTIONAL(frame)) {
-                                all_opt = False;
-                                break;
-                        }
-                }
-        }
-        return(all_opt);
-}
-
-static Boolean areAllSizesRelative(HTMLWidget frameset)
-{
-        Boolean all_rel = False ;
-        if(IS_FRAMESET(frameset)) {
-                HTMLWidget frame;
-
-                all_rel = True ;
-                for(frame = frameset->html.frame_children ; frame != NULL ; frame = frame->html.frame_next) {
-                        if (IS_FRAME_SIZE_RELATIVE(frame)) {
-                                all_rel = False;
-                                break;
-                        }
-                }
-        }
-        return(all_rel);
-}
-
-static int relativeSizesSum(HTMLWidget frameset)
-{
-        int rel_sum = 0 ;
-        if(IS_FRAMESET(frameset)) {
-                HTMLWidget frame;
-                for(frame = frameset->html.frame_children ; frame != NULL ; frame = frame->html.frame_next) {
-                        if (IS_FRAME_SIZE_RELATIVE(frame)) {
-                                rel_sum += frame->html.frame_size_s ;
-                        }
-                }
-        }
-        return(rel_sum);
 }

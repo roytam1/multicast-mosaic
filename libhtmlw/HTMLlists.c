@@ -102,9 +102,8 @@ char * MaxTextWidth(char *txt, int *cnt)
 /* Free up the passed linked list of formatted elements, freeing
  * all memory associates with each element.
  */
-void FreeLineList( struct ele_rec *list, Widget w)
+void FreeLineList( struct ele_rec *list, HTMLWidget w)
 {
-	HTMLWidget hw = (HTMLWidget)w;
 	struct ele_rec *current;
 	struct ele_rec *eptr;
 
@@ -116,91 +115,53 @@ void FreeLineList( struct ele_rec *list, Widget w)
 			free((char *)eptr->edata);
 			eptr->edata = NULL;
 		}
-		/*############*/
-/*		eptr->anchor_tag_ptr = NULL_ANCHOR_PTR;  */
 		eptr->anchor_tag_ptr = NULL;
-/* free this somewhere in img.c ##########
-		if((eptr->type == E_IMAGE) && eptr->pic_data->fetched ) {
-       /*                  /*
-       /*                   * Don't free internal images
-       /*                   */
+/*######################################################################
+ * free this somewhere in img.c ##########
+ *		if((eptr->type == E_IMAGE) && eptr->pic_data->fetched ) {
+ */                         /* Don't free internal images */
 /*			if((eptr->pic_data->image != (Pixmap)NULL)&&
-			   (eptr->pic_data->internal != 1) ){
-				XFreePixmap(XtDisplay(w), eptr->pic_data->image);
-				eptr->pic_data->image = (Pixmap)NULL;
-				if (eptr->pic_data->clip != (Pixmap)NULL) {
-					XFreePixmap(XtDisplay(w),
-						eptr->pic_data->clip);
-					eptr->pic_data->clip = (Pixmap)NULL;
-				}
-				/* don't free because cache do it ### */
-				/*free(eptr->pic_data->colrs);*/
-				/*eptr->pic_data->colrs = NULL;*/
-/*				free(eptr->pic_data->image_data);
-/*				eptr->pic_data->image_data = NULL;
-/*				free(eptr->pic_data->clip_data);
-/*				eptr->pic_data->clip_data=NULL;
-/*				/* src is canonized by cache */
-/*				free(eptr->pic_data->src);
-/*				eptr->pic_data->src = NULL;
-/*			}
-/*			free(eptr->pic_data);
-		}
-*/
-		if(eptr->type == E_APPLET){
-/* this is done in FreeMarkUpList */
-		}
-		if(eptr->type == E_APROG){
-/* this is done in FreeMarkUpList */
-		}
-#ifdef TO_DO
-/*        	if(eptr->pic_data->fptr != NULL) {#########don't know what to do ##### */
-/*			typedef struct form_rec {
-/*        			Widget hw;
-/*        			char *action;
-/*        			char *method;
-/*        			char *enctype;
-/*        			int start, end;
-/*			        Widget button_pressed;
-/*			        struct form_rec *next;
-/*			} FormInfo;
+ *			   (eptr->pic_data->internal != 1) ){
+ *				XFreePixmap(XtDisplay(w), eptr->pic_data->image);
+ *				eptr->pic_data->image = (Pixmap)NULL;
+ *				if (eptr->pic_data->clip != (Pixmap)NULL) {
+ *					XFreePixmap(XtDisplay(w),
+ *						eptr->pic_data->clip);
+ *					eptr->pic_data->clip = (Pixmap)NULL;
+ *				}
+ *			}
+ *			free(eptr->pic_data);
+ *		}
+ *		if(eptr->type == E_APPLET){
+ * this is done in FreeMarkUpList */
 /*		}
-*/
-#endif
-        	if(eptr->widget_data != NULL) {
-/*			typedef struct wid_rec {
-/*        			Widget w;
-/*        			int type;
-/*        			int id;
-/*        			int x, y;
-/*        			int width, height;
-/*        			char *name;
-*        			char *value;
-*        			char *password;
-*        			char **mapping;
-*        			Boolean checked;
-*        			Boolean mapped;
-*        			struct wid_rec *next;
-*        			struct wid_rec *prev;
-*			} WidgetInfo;
- */
-		}
-        	if(eptr->table_data != NULL) {
- /* do nothing . This is done in FreeMarkUpList  */
-		}
-        	if(eptr->font != NULL) {
-/*			XFontStruct *font;
- */
-		}
-/*###################################*/
+ *		if(eptr->type == E_APROG){
+ * this is done in FreeMarkUpList */
+/*		}
+ *        	if(eptr->pic_data->fptr != NULL) {###don't know what to do #### */
+/*			typedef struct form_rec {
+ *			} FormInfo;
+ *		}
+ *
+ *      	if(eptr->widget_data != NULL) {
+ *			typedef struct wid_rec {
+ *			} WidgetInfo;
+ *
+ *		}
+ *      	if(eptr->table_data != NULL) {
+ * do nothing . This is done in FreeMarkUpList  */
+/*		}
+ *      	if(eptr->font != NULL) {
+ *			XFontStruct *font;
+ *		}
+ *###################################*/
 		eptr->next = NULL;
 		eptr->prev = NULL;
 		free((char *)eptr);
 	}
 }
 
-/*
- * Passed in 2 element pointers, and element positions.
+/* Passed in 2 element pointers, and element positions.
  * Function should return 1 if if start occurs before end.
  * Otherwise return 0.
  */

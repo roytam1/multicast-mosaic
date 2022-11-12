@@ -1,4 +1,4 @@
-
+#include <sys/time.h>
 
 #define NO_ENCODING		0
 #define GZIP_ENCODING		1

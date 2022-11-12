@@ -40,6 +40,10 @@ extern int gethostname(char *name, int namelen); /* because bug in header*/
 #endif
 #endif
 
+#ifndef MAXHOSTNAMELEN
+#define MAXHOSTNAMELEN 128		/* Arbitrary limit */
+#endif
+
 char 		*mMosaicRootDirName = NULL;
 char		*mMosaicMachineWithDomain;
 char		*mMosaicTmpDir = NULL;

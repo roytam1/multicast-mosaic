@@ -74,17 +74,6 @@ void mo_free_node_data (mo_node *node)
 	FreeMimeStruct(node->mhs);
 }
 
-/* Kill a single mo_node associated with a given mo_window; it
-   the history list exists we delete it from that.  In any case
-   we call mo_free_node_data and return. */
-
-static void mo_kill_node (mo_window *win, mo_node *node)
-{
-	if (win->history_list)
-		XmListDeletePos (win->history_list, node->position);
-	mo_free_node_data (node);
-}
-
 /* Iterate through all descendents of an mo_node, but not the given
    mo_node itself, and kill them.  This is equivalent to calling
    mo_kill_node on each of those nodes, except this is faster since

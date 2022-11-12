@@ -1,14 +1,7 @@
-/*
- * mipcf.h
- * Author: Gilles Dauphin
+/* Author: Gilles Dauphin
  * Version 3.1.1 [May97]
  *
  * Copyright (C) 1997 - G.Dauphin, P.Dax
- *
- * See the file "license.mMosaic" for information on usage and redistribution
- * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * Bug report : dauphin@sig.enst.fr dax@inf.enst.fr
  *
  * configuration for IPv6 or IPv4
  */
@@ -20,6 +13,7 @@
 /* mjr: arrrgggghhhhhh!!!!!!!!!!!! HPUX: High Prices, Uncomfortable uniX*/
 # include <sys/types.h>
 #endif
+
 #include <netinet/in.h>
 
 #include "mosaic-types.h"
@@ -77,7 +71,7 @@ typedef u_int32_t 	IPAddr;
 #endif
 
 struct __mcmo_in6_addr__ {
-	u_int8_t s6_addr[16];	/* compatible Ipv6 struct */
+	u_int8_t addr[16];	/* compatible Ipv6 struct */
 };
 
 typedef struct __mcmo_in6_addr__ IPAddr6 ;

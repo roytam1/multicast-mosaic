@@ -24,14 +24,11 @@
 
 #include "system.h"
 
-extern int sys_nerr;
-extern char *sys_errlist[];
 extern int errno;
 
 int sleep_interrupt=0;
 
 int my_system(char *cmd, char *retBuf, int bufsize);
-char *my_strerror(int errornum);
 char **buildArgv(char *cmd, int *new_argc);
 char *findProgram(char *pname,char *spath);
 
@@ -195,88 +192,6 @@ char *findProgram(char *pname,char *spath)
 }
 
 /*
- * Written by: Scott Powers
- *
- * This will effectively get rid of the problem with using "/bin/mv" as it
- * first tries to use "rename". If that fails, it stores the error report
- * and then tries to actually copy the file. If that fails, it stores the
- * error report. If the copy fails then we return an error as well as copying
- * both error reports into "retBuf" so they can be displayed to the user.
- *
- * If "overwrite" is true, the destination file will automatically be
- * overwritten. If it is false and the file exists, my_move will return
- * SYS_FILE_EXISTS. It is up to the programmer to tell the user this.
- *
- * Return Values:
- *   SYS_NO_SRC_FILE -- There was no source filename specified.
- *   SYS_NO_DEST_FILE -- There was no destination filename specified.
- *   SYS_NO_RETBUF -- There was no retBuf specified (not allocated).
- *   SYS_DEST_EXISTS -- Overwrite was off and the destination exists.
- *   SYS_NO_MEMORY -- No memory to allocate with.
- *   SYS_SRC_OPEN_FAIL -- Open failed on the source file.
- *   SYS_DEST_OPEN_FAIL -- Open failed on the destination file.
- *   SYS_READ_FAIL -- The read call failed.
- *   SYS_WRITE_FAIL -- The write call failed.
- *   SYS_SUCCESS -- Success.
- */
-int my_move(char *src, char *dest, char *retBuf, int bufsize, int overwrite) 
-{
-	int status, n_src=1, n_dest=1, fd_src, fd_dest,ret;
-	char *rename_error=NULL, *copy_error=NULL;
-	struct stat dest_stat;
-
-        if (!retBuf)
-		return(SYS_NO_RETBUF);
-	if (!src || !*src) {
-		strcpy(retBuf,"There was no source file specified.\n");
-		return(SYS_NO_SRC_FILE);
-	}
-	if (!dest || !*dest) {
-		strcpy(retBuf,"There was no destination file specified.\n");
-		return(SYS_NO_DEST_FILE);
-	}
-
-	*retBuf='\0';
-	if (!overwrite) {
-		if (stat(dest,&dest_stat)) {
-			sprintf(retBuf,"Stat [%s] error:\n     File already exists.\n",dest);
-			return(SYS_DEST_EXISTS);
-		}
-	}
-
-	if ((status=rename(src,dest))==(-1)) {
-		/*manual copy -- prolly accross partitions*/
-		rename_error=strdup(my_strerror(errno));
-		if (!rename_error) {
-			strcpy(retBuf,"There was no enough memory allocate.\n");
-			return(SYS_NO_MEMORY);
-		}
-                if ((ret=my_copy(src, dest, retBuf, bufsize, overwrite))==SYS_SUCCESS) {
-                        /* Now get rid of previous file */
-                        unlink(src);
-                }
-                return(ret);
-        }
-        
-        /* Now get rid of previous file */
-        unlink(src);
-	return(SYS_SUCCESS);
-}
-
-/*
- * Written by: Scott Powers
- *
- * Some systems do not have a "strerror" function. This covers all the bases.
- */
-char *my_strerror(int errornum) 
-{
-        if (errornum<sys_nerr)
-                return(sys_errlist[errornum]);
-        return(NULL);
-}
-
-
-/*
  * Written by: Brad Viviano and Scott Powers
  *
  * Takes a 1d string and turns it into a 2d array of strings.
@@ -413,7 +328,7 @@ int my_copy(char *src, char *dest, char *retBuf, int bufsize, int overwrite)
 	}
 
 	if ((fd_src=open(src,O_RDONLY))==(-1)) {
-		copy_error=strdup(my_strerror(errno));
+		copy_error=strdup(strerror(errno));
 		if (!copy_error) {
 			strcpy(retBuf,"There was not enough memory allocate.\n");
 			return(SYS_NO_MEMORY);
@@ -427,7 +342,7 @@ int my_copy(char *src, char *dest, char *retBuf, int bufsize, int overwrite)
 		return(SYS_SRC_OPEN_FAIL);
 	}
 	if ((fd_dest=open(dest,O_WRONLY|O_CREAT|O_TRUNC,0644))==(-1)) {
-		copy_error=strdup(my_strerror(errno));
+		copy_error=strdup(strerror(errno));
 		if (!copy_error) {
 			strcpy(retBuf,"There was not enough memory allocate.\n");
 			return(SYS_NO_MEMORY);
@@ -450,14 +365,14 @@ int my_copy(char *src, char *dest, char *retBuf, int bufsize, int overwrite)
 				continue;
 			close(fd_src);
 			close(fd_dest);
-			sprintf(retBuf,"Write([%s]) error:\n     %s\n\n",dest,my_strerror(errno));
+			sprintf(retBuf,"Write([%s]) error:\n     %s\n\n",dest,strerror(errno));
 			return(SYS_WRITE_FAIL);
 		}
 		if (!n_src)
 			continue;
 		close(fd_src);
 		close(fd_dest);
-		sprintf(retBuf,"Read([%s]) error:\n     %s\n\n",src,my_strerror(errno));
+		sprintf(retBuf,"Read([%s]) error:\n     %s\n\n",src,strerror(errno));
 		return(SYS_READ_FAIL);
 	}
 	close(fd_src);

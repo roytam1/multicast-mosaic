@@ -115,7 +115,6 @@ static XmxCallback (save_win_cb)
 	FILE *fp;
   	char *fname;
 	mo_window *win = (mo_window*)client_data;
-  	char *ptr=NULL;
 
 	XtUnmanageChild (win->save_win);
 	XmStringGetLtoR (((XmFileSelectionBoxCallbackStruct *)call_data)->value,
@@ -871,7 +870,6 @@ static XmxCallback (print_win_cb1)
 static XmxCallback (print_win_cb2)
 {
 	mo_window *win = (mo_window*)client_data;
-	char *lpr;
 
 	mo_open_another_window (win, 
 		mo_assemble_help_url ("docview-menubar-file.html"));
@@ -1715,7 +1713,7 @@ mo_status mo_edit_source(mo_window *win)
 		char *buf, *final, tmpbuf[80];
 		int final_len;
 
-		buf=my_strerror(errno);
+		buf=strerror(errno);
 		if (!buf || !*buf || !strcmp(buf,"Error 0")) {
 			sprintf(tmpbuf,"Uknown Error" );
 			buf=tmpbuf;
@@ -1742,7 +1740,7 @@ mo_status mo_edit_source(mo_window *win)
 
 		fclose(fp);
 
-		buf=my_strerror(errno);
+		buf=strerror(errno);
 		if (!buf || !*buf || !strcmp(buf,"Error 0")) {
 			sprintf(tmpbuf,"Uknown Error" );
 			buf=tmpbuf;
