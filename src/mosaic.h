@@ -178,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.5.5"
+#define MO_VERSION_STRING "3.5.6"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@tsi.enst.fr"
@@ -687,6 +687,11 @@ mo_status mo_print_window(mo_window *win,
 
 mo_status mo_search_window(mo_window *win,char *str,int backward, int caselessi,
 	int news);
+
+extern void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr);
+extern void MMRunPlugins(mo_window *win, struct mark_up *mlist);
+extern void MMStopPlugins(mo_window *win, struct mark_up *old_mlist);
+
 
 #if 0
 /* ACCES AUTHORIZATION part : extract from libwww2 */

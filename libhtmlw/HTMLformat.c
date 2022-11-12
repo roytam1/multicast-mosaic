@@ -973,7 +973,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	case M_OBJECT:
 		if ((*mptr)->is_end) 		/* end of object */
 			return;
-		ObjectPlace(hw,mptr,pcc,save_obj);
+		ObjectPlace(hw,mptr,pcc);
 		break;
 #endif
 	case M_MAP:

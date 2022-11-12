@@ -164,6 +164,9 @@ void MMErrorPafSaveData(PafDocDataStruct * pafd, char * reason)
 	close(pafd->fd);
 	pafd->fd = -1;
 
+/* stop the twirl */
+        MMStopTwirl(pafd);
+
 	FreeMimeStruct(pafd->mhs);
 	pafd->mhs = NULL;	/* sanity */
 
@@ -177,6 +180,7 @@ void MMErrorPafSaveData(PafDocDataStruct * pafd, char * reason)
 	pafd->fname = NULL;
 
 	FreePafDocDataStruct(pafd);
+	win->pafd = NULL;
 	XtPopdown(win->base);
 	XtDestroyWidget(win->base);
 	free(win);
@@ -514,6 +518,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	char * presentation;
 	char * data;
 	struct mark_up *mlist, *mptr;
+	struct mark_up *old_mlist;
 	int fd;
 	int lread;
 	int docid;
@@ -726,6 +731,8 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		int i;
 
 		for(i = 0; i < win->frame_sons_nbre; i++) {
+			MMStopPlugins(win->frame_sons[i],
+				win->frame_sons[i]->htinfo->mlist);
 			MMDestroySubWindow(win->frame_sons[i]);
 			win->frame_sons[i] = NULL; /* sanity */
 		}
@@ -739,6 +746,12 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		win->frame_type = NOTFRAME_TYPE;
 	}
 
+/* stop old plugins if exist */
+	if (win->htinfo) {
+		old_mlist = win->htinfo->mlist;
+		MMStopPlugins(win, old_mlist);
+	}
+
 /* dans le fichier decompresse (eventuellement) on a de l'HTML */
 /* Faire un Parse pour le decomposer en objet */
 	pafd->html_text = data;
@@ -747,6 +760,9 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	pafd->mlist = mlist = htinfo->mlist;
 	mptr = mlist;
 	pafd->num_of_eo = 0;
+	if(!htinfo->base_url) {	/* if no base_url, get default */
+		htinfo->base_url = strdup(pafd->aurl);
+	}
 	base_url = htinfo->base_url;
 	if (!htinfo->title)
 		title = strdup(pafd->aurl_wa);
@@ -791,7 +807,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		Widget htmlw;
 		char *url = NULL , *frame_name;
 		RequestDataStruct rds;
-		Widget * htmlw_tabs;  /* html widgets return by HTMLSetHTMLmark */
+		Widget * htmlw_tabs;  /* html widgets return by hw */
 		int i;
 
 /* cas ou on charge un frameset */
@@ -860,19 +876,16 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 /*en finir avec pafd du frameset , quand tous les frames sont loader. */
 /* determine combien de frameset a attendre....;  */
 /* ne detruire le pafd du frameset qu'a la fin du chargement des frames */
+/* ##### where to destroy FRAMSET?? and sub_win??? ##### */
 /*################################ */
 
 		return;
-
-/* ##### where to destroy FRAMSET?? and sub_win??? ##### */
 	}
 
 /* ici, on ne peut avoir que FRAME_TYPE ou NOTFRAME_TYPE */
 	assert(win->frame_type == NOTFRAME_TYPE || win->frame_type == FRAME_TYPE);
 
 /* le html est une page 'normal' , ne contient pas de framset */
-/*###########*/
-
 /* Faire une liste des embedded object */
 /* initialiser et seulement initialiser ces objects */
 
@@ -881,6 +894,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 /* recuperer le reste des embedded objects (si necessaire)*/
 /* relancer la bete pour les embedded objets si il y en a */
 	while (mptr != NULL){
+		struct mark_up * omptr;
 		char * tptr;
 		ImageInfo * picd;
 
@@ -970,12 +984,20 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 			eo_tab = (EmbeddedObjectEntry *) realloc(eo_tab,
 				(pafd->num_of_eo + 1) * sizeof(EmbeddedObjectEntry)); 
 			break;
-/* see it later ########### 
- *		case M_APPLET:
- *			parse for codebase=
- *		case M_OBJECT:
- *			parse for something=
- */
+#ifdef OBJECT
+ 		case M_OBJECT:
+			if(mptr->is_end)
+				break;
+			omptr = mptr;
+			MMPreParseObjectTag(win, &mptr);
+			if (! omptr->s_obs) {
+				/* virer l'objet */
+				assert(0);
+				break;
+			}
+			omptr->s_obs->frame= NULL;
+			break;
+#endif
 		default:
 			break;
 		}
@@ -1022,6 +1044,12 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 
 /* MAJ de l'history etc... */
 	MMUpdateGlobalHistory(spafd.aurl);
+
+/* HTMLWidget create a window for htmlObject, now run the plugin */
+#ifdef OBJECT
+	MMRunPlugins(win, mlist);
+#endif
+
 
 	if (spafd.num_of_eo == 0 ){	/* no embedded object it is the end */
 		LateEndPafDoc(pafd);	/* en finir avec la requete de pafd. */
@@ -1332,6 +1360,11 @@ void MMErrorPafEmbeddedObject (PafDocDataStruct * pafc, char *reason)
 		}
 		mptr->s_picd->src = pafc->aurl_wa;
 		break;
+#ifdef OBJECT
+	case M_OBJECT:
+		assert(0);
+		break;
+#endif
 	default:
 		fprintf(stderr, "This a Bug. Please report\n");
 		fprintf(stderr, "MMErrorPafEmbeddedObject, Unknow EmbeddedObject type %d\n", mptr->type);

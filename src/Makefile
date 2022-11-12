@@ -11,14 +11,14 @@ CFILES = main.c gui.c  gui-dialogs.c gui-menubar.c gui-documents.c gui-news.c\
   xpmhash.c xpmread.c gifread.c pixmaps.c child.c mailto.c md5.c URLParse.c \
   telnet-proto.c compress.c proxy-dialogs.c gui-popup.c readJPEG.c readPNG.c \
   cache.c Xmx.c paf.c converter.c www-con.c file-proto.c http-proto.c MIME.c \
-  ftp-proto.c util.c
+  ftp-proto.c util.c ho.c
 
 OBJS = main.o gui.o gui-dialogs.o gui-menubar.o gui-documents.o gui-news.o\
   newsrc.o gui-extras.o hotlist.o navigate.o globalhist.o img.o picread.o\
   xpmhash.o xpmread.o gifread.o pixmaps.o child.o mailto.o md5.o URLParse.o\
   telnet-proto.o compress.o proxy-dialogs.o gui-popup.o readJPEG.o readPNG.o \
   cache.o Xmx.o paf.o converter.o www-con.o file-proto.o http-proto.o MIME.o\
-  ftp-proto.o util.o
+  ftp-proto.o util.o ho.o
 
 globalhist.o: globalhist.c ../libhtmlw/HTML.h
 	$(CC) -c $(CFLAGS) $(AUX_CFLAGS) globalhist.c

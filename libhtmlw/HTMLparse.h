@@ -10,6 +10,9 @@
 #ifndef HTML_PARSE_H
 #define HTML_PARSE_H
 
+#include <sys/types.h>
+#include <unistd.h>
+
 typedef enum _MarkType {
 	M_END_STATE = -3,
 	M_INIT_STATE = -2,
@@ -196,13 +199,18 @@ typedef enum {
 
 
 typedef struct _HtmlObjectStruct {
-        char * bin_path;
         int width;
         int height;
         int x;
         int y;
         int border_width;
         AlignType valignment;
+        char * bin_path;
+	char *content_type;
+	char *codebase;
+	char *data_url;
+	pid_t pid;
+
         int param_count;
         char **param_name_t;
         char **param_value_t;

@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <stropts.h>
+#include <sys/conf.h>
 
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
@@ -223,6 +226,8 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 	int lcut;
 	char *lf_ptr;
 	char *lfcrlf_ptr;
+	int n_message = 0;
+	int a_lire = 0;
 
 /* La requete est parti. On a une reponse (qques choses a lire). On regarde ce
  * qu'on doit faire et ou on en est. Autrement dit : dans quel etat on est,
@@ -233,9 +238,28 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 	server_version[0] = '\0';
 
 /* lire les donnes */
-	len_read = read(pafd->www_con_type->prim_fd, ibuf, sizeof(ibuf));
-	syserror = errno;
-#ifdef DEBUG_HTTP
+	n_message = ioctl(pafd->www_con_type->prim_fd, I_NREAD, &a_lire);
+
+/*#define DEBUG_READ 1 */
+
+#ifdef DEBUG_READ
+	printf("n_message = %d, a_lire = %d, sizeof(ibuf) = %d\n",
+		n_message, a_lire, sizeof(ibuf));
+#endif
+	if (a_lire >0) {
+		if (a_lire > sizeof(ibuf) ) a_lire = sizeof(ibuf);
+		len_read = read(pafd->www_con_type->prim_fd, ibuf, a_lire);
+		syserror = errno;
+	} else if (a_lire == 0) {
+		len_read =0;
+	} else {
+		len_read =-1;
+		(*pafd->www_con_type->call_me_on_error_cb)(pafd,
+			"Net Read Error;\naborting connection");
+		return;
+	}
+
+#ifdef DEBUG_READ
 	fprintf (stderr, "Read = %d syserror = %d\n", len_read, syserror);
 #endif
 
@@ -548,6 +572,11 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 		char info[256];		/* large enought... */
 
 /* Set the meter....	*/
+		if (len_read < 0) {
+			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
+				"Net Read Error;\naborting connection");
+			return;
+		}
 		pafd->total_read_data += pafd->iobs.len_iobuf;
 		if (pafd->mhs->content_length > 0){
 			sprintf(info,"Read %d/%d", pafd->total_read_data,

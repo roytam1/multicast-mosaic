@@ -20,6 +20,13 @@ case $1 in
 		;;
 esac
 
+ 
+#for pseudo 8bit set this 
+MTVP_8BIT_MIN_COLORS=32
+export MTVP_8BIT_MIN_COLORS
+MTVP_8BIT_MAX_COLORS=33
+export MTVP_8BIT_MAX_COLORS
+
 #echo "/usr/local/bin/mtvp $OPT $*"
 
 exec /usr/local/bin/mtvp $OPT $*

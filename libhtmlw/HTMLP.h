@@ -324,7 +324,7 @@ extern void _XmHTMLDestroyFrames(HTMLWidget w);
 
 
 extern void ObjectPlace(HTMLWidget hw, struct mark_up **mptr,
-	PhotoComposeContext * pcc, Boolean save);
+	PhotoComposeContext * pcc);
 
 extern void ObjectRefresh(HTMLWidget hw, struct ele_rec *eptr);
 

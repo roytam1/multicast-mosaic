@@ -10,7 +10,7 @@
 #	- NetWinder (StrongArm based machine)
 #	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.5.5
+MCVER=3.5.6
 
 ##
 ## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
@@ -263,9 +263,10 @@ mclib = $(mcdir)/libmc.a
 
 # Debugging
 #customflags = -DLOOSE_PACKET -DDEBUG_MULTICAST -DDEBUG_FRAME -DOBJECT
+#
 # Common
 
-customflags =
+customflags = -DOBJECT
 
 ##
 ## ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------
@@ -297,6 +298,15 @@ src::
 	@echo --- Building src
 	(cd src; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(xinc) $(jpegflags) $(pngflags) $(krbflags) -I.." X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut LIBMC=$(mclib) MOSAIC="mMosaic")
 
+
+install: all
+	- strip src/mMosaic
+	- cp src/mMosaic /usr/local/bin/mMosaic	
+	- chmod 755 /usr/local/bin/mMosaic
+	- mkdir /usr/local/mMosaic
+	- mkdir /usr/local/mMosaic/plugins
+	- cp plugins/* /usr/local/mMosaic/plugins
+	- chmod 755 /usr/local/mMosaic/plugins/*
 
 clean:
 	cd libhtmlw; $(MAKE) clean
