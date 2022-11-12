@@ -358,8 +358,8 @@ mo_status mo_set_fonts (mo_window *win, int size)
 ############## */
     }
 
-  XmxRSetToggleState (win->menubar, (XtPointer)win->font_size, XmxNotSet);
-  XmxRSetToggleState (win->menubar, (XtPointer)size, XmxSet);
+  XmxRSetToggleState (win->menubar, (XtPointer)win->font_size, XmxNotSet); 
+  XmxRSetToggleState (win->menubar, (XtPointer)size, XmxSet); 
   win->font_size = size;
   return mo_succeed;
 }
@@ -728,7 +728,7 @@ void mo_home_document(Widget w, XtPointer clid, XtPointer calld)
 	win->navigation_action = NAVIGATE_NEW;
 	MMPafLoadHTMLDocInWin (win, &rds);
 }
-void mo_history_list(Widget w, XtPointer clid, XtPointer calld)
+static void mo_history_list_cb(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
@@ -1298,7 +1298,7 @@ static XmxMenubarStruct navi_menuspec[15] = {
 	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
 
 	{ "Home Document",'D',	mo_home_document,NULL, NULL },
-	{ "Window History...",'W',mo_history_list,NULL, NULL },
+	{ "Window History...",'W',mo_history_list_cb,NULL, NULL },
 	{ "Document Links...",'L',mo_links_window,NULL, NULL },
 	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
 

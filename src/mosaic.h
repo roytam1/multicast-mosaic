@@ -178,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.5.4"
+#define MO_VERSION_STRING "3.5.5"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@tsi.enst.fr"
@@ -362,7 +362,6 @@ typedef struct _mo_window {
 	Widget inserthot_win;
 	Widget mailhist_win;
 	Widget print_win;
-	Widget history_win;
 	Widget open_local_win;
 	Widget hotlist_win;
 	Widget techsupport_win;
@@ -448,7 +447,10 @@ typedef struct _mo_window {
 	Widget print_url_only;
 	Widget print_doc_only;
  
-	Widget history_list;
+/* manage the window history */
+	Widget history_shell;
+	Widget history_list_w;	/* container for list of url */
+	struct mo_hnode *hist_node;
 
 	Widget hotlist_list;
 	Widget hotlist_label;
@@ -567,7 +569,7 @@ typedef struct mo_node {
 	char *expires;
 	char *text;	/* a copy of html text , need to be freed */
 			/* when the node is released */
-	int position;	 /* Position in the list, starting at 1; last item is*/
+/*	int position;	 /* Position in the list, starting at 1; last item is*/
 			  /* effectively 0 (according to the XmList widget). */
 	int docid; 	/* This is returned from HTMLPositionToId. */
 	struct _MimeHeaderStruct * mhs;
@@ -577,6 +579,16 @@ typedef struct mo_node {
 	struct mo_node *previous;
 	struct mo_node *next;
 } mo_node;
+
+typedef struct mo_hnode {
+	char *aurl;	/* THE absolute url of this document */
+	char * title;
+	char *last_modified;
+	char *expires;
+
+	struct mo_hnode *previous;
+	struct mo_hnode *next;
+} mo_hnode;
 
 /* ------------------------------ MISC TYPES ------------------------------ */
 

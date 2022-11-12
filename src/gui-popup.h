@@ -85,7 +85,5 @@ extern PopupItem image_menu[];
 extern PopupItem file_menu[];
 extern PopupItem popup_items[];
 
-extern void mo_add_to_rbm_history(mo_window *win, char *url, char *title);
-extern void mo_delete_rbm_history_win(mo_window *win);
 extern void PopSaveLinkFsbDialog(char * url);
 #endif

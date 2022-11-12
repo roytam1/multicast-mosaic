@@ -1,0 +1,25 @@
+#! /bin/sh
+#
+# 7/06/2000: G.Dauphin 
+#
+
+#echo @$0 @$1 @$2 @$3
+#echo $*
+#sleep 60
+
+case $1 in
+	-windowId)
+		OPT="-W"
+		shift
+		OPT="${OPT}$1"
+		shift
+		;;
+	*)
+		echo usage: mtvp -windowID xwid option...
+		exit 1
+		;;
+esac
+
+#echo "/usr/local/bin/mtvp $OPT $*"
+
+exec /usr/local/bin/mtvp $OPT $*

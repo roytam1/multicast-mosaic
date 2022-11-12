@@ -303,9 +303,6 @@ extern void LineBreak(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *
 extern void HtmlGetImage(HTMLWidget hw, ImageInfo *picd,
 	PhotoComposeContext *pcc, int force_load);
 
-extern void _FreeAprogStruct(AprogInfo * aps);
-extern void _FreeAppletStruct(AppletInfo * ats);
-extern void _FreeTableStruct(TableInfo * t);
 
 extern void MMPopFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc);
 extern void MMPushFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc);
@@ -324,4 +321,19 @@ extern HTMLWidget _XmHTMLFrameCreate(HTMLWidget w, FrameInfo * fi);
 extern void _XmHTMLReconfigureFrames(HTMLWidget w, TopFrameSetInfo *tfsi);
 extern void _XmHTMLMapFrames(HTMLWidget w);
 extern void _XmHTMLDestroyFrames(HTMLWidget w);
+
+
+extern void ObjectPlace(HTMLWidget hw, struct mark_up **mptr,
+	PhotoComposeContext * pcc, Boolean save);
+
+extern void ObjectRefresh(HTMLWidget hw, struct ele_rec *eptr);
+
+/*extern void _FreeAprogStruct(AprogInfo * aps);
+/*extern void _FreeAppletStruct(AppletInfo * ats);
+/*extern void _FreeTableStruct(TableInfo * t);
+/*extern void             AppletPlace(HTMLWidget hw, struct mark_up **mptr, 
+                                PhotoComposeContext * pcc, Boolean save); 
+/*extern void             AppletRefresh(HTMLWidget hw, struct ele_rec *eptr);
+
+*/
 #endif /* HTMLP_H */

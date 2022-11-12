@@ -122,7 +122,6 @@ void MMCacheInit( char * root_dirname)
 	char * href, *scid;
 	char *ocwd;
 	time_t t;
-	struct mark_up * mlist;
 	struct mark_up * mptr;
 	DIR *dirp;
 	struct dirent *direntp;
@@ -166,7 +165,7 @@ void MMCacheInit( char * root_dirname)
 
 	/* read the data base cache.db */
 	htinfo = HTMLParseRepair(data);
-	mptr = mlist = htinfo->mlist;
+	mptr = htinfo->mlist;
 	t = time(NULL);
 	hcid =0;
 

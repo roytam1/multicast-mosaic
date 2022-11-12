@@ -111,10 +111,9 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
 	eptr->ele_id = ++(pcc->element_id);
 
 	eptr->pic_data = NULL;
-	eptr->aps = NULL;
+	eptr->obs = NULL;
 	eptr->widget_data = NULL;
 	eptr->table_data = NULL;
-	eptr->ats = NULL;
 
 	eptr->line_next = NULL;
 
@@ -972,7 +971,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 #endif
 #ifdef OBJECT
 	case M_OBJECT:
-		if ((*mptr)->is_end) 		/* end of aprog */
+		if ((*mptr)->is_end) 		/* end of object */
 			return;
 		ObjectPlace(hw,mptr,pcc,save_obj);
 		break;

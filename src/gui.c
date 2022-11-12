@@ -1844,7 +1844,7 @@ mo_status mo_delete_window (mo_window *win)
 	POPDOWN (mail_win);
 	POPDOWN (mailhist_win);
 	POPDOWN (print_win);
-	POPDOWN (history_win);
+	POPDOWN (history_shell);
 	POPDOWN (open_local_win);
 	if (win->hotlist_win)
 		XtDestroyWidget(win->hotlist_win);
@@ -2036,13 +2036,14 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
  	swin->navigation_action = NAVIGATE_NEW;
 	swin->source_win = 0;
 	swin->save_win = 0;
+ 	swin->history_shell = swin->history_list_w = 0;
+	swin->hist_node = NULL;
 
 /*  ################################################ 
  *	win->open_win = win->open_text = win->open_local_win = 0;
  *	win->mail_win = win->mailhot_win = 0;
  *	win->edithot_win = win->mailhist_win = win->inserthot_win = 0;
  *	win->print_win = 0;
- *	win->history_win = win->history_list = 0;
  *	win->hotlist_win = win->hotlist_list = 0;
  *	win->mailto_win = win->mailto_text = 0;
  *	win->mailto_form_win = win->mailto_form_text = 0;
@@ -2210,7 +2211,8 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 	win->mail_win = win->mailhot_win = 0;
 	win->edithot_win = win->mailhist_win = win->inserthot_win = 0;
 	win->print_win = 0;
-	win->history_win = win->history_list = 0;
+	win->history_shell = win->history_list_w = 0;
+	win->hist_node = NULL;
 	win->hotlist_win = win->hotlist_list = 0;
 	win->techsupport_win = win->techsupport_text = 0;
 	win->mailto_win = win->mailto_text = 0;

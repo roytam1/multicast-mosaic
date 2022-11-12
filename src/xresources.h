@@ -184,7 +184,7 @@ static XtResource resources[] = {
     offset(mc_dest), XtRString, (caddr_t) NULL},
 #endif
   { "numberOfItemsInRBMHistory", "NumberOfItemsInRBMHistory", XtRInt,
-    sizeof(int), offset(numberOfItemsInRBMHistory), XtRString, "12" },
+    sizeof(int), offset(numberOfItemsInRBMHistory), XtRString, "20" },
 };
 
 #undef offset

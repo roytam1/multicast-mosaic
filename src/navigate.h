@@ -11,8 +11,8 @@
 mo_status mo_add_node_to_history (mo_window *, mo_node *);
 extern void mo_back (Widget w, XtPointer clid, XtPointer calld);
 extern void mo_forward (Widget w, XtPointer clid, XtPointer calld);
-mo_status mo_visit_position (mo_window *, int);
-mo_status mo_post_history_win (mo_window *);
+extern void mo_post_history_win (mo_window *);
+extern void mo_delete_rbm_history_win(mo_window *win);
 
 extern void mo_free_node_data (mo_node *);
 extern void mo_back_impossible(mo_window *);

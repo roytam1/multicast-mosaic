@@ -1258,8 +1258,8 @@ void _XmxRCreateMenubar (Widget menu, XmxMenubarStruct *menulist,
 					/* option/toggle button */
               				/* A toggle button is diamond-shaped. */
 				if (menulist[_i].namestr[0] == '<')
-					XmxSetArg (XmNindicatorType, 
-						(XtArgVal)XmONE_OF_MANY);
+					XmxSetArg (XmNindicatorType, (XtArgVal)XmONE_OF_MANY);
+
 /* Make sure the button shows up even when toggled off. */
 				if (menulist[_i].namestr[0] == '#')
 					XmxSetArg(XmNvisibleWhenOff, 
@@ -1323,7 +1323,7 @@ void _XmxRCreateMenubar (Widget menu, XmxMenubarStruct *menulist,
 			continue;
 		}
 /* If all if fails, it's a submenu. */
-		_sub_menu = XmCreatePulldownMenu(menu, "pulldownmenu", 
+ 		_sub_menu = XmCreatePulldownMenu(menu, "pulldownmenu", 
 					NULL, 0);
 		Xmx_n = 0;
 		XmxSetArg (XmNsubMenuId, (XtArgVal)_sub_menu);

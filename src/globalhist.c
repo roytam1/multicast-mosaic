@@ -150,7 +150,6 @@ void MMInitHistory (char* mmosaic_root_dir)
 	int l, i;
 	struct stat s;
 	char *data = NULL;
-	struct mark_up * mlist;
 	struct mark_up * mptr;
 	time_t t, ldate;
 	char *href, *sldate;
@@ -178,7 +177,7 @@ void MMInitHistory (char* mmosaic_root_dir)
 
 /* read the data base */
 	htinfo = HTMLParseRepair(data);
-	mptr = mlist = htinfo->mlist;
+	mptr = htinfo->mlist;
 	t = time(NULL);
 	lhistoryttl = mMosaicAppData.urlExpired*86400;
 

@@ -182,8 +182,40 @@ typedef enum _MarkType {
 			/* non blank space character */
 #define NBSP_CONST '\240'
 
-typedef struct _AprogRec	*AprogPtr;
-typedef struct _AppletRec	*AppletPtr;
+
+/* define alignment values */
+typedef enum {  
+        ALIGN_NONE,
+        VALIGN_BOTTOM,
+        VALIGN_MIDDLE,
+        VALIGN_TOP,
+        HALIGN_LEFT,
+        HALIGN_CENTER,
+        HALIGN_RIGHT
+} AlignType;
+
+
+typedef struct _HtmlObjectStruct {
+        char * bin_path;
+        int width;
+        int height;
+        int x;
+        int y;
+        int border_width;
+        AlignType valignment;
+        int param_count;
+        char **param_name_t;
+        char **param_value_t;
+        char **param_valuetype_t;
+        int url_arg_count;  
+        char **url_arg;
+/*        int *internal_numeos;	*/
+/*        char ** ret_filenames;	*/
+        int cw_only;              	/* Boolean */
+	void * frame;
+} HtmlObjectStruct;                   
+
+
 typedef struct _TableRec	*TablePtr;
 typedef struct image_rec	*ImageInfoPtr;
 
@@ -211,7 +243,7 @@ struct mark_up {
 	struct mark_up * end_obj;	/* the one that match start Object */
 	struct mark_up * try_next_obj;	/* next obj to try if prev fail */
 
-/*	AprogPtr s_aps;		/* aprog saved */
+	HtmlObjectStruct * s_obs;		/* object saved */
 /*	AppletPtr s_ats;	/* applet saved */
 };
 

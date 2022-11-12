@@ -1888,6 +1888,7 @@ static TopFrameSetInfo * makeFramesetInfo(struct mark_up * mptr, int o_nframe)
 #endif
 				; /* do nothing : skip FRAME */
 			}
+			break;
 
 /* </FRAME> doesn't exist. The parser is smart enough to kick these out.
  */
@@ -1902,6 +1903,15 @@ static TopFrameSetInfo * makeFramesetInfo(struct mark_up * mptr, int o_nframe)
 			return top_set;		/* reach the number, so return */
 		}
 	}
+
+/* there is too much frame than declared in frameset */
+	if(idx < top_set->n_allo_frames){
+		while (current_set)
+			current_set = popFrameSet();
+		top_set->nframes = idx;
+		return top_set;		/* reach the number, so return */
+	}
+
 	assert(0);		/* never goes here, else parser error... */
 }
 

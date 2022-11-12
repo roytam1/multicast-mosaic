@@ -473,9 +473,11 @@ void HTExtensionMapInit (void)
 	HTSetSuffix(".rtx",	"text/richtext", 1.0); /* MIME richtext */
 	HTSetSuffix(".tsv",	"text/tab-separated-values", 1.0);
 	HTSetSuffix(".etx",	"text/x-setext", 1.0);
+	HTSetSuffix(".mpeg",	"video/mpeg", 1.0);
 	HTSetSuffix(".mpg",	"video/mpeg", 1.0);
 	HTSetSuffix(".mpe",	"video/mpeg", 1.0);
-	HTSetSuffix(".mpeg",	"video/mpeg", 1.0);
+	HTSetSuffix(".mps",	"video/mpeg", 1.0);
+	HTSetSuffix(".m1s",	"video/mpeg", 1.0);
 	HTSetSuffix(".mov",	"video/quicktime", 1.0);
 	HTSetSuffix(".qt",	"video/quicktime", 1.0);
 	HTSetSuffix(".avi",	"video/x-msvideo", 1.0);

@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <memory.h>
 
+#include "../libnut/system.h"
 #include "libhtmlw/HTML.h"
 #include "mosaic.h"
 #include "gui.h"
@@ -21,7 +22,7 @@
 #define DEBUG_GUI
 #endif
 
-extern void 		FreeMarkUpList(struct mark_up *List);
+static void mo_add_to_rbm_history(mo_window *win, char *url, char *title);
 
 /* ----------------------------- HISTORY LIST ----------------------------- */
 
@@ -101,11 +102,6 @@ static void mo_kill_node_descendents (mo_window *win, mo_node *node)
 		free(foo); foo=next;
 	}
 	node->next=NULL;
-
-/* Free count number of items from the end of the list... */
-	if (win->history_list && count) {
-		XmListDeleteItemsPos(win->history_list,count, node->position + 1);
-	}
 }
 
 /* ################## */
@@ -145,7 +141,6 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 		win->first_node = node;
 		node->previous = NULL;
 		node->next = NULL;
-		node->position = 1;
 /* if we are here then win->current_node is NULL */
 		win->current_node = node;
 		if ( win->frame_type == FRAME_TYPE) {
@@ -164,8 +159,6 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 			node->previous = Cur; /* Point back at current node. */
 			Cur->next = node; /* Current node points forward to this. */
 			node->next = NULL; /* Point forward to nothing. */
-/* position in the history list widget */
-			node->position = Cur->position + 1;
 			win->current_node = node; /* Current node now becomes new node. */
 			if ( win->frame_type == FRAME_TYPE) {
 				 /* ###FIXME (win is a frame , a sub_win)
@@ -178,7 +171,6 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 		case NAVIGATE_OVERWRITE:
 			node->previous = Cur->previous;
 			node->next = Cur->next;
-			node->position = Cur->position;
 			win->current_node = node;
 			if(Cur->previous)
 				Cur->previous->next = node;
@@ -195,7 +187,6 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 
 				node->previous = Old->previous;
 				node->next = Cur;
-				node->position = Old->position;
 				Cur->previous  = node;
 				if(Old->previous)
 					Old->previous->next = node;
@@ -218,7 +209,6 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 				mo_node *Old = Cur->next;
 				node->previous = Cur;
 				node->next = Old->next;
-				node->position = Old->position;
 				Cur->next = node;
 				if(Old->next)
 					Old->next->previous = node;
@@ -238,11 +228,6 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 		default:
 			assert(0);
 		}
-	}
-	if (win->history_list) {
-		XmString xmstr = XmxMakeXmstrFromString(node->htinfo->title);
-		XmListAddItemUnselected(win->history_list, xmstr, node->position);
-		XmStringFree (xmstr);
 	}
 /* This may or may not be filled in later! (AF) */
   	mo_add_to_rbm_history(win, node->aurl_wa, node->htinfo->title);
@@ -306,64 +291,37 @@ void mo_forward (Widget w, XtPointer clid, XtPointer calld)
 /*  mo_gui_apply_default_icon(win); */
 }
 
+
 /* Visit an arbitrary position.  This is called when a history
-   list entry is double-clicked upon.
+ * list entry is double-clicked upon.
 
-   Iterate through the window history; find the mo_node associated
-   with the given position.  Call mo_set_win_current_node. */
-mo_status mo_visit_position (mo_window *win, int pos)
-{
-  mo_node *node;
-  
-  for (node = win->first_node; node != NULL; node = node->next) {
-      if (node->position == pos) {
-          /*mo_set_win_current_node (win, node); */
-/* #################################### */
-             
-/* name:    mo_set_win_current_node
- * purpose: Given a window and a node, set the window's current node.
- *          This assumes node is already all put together, in the history
- *          list for the window, etc. 
- * inputs:  
- *   - mo_window *win: The current window.
- *   - mo_node  *node: The node to use.
- * returns:                            
- *   Result of calling mo_do_window_text.
- * remarks:                            
- *   This routine is meant to be used to move forward, backward,
- *   and to arbitrarily locations in the history list.
+ * Iterate through the window history; find the mo_node associated
+ * with the given position.  Call mo_set_win_current_node.
  */
-/*mo_status mo_refresh_window_text (mo_window *win)                
-/*{
-/*       int id = win->current_node->docid;   
-/*      mo_node *node = win->current_node; 
-/* 
-/*     mo_snarf_scrollbar_values (win);
-/*    win->current_node = node;
-/* 
-/*       mo_set_win_headers (win, win->current_node->aurl_wa, win->current_node->title);
-/*      HTMLSetHTMLmark(win->scrolled_win, win->current_node->m_list,id, 
-/*             win->current_node->goto_anchor,win->current_node->base_url); 
-/*    mo_gui_done_with_icon (win);
-/*   return 0; 
-/*}       
-*/
-/* #################################### */
-    
-	assert(0);
-          goto done;
-        }
-    }
 
-#ifdef DEBUG_GUI
-  if (mMosaicSrcTrace) {
+static void mo_visit_position (mo_window *win, int pos)
+{
+	mo_hnode *node;
+	int cnt = 0;
+
+	for (node = win->hist_node; node != NULL; node = node->next) {
+		cnt++;
+		if (cnt == pos) {
+			char *xurl = node->aurl;
+			RequestDataStruct rds;
+			rds.req_url = xurl;
+			rds.gui_action = HTML_LOAD_CALLBACK;
+			rds.post_data = NULL; 
+			rds.ct = NULL; 
+			rds.is_reloading = False;
+			win->navigation_action = NAVIGATE_NEW;
+			MMPafLoadHTMLDocInWin(win, &rds);
+			return;
+		}
+	}
 	fprintf (stderr, "UH OH BOSS, asked for position %d, ain't got it.\n",
-		 pos);
-  }
-#endif
-
- done:
-  return mo_succeed;
+		pos);
+	assert(0);
 }
 
 /* ----------------------------- HISTORY GUI ------------------------------ */
@@ -372,20 +330,17 @@ mo_status mo_visit_position (mo_window *win, int pos)
    history and load 'er up. */
 static void mo_load_history_list (mo_window *win, Widget list)
 {
-  mo_node *node;
-  
-  for (node = win->first_node; node != NULL; node = node->next) {
-      XmString xmstr = 
-	XmxMakeXmstrFromString (node->htinfo->title);
-      XmListAddItemUnselected (list, xmstr, 0);
-      XmStringFree (xmstr);
-    }
-  
-  XmListSetBottomPos (list, 0);
-  if (win->current_node)
-    XmListSelectPos (win->history_list, win->current_node->position, False);
+	mo_hnode *node;
 
-  return;
+	for (node = win->hist_node; node != NULL; node = node->next) {
+		XmString xmstr = XmxMakeXmstrFromString (node->title);
+
+		XmListAddItemUnselected (list, xmstr, 0);
+		XmStringFree (xmstr);
+	}
+	XmListSetBottomPos(list, 0);
+	if (win->hist_node)
+		XmListSelectPos(win->history_list_w, 0, False);
 }
 
 /* ----------------------------- mail history ----------------------------- */
@@ -439,78 +394,64 @@ static XmxCallback (mailhist_win_cb0)
 	free (subj);
 }
 
-static mo_status mo_post_mailhist_win (mo_window *win)
+static void mo_post_mailhist_win (mo_window *win)
 {
-  /* This shouldn't happen. */
-  if (!win->history_win)
-    return mo_fail;
+	Widget dialog_frame;
+	Widget dialog_sep, buttons_form;
+	Widget mailhist_form, to_label, subj_label;
 
-  if (!win->mailhist_win) {
-      Widget dialog_frame;
-      Widget dialog_sep, buttons_form;
-      Widget mailhist_form, to_label, subj_label;
-      
-      /* Create it for the first time. */
-      win->mailhist_win = XmxMakeFormDialog 
-        (win->history_win, "NCSA Mosaic: Mail Window History" );
-      dialog_frame = XmxMakeFrame (win->mailhist_win, XmxShadowOut);
+	assert(win->history_shell);
 
-      /* Constraints for base. */
-      XmxSetConstraints (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
-         XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
-      
-      /* Main form. */
-      mailhist_form = XmxMakeForm (dialog_frame);
-      
-      to_label = XmxMakeLabel (mailhist_form, "Mail To:" );
-      XmxSetArg (XmNwidth, 335);
-      win->mailhist_to_text = XmxMakeTextField (mailhist_form);
-      
-      subj_label = XmxMakeLabel (mailhist_form, "Subject:" );
-      win->mailhist_subj_text = XmxMakeTextField (mailhist_form);
+	if (win->mailhist_win) {
+		XtManageChild (win->mailhist_win);
+		return ;
+	}
 
-      dialog_sep = XmxMakeHorizontalSeparator (mailhist_form);
-      
-      buttons_form = XmxMakeFormAndThreeButtons (mailhist_form,
+/* Create it for the first time. */
+	win->mailhist_win = XmxMakeFormDialog(win->history_shell, 
+		"mMosaic: Mail Window History" );
+	dialog_frame = XmxMakeFrame (win->mailhist_win, XmxShadowOut);
+/* Constraints for base. */
+	XmxSetConstraints (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
+		XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
+/* Main form. */
+	mailhist_form = XmxMakeForm (dialog_frame);
+	to_label = XmxMakeLabel (mailhist_form, "Mail To:" );
+	XmxSetArg (XmNwidth, 335);
+	win->mailhist_to_text = XmxMakeTextField (mailhist_form);
+	subj_label = XmxMakeLabel (mailhist_form, "Subject:" );
+	win->mailhist_subj_text = XmxMakeTextField (mailhist_form);
+	dialog_sep = XmxMakeHorizontalSeparator (mailhist_form);
+	buttons_form = XmxMakeFormAndThreeButtons (mailhist_form,
 		"Mail" , "Dismiss" , "Help..." , 
 		mailhist_win_cb0, mailhist_win_cb1, mailhist_win_cb2,
 		(XtPointer) win);
-
-      /* Constraints for mailhist_form. */
-      XmxSetOffsets (to_label, 14, 0, 10, 0);
-      XmxSetConstraints
-        (to_label, XmATTACH_FORM, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_NONE,
-         NULL, NULL, NULL, NULL);
-      XmxSetOffsets (win->mailhist_to_text, 10, 0, 5, 10);
-      XmxSetConstraints
-        (win->mailhist_to_text, XmATTACH_FORM, XmATTACH_NONE, XmATTACH_WIDGET,
-         XmATTACH_FORM, NULL, NULL, to_label, NULL);
-
-      XmxSetOffsets (subj_label, 14, 0, 10, 0);
-      XmxSetConstraints
-        (subj_label, XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, 
-         XmATTACH_NONE,
-         win->mailhist_to_text, NULL, NULL, NULL);
-      XmxSetOffsets (win->mailhist_subj_text, 10, 0, 5, 10);
-      XmxSetConstraints
-        (win->mailhist_subj_text, XmATTACH_WIDGET, XmATTACH_NONE, 
-         XmATTACH_WIDGET,
-         XmATTACH_FORM, win->mailhist_to_text, NULL, subj_label, NULL);
-
-      XmxSetArg (XmNtopOffset, 10);
-      XmxSetConstraints 
-        (dialog_sep, XmATTACH_WIDGET, XmATTACH_WIDGET, XmATTACH_FORM, 
-         XmATTACH_FORM,
-         win->mailhist_subj_text, buttons_form, NULL, NULL);
-      XmxSetConstraints 
-        (buttons_form, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_FORM, 
-         XmATTACH_FORM,
-         NULL, NULL, NULL, NULL);
-    }
-  
-  XtManageChild (win->mailhist_win);
-  
-  return mo_succeed;
+/* Constraints for mailhist_form. */
+	XmxSetOffsets (to_label, 14, 0, 10, 0);
+	XmxSetConstraints (to_label,
+		XmATTACH_FORM, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_NONE,
+		NULL, NULL, NULL, NULL);
+	XmxSetOffsets (win->mailhist_to_text, 10, 0, 5, 10);
+	XmxSetConstraints (win->mailhist_to_text,
+		XmATTACH_FORM, XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_FORM,
+		NULL, NULL, to_label, NULL);
+	XmxSetOffsets (subj_label, 14, 0, 10, 0);
+	XmxSetConstraints(subj_label,
+		XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_NONE,
+		win->mailhist_to_text, NULL, NULL, NULL);
+	XmxSetOffsets (win->mailhist_subj_text, 10, 0, 5, 10);
+	XmxSetConstraints(win->mailhist_subj_text,
+		XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_FORM,
+		win->mailhist_to_text, NULL, subj_label, NULL);
+	XmxSetArg (XmNtopOffset, 10);
+	XmxSetConstraints(dialog_sep,
+		XmATTACH_WIDGET, XmATTACH_WIDGET, XmATTACH_FORM, XmATTACH_FORM,
+		win->mailhist_subj_text, buttons_form, NULL, NULL);
+	XmxSetConstraints(buttons_form,
+		XmATTACH_NONE, XmATTACH_FORM, XmATTACH_FORM, XmATTACH_FORM,
+		NULL, NULL, NULL, NULL);
+	XtManageChild (win->mailhist_win);
+	return ;
 }
 
 /* ---------------------------- history_win_cb ---------------------------- */
@@ -519,7 +460,7 @@ static XmxCallback (history_win_cb0)
 {
 	mo_window *win = (mo_window*)client_data;
 
-	XtUnmanageChild (win->history_win);
+	XtUnmanageChild (win->history_shell);
 }
 static XmxCallback (history_win_cb1)
 {
@@ -544,69 +485,171 @@ static XmxCallback (history_list_cb)
 	return;
 }
 
-mo_status mo_post_history_win (mo_window *win)
+static char hlistTranslations[] =
+	"~Shift ~Ctrl ~Meta ~Alt <Btn2Down>: ListKbdSelectAll() ListBeginSelect() \n~Shift ~Ctrl ~Meta ~Alt <Btn2Up>:   ListEndSelect() ListKbdActivate()";
+
+/* Create history popup and popup it */
+void mo_post_history_win (mo_window *win)
 {
-  if (!win->history_win) {
-      Widget dialog_frame;
-      Widget dialog_sep, buttons_form;
-      Widget history_label;
-      Widget history_form;
-      XtTranslations listTable;
-      static char listTranslations[] =
-	"~Shift ~Ctrl ~Meta ~Alt <Btn2Down>: ListKbdSelectAll() ListBeginSelect() \n\
-	 ~Shift ~Ctrl ~Meta ~Alt <Btn2Up>:   ListEndSelect() ListKbdActivate()";
+	Widget dialog_frame;
+	Widget dialog_sep, buttons_form;
+	Widget history_label;
+	Widget history_form;
+	XtTranslations listTable;
 
-      listTable = XtParseTranslationTable(listTranslations);
+	if(win->history_shell) {		/* exist? : yes popup */
+		XmxManageRemanage (win->history_shell);
+		return ;
+	}
+
+/* if no window, create */
+	listTable = XtParseTranslationTable(hlistTranslations);
       
-      /* Create it for the first time. */
-      win->history_win = XmxMakeFormDialog(win->base, 
-				"NCSA Mosaic: Window History" );
-      dialog_frame = XmxMakeFrame (win->history_win, XmxShadowOut);
+/* Create it for the first time. */
+	win->history_shell = XmxMakeFormDialog(win->base,
+		"mMosaic: Window History");
+	dialog_frame = XmxMakeFrame (win->history_shell, XmxShadowOut);
+/* Constraints for base. */
+	XmxSetConstraints (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
+		XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
 
-      /* Constraints for base. */
-      XmxSetConstraints (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
-         XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
-      /* Main form. */
-      history_form = XmxMakeForm (dialog_frame);
+/* Main form. */
+	history_form = XmxMakeForm (dialog_frame);
+	XmxSetArg (XmNalignment, XmALIGNMENT_BEGINNING);
+	history_label = XmxMakeLabel (history_form, "Where you've been:" );
 
-      XmxSetArg (XmNalignment, XmALIGNMENT_BEGINNING);
-      history_label = XmxMakeLabel (history_form, "Where you've been:" );
-
-      /* History list itself. */
-      XmxSetArg (XmNresizable, False);
-      XmxSetArg (XmNscrollBarDisplayPolicy, XmSTATIC);
-      XmxSetArg (XmNlistSizePolicy, XmCONSTANT);
-      XmxSetArg (XmNwidth, 380);
-      XmxSetArg (XmNheight, 184);
-      win->history_list = XmxMakeScrolledList(history_form, 
+/* History list itself. */
+	XmxSetArg (XmNresizable, False);
+	XmxSetArg (XmNscrollBarDisplayPolicy, XmSTATIC);
+	XmxSetArg (XmNlistSizePolicy, XmCONSTANT);
+	XmxSetArg (XmNwidth, 380);
+	XmxSetArg (XmNheight, 184);
+	win->history_list_w = XmxMakeScrolledList(history_form, 
 		history_list_cb, (XtPointer) win);
-      XtAugmentTranslations (win->history_list, listTable);
-      dialog_sep = XmxMakeHorizontalSeparator (history_form);
-      buttons_form = XmxMakeFormAndThreeButtons(history_form, 
+	XtAugmentTranslations (win->history_list_w, listTable);
+
+	dialog_sep = XmxMakeHorizontalSeparator (history_form);
+	buttons_form = XmxMakeFormAndThreeButtons(history_form, 
 		"Mail To..." , "Dismiss" , "Help..." , 
 		history_win_cb1, history_win_cb0, history_win_cb2,
 		(XtPointer) win);
 
-      /* Constraints for history_form. */
-      XmxSetOffsets (history_label, 8, 0, 10, 10);
-      XmxSetConstraints(history_label,XmATTACH_FORM, XmATTACH_NONE, XmATTACH_FORM,
-         XmATTACH_NONE, NULL, NULL, NULL, NULL);
-      /* History list is stretchable. */
-      XmxSetOffsets (XtParent (win->history_list), 0, 10, 10, 10);
-      XmxSetConstraints (XtParent (win->history_list), 
-         XmATTACH_WIDGET, XmATTACH_WIDGET, XmATTACH_FORM, XmATTACH_FORM, 
-         history_label, dialog_sep, NULL, NULL);
-      XmxSetArg (XmNtopOffset, 10);
-      XmxSetConstraints (dialog_sep, 
-         XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_FORM, XmATTACH_FORM,
-         NULL, buttons_form, NULL, NULL);
-      XmxSetConstraints 
-        (buttons_form, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_FORM, 
-         XmATTACH_FORM, NULL, NULL, NULL, NULL);
+/* Constraints for history_form. */
+	XmxSetOffsets (history_label, 8, 0, 10, 10);
+	XmxSetConstraints(history_label,
+		XmATTACH_FORM, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_NONE,
+		NULL, NULL, NULL, NULL);
 
-      /* Go get the history up to this point set up... */
-      mo_load_history_list (win, win->history_list);
-    }
-  XmxManageRemanage (win->history_win);
-  return mo_succeed;
+/* History list is stretchable. */
+	XmxSetOffsets (XtParent (win->history_list_w), 0, 10, 10, 10);
+	XmxSetConstraints (XtParent (win->history_list_w), 
+		XmATTACH_WIDGET, XmATTACH_WIDGET, XmATTACH_FORM, XmATTACH_FORM, 
+		history_label, dialog_sep, NULL, NULL);
+	XmxSetArg (XmNtopOffset, 10);
+	XmxSetConstraints (dialog_sep, 
+		XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_FORM, XmATTACH_FORM,
+		NULL, buttons_form, NULL, NULL);
+	XmxSetConstraints(buttons_form,
+		XmATTACH_NONE, XmATTACH_FORM, XmATTACH_FORM, XmATTACH_FORM,
+		NULL, NULL, NULL, NULL);
+
+/* Go get the history up to this point set up... */
+	mo_load_history_list (win, win->history_list_w);
+
+	XmxManageRemanage (win->history_shell);	/* popup */
+}
+
+static void session_cb(Widget w, XtPointer clid, XtPointer calld)
+{             
+        char *xurl = (char *) clid;
+        mo_window * win;      
+        RequestDataStruct rds;
+              
+        XtVaGetValues(w, XmNuserData, (XtPointer) &win, NULL);  
+                                
+        rds.req_url = xurl; 
+        rds.gui_action = HTML_LOAD_CALLBACK;
+        rds.post_data = NULL;
+        rds.ct = NULL;          
+        rds.is_reloading = False;
+        win->navigation_action = NAVIGATE_NEW;
+        MMPafLoadHTMLDocInWin(win, &rds);
+}
+
+static void mo_add_to_rbm_history(mo_window *win, char *aurl, char *ti)
+{ 
+        char label[32];
+        int max = mMosaicAppData.numberOfItemsInRBMHistory;
+        int i; 
+	mo_hnode *next=win->hist_node;
+	mo_hnode *hn;
+
+	hn = win->hist_node;
+	while (hn != NULL) {	/* test if same exist */
+		if ( !strcmp(hn->aurl, aurl) ) {
+			return;
+		}
+		hn = hn->next;
+	}
+
+	hn = (mo_hnode *) calloc(1, sizeof(mo_hnode));
+	hn->aurl = strdup(aurl);
+	hn->title = strdup(ti);
+	hn->next = next;
+	win->hist_node = hn;
+
+	if (win->history_list_w) {
+		XmString xmstr = XmxMakeXmstrFromString(hn->title);
+		XmListAddItemUnselected(win->history_list_w, xmstr, 1);
+		XmStringFree (xmstr);
+	}
+        
+        if(!win->session_menu)
+                win->session_menu = XmCreatePulldownMenu(win->view,
+                                "session_menu", NULL, 0);
+        
+        compact_string(hn->title, label, 31, 3, 3);
+        
+        if(win->num_session_items < max) {
+                win->session_items[win->num_session_items] =
+                        XtVaCreateManagedWidget(label, xmPushButtonGadgetClass,            
+                                win->session_menu,
+                                XmNuserData, (XtPointer) win,
+                                NULL);
+                XtAddCallback(win->session_items[win->num_session_items],
+                        XmNactivateCallback, session_cb, hn->aurl);
+                XtAddCallback(win->session_items[win->num_session_items],
+                        XmNarmCallback, rbm_ballonify, hn->aurl);
+                XtAddCallback(win->session_items[win->num_session_items],
+                        XmNdisarmCallback, rbm_ballonify, " ");
+                win->num_session_items++;
+        } else if (win && win->session_items) {
+                XtDestroyWidget(win->session_items[0]);
+/* scoot the widget pointers */
+                for(i=0;i<max-1;i++)
+                        win->session_items[i] = win->session_items[i+1];
+                win->session_items[max-1] =
+                        XtVaCreateManagedWidget(label, xmPushButtonGadgetClass,                               
+                                win->session_menu,
+                                XmNuserData, (XtPointer) win,
+                                NULL);  
+                XtAddCallback(win->session_items[max-1],
+                XmNactivateCallback, session_cb, hn->aurl);
+                XtAddCallback(win->session_items[max-1],
+                        XmNarmCallback, rbm_ballonify, hn->aurl);
+                XtAddCallback(win->session_items[max-1],
+                        XmNdisarmCallback, rbm_ballonify, " ");
+        }                          
+}
+
+void mo_delete_rbm_history_win(mo_window *win)
+{
+        int i;
+        
+        if(win->num_session_items == 0)
+                return;
+        for(i = 0; i < win->num_session_items; i++)
+                XtDestroyWidget(win->session_items[i]);
+        if(win->session_menu)
+                XtDestroyWidget(win->session_menu);
 }

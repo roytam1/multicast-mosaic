@@ -65,7 +65,7 @@ extern void HTMLUnsetFrameSet(Widget w);
 extern int HTMLSearchText (Widget w, char *pattern,
 	ElementRef *m_start, ElementRef *m_end, int backward, int caseless);
 extern int HTMLSearchNews(Widget w,ElementRef *m_start, ElementRef *m_end);
-extern void McUpdateWidgetObject(Widget w, int num_eo, char * data, int len_data);
+/*extern void McUpdateWidgetObject(Widget w, int num_eo, char * data, int len_data); */
 
 extern void HTMLInitColors(Widget w, unsigned int nc);
 extern Pixel HTMLXColorToPixel(XColor * xc);
@@ -159,18 +159,6 @@ typedef struct _PointerMotionCBStruct {
 #define AREA_CIRCLE 1  
 #define AREA_POLYGON 2 
 /*##########*/
-
-
-/* define alignment values */
-typedef enum {
-	ALIGN_NONE,
-	VALIGN_BOTTOM,
-	VALIGN_MIDDLE,
-	VALIGN_TOP,
-	HALIGN_LEFT,
-	HALIGN_CENTER,
-	HALIGN_RIGHT
-} AlignType;
 
 typedef struct image_rec {
         char *src;
@@ -329,74 +317,15 @@ typedef enum {
 	E_MAP
 } ElementType;
 
-typedef enum {
-	CODE_TYPE_UNKNOW,
-	CODE_TYPE_BIN,
-	CODE_TYPE_SRC,
-	CODE_TYPE_APPLET
-} CodeType;
-
-typedef struct _AppletRec {
-	CodeType ctype;
-	char * src;
-	int width;
-	int height;
-	int x;
-	int y;
-	int border_width;
-	AlignType valignment;
-	int param_count;
-	char **param_name_t;
-	char **param_value_t;
-	int url_arg_count;
-	char **url_arg;
-	int *internal_numeos;
-	char ** ret_filenames;
-	Boolean cw_only;
-	Widget w;
-	Widget frame;
-} AppletInfo;
-
-typedef struct _AprogRec {
-	CodeType ctype;
-	char * src;
-	char * name;
-	int width;
-	int height;
-	int x;
-	int y;
-	int border_width;
-	AlignType valignment;
-	int param_count;
-	char **param_name_t;
-	char **param_value_t;
-	int url_arg_count;
-	char **url_arg;
-	int *internal_numeos;
-	char ** ret_filenames;
-	Boolean cw_only;
-	Widget w;
-	Widget frame;
-} AprogInfo;
-
-typedef struct _EODataStruct {
-	char * src;
-	char * ret_filename;
-	int num_eo;
-	Boolean cw_only;
-} EODataStruct;
-
 struct ele_rec {
 	ElementType type;
 	ImageInfo 	* pic_data;
 	WidgetInfo 	*widget_data;
 	TableInfo 	*table_data;
-	AprogInfo	*aps;
-	AppletInfo 	*ats;
+	HtmlObjectStruct *obs;
 	XFontStruct 	*font;
 	AlignType 	valignment;
 	AlignType 	halignment;
-/*	Boolean internal; */
 	Boolean 	selected;
 	Boolean 	is_in_form;
 	int 		indent_level;
@@ -421,6 +350,7 @@ struct ele_rec {
 	struct ele_rec *prev;
 	struct ele_rec *line_next;
 	int internal_numeo;
+/*	AppletInfo 	*ats; */
 };
 
 /* anchor tags */

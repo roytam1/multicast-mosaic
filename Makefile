@@ -1,7 +1,7 @@
 #
 # Toplevel Makefile for mMosaic.
 #
-#This Release 3.5.4 compile on:
+#This Release 3.5.5 compile on:
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
@@ -10,7 +10,7 @@
 #	- NetWinder (StrongArm based machine)
 #	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.5.4
+MCVER=3.5.5
 
 ##
 ## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
@@ -28,7 +28,7 @@ CC = CC
 ## Linker options
 ##
 
-# For building a shared lib
+# For building a shared lib (not recommanded)
 #ldflags = -G
 #ldflags = -shared
 #ldflags = -Bshared
@@ -43,7 +43,7 @@ CC = CC
 # GCC : Linux Intel optimised (does not work well)
 #prereleaseflags = -O3 -fomit-frame-pointer -funroll-loops -finline-functions -m486 -malign-double
 # GCC : Linux, FreeBSD, NetBSD compiler flags (recommended)
-#prereleaseflags = -Wall -g
+# prereleaseflags = -Wall -g
 # Qnx
 #prereleaseflags = -Oeax
 # SGI Mipspro
@@ -171,9 +171,12 @@ xlibs	+= -lXm -lXmu -lXt -lXext -lX11 -lm
 # Linux
 #pnginc  = /usr/include
 #pnglibs = /usr/lib/libpng.a /usr/lib/libz.a
-# Irix
+# Irix 
 #pnginc   = /usr/local/include
 #pnglibs  = /usr/local/lib/libpng.a /usr/lib32/libz.a
+# FreeBSD
+#pnginc  = /usr/local/include
+#pnglibs = /usr/local/lib/libpng.a /usr/lib/libz.a
 # Solaris
 pnginc  = /usr/local/include
 pnglibs = /usr/local/lib/libpng.a /usr/local/lib/libz.a
@@ -192,7 +195,7 @@ pngflags =  -I$(pnginc) -DHAVE_PNG
 # Irix
 #jpeginc   = /usr/include
 #jpeglibs  = /usr/lib32/libjpeg.so
-# Solaris
+# Solaris FreeBSD
 jpeginc  = /usr/local/include
 jpeglibs = /usr/local/lib/libjpeg.a
 
@@ -228,9 +231,9 @@ krblibs   = $(krb4libs) $(krb5libs)
 ## MULTICAST support
 ## 
 
-#mcdir = $(PWD)/libmc
-#mcflag = -I$(mcdir) -DMULTICAST
-#mclib = $(mcdir)/libmc.a
+mcdir = $(PWD)/libmc
+mcflag = -I$(mcdir) -DMULTICAST
+mclib = $(mcdir)/libmc.a
 
 ##
 ## APROG support (obsolete)
@@ -253,16 +256,16 @@ krblibs   = $(krb4libs) $(krb5libs)
 # -DLOOSE_PACKET			Testing multicast packet loss
 # -DDEBUG_MULTICAST			Debug MULTICAST
 # -DDEBUG_FRAME				Be verbose on frames
-# -DOBJECT				Experimental: implement pluggin!
+# -DOBJECT				Experimental: implement plugin! (not yet)
 # -DNDEBUG				don't use assert.
 #
 # Other things you can define are spelled out in src/mosaic.h
 
 # Debugging
-#customflags = -DLOOSE_PACKET -DDEBUG_MULTICAST -DDEBUG_FRAME
+#customflags = -DLOOSE_PACKET -DDEBUG_MULTICAST -DDEBUG_FRAME -DOBJECT
 # Common
 
-customflags = 
+customflags =
 
 ##
 ## ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------

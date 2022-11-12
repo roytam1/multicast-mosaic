@@ -50,12 +50,6 @@ extern void 		BulletRefresh( HTMLWidget hw, struct ele_rec *eptr);
 extern void 		HRuleRefresh( HTMLWidget hw, struct ele_rec *eptr);
 
 
-extern void 		FreeColors(Display *dsp, Colormap colormap);
-extern void 		FindColor(Display *dsp, Colormap colormap, XColor *colr);
-extern XImage * 	MakeImage( Display *dsp, unsigned char *data,
-        			int width, int height,
-        			int depth, ImageInfo *img_info, int clip);
-extern int 		AnchoredHeight(HTMLWidget hw);
 extern char * 		IsMapForm(HTMLWidget hw);
 extern int 		IsIsMapForm(HTMLWidget hw, char *href);
 extern ImageInfo * 	NoImageData( HTMLWidget hw);
@@ -78,14 +72,11 @@ extern void 		AddNewForm( HTMLWidget hw, FormInfo *fptr);
 extern void		WidgetRefresh( HTMLWidget hw, struct ele_rec *eptr);
 
 
-
 extern String 		ParseTextToPSString(HTMLWidget hw,
                            	struct ele_rec *startp, struct ele_rec *endp,
                            	int start_pos, int end_pos, int lmargin,
                            	int fontfamily,
                            	char *url, char *time_str);
-
-
 
 extern void		hw_do_body_bgima(HTMLWidget, struct mark_up *mptr);
 extern void		hw_do_body_color(HTMLWidget,char*,char*,PhotoComposeContext * pcc);
@@ -95,14 +86,6 @@ extern void 		TablePlace(HTMLWidget hw, struct mark_up **mptr,
 extern void 		TableRefresh( HTMLWidget hw, struct ele_rec *eptr,
 				int win_x, int win_y, Dimension win_w,
 				Dimension win_h);
-
-
-extern void 		AprogPlace(HTMLWidget hw, struct mark_up **mptr, 
-				PhotoComposeContext * pcc, Boolean save);
-extern void 		AprogRefresh(HTMLWidget hw, struct ele_rec *eptr);
-extern void 		AppletPlace(HTMLWidget hw, struct mark_up **mptr, 
-				PhotoComposeContext * pcc, Boolean save);
-extern void 		AppletRefresh(HTMLWidget hw, struct ele_rec *eptr);
 
 extern void 		ViewClearAndRefresh( HTMLWidget hw);
 extern void		ScrollWidgets(HTMLWidget hw);
