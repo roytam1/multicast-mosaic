@@ -82,11 +82,13 @@ static void McSendNewState(mo_window * win, int moid_ref, DependObjectTab dot, i
 
 int mc_len_alias = 0;
 
-int mc_local_state_id = -1;
-int mc_local_object_id = -1;
+int mc_local_state_id = -1;	/* etat en cours de formation dans l'emetteur */
+int mc_local_object_id = -1;	/* objet en cours de formation */
 
-int mc_status_report_state_id = -1;
-int mc_status_report_object_id = -1;
+int mc_status_report_state_id = -1; /* dernier etat complet que l'emetteur */
+				    /* a envoyer */
+int mc_status_report_object_id = -1; /* dernier objet complet que l'emmeteur */
+				    /* a envoyer */
 
 Pixmap			VirCursorPix;
 GC			gc_vc;

@@ -500,12 +500,12 @@ static Widget _PopupMenuBuilder(mo_window * win, Widget parent, int type, char *
 	XmString str;
 	int i, mapping_del;
 
+	mapping_del = mMosaicAppData.popupCascadeMappingDelay;
 	if(type == XmMENU_POPUP) {
 		menu =  XmCreatePopupMenu(parent, title, NULL, 0);
 	} else if(type == XmMENU_PULLDOWN) { 
 		menu = XmCreatePulldownMenu(parent, title, NULL, 0);
 		str = XmStringCreateLtoR(title, XmSTRING_DEFAULT_CHARSET);
-		mapping_del = mMosaicAppData.popupCascadeMappingDelay;
 		cascade =XtVaCreateManagedWidget(title,xmCascadeButtonGadgetClass,
 				parent, XmNsubMenuId, menu,
 				XmNlabelString, str,
@@ -560,10 +560,6 @@ static Widget _PopupMenuBuilder(mo_window * win, Widget parent, int type, char *
 					XmMENU_PULLDOWN, items[i].label, 
 					items[i].mnemonic, items[i].sub_items);
 			else {                      
-				int mapping_del;     
-
-				mapping_del = 
-					mMosaicAppData.popupCascadeMappingDelay;
 				items[i]._w = XtVaCreateManagedWidget(
 					"Session History",
 					xmCascadeButtonGadgetClass,

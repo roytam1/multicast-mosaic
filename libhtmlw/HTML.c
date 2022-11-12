@@ -1074,7 +1074,7 @@ void ViewRedisplay( HTMLWidget hw, int x, int y, int width, int height)
                 x, y, width, height);
 #endif
 	while(eptr){
-/*		if (eptr->type == E_APROG || eptr->type == E_APPLET){
+/*		if (eptr->type == E_OBJECT || eptr->type == E_APPLET){
 /*			RefreshElement(hw,eptr);
 /*			eptr = eptr->next;
 /*			continue;
@@ -2799,7 +2799,7 @@ void HTMLRetestAnchors(Widget w, visitTestProc testFunc, char * base_url)
 		case E_HRULE:
 		case E_TABLE:
 		case E_CELL_TABLE:
-		case E_APROG:
+		case E_OBJECT:
 		case E_APPLET:
 		case E_MAP:
 			break;

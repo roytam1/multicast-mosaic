@@ -324,7 +324,7 @@ typedef enum {
 	E_HRULE	,
 	E_TABLE	,
 	E_CELL_TABLE,
-	E_APROG,
+	E_OBJECT,
 	E_APPLET,
 	E_MAP
 } ElementType;

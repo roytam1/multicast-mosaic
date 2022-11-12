@@ -512,6 +512,10 @@ void  _XmHTMLDestroyFrames(HTMLWidget hw)
         /* free them */
 
         for(i = 0; i < hw->html.nframe; i++) { /* destroy everything */
+		HideWidgets(hw->html.frames[i]);
+		HTMLFreeWidgetInfo(hw->html.frames[i]->html.widget_list);
+        	hw->html.frames[i]->html.widget_list = NULL;  
+        	hw->html.frames[i]->html.form_list = NULL;
                	XtDestroyWidget((Widget)hw->html.frames[i]);
                 hw->html.frames[i] = NULL ;/* sanity */
         }

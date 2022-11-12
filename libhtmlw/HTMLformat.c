@@ -34,14 +34,20 @@ static struct mark_up NULL_ANCHOR = {
 	NULL,			/* end */
 	NULL,			/* next */
 	0,			/* line */
-	NULL,			/* s_aps */
-	NULL,			/* s_ats */
-	NULL,			/* s_picd */
+	NULL,			/* pcdata */
+
 	NULL,			/* t_p1 */
+
+	NULL,			/* s_picd */
+
 	NULL,			/* anchor_name */
 	NULL,			/* anchor_href */
 	NULL,			/* anchor_title */
-	NULL			/* anc_target */
+	NULL,			/* anc_target */
+
+	NULL,			/* start_obj */
+	NULL,			/* end_obj */
+	NULL			/* try_next_obj */
 };
 
 struct mark_up * NULL_ANCHOR_PTR = &NULL_ANCHOR ;
@@ -964,11 +970,11 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		AppletPlace(hw,mptr,pcc,save_obj);
 		break;
 #endif
-#ifdef APROG
-	case M_APROG:
+#ifdef OBJECT
+	case M_OBJECT:
 		if ((*mptr)->is_end) 		/* end of aprog */
 			return;
-		AprogPlace(hw,mptr,pcc,save_obj);
+		ObjectPlace(hw,mptr,pcc,save_obj);
 		break;
 #endif
 	case M_MAP:
@@ -984,7 +990,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 
 	case M_HTML:			/* don't know what to do with */
 	case M_COMMENT:
-	case M_PARAM:			/* maybe seen in APROG/APPLET */
+	case M_PARAM:			/* maybe seen in OBJECT/APPLET */
 	case M_CAPTION:
 	case M_TH:
 	case M_TD:		/* <TD> peut reaparaitre dans une */
@@ -1192,9 +1198,9 @@ void RefreshElement(HTMLWidget hw,struct ele_rec *eptr, int win_x, int win_y,
 		break;
 	case E_CELL_TABLE:
 		break;
-#ifdef APROG
-	case E_APROG:
-		AprogRefresh(hw,eptr);
+#ifdef OBJECT
+	case E_OBJECT:
+		ObjectRefresh(hw,eptr);
 		break;
 #endif
 #ifdef APPLET
@@ -1254,7 +1260,7 @@ struct ele_rec * LocateElement( HTMLWidget hw, int x, int y, int *pos)
 		case E_HRULE:
 		case E_TABLE:
 		case E_CELL_TABLE:
-		case E_APROG:
+		case E_OBJECT:
 		case E_APPLET:
 		case E_MAP:
 			break;

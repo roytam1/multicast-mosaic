@@ -20,7 +20,6 @@ typedef enum _MarkType {
 	M_ANCHOR,
 	M_ADDRESS,
 	M_APPLET,
-	M_APROG,
 	M_AREA,
 	M_BASE,
 	M_BIG,
@@ -68,6 +67,7 @@ typedef enum _MarkType {
 	M_NOFRAMES,
 	M_NOSCRIPT,
 	M_NUM_LIST,
+	M_OBJECT,
 	M_OPTION,
 	M_PARAGRAPH,
 	M_PARAM,
@@ -105,7 +105,6 @@ typedef enum _MarkType {
 #define	MT_ANCHOR	"a"
 #define	MT_ADDRESS	"address"
 #define MT_APPLET	"applet"
-#define MT_APROG	"aprog"
 #define MT_AREA		"area"
 #define MT_BOLD		"b"
 #define MT_BASE		"base"
@@ -151,6 +150,7 @@ typedef enum _MarkType {
 #define MT_NOFRAMES	"noframes"
 #define	MT_NUM_LIST	"ol"
 #define MT_NOSCRIPT	"noscript"
+#define MT_OBJECT	"object"
 #define MT_OPTION	"option"
 #define	MT_PARAGRAPH	"p"
 #define	MT_PARAM	"param"
@@ -196,15 +196,23 @@ struct mark_up {
 	char *end;
 	struct mark_up *next;
 	int line;		/* line number of original html text */
-	AprogPtr s_aps;		/* aprog saved */
-	AppletPtr s_ats;	/* applet saved */
-	ImageInfoPtr s_picd;	/* image saved */
+	char * pcdata;		/* #pcdata for tag such <title> */
+
 	TablePtr t_p1;		/* First pass table */
-	char * anc_name;
+
+	ImageInfoPtr s_picd;	/* image saved */
+
+	char * anc_name;	/* anchor tag */
 	char * anc_href;
 	char * anc_title;
 	char * anc_target;
-	char * pcdata;		/* #pcdata for tag such <title> */
+
+	struct mark_up * start_obj;	/* object saved */
+	struct mark_up * end_obj;	/* the one that match start Object */
+	struct mark_up * try_next_obj;	/* next obj to try if prev fail */
+
+/*	AprogPtr s_aps;		/* aprog saved */
+/*	AppletPtr s_ats;	/* applet saved */
 };
 
 /* frame type */

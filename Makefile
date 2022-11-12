@@ -1,7 +1,7 @@
 #
 # Toplevel Makefile for mMosaic.
 #
-#This Release 3.5.3 compile on:
+#This Release 3.5.4 compile on:
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
@@ -10,7 +10,7 @@
 #	- NetWinder (StrongArm based machine)
 #	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.5.3
+MCVER=3.5.4
 
 ##
 ## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
@@ -53,7 +53,7 @@ CC = CC
 # Sun Workshop C++ Compiler
 prereleaseflags = +w -g
 
-# For building a shared lib add this
+# For building a shared lib add this	(don't use: experimental)
 #prereleaseflags = $prereleaseflags -fPIC
 
 ##
@@ -228,9 +228,9 @@ krblibs   = $(krb4libs) $(krb5libs)
 ## MULTICAST support
 ## 
 
-mcdir = $(PWD)/libmc
-mcflag = -I$(mcdir) -DMULTICAST
-mclib = $(mcdir)/libmc.a
+#mcdir = $(PWD)/libmc
+#mcflag = -I$(mcdir) -DMULTICAST
+#mclib = $(mcdir)/libmc.a
 
 ##
 ## APROG support (obsolete)
@@ -253,12 +253,15 @@ mclib = $(mcdir)/libmc.a
 # -DLOOSE_PACKET			Testing multicast packet loss
 # -DDEBUG_MULTICAST			Debug MULTICAST
 # -DDEBUG_FRAME				Be verbose on frames
+# -DOBJECT				Experimental: implement pluggin!
+# -DNDEBUG				don't use assert.
 #
 # Other things you can define are spelled out in src/mosaic.h
 
 # Debugging
 #customflags = -DLOOSE_PACKET -DDEBUG_MULTICAST -DDEBUG_FRAME
 # Common
+
 customflags = 
 
 ##

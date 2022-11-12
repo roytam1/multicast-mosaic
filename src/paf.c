@@ -348,102 +348,106 @@ void MMPafSaveData(Widget top, char * aurl, char * fname)
 void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 {
 	mo_window * win = pafd->win;
-
-#ifdef MULTICAST
-	if (mc_send_win && (mc_send_win == win || mc_send_win == win->frame_parent)) {/* A multicast send window */
-		int moid_ret;
-
-                if (win->frame_sons_nbre == 0) { /* frame or top html */
-			(*mc_send_win->mc_callme_on_error_object)(pafd->aurl,
-				pafd->http_status, &moid_ret ); /* set to Not Found */
-                       win->moid_ref = moid_ret; /* info for state */
-                } else {        /* a top frameset can't be in error */
-                       assert(0); /* impossible */
-                }
-		switch(pafd->gui_action) {
-		case HTML_LOAD_CALLBACK:
-			if (win->frame_parent != NULL) { /* in frameset*/
-/* a html text change in a frame: do a new state */
-				McChangeDepend(win->frame_parent, win,
-					win->frame_dot_index, moid_ret);
-				(*mc_send_win->mc_callme_on_new_state)(
-					win->frame_parent,
-					win->frame_parent->moid_ref,
-					win->frame_parent->dot,
-					win->frame_parent->n_do);
-			} else if (win->frame_sons_nbre == 0) {
-/* a html text by itself at top level , send error... */
-					(*mc_send_win->mc_callme_on_new_state)(
-						win, win->moid_ref, NULL, 0);
-			} else {	/* impossible */
-				assert(0);
-                        } 
-			break;
-		case FRAME_LOADED_FROM_FRAMESET:
-			McAddDependFrame(win->frame_parent, moid_ret, win->frame_dot_index);
-			win->frame_parent->number_of_frame_loaded++;
-			if (win->frame_parent->frame_sons_nbre == win->frame_parent->number_of_frame_loaded ) {
-/* late send state of frameset */
-				PafDocDataStruct * pafd = win->frame_parent->pafd;
-				mo_window *win = pafd->win;
-				int moid_ret;
-
-				(*mc_send_win->mc_callme_on_new_object)(
-					pafd->mc_fname_save, pafd->aurl,
-					pafd->mhs,  win->dot ,
-					win->n_do, &moid_ret);
-				win->moid_ref = moid_ret; /* info for state */
-				free(pafd->mc_fname_save);
-				(*mc_send_win->mc_callme_on_new_state)(
-					win, win->moid_ref, win->dot, win->n_do);
-					/* stop the twirl */
-				MMStopTwirl(pafd);
-				assert(pafd->fd == -1 ); /* let me know */
-				FreePafDocDataStruct(pafd);
-				free(pafd);
-				win->pafd = NULL;
-				return;	/* ### hum!!! */
-			}
-			break;
-		default:      
-			assert(0);
-		}
-	}
-#endif
-	XmxMakeErrorDialog(win->base, reason , "Net Error");
-/* stop the twirl */
-/* target is maybe FRAMESET_TYPE or NOTFRAME_TYPE */
-	if (win->frame_type == NOTFRAME_TYPE || win->frame_type== FRAMESET_TYPE)
-		MMStopTwirl(pafd);
+	mo_window * winset;
+	int moid_ret;
 
 	assert(pafd->fd >= 0);
-
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
+
+	XmxMakeErrorDialog(win->base, reason , "Net Error");
+
+/* en cas d'erreur sur une page on n'envoie rien en multicast */
+	if (win->frame_type == FRAMESET_TYPE ) {
+		MMStopTwirl(pafd);
+		pafd->aurl =NULL; pafd->aurl_wa = NULL; pafd->mhs = NULL; /* sanity */
+		FreePafDocDataStruct(pafd);
+		win->pafd = NULL;
+		return;
+	}
+	assert(win->frame_type != FRAMESET_TYPE);
+	if (win->frame_type == NOTFRAME_TYPE ) {
+		MMStopTwirl(pafd);
+		pafd->aurl =NULL; pafd->aurl_wa = NULL; pafd->mhs = NULL; /* sanity */
+		FreePafDocDataStruct(pafd);
+		win->pafd = NULL;
+		return;
+	}
+	assert(win->frame_type != NOTFRAME_TYPE);
+
+/* Traitement du type FRAME_TYPE */
+/* en cas d'erreur sur un frame, il faut envoyer un substitue a ce Frame */
+
+#ifdef MULTICAST
+	if (mc_send_win && (mc_send_win == win || mc_send_win == win->frame_parent)) {/* A multicast send window */
+		(*mc_send_win->mc_callme_on_error_object)(pafd->aurl,
+				pafd->http_status, &moid_ret ); /* set to Not Found */
+                win->moid_ref = moid_ret; /* info for state */
+		free(pafd->mc_fname_save);
+		pafd->mc_fname_save = NULL;     /* sanity */
+
+		if (win->frame_type == NOTFRAME_TYPE) { /* top html */
+			(*mc_send_win->mc_callme_on_new_state)( win,
+				win->moid_ref, NULL, 0);
+/*win->dot, win->n_do); ### pas de dependance d'etat pour HTML ou FRAME */
+		}
+	}
+#endif
+
+
+	winset = win->frame_parent; /* the frameset */
+	winset->number_of_frame_loaded++; /* one more is loaded */
+	assert(winset->number_of_frame_loaded <=winset->frame_sons_nbre);
+
+#ifdef MULTICAST
+	if(mc_send_win && (mc_send_win==win || mc_send_win==win->frame_parent)){
+		switch(pafd->gui_action) {
+		case HTML_LOAD_CALLBACK:
+			McChangeDepend(winset, win, win->frame_dot_index, moid_ret);
+			break;
+		case FRAME_LOADED_FROM_FRAMESET:
+			McAddDependFrame(winset,moid_ret, win->frame_dot_index);
+			break;
+		}
+	}
+#endif
+
+	if(winset->number_of_frame_loaded == winset->frame_sons_nbre ) {
+					/* Is it the last ? */
+		PafDocDataStruct * fs_pafd = winset->pafd;
+		assert(fs_pafd->fd == -1 );
+		MMStopTwirl(fs_pafd); /* en finir avec le frameset */
+#ifdef MULTICAST
+		if (mc_send_win && (mc_send_win==win || mc_send_win==win->frame_parent)){
+			int fs_moid_ret;
+
+			if (pafd->gui_action == FRAME_LOADED_FROM_FRAMESET) {
+                                (*mc_send_win->mc_callme_on_new_object)(
+                                        fs_pafd->mc_fname_save,
+                                        fs_pafd->aurl, fs_pafd->mhs,
+/* pas de dependance pour les framesets */
+/* winset->dot, winset->n_do, */	NULL, 0, &fs_moid_ret);
+                                winset->moid_ref=fs_moid_ret; /* info for state
+*/
+                                free(fs_pafd->mc_fname_save);
+                                fs_pafd->mc_fname_save = NULL; /* sanity */
+                        }
+			(*mc_send_win->mc_callme_on_new_state)(
+				winset, winset->moid_ref,
+				winset->dot, winset->n_do);
+		}
+#endif
+/* free parent frameset */            
+/* Must be freed in navigation */     
+                fs_pafd->aurl = fs_pafd->aurl_wa = NULL;
+                fs_pafd->mhs = NULL;                    /*sanity*/
+                FreePafDocDataStruct(fs_pafd);
+                winset->pafd = NULL;  
+        }
 	pafd->aurl =NULL; pafd->aurl_wa = NULL; pafd->mhs = NULL; /* sanity */
 	FreePafDocDataStruct(pafd);
 	win->pafd = NULL;
-
-/* traite le cas d'un frame */
-	if (win->frame_type == FRAME_TYPE){	/* guess end of frameset? */
-						/* if yes, stop frameset... */
-		mo_window * winset = win->frame_parent;
-
-		winset->number_of_frame_loaded++; /* one more is (error) loaded */
-		assert(winset->number_of_frame_loaded <=winset->frame_sons_nbre);
-		if(winset->number_of_frame_loaded == winset->frame_sons_nbre ) {
-					/* Is it the last ? */
-			MMStopTwirl(winset->pafd); /* finir avec le frameset */
-
-			assert( winset->pafd->fd == -1 );/* finnish doc: fd is closed*/
-			winset->pafd->aurl =NULL; winset->pafd->aurl_wa = NULL;
-			winset->pafd->mhs = NULL; /* sanity */
-			FreePafDocDataStruct(winset->pafd);
-			winset->pafd = NULL;
-			return; /* it is finished!!! */
-		}
-	}
 }
 
 /* top-> down procedure */
@@ -804,6 +808,14 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 /* win->scrolled_win est le framset contenant les frame*/
 /* htmlw_tabs est un tableau de widget frame qui va contenir les frames*/
 
+#ifdef MULTICAST
+/* reset old depend object */
+        	if (win->dot){
+                	/*free(win->dot);*/ /* don't free old. Used in multicast cache */
+                	win->dot =NULL;
+                	win->n_do =0;
+        	}               
+#endif
 		HTMLSetFrameSet (win->scrolled_win, htinfo->mlist, pafd->aurl,
 			htinfo->nframes, htinfo->frameset_info, &htmlw_tabs);
 
@@ -852,15 +864,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 
 		return;
 
-/* ##### where to destroy FRAMSET?? ##### */
-/*              parent = win;
-/*              free(parent->frame_sons) ;
-/*              win->frame_name = NULL; 
-/*              win->frame_parent =NULL;
-/*              win->frame_sons = NULL;
-/*              win->frame_sons_nbre =0;
-/*              win->number_of_frame_loaded = 0;
-###### */
+/* ##### where to destroy FRAMSET?? and sub_win??? ##### */
 	}
 
 /* ici, on ne peut avoir que FRAME_TYPE ou NOTFRAME_TYPE */
@@ -969,7 +973,7 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 /* see it later ########### 
  *		case M_APPLET:
  *			parse for codebase=
- *		case M_APROG:	 must become OBJECT 
+ *		case M_OBJECT:
  *			parse for something=
  */
 		default:
@@ -999,6 +1003,15 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 /* afficher le texte. le mettre dans la Widget. id come from back and forward */
 	docid = 0;			/* we are not in back or forward */
 	spafd = *pafd;
+
+#ifdef MULTICAST
+/* reset old depend object */
+	if (win->dot){
+		/*free(win->dot);*/ /* don't free old. Used in multicast cache*/
+		win->dot =NULL;
+		win->n_do =0;
+	}
+#endif
 	HTMLSetHTMLmark (win->scrolled_win, mlist, docid,
 		pafd->goto_anchor, pafd->aurl);
 	XFlush(XtDisplay(win->scrolled_win));
@@ -1147,14 +1160,7 @@ void MMPafLoadHTMLDocInWin( mo_window * win, RequestDataStruct * rds)
 	if (opafd) {		/* if YES stop the previous request */
 		MMStopPafDocData(opafd);
 	}
-#ifdef MULTICAST
-/* reset old depend object */
-	if (win->dot){
-		/*free(win->dot);*/ /* don't free old. Used in multicast cache */
-		win->dot =NULL;
-		win->n_do =0;
-	}
-#endif
+
 	reloading = rds->is_reloading;
 	req_url = rds->req_url;
 	gui_action = rds->gui_action;
@@ -1573,7 +1579,8 @@ static void LateEndPafDoc(PafDocDataStruct * pafd)
 
                 if (win->frame_type == NOTFRAME_TYPE) { /* top html */
 			(*mc_send_win->mc_callme_on_new_state)( win,
-				win->moid_ref, win->dot, win->n_do);
+				win->moid_ref, NULL, 0);
+/*win->dot, win->n_do); ### pas de dependance d'etat pour HTML ou FRAME */
 		}
 	}
 #endif
@@ -1632,8 +1639,9 @@ static void LateEndPafDoc(PafDocDataStruct * pafd)
 			if (pafd->gui_action == FRAME_LOADED_FROM_FRAMESET) {
 				(*mc_send_win->mc_callme_on_new_object)(
 					fs_pafd->mc_fname_save,
-					fs_pafd->aurl, fs_pafd->mhs, winset->dot,
-					winset->n_do, &fs_moid_ret);
+					fs_pafd->aurl, fs_pafd->mhs,
+/* pas de dependance pour les framesets */
+/* winset->dot, winset->n_do, */	NULL, 0, &fs_moid_ret);
 				winset->moid_ref=fs_moid_ret; /* info for state */
 				free(fs_pafd->mc_fname_save);
 				fs_pafd->mc_fname_save = NULL; /* sanity */

@@ -26,99 +26,89 @@ void UcSendRepair(Source *s, int type, int id, int offset, int lend);
 	reserved
 */
 typedef struct _RtcpStard {
-	u_int32_t	sid;	/* Hightest state_id report */
-	u_int32_t	oid;	/* Hightest object id report */
-	u_int32_t	c_sid;	/* current state id */
+	u_int32_t	sid;	/* C'est le dernier etat complet que l'emetteur */
+				/* a envoyer , c'est celui qu'il fauy affiche */
+	u_int32_t	oid;	/* C'est le dernier objet complet que l'emetteur*/
+				/* a envoyer */
+	u_int32_t	c_sid;	/* current state id in transfer. C'est l'etat */
+				/* en cours de transfert , cote emetteur */
+				/* si le transfert est fini alors c_sid=sid */
+				/* sinon c_sid > sid */
 	u_int32_t	rtp_otime; /* RTP sample time of oid */
 	u_int32_t	reserved;  /* extension ... */
 } RtcpStard;
 
-static void McScheduleQueryRepairStates(Source *s, int from, int to)
+static void McScheduleQueryRepairState(Source *s, int sid)
 {
 	/* from = send repair from this state */
-	/* to =   until this state */
 	ChunkedBufStruct *cbs;
 	MissRange * plmr;
 	int offset;
 	int len;
-	int i;
 
-	for ( i=from; i<= to; i++) { /* for each incomplete state */
-		if (s->states[i].buffer_status == PARSED_BUFFER) {
-			if (i - s->last_valid_state_id == 1)
-				s->last_valid_state_id = i;
-			continue;
+	switch (s->states[sid].buffer_status) {
+	case CHUNKED_BUFFER:
+		cbs = s->states[sid].chkbuf;
+		plmr = cbs->lmr;
+		while(plmr){
+			offset=plmr->from;
+			len = plmr->to - offset +1;
+			if (plmr->to == 0xffffffff)
+				len = 0xffffffff;
+			
+			UcSendRepair(s, HTML_STATE_DATA_TYPE, sid,
+				offset , len);
+			plmr = plmr->next;
 		}
-		switch (s->states[i].buffer_status) {
-		case CHUNKED_BUFFER:
-			cbs = s->states[i].chkbuf;
-			plmr = cbs->lmr;
-			while(plmr){
-				offset=plmr->from;
-				len = plmr->to - offset +1;
-				if (plmr->to == 0xffffffff)
-					len = 0xffffffff;
-				
-				UcSendRepair(s, HTML_STATE_DATA_TYPE, i,
-					offset , len);
-				plmr = plmr->next;
-			}
-			break;
-		case EMPTY_BUFFER:
-			UcSendRepair(s, HTML_STATE_DATA_TYPE, i,
-				0, 0xffffffff);	/* request all */
-			break;
-		default:
-			assert(0);
-		}
+		break;
+	case EMPTY_BUFFER:
+		UcSendRepair(s, HTML_STATE_DATA_TYPE, sid,
+			0, 0xffffffff);	/* request all */
+		break;
+	default:
+		assert(0);
 	}
 }
 
-static void McScheduleQueryRepairObjects(Source *s, int from, int to)
+static void McScheduleQueryRepairObject(Source *s, int oid)
 {
 	/* send query repair to Source s */
-	/* from = send repair from this object */
-	/* to =   until this object */
+	/* oid = send repair from this object */
 	ChunkedBufStruct *cbs;
 	MissRange * plmr;
 	int offset;
 	int len;
-	int i;
 
-	for ( i=from; i<= to; i++) { /* for each incomplete state */
-		if (s->objects[i].buffer_status == PARSED_BUFFER ||
-		    s->objects[i].buffer_status == COMPLETE_BUFFER ||
-		    s->objects[i].buffer_status == PARSED_ALL_DEPEND_BUFFER) {
-			if (i - s->last_valid_object_id == 1)
-				s->last_valid_object_id = i;
-			continue;
+	if (s->objects[oid].buffer_status == PARSED_BUFFER ||
+	    s->objects[oid].buffer_status == COMPLETE_BUFFER ||
+	    s->objects[oid].buffer_status == PARSED_ALL_DEPEND_BUFFER) {
+		return;
+	}
+	switch (s->objects[oid].buffer_status) {
+	case CHUNKED_BUFFER:
+		cbs = s->objects[oid].chkbuf;
+		plmr = cbs->lmr;
+		while(plmr){
+			offset=plmr->from;
+			len = plmr->to - offset +1;
+			if (plmr->to == 0xffffffff)
+				len = 0xffffffff;
+			
+			UcSendRepair(s, HTML_OBJECT_DATA_TYPE, oid,
+				offset , len);
+			plmr = plmr->next;
 		}
-		switch (s->objects[i].buffer_status) {
-		case CHUNKED_BUFFER:
-			cbs = s->objects[i].chkbuf;
-			plmr = cbs->lmr;
-			while(plmr){
-				offset=plmr->from;
-				len = plmr->to - offset +1;
-				if (plmr->to == 0xffffffff)
-					len = 0xffffffff;
-				
-				UcSendRepair(s, HTML_OBJECT_DATA_TYPE, i,
-					offset , len);
-				plmr = plmr->next;
-			}
-			break;
-		case EMPTY_BUFFER:
-			UcSendRepair(s, HTML_OBJECT_DATA_TYPE, i,
-				0, 0xffffffff);	/* request all */
-			break;
-		default:
-			assert(0);
-		}
+		break;
+	case EMPTY_BUFFER:
+		UcSendRepair(s, HTML_OBJECT_DATA_TYPE, oid,
+			0, 0xffffffff);	/* request all */
+		break;
+	default:
+		assert(0);
 	}
 }
 
-static void McScheduleQueryRepairObjectsTree( Source *s, int moid)
+static void McScheduleQueryRepairObjectTree( Source *s, int moid)
 {
 	int status;
 	int i;
@@ -129,7 +119,7 @@ static void McScheduleQueryRepairObjectsTree( Source *s, int moid)
 		return;
 	}
 	if ( !(status == PARSED_BUFFER || status == COMPLETE_BUFFER) ) {
-		McScheduleQueryRepairObjects(s, moid, moid);
+		McScheduleQueryRepairObject(s, moid);
 		return;
 	}
 
@@ -147,104 +137,113 @@ static void McScheduleQueryRepairObjectsTree( Source *s, int moid)
 		}
 /* if ( !(status == PARSED_BUFFER || status == COMPLETE_BUFFER) )  */
 /* l'arbre de depandance ne doit pas boucler */
-		McScheduleQueryRepairObjectsTree(s, s->objects[moid].dot[i]);
+		McScheduleQueryRepairObjectTree(s, s->objects[moid].dot[i]);
 	}	
 }
 
 void McQueryRepairFromStatr(Source *s, RtcpPacket* rcs)
 {
 	RtcpStard *psrd = (RtcpStard *) rcs->d;
-	int c_sid;
-	int sid;
-	int oid;
-	int lvo, lvs;
+	int cf_sid;	/* etat en cours de formation */
+	int dec_sid;	/* dernier etat complet */
+	int dec_oid;	/* dernier objet complet */
 	int rtp_otime;
-	int status;
+	McBufferStatus status;
+	int do_return = 0;
+	McStateStruct st;
+	int i;
 
-	sid = ntohl (psrd->sid);
-	c_sid = ntohl (psrd->c_sid);
-	oid = ntohl (psrd->oid);
+	cf_sid = ntohl (psrd->c_sid);
 	rtp_otime = ntohl (psrd->rtp_otime);
 
-	if (c_sid != s->c_sid && sid >= c_sid) {
-		s->c_sid = c_sid;
-		UpdGuiMemberPage(s);
-	}
+	dec_sid = ntohl (psrd->sid);	/* c'est lui que je dois afficher*/
+	dec_oid = ntohl (psrd->oid);
 
+/* la premiere fois que la source est vue, on cree sa structure */
+	assert(s->states_tab_size);
+
+/* reallocation de l'espace state_id , si il grandi */
+	McRcvrSrcAllocState(s, cf_sid);
+	McRcvrSrcAllocState(s, dec_sid);
 
 /* check and alloc enought object. repair missing object */
 /* this may be long to repair because object may depend of object... */
-        status = McRcvrSrcAllocObject(s, oid);
-        if( !status) {                
-                fprintf(stderr,"Out of mem\n");
-                assert(0);
+        McRcvrSrcAllocObject(s, dec_oid);
+
+/* On recoit un numero d'etat sans ses donnees: */
+/*      - soit l'etat est incomplet parcequ'il manque qqes objets       */
+/*        auquel cas on les demande.                                    */
+/*      - soit l'etat est complet. Dans ce cas                          */
+/*              - soit l'etat affiche est le meme-> return              */
+/*              - soit il est different, et il faut l'afficher          */
+
+	if ( s->states[dec_sid].state_status == STATE_COMPLETED ) {
+                                /* l'etat est complet */
+                if (s->current_view_state == dec_sid ) {
+                                /* l'etat recu est celui affiche... */
+                        return;       
+                }                     
+/* state is COMPLETE and all depend object of object are here, play with them*/
+/* Display it now */                  
+                McDisplayWindowText(s, dec_sid);    /*Display full doc */
+                return;               
         }
 
-/* check and alloc for enought state */
-	if( !McRcvrSrcAllocState(s, sid)) {
-		fprintf(stderr,"Out of mem\n");
-		assert(0);
-	}
-	if (c_sid > sid){
-		if( !McRcvrSrcAllocState(s, c_sid)) {
-			fprintf(stderr,"Out of mem\n");
-			assert(0);
-		}
-		return;
-	}
-
-	if(s->mute)
-		return;
-
-	lvo = s->last_valid_object_id;
-/*	if (lvo < oid ) { /* schedule une demande de repair pour tous les objets manquant */
-/*		/* look for missing object, missing packet in object etc..*/
-/*		McScheduleQueryRepairObjects(s, lvo+1, oid);
-/*		/* an object will be complete, so check state */
-/*		McRcvSrcScheduleCheckState(s, sid);
-/*	}
+/* l'etat n'est pas complet:
+	- soit les donnees de l'etat ne sont pas la
+	- soit il manque des objets
+   Faire un repair!
 */
 
-	lvs = s->last_valid_state_id;
-	if ( lvs < sid) { /* schedule une demande de repair pour ces etats */
-		McScheduleQueryRepairStates(s, lvs+1, sid); 
-/*		McScheduleQueryRepairStates(s, sid, sid); */
-		/* schedule a check for sid */
-		/* when check is good we display the valid state */
-		McRcvSrcScheduleCheckState(s, sid);
+/* teste le cas ou les donnees d'etat ne sont pas la */
+	if ( s->states[dec_sid].buffer_status != PARSED_BUFFER){
+		McScheduleQueryRepairState(s, dec_sid); 
 		return;
 	}
 
-		/* FIXME: si tous les obj sont la pour l'etat,
-		/* s->states[sid]/start_moid/n_do/dot/ */
-		/* alors afficher */
-	if (lvo < oid ) {
-		int do_return = 0;
-		int i;
+/* les donnees d'etat sont la ! */
+	
+	st = s->states[dec_sid]; /* l'analyse est deja faite */
 
-		status=  McRcvrSrcCheckBufferObject(s, s->states[c_sid].start_moid);
+/* on commence par le start_moid */
+	McRcvrSrcAllocObject(s, st.start_moid);
+
+/* on teste seulement les OBJETS (pas l'etat) dependant d'autre objets */
+/* parcequ'un frameset a une dependance variable ... */
+
+	status = McRcvrSrcCheckBufferObject(s, st.start_moid);
+	if (status != PARSED_ALL_DEPEND_BUFFER) {       /* cas html */
+			/* le principal objet n'est pas la. faire un repair */
+		McScheduleQueryRepairObjectTree(s, st.start_moid);
+		return;
+	}
+
+/* le start_moid est la */
+
+/* Traite le cas html */
+	if (st.n_fdo == 0 ) {
+		s->states[dec_sid].state_status = STATE_COMPLETED;
+		McDisplayWindowText(s, dec_sid);    /*Display full doc */
+                return;               
+        }
+
+/* traite le cas d'un frameset */
+
+	for( i = 0; i < st.n_fdo; i++) {
+		McRcvrSrcAllocObject(s, st.fdot[i]);
+
+		status = McRcvrSrcCheckBufferObject(s, st.fdot[i]);
 		if (status != PARSED_ALL_DEPEND_BUFFER) {
-			McScheduleQueryRepairObjectsTree(s, s->states[c_sid].start_moid);
-			McRcvSrcScheduleCheckState(s, c_sid);
-			return;
-		}
-		for (i = 0; i<s->states[c_sid].n_do; i++){
-			status=  McRcvrSrcCheckBufferObject(s, s->states[c_sid].dot[i]);
-			if (status != PARSED_ALL_DEPEND_BUFFER) {
-				McScheduleQueryRepairObjectsTree(s, s->states[c_sid].dot[i]);
-				do_return =1;
-			}
-		}
-		if (do_return){
-			McRcvSrcScheduleCheckState(s, c_sid);
-			return;
+			McScheduleQueryRepairObjectTree(s, st.fdot[i]);
+			do_return =1;
 		}
 	}
-	if (lvs < c_sid)	/* because c_sid not transmit yet */
+
+	if (do_return)
 		return;
-	if (c_sid == s->current_state_id_in_window )
-		return;
-	McDoWindowText(s, c_sid);
+
+	s->states[dec_sid].state_status = STATE_COMPLETED;
+	McDisplayWindowText(s, dec_sid);
 	return;
 }
 

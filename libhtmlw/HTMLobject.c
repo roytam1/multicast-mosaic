@@ -1,13 +1,12 @@
-/* HTMLaprog.c
- * Version 3.0 [Sep96]
+/* HTMLobject.c
+ * Version 3.5.4 [Mai 2000]
  *
- * Copyright (C) 1996 - G.Dauphin
- * See the file "license.mMosaic" for information on usage and redistribution
+ * Copyright (C) 1996-2000 - G.Dauphin
+ * See the file "GPL" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES. 
  */
 
-#ifdef APROG
-
+#ifdef OBJECT
 #include "HTMLP.h"
 #include "HTMLPutil.h"
 #include <ctype.h>
@@ -15,7 +14,7 @@
 #include <stdio.h>
 #include <Xm/XmAll.h>
 
-void _FreeAprogStruct(AprogInfo * aps)
+void _FreeObjectStruct(ObjectInfo * aps)
 {
 	int i;
 
@@ -65,43 +64,45 @@ void _FreeAprogStruct(AprogInfo * aps)
 	}
 	free(aps);
 }
-void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc,
+void ObjectPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc,
 	Boolean save_obj)
 {
 	char * param_namePtr;
 	char * param_valuePtr;
 	struct mark_up * amptr = *mptr;
 	struct mark_up * pmptr ;
-	char * codetypePtr, *srcPtr, *wPtr, *hPtr, *bwPtr, *alignPtr;
+	char *srcPtr, *wPtr, *hPtr, *bwPtr, *alignPtr;
 	char * namePtr;
 	CodeType codetype = CODE_TYPE_UNKNOW;
 	int border_width;
 	AlignType valignment;
 	struct ele_rec * eptr;
-	AprogInfo * aps=NULL;
-	AprogInfo * saved_aps=amptr->s_aps;
+	ObjectInfo * aps=NULL;
+	ObjectInfo * saved_aps=amptr->s_aps;
 	int extra = 0;
 	int argcnt ;
 	Arg arg[10];
 	int baseline=0;
 
-	fprintf(stderr, "AprogPlace: *x=%d,*y=%d,Width=%d)\n",
+#ifdef DEBUG_OBJECT
+	fprintf(stderr, "ObjectPlace: *x=%d,*y=%d,Width=%d)\n",
 			pcc->x,pcc->y,pcc->width_of_viewable_part);
+#endif
+/* classid="mtvp" */
+	classidPtr = ParseMarkTag(amptr->start, MT_OBJECT, "classid");
 
-	codetypePtr = ParseMarkTag(amptr->start, MT_APROG, "CODETYPE");
-	if (!strcasecmp(codetypePtr, "BINARY"))/*si c'est du binaire on doit*/
-				/* l'avoir sur place : c'est un plugins */
-		codetype = CODE_TYPE_BIN;
-	if (!strcasecmp(codetypePtr, "SOURCE")) /* si c'est du source faut */
-				/* le rapatrie, */
-				/* le compiler et le mettre en plugins */
-		codetype = CODE_TYPE_SRC;
-	if (codetypePtr)
-		free(codetypePtr);
-	if(codetype == CODE_TYPE_UNKNOW){
-		fprintf(stderr,"Unknow code type in <APROG>\n");
-		return;
+	if(!classidPtr){
+		#########
 	}
+
+	free(classidPtr);
+
+/* type="video/mpeg" */
+	typePtr = ###
+
+
+/* codebase="~dauphin/pluggin/mtvp/how-to-plug-mtvp */
+
 	srcPtr = ParseMarkTag(amptr->start, MT_APROG, "SRC"); /* src est l'url */
 				/* du source ou le nom du plugging( du binaire) */
 				/* REQUIRED */
@@ -111,6 +112,14 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 			free(srcPtr);
 		return;
 	}
+/* codetype: unused */
+/* archive: unused */
+/* declare: unused */
+/* standby: unused */
+
+/* data="fichier_video.mpg" */
+/* l'url est relative % a la page HTML (entorse a la regle codebase) */
+
 	wPtr = ParseMarkTag(amptr->start, MT_APROG, "WIDTH"); /* REQUIRED */
 	hPtr = ParseMarkTag(amptr->start, MT_APROG, "HEIGHT"); /* REQUIRED */
 	if ((wPtr == NULL) || (hPtr == NULL)){
@@ -156,7 +165,7 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 	}
 	free(alignPtr);
 
-	aps = (AprogInfo *) calloc(1,sizeof(AprogInfo));
+	aps = (ObjectInfo *) calloc(1,sizeof(ObjectInfo));
 	aps->src = srcPtr;
 	aps->name = namePtr;
 	aps->height = (atoi(hPtr) * pcc->width_of_viewable_part) / 100;
@@ -230,7 +239,7 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 	if (!pmptr ){		/* la fin est obligatoire */
 		fprintf(stderr,"[TriggerMarkChanges] Tag </APROG> not seen\n");
 		*mptr = pmptr;
-		_FreeAprogStruct(aps);
+		_FreeObjectStruct(aps);
 		return;
 	}
 
@@ -291,7 +300,7 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
         pcc->is_bol = False; 
 
 	if (pcc->cw_only) { /* just compute size */
-		_FreeAprogStruct(aps);
+		_FreeObjectStruct(aps);
 		return;
 	}
 
@@ -376,7 +385,7 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 				printf("xwa.do_not_propagate_mask = %x\n",
 					xwa.do_not_propagate_mask);
 
-				printf("Aprog create Window = %d\n",
+				printf("Object create Window = %d\n",
 						XtWindow(aps->frame));
 */
 				sprintf(allcmdline,"/usr/local/mMosaic/bin/%s -windowId %d %s &",
@@ -406,12 +415,12 @@ void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc
 			XtSetMappedWhenManaged(saved_aps->frame, False);
 			XtManageChild(saved_aps->frame);
 			XFlush(XtDisplay(hw));
-			_FreeAprogStruct(aps);
+			_FreeObjectStruct(aps);
 		}
 	}
 }
 
-void AprogRefresh(HTMLWidget hw, struct ele_rec *eptr)
+void ObjectRefresh(HTMLWidget hw, struct ele_rec *eptr)
 {
 	int x;
 	int y;

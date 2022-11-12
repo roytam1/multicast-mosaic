@@ -23,6 +23,20 @@
 #define PROTO_OVERHEAD (52)	/* IP + UDP + RTP + specific PT */
 #define BAND_WIDTH (1000000)      /* 1 Mbits/s */
 
+
+typedef enum {
+	EMPTY_BUFFER= 1,
+	CHUNKED_BUFFER= 2,
+	COMPLETE_BUFFER= 3,
+	PARSED_BUFFER= 4,
+	PARSED_ALL_DEPEND_BUFFER= 5
+} McBufferStatus;
+
+typedef enum {
+	STATE_EMPTY = 1,
+	STATE_PARTIAL = 2,
+	STATE_COMPLETED = 3
+} McStateStatus;
    
 typedef struct _RtpPacket {     
 	u_int32_t pt;		/* payload type */
@@ -104,13 +118,14 @@ typedef struct _ChunkedBufStruct {
 typedef struct _McStateStruct {
 	int statid;		/* the stateid */
 	int start_moid;		/* begin with this object */
-	int n_do;		/* number of depend object */
-	DependObjectTab dot;	/* liste of dependant object */
+	int n_fdo;		/* number of depend object . usually frame*/
+	DependObjectTab fdot;	/* liste of dependant object (frame)*/
 	struct timeval ts;      /* timstamp (struct timeval) */
+	McStateStatus state_status; /* progression status */
 
 	int len_buffer;
 	char * buffer;		/* buffer containing temp data (receiver)*/
-	int buffer_status;	/* status of buffer (receiver) */
+	McBufferStatus buffer_status;	/* status of buffer (receiver) */
 	ChunkedBufStruct *chkbuf; /* chunked data. must be assemble in buffer (receiver) */
 	char *sdata;		/* sender data */
 	int sdata_len;		/* len sender data */
@@ -122,11 +137,12 @@ typedef struct _McObjectStruct {
 	int stateless;
 	int n_do;               /* number of depend object */
 	DependObjectTab dot;    /* liste of dependant object */
+	DependObjectTab frame_dot; /* depend frame object */
 	struct timeval ts;      /* timstamp (struct timeval) */
 
 	int len_buffer;
 	char * buffer;          /* buffer containing temp data (receiver)*/
-	int buffer_status;      /* status of buffer */
+	McBufferStatus buffer_status;      /* status of buffer */
 	ChunkedBufStruct *chkbuf; /* chunked data. must be assemble in buffer */
 
         int exist;              /* Is this entry in used ? (sender) */
@@ -137,11 +153,8 @@ typedef struct _McObjectStruct {
         MimeHeaderStruct * mhs; /* associated MIME info (sender)*/
 } McObjectStruct;
 
-#define EMPTY_BUFFER 1
-#define CHUNKED_BUFFER 2
-#define COMPLETE_BUFFER 3
-#define PARSED_BUFFER 4
-#define PARSED_ALL_DEPEND_BUFFER 5
+
+
 
 
 /* #######################################*/
@@ -192,16 +205,11 @@ typedef struct _Source {
 	GuiEntry 	* gui_ent; /* graphique interface for this source */
 				/* only for the user list */
 
-	int cwuid;		/* current wanted url_id doc */
-	int cduid;		/* current display url_id doc */
-	int last_valid_state_id;	/* the last full state we see */
-	int last_valid_object_id;	/* the last full object we see */
-					/* sequential */
-	int current_state_id_in_window; /* what state is in current window */
+/*	int		dec_sid; /* dernier etat complet */
+
+	int current_view_state; /* what state is in current window */
 
 	long		lts;	/* local time stamp (unixtime) */
-
-	int	c_sid;
 
 /* cache for source */
 	char *source_cachedir_name;
@@ -216,7 +224,6 @@ typedef struct _Source {
 
 /* frame stuff */
 	int frameset_moid;
-	int frameset_dot_count;
 
 	int old_cur_pos_x;
 	int old_cur_pos_y;
@@ -304,7 +311,7 @@ extern void UcProcessRtcpData(unsigned char *buf, int len, IPAddr addr_from,
 extern void ProcessRtcpSdes(Source *s, RtcpPacket* rcs);
 extern void McQueryRepairFromStatr(Source *s, RtcpPacket* rcs);
 
-extern int PutPacketInChkBuf(ChunkedBufStruct *cbs,
+extern McBufferStatus PutPacketInChkBuf(ChunkedBufStruct *cbs,
 	int is_end, int offset, char * d, int d_len);
 extern int ChkBufToBuf(ChunkedBufStruct *cbs, char ** buf_ret);
 
@@ -343,8 +350,8 @@ extern void McSendState(int stateid);
 extern int McCheckStateQuery(int sid, int offset, int len);
 extern int McCheckObjectQuery(int moid, int offset, int len);
 
-extern int McRcvrSrcAllocObject(Source * s, int moid);
-extern int McRcvrSrcAllocState(Source * s, int state_id);
+extern void McRcvrSrcAllocObject(Source * s, int moid);
+extern void McRcvrSrcAllocState(Source * s, int state_id);
 
 extern void McRcvSrcScheduleCheckState( Source *s, int state_id);
 
@@ -360,6 +367,8 @@ extern void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
 
 extern void UpdGuiMemberName( Source *s);
 extern void UpdGuiMemberPage( Source *s);
-extern int McRcvrSrcCheckBufferObject(Source *s, int moid);
+extern McBufferStatus McRcvrSrcCheckBufferObject(Source *s, int moid);
 extern void McSendRtpCursorPosition(int rtp_ts, int x, int y);
+
+extern void McDisplayWindowText(Source *s, unsigned int url_id);
 #endif

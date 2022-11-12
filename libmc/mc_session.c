@@ -25,7 +25,7 @@ void UcRtcpWriteSdesCb(XtPointer clid, XtIntervalId * time_id)
 #endif
 }
 
-int McRcvrSrcAllocState(Source * s, int state_id)
+void McRcvrSrcAllocState(Source * s, int state_id)
 {
 	int i;
 	ChunkedBufStruct *cbs;
@@ -33,31 +33,39 @@ int McRcvrSrcAllocState(Source * s, int state_id)
 		/* initialize s->states_tab_size somewhere */
 	if ( s->states_tab_size == 0 ) { /* alloc initiale */
 		s->states_tab_size = state_id+1;
-		s->states = (McStateStruct *)malloc(s->states_tab_size *
+		s->states = (McStateStruct *)calloc(s->states_tab_size ,
 						sizeof(McStateStruct));
 		if (!s->states) {     
-                        return 0;     
+			fprintf(stderr,"Out of mem\n");
+			assert(0);
                 }
 		for(i = 0; i<s->states_tab_size; i++) {
 			s->states[i].sdata = NULL;
 			s->states[i].sdata_len = 0;
 			s->states[i].statid = -1;
 			s->states[i].start_moid = -1;
-			s->states[i].n_do = 0;
-			s->states[i].dot = NULL;
+			s->states[i].n_fdo = 0;
+			s->states[i].fdot = NULL;
 			s->states[i].buffer = NULL;
 			s->states[i].buffer_status = EMPTY_BUFFER;
+			s->states[i].state_status = STATE_EMPTY;
 			s->states[i].chkbuf = (ChunkedBufStruct *)calloc(1,
 				sizeof(ChunkedBufStruct ));
-			if(!s->states[i].chkbuf)
-				return 0;
+			if(!s->states[i].chkbuf) {
+				fprintf(stderr,"Out of mem\n");
+				assert(0);
+                	}
 			cbs = s->states[i].chkbuf;
 			cbs->size_data = 0;
 			cbs->data = NULL;      
 			cbs->lpdc =NULL;       
 			cbs->end = NULL;       
 			cbs->beg = NULL;       
-			cbs->lmr = (MissRange*) malloc(sizeof(MissRange));
+			cbs->lmr = (MissRange*) calloc(1, sizeof(MissRange));
+			if (!cbs->lmr) {
+				fprintf(stderr,"Out of mem\n");
+				assert(0);
+			}
 			cbs->lmr->from = 0;    
 			cbs->lmr->to = 0xffffffff;
 			cbs->lmr->next = NULL; 
@@ -72,28 +80,36 @@ int McRcvrSrcAllocState(Source * s, int state_id)
 		s->states = (McStateStruct *)realloc( s->states,
 			s->states_tab_size * sizeof(McStateStruct));
 		if (!s->states) {
-			return 0;
+			fprintf(stderr,"Out of mem\n");
+			assert(0);
 		}
 		for(i = osize; i<s->states_tab_size; i++) {
 			s->states[i].sdata = NULL;
 			s->states[i].sdata_len = 0;
 			s->states[i].statid = -1;
 			s->states[i].start_moid = -1;
-			s->states[i].n_do = 0;
-			s->states[i].dot = NULL;
+			s->states[i].n_fdo = 0;
+			s->states[i].fdot = NULL;
 			s->states[i].buffer = NULL;
 			s->states[i].buffer_status = EMPTY_BUFFER;
+			s->states[i].state_status = STATE_EMPTY;
 			s->states[i].chkbuf = (ChunkedBufStruct *)calloc(1,
 				sizeof(ChunkedBufStruct ));
-			if(!s->states[i].chkbuf)
-				return 0;
+			if(!s->states[i].chkbuf) {
+				fprintf(stderr,"Out of mem\n");
+				assert(0);
+			}
 			cbs = s->states[i].chkbuf;
 			cbs->size_data = 0;
 			cbs->data = NULL;      
 			cbs->lpdc =NULL;       
 			cbs->end = NULL;       
 			cbs->beg = NULL;       
-			cbs->lmr = (MissRange*) malloc(sizeof(MissRange));
+			cbs->lmr = (MissRange*) calloc(1,sizeof(MissRange));
+			if (!cbs->lmr) {
+				fprintf(stderr,"Out of mem\n");
+				assert(0);
+			}
 			cbs->lmr->from = 0;    
 			cbs->lmr->to = 0xffffffff;
 			cbs->lmr->next = NULL; 
@@ -101,10 +117,9 @@ int McRcvrSrcAllocState(Source * s, int state_id)
 			cbs->mhs = NULL; 
 		}
 	}
-	return 1;
 }
 
-int McRcvrSrcAllocObject(Source * s, int moid)
+void McRcvrSrcAllocObject(Source * s, int moid)
 {
 	int i;
 	ChunkedBufStruct *cbs;
@@ -112,10 +127,11 @@ int McRcvrSrcAllocObject(Source * s, int moid)
 		/* initialize s->objects_tab_size somewhere */
 	if ( s->objects_tab_size == 0 ){
 		s->objects_tab_size = moid+1;
-		s->objects = (McObjectStruct *)malloc(s->objects_tab_size *
+		s->objects = (McObjectStruct *)calloc(s->objects_tab_size,
 						sizeof(McObjectStruct) );
 		if (!s->objects) {
-			return 0;
+			fprintf(stderr,"Out of mem\n");
+			assert(0);
 		}
 		for(i = 0; i<s->objects_tab_size; i++) {
 			s->objects[i].exist = 0;
@@ -133,22 +149,27 @@ int McRcvrSrcAllocObject(Source * s, int moid)
 			s->objects[i].buffer_status = EMPTY_BUFFER;
 			s->objects[i].chkbuf = (ChunkedBufStruct *)calloc(1,
 				sizeof(ChunkedBufStruct ));
-			if(!s->objects[i].chkbuf)
-				return 0;
+			if(!s->objects[i].chkbuf) {
+				fprintf(stderr,"Out of mem\n");
+				assert(0);
+			}
 			cbs = s->objects[i].chkbuf;
 			cbs->size_data = 0;
 			cbs->data = NULL;      
 			cbs->lpdc =NULL;       
 			cbs->end = NULL;       
 			cbs->beg = NULL;       
-			cbs->lmr = (MissRange*) malloc(sizeof(MissRange));
+			cbs->lmr = (MissRange*) calloc(1, sizeof(MissRange));
+			if (!cbs->lmr) {
+				fprintf(stderr,"Out of mem\n");
+				assert(0);
+			}
 			cbs->lmr->from = 0;    
 			cbs->lmr->to = 0xffffffff;
 			cbs->lmr->next = NULL; 
 			cbs->lmr->prev = NULL; 
 			cbs->mhs = NULL; 
 		}
-
 	}
 	if( moid+1 >= s->objects_tab_size ) { /* grow */
 		int osize = s->objects_tab_size;
@@ -157,7 +178,8 @@ int McRcvrSrcAllocObject(Source * s, int moid)
 		s->objects = (McObjectStruct *)realloc( s->objects,
 			s->objects_tab_size * sizeof(McObjectStruct) );
 		if (!s->objects) {
-			return 0;
+			fprintf(stderr,"Out of mem\n");
+			assert(0);
 		}
 		for(i = osize; i<s->objects_tab_size; i++) {
 			s->objects[i].exist = 0;
@@ -175,15 +197,21 @@ int McRcvrSrcAllocObject(Source * s, int moid)
 			s->objects[i].buffer_status = EMPTY_BUFFER;
 			s->objects[i].chkbuf = (ChunkedBufStruct *)calloc(1,
 				sizeof(ChunkedBufStruct ));
-			if(!s->objects[i].chkbuf)
-				return 0;
+			if(!s->objects[i].chkbuf) {
+				fprintf(stderr,"Out of mem\n");
+				assert(0);
+			}
 			cbs = s->objects[i].chkbuf;
 			cbs->size_data = 0;
 			cbs->data = NULL;      
 			cbs->lpdc =NULL;       
 			cbs->end = NULL;       
 			cbs->beg = NULL;       
-			cbs->lmr = (MissRange*) malloc(sizeof(MissRange));
+			cbs->lmr = (MissRange*) calloc(1, sizeof(MissRange));
+			if (!cbs->lmr) {
+				fprintf(stderr,"Out of mem\n");
+				assert(0);
+			}
 			cbs->lmr->from = 0;    
 			cbs->lmr->to = 0xffffffff;
 			cbs->lmr->next = NULL; 
@@ -191,7 +219,6 @@ int McRcvrSrcAllocObject(Source * s, int moid)
 			cbs->mhs = NULL; 
 		}
 	}
-	return 1;
 }
 
 /* parse a buffer for state . Use the mime parser. */
@@ -207,11 +234,11 @@ int McRcvrSrcAllocObject(Source * s, int moid)
    Start-ObjectID: startid
    Depend-Object: n, moid1 ... moidn
 */
-static int McRcvrParseStatesData(char *buf_in, int len_buf_in,
+static McBufferStatus McRcvrParseStatesData(char *buf_in, int len_buf_in,
 	MimeHeaderStruct *mhs_buf )
 {
 	MimeHeaderStruct tmp_mhs;
-	char *lf_ptr, *beg_m, server_status[20], *lflf_ptr;
+	char *beg_m, *lflf_ptr;
 
 	beg_m = buf_in;
 	lflf_ptr = strstr(beg_m, "\012\012");
@@ -226,14 +253,17 @@ static int McRcvrParseStatesData(char *buf_in, int len_buf_in,
 	return PARSED_BUFFER;
 }
  
-int McRcvrSrcCheckBufferStateWithData(Source *s, int is_end, int state_id,
+McBufferStatus McRcvrSrcCheckBufferStateWithData(Source *s, int is_end, int state_id,
 	int offset, char * d, int d_len)
 {
-	int status;
+	McBufferStatus status;
 	MimeHeaderStruct mhs_buf;
 
-	if ( s->states[state_id].buffer_status == PARSED_BUFFER)
+	assert(s->states[state_id].buffer_status != PARSED_BUFFER);
+
+/*	if ( s->states[state_id].buffer_status == PARSED_BUFFER)
 		return PARSED_BUFFER;
+*/
 	if ( s->states[state_id].buffer_status == COMPLETE_BUFFER) {
 		assert(0);
 		return PARSED_BUFFER;
@@ -258,8 +288,8 @@ int McRcvrSrcCheckBufferStateWithData(Source *s, int is_end, int state_id,
                         s->states[state_id].len_buffer, &mhs_buf);
 /* mhs contient le resultat du parse pour cet etat */
                 s->states[state_id].buffer_status = status;
-		s->states[state_id].n_do = mhs_buf.n_do;
-		s->states[state_id].dot = mhs_buf.dot;
+		s->states[state_id].n_fdo = mhs_buf.n_do;
+		s->states[state_id].fdot = mhs_buf.dot;
 		s->states[state_id].statid = mhs_buf.state_id; /* CHECKME ###*/
 		s->states[state_id].start_moid = mhs_buf.start_object_id;
 
@@ -286,9 +316,9 @@ int McRcvrSrcCheckBufferStateWithData(Source *s, int is_end, int state_id,
 
 /* just check. no data is available */
 /* assume transition between PARSED_BUFFER and PARSED_ALL_DEPEND_BUFFER */
-int McRcvrSrcCheckBufferObject(Source *s, int moid)
+McBufferStatus McRcvrSrcCheckBufferObject(Source *s, int moid)
 {
-	int status;
+	McBufferStatus status;
 	int i;
 
 	status = s->objects[moid].buffer_status;
@@ -300,11 +330,8 @@ int McRcvrSrcCheckBufferObject(Source *s, int moid)
 	}
 /* check if all other is good */
 	for(i = 0 ; i < s->objects[moid].n_do; i++) {
-		status = McRcvrSrcAllocObject(s, s->objects[moid].dot[i]);
-                if( !status) {
-                        fprintf(stderr,"Out of mem\n");
-                        assert(0);
-                }
+		McRcvrSrcAllocObject(s, s->objects[moid].dot[i]);
+
 		status = McRcvrSrcCheckBufferObject(s, s->objects[moid].dot[i]);
 		if (status != PARSED_ALL_DEPEND_BUFFER)
 			return PARSED_BUFFER;
@@ -313,14 +340,30 @@ int McRcvrSrcCheckBufferObject(Source *s, int moid)
 	return PARSED_ALL_DEPEND_BUFFER;
 }
 
-static void ReOrderDepend(Source *s, int moid, DependObjectTab dot, int ndo)
+static void SetFrameDepend(Source *s, int start_moid, DependObjectTab dot, int ndo)
 {
 	int i;
 
+/* FRAMESET does not have object depend, only frame depend */
+	assert(s->objects[start_moid].dot == NULL);
+
+	if(s->objects[start_moid].frame_dot == NULL ) {
+		s->objects[start_moid].frame_dot = (int*)calloc(ndo, sizeof(int));
+	}
+
 	for (i = 0; i < ndo; i++) {
-		s->objects[moid].dot[i] = dot[i];
+		s->objects[start_moid].frame_dot[i] = dot[i];
 	}
 }
+
+/* On recoit un paquet indiquant un etat. La source a ete detectee */
+/* voir maintenant si on peut afficher. Si toutes les donnees sont la */
+/* A state is a string like:
+ *	State-ID: stateid		(mandatory)
+ *	Start-ObjectID: moid		(mandatory)
+ *	Depend-Object:	n, moid1 moid2 ... moidn	(optionnal)
+ *	\n\n
+ */
 
 void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 	u_int32_t rtp_ts, u_int32_t ssrc,
@@ -328,10 +371,10 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 	u_int32_t d_len)
 {
 	int try_retrieve = 0;
-	int status;
+	McBufferStatus status;
 	McStateStruct st;
 	int i;
-
+#if 0
 	if (s->cur_seq != ((seqn -1 ) & 0xffff) ) { /* rutpure de sequence */
 						/* packet lost */
 #ifdef DEBUG_MULTICAST
@@ -342,19 +385,45 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 		s->last_valid_seq = seqn;
 	}
 	s->cur_seq = seqn;
+#endif
 
-/* A state is a string like:
- *	State-ID: stateid		(mandatory)
- *	Start-ObjectID: moid		(mandatory)
- *	Depend-Object:	n, moid1 moid2 ... moidn	(optionnal)
- *	\n\n
- */
-	if( !McRcvrSrcAllocState(s, state_id)) {
-		fprintf(stderr,"Out of mem\n");
-		assert(0);
+/* la premiere fois que la source est vue, on cree sa structure */
+	assert(s->states_tab_size);
+
+/* reallocation de l'espace state_id , si il grandi */
+	McRcvrSrcAllocState(s, state_id);
+
+/* On recoit un etat avec ses donnees: */
+/*	- soit l'etat est incomplet parcequ'il manque qqes objets	*/
+/*	  auquel cas on les demande.					*/
+/*	- soit l'etat est complet. Dans ce cas 				*/
+/*		- soit l'etat affiche est le meme-> return		*/
+/*		- soit il est different, et il faut l'afficher 		*/
+
+	if ( s->states[state_id].state_status == STATE_COMPLETED ) {
+				/* l'etat est complet */
+		if (s->current_view_state == state_id ) {
+				/* l'etat recu est celui affiche... */
+			return;
+		}
+/* state is COMPLETE and all depend object of object are here, play with them*/
+/* Display it now */
+		/*s->states[state_id].state_status = STATE_COMPLETED; */
+/* on n'affiche pas: le packet peut provenir d'un repair. */
+/* Il faut tester et afficher que quand on recoit un STATR */
+/*		McDoWindowText(s, state_id);	/*Display full doc */
+		return;
 	}
 
-/* update and check: si toutes les donnees sont la pour le state_id */
+/* l'etat n'est pas complet. On possede des donnees de type etat.	*/
+/* Il faut voir si avec ces donnees on complete cet etat. */
+
+	if ( s->states[state_id].buffer_status == PARSED_BUFFER){
+		/* il s'agit d'un 'dup'. sans doute suite a un repair de qqun */
+		return;
+	}
+
+/* Si toutes les donnees de type etat sont la pour le state_id */
 /* on fait la demande de repair dans cette routine */
 /* si les donnees sont completes on fait le parse dans cette routine */
 	status = McRcvrSrcCheckBufferStateWithData(s, is_end, state_id, offset,
@@ -364,40 +433,54 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 			/* pour cet etat est en instance, pending */
 			/* la description de l'etat n'est pas encore valide */
 
+
+/* il y a transition. Le buffer d'etat est complet. Voir si les objets le sont*/
+
 	st = s->states[state_id]; /* l'analyse est deja faite */ 
 
-/* check and send possible repair for this object */
+/* on commence par le start_moid */
+/* check and send possible repair for this object start_moid */
 /* this may be long to repair because object may depend of object... */
-	status = McRcvrSrcAllocObject(s, st.start_moid);
-	if( !status) {
-		fprintf(stderr,"Out of mem\n");
-		assert(0);
+
+	McRcvrSrcAllocObject(s, st.start_moid);
+
+/* order depend object in frameset object */
+	if (st.n_fdo != 0 ) {
+		SetFrameDepend(s, st.start_moid, st.fdot, st.n_fdo);
 	}
+
+/* on teste seulement les OBJETS (pas l'etat) dependant d'autre objets */
+/* parcequ'un frameset a une dependance variable ... */
+
 	status = McRcvrSrcCheckBufferObject(s, st.start_moid);
-	if (status != PARSED_ALL_DEPEND_BUFFER)
+	if (status != PARSED_ALL_DEPEND_BUFFER)		/* cas html */
 		return;
 
-	if (st.n_do != 0) {		/* that's a Frameset */
-					/* reorder depend object */
-		ReOrderDepend(s, st.start_moid, st.dot, st.n_do);
+/* Traite le cas html */
+	if (st.n_fdo == 0 ) {
+			/* On Affiche parcequ'il y a eu transition */
+			/* et que tout est la */
+		s->states[state_id].state_status = STATE_COMPLETED;
+/* on n'affiche pas: le packet peut provenir d'un repair. */
+/*		McDoWindowText(s, state_id);    /*Display full doc */
+                return;
 	}
-	for( i = 0; i < st.n_do; i++) {
-		status = McRcvrSrcAllocObject(s, st.dot[i]);
-		if( !status) {
-			fprintf(stderr,"Out of mem\n");
-			assert(0);
-		}
-		status = McRcvrSrcCheckBufferObject(s, st.dot[i]);
+
+/* traite le cas d'un frameset */
+
+	for( i = 0; i < st.n_fdo; i++) {
+		McRcvrSrcAllocObject(s, st.fdot[i]);
+
+		status = McRcvrSrcCheckBufferObject(s, st.fdot[i]);
 		if (status != PARSED_ALL_DEPEND_BUFFER)
 			return;
 	}
 
-	if (s->mute)
-		return;
-	
-/* COMPLETE and all depend object of object are here, play with them*/
-/* at this point state is complete. Display it now */
-	McDoWindowText(s, state_id);	/*Display full doc */
+/* Il y a transition */
+	s->states[state_id].state_status = STATE_COMPLETED;
+/* on n'affiche pas: le packet peut provenir d'un repair. */
+/*	McDoWindowText(s, state_id);    /*Display full doc */
+	return;
 }
 
 /* parse a buffer: decompose in a:
@@ -405,7 +488,7 @@ void McUpdateDataSourceWithState(Source *s, int is_end, u_int16_t seqn,
 	- http mime
 	- body	(html data)
 */
-static int McRcvrParseObjectData(char *buf_in, int len_buf_in, int *code_ret,
+static McBufferStatus McRcvrParseObjectData(char *buf_in, int len_buf_in, int *code_ret,
 	char **aurl_ret, MimeHeaderStruct *mhs_buf, char **body_ret,
 	int * body_len)
 {
@@ -462,10 +545,10 @@ static int McRcvrParseObjectData(char *buf_in, int len_buf_in, int *code_ret,
 	return PARSED_BUFFER;
 }
 
-static int McRcvrSrcCheckBufferObjectWithData(Source *s, int is_end, int moid,
+static McBufferStatus McRcvrSrcCheckBufferObjectWithData(Source *s, int is_end, int moid,
 	int offset, char *d, int d_len)
 {
-	int status = EMPTY_BUFFER;
+	McBufferStatus status = EMPTY_BUFFER;
 	int len;
 	int code;
 	char *aurl;
@@ -566,45 +649,32 @@ static void McSrcCheckStateCb(XtPointer clid, XtIntervalId * id)
 {
 	SrcCheckStateStruct *sc = (SrcCheckStateStruct *)clid;
 	Source *s;
-	int sid, status;
+	int sid;
+	McBufferStatus status;
 	int i;
 
 	s= sc->source;
 	sid = sc->sid;
 	free(clid);	/* free memory */
 
-/*	if (s->current_sid_displayed == sid)
-/*		return;
-*/
-	if (s->last_valid_state_id >= sid )
-		return;
+	assert(0);
 /* check if state is here */
 	if ( s->states[sid].buffer_status != PARSED_BUFFER ) {/* resched if not*/
 		McRcvSrcScheduleCheckState(s, sid);
 		return;
 	}
 /* check for all depend object, include the start_moid */
-	status = McRcvrSrcAllocObject(s, s->states[sid].start_moid);
-        if( !status) {
-                fprintf(stderr,"Out of mem\n");
-                assert(0);
-        }
+	McRcvrSrcAllocObject(s, s->states[sid].start_moid);
+
 	status = McRcvrSrcCheckBufferObject(s, s->states[sid].start_moid);
 	if (status != PARSED_ALL_DEPEND_BUFFER) {
 		McRcvSrcScheduleCheckState(s, sid);
 		return;
 	}
-	if (s->states[sid].n_do != 0) {		/* that's a Frameset */
-					/* reorder depend object */
-		ReOrderDepend(s, s->states[sid].start_moid, s->states[sid].dot, s->states[sid].n_do);
-	}
-	for(i=0; i< s->states[sid].n_do; i++) {
-		status = McRcvrSrcAllocObject(s, s->states[sid].dot[i]);  
-                if( !status) {
-                        fprintf(stderr,"Out of mem\n");  
-                        assert(0);
-                }
-		status = McRcvrSrcCheckBufferObject(s, s->states[sid].dot[i]);
+	for(i=0; i< s->states[sid].n_fdo; i++) {
+		McRcvrSrcAllocObject(s, s->states[sid].fdot[i]);  
+
+		status = McRcvrSrcCheckBufferObject(s, s->states[sid].fdot[i]);
                 if (status != PARSED_ALL_DEPEND_BUFFER) {
 			McRcvSrcScheduleCheckState(s, sid);
                         return;
@@ -615,12 +685,15 @@ static void McSrcCheckStateCb(XtPointer clid, XtIntervalId * id)
 	/* condition must reflect what want the user (navigation or not) */
 	/* and the hight sid display, reflecting the current sid send */
 	/* if hight sid(send) change during the wait do nothing */
-	McDoWindowText(s, sid);    /*Display full doc */
+	assert(0);
+/*	McDoWindowText(s, sid);    /*Display full doc */
 }
+
 void McRcvSrcScheduleCheckState( Source *s, int state_id)
 {
 	SrcCheckStateStruct *scss;
 
+	assert(0);
 	scss = (SrcCheckStateStruct *) malloc(sizeof(SrcCheckStateStruct));
 	scss->source = s;
 	scss->sid = state_id;
@@ -639,8 +712,8 @@ void McUpdateDataSourceWithObject(Source *s, int is_end, u_int16_t seqn,
 	u_int32_t d_len)
 {
 	int try_retrieve = 0;
-	int status;
-	int ostatus;
+	McBufferStatus status;
+	McBufferStatus ostatus;
 	McObjectStruct ob;
 
 	if (s->mute)
@@ -663,11 +736,7 @@ void McUpdateDataSourceWithObject(Source *s, int is_end, u_int16_t seqn,
 /*s->last_valid_seq = seqn;
 /*return; /*} /*return;
 */
-	status = McRcvrSrcAllocObject(s, moid);
-	if( !status) {
-		fprintf(stderr,"Out of mem\n");
-		assert(0);
-	}
+	McRcvrSrcAllocObject(s, moid);
 
 	ostatus = s->objects[moid].buffer_status;
 	if (ostatus == PARSED_ALL_DEPEND_BUFFER )

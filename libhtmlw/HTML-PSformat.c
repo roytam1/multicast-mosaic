@@ -1624,7 +1624,7 @@ String ParseTextToPSString(HTMLWidget	 	hw,
 	case E_CR:
 	case E_ANCHOR:
 	case E_CELL_TABLE:
-	case E_APROG:
+	case E_OBJECT:
 	case E_APPLET:
 	case E_MAP:
 		break;

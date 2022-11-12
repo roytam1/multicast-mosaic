@@ -595,8 +595,8 @@ void MakeSenderState( MimeHeaderStruct *mhs, int sid)
 		for(i = osize; i<mc_sender_state_tab_size; i++) {
 			mc_sender_state_tab[i].statid = -1;
 			mc_sender_state_tab[i].start_moid = -1;
-			mc_sender_state_tab[i].n_do = 0;
-			mc_sender_state_tab[i].dot = NULL;
+			mc_sender_state_tab[i].n_fdo = 0;
+			mc_sender_state_tab[i].fdot = NULL;
 			mc_sender_state_tab[i].sdata = NULL;
 			mc_sender_state_tab[i].sdata_len = 0;
 		}
@@ -605,21 +605,21 @@ void MakeSenderState( MimeHeaderStruct *mhs, int sid)
 	s = mc_sender_state_tab;
 	s[sid].statid = sid;
 	s[sid].start_moid = mhs->moid_ref;
-	s[sid].n_do = mhs->n_do;
-	s[sid].dot = mhs->dot;
+	s[sid].n_fdo = mhs->n_do;
+	s[sid].fdot = mhs->dot;
 	gettimeofday(&tv, 0);
 	s[sid].ts = tv;
 
 	st = &s[sid];
         len_do_buf = 0;
-        if (st->n_do >0) {
+        if (st->n_fdo >0) {
                 char tmp_buf[50];
 		int i;
          
-                do_buf = (char*) malloc(st->n_do * 20 + 20);
-                sprintf(do_buf,"Depend-Object: %d,", st->n_do);
-                for( i=0 ; i < st->n_do ; i++){
-                        sprintf(tmp_buf," %d", st->dot[i]);
+                do_buf = (char*) malloc(st->n_fdo * 20 + 20);
+                sprintf(do_buf,"Depend-Object: %d,", st->n_fdo);
+                for( i=0 ; i < st->n_fdo ; i++){
+                        sprintf(tmp_buf," %d", st->fdot[i]);
                         strcat(do_buf,tmp_buf);
                 }
                 strcat(do_buf,"\n");

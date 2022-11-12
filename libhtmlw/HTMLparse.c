@@ -148,11 +148,6 @@ static void FreeMarkup( struct mark_up *mptr)
 		if (mptr->anc_title)
 			free(mptr->anc_title);
 	}
-#ifdef APROG
-	if (mptr->s_aps){       /* aprog */
-		_FreeAprogStruct(mptr->s_aps);
-	}
-#endif
 #ifdef APPLET
 	if (mptr->s_ats){       /* applet */
 		_FreeAppletStruct(mptr->s_ats);
@@ -547,14 +542,15 @@ struct mark_up * HTMLLexem( const char *str_in)
 			mark->is_white_text = is_white;
 			mark->end = NULL;
 			mark->next = NULL;
-			mark->s_aps = NULL;
-			mark->s_ats = NULL;
 			mark->s_picd = NULL;
 			mark->t_p1 = NULL;
 			mark->anc_name = NULL;
 			mark->anc_href = NULL;
 			mark->anc_title = NULL;
 			mark->pcdata = NULL;
+			mark->start_obj = NULL;
+			mark->end_obj = NULL;
+			mark->try_next_obj = NULL;
 			current = AddObj(&list, current, mark);
 		}
 /* end is on '<' or '\0' */
@@ -578,14 +574,15 @@ struct mark_up * HTMLLexem( const char *str_in)
 			mark->is_white_text = 0;
 			mark->end = NULL;
 			mark->next = NULL;
-			mark->s_aps = NULL;
-			mark->s_ats = NULL;
 			mark->s_picd = NULL;
 			mark->t_p1 = NULL;
 			mark->anc_name = NULL;
 			mark->anc_href = NULL;
 			mark->anc_title = NULL;
 			mark->pcdata = NULL;
+			mark->start_obj = NULL;
+			mark->end_obj = NULL;
+			mark->try_next_obj = NULL;
 			current = AddObj(&list, current, mark);
 			free(str);
 			return(list);
@@ -594,14 +591,15 @@ struct mark_up * HTMLLexem( const char *str_in)
 
 		mark->is_white_text = is_white = 0;
 		mark->next = NULL;
-		mark->s_aps = NULL;
-		mark->s_ats = NULL;
 		mark->s_picd = NULL;
 		mark->t_p1 = NULL;
 		mark->anc_name = NULL;
 		mark->anc_href = NULL;
 		mark->anc_title = NULL;
 		mark->pcdata = NULL;
+		mark->start_obj = NULL;
+		mark->end_obj = NULL;
+		mark->try_next_obj = NULL;
 		current = AddObj(&list, current, mark);
 		start = (char *)(end + 1);
 /* start is a pointer after the '>' character */
@@ -636,6 +634,7 @@ typedef struct _ParserContext {
 	int frameset_depth;			/* nested frameset */
 	int nframes;				/* number of frame (at top level)*/
 	struct mark_up * frameset_mark;		/* FIRST <FRAMESET> */
+	struct mark_up * object_start;		/* object begin */
 } ParserContext;
 
 static  ParserContext Pcxt = {
@@ -957,7 +956,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		break;
 	case M_BODY:
 		switch (mptr->type) {
-		case M_BASE:			/* to be sympatico */
+		case M_BASE:			/* conscession */
 			if (pc->has_base == 0) {
 				pc->has_base = 1;
 				return GOOD_TAG;
@@ -990,6 +989,15 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		case M_INIT_STATE:
 			*sop = SOP_POP_END;
 			return END_STATE_TAG;
+		case M_OBJECT:		/* scan OBJECT */
+			if (mptr->is_end)
+				return REMOVE_TAG;
+			pc->object_start = mptr;
+			mptr->start_obj = NULL;	/*pc->object_start;*/
+			mptr->end_obj = NULL;
+                        mptr->try_next_obj = NULL; 
+			*sop = SOP_PUSH;
+			return GOOD_TAG;
 		case M_FONT:
 		case M_BIG:
 		case M_NONE:
@@ -1043,7 +1051,6 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		case M_TH:
 		case M_TR:
 		case M_APPLET:
-		case M_APROG:
 		case M_BLOCKQUOTE:
 		case M_CAPTION:
 		case M_CENTER:
@@ -1066,6 +1073,32 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		}
 		return REMOVE_TAG;	/* Unknow tag for BODY state */
 		break;
+	case M_OBJECT:			/* state id OBJECT */
+		switch (mptr->type) {
+		case M_PARAM:
+			if (mptr->is_end) 
+				return REMOVE_TAG;
+			mptr->start_obj = pc->object_start;
+			return GOOD_TAG;
+		case M_OBJECT:
+			if (mptr->is_end) { /* match the open OBJECT */
+				mptr->start_obj = pc->object_start;
+				pc->object_start->end_obj = mptr;
+				pc->object_start = pc->object_start->start_obj;
+				*sop = SOP_POP;
+				return GOOD_TAG; /* next state is upper block*/
+			}
+					/* object in object */
+			mptr->start_obj = pc->object_start;
+			mptr->try_next_obj = NULL;
+			pc->object_start->try_next_obj = mptr;
+			pc->object_start = mptr;
+			*sop = SOP_PUSH;
+			return GOOD_TAG;
+		default:
+			return REMOVE_TAG;
+		}
+		return REMOVE_TAG;
 	case M_TABLE:		/* try to repair <TABLE> */
 		switch (mptr->type) {
 		case M_NONE:            /* test a white string */
@@ -1732,7 +1765,7 @@ fprintf(stderr,"doFrame, frame %i created\n\tname: %s\n\tsrc : %s\n"
                 "\tmargin width : %i\n\tmargin height: %i\n\tresize: %s\n"
                 "\tscrolling    : %s\n",
                 idx, frame->frame_name,
-                frame->frame_src ? frame->html.frame_src : "<none>",
+                frame->frame_src ? frame->frame_src : "<none>",
                 frame->frame_margin_width, frame->frame_margin_height,
                 frame->frame_resize ? "yes" : "no",
                 frame->frame_scroll_type == FRAME_SCROLL_AUTO ? "auto" :
@@ -2089,8 +2122,8 @@ static MarkType ParseMarkType(char *str)
 		type = M_THEAD;
 	} else if (!strcasecmp(str, MT_TFOOT)) {
 		type = M_TFOOT;
-	} else if (!strcasecmp(str, MT_APROG)){
-		type = M_APROG;
+	} else if (!strcasecmp(str, MT_OBJECT)){
+		type = M_OBJECT;
 	} else if (!strcasecmp(str, MT_APPLET)){
 		type = M_APPLET;
 	} else if (!strcasecmp(str, MT_PARAM)){

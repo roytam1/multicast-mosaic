@@ -241,7 +241,7 @@ void McSendState(int stateid)
 /* RECEIVER PART						          */
 /**************************************************************************/
 
-static int UpdChkBuf(ChunkedBufStruct *cbs, char *d, unsigned int offset,
+static McBufferStatus UpdChkBuf(ChunkedBufStruct *cbs, char *d, unsigned int offset,
 	unsigned int d_len)
 {
 	MissRange *plmr,*fmr;
@@ -322,12 +322,12 @@ static int UpdChkBuf(ChunkedBufStruct *cbs, char *d, unsigned int offset,
 }
 
 /* lpdc must be merge in data , because the size of object is know */
-static int MergeChkBufLpdc(int size, ChunkedBufStruct *cbs, char *d, int offset,
+static McBufferStatus MergeChkBufLpdc(int size, ChunkedBufStruct *cbs, char *d, int offset,
 	int d_len)
 {
 	PacketDataChunk *p, *plpdc;
-	int status = CHUNKED_BUFFER;
-	int f_status = CHUNKED_BUFFER;
+	McBufferStatus status = CHUNKED_BUFFER;
+	McBufferStatus f_status = CHUNKED_BUFFER;
 	MissRange *plmr, *nlmr;
 
 	cbs->size_data = size;
@@ -365,10 +365,11 @@ static int MergeChkBufLpdc(int size, ChunkedBufStruct *cbs, char *d, int offset,
         - incomplete: there is missing packet
         - still_here: we have still see this data
 */  
-int PutPacketInChkBuf(ChunkedBufStruct *cbs, int is_end, int offset,
+McBufferStatus PutPacketInChkBuf(ChunkedBufStruct *cbs, int is_end, int offset,
 	char * d, int d_len)
 {
-	int size, status;
+	int size;
+	McBufferStatus status;
 	PacketDataChunk *plpdc;
 	PacketDataChunk *last_lpdc;
 
