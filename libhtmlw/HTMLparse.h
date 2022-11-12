@@ -247,13 +247,13 @@ struct mark_up {
 	char * anc_href;
 	char * anc_title;
 	char * anc_target;
+	char anc_visited;
 
 	struct mark_up * start_obj;	/* object saved */
 	struct mark_up * end_obj;	/* the one that match start Object */
 	struct mark_up * try_next_obj;	/* next obj to try if prev fail */
 
 	HtmlObjectStruct * s_obs;		/* object saved */
-/*	AppletPtr s_ats;	/* applet saved */
 };
 
 /* frame type */

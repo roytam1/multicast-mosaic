@@ -178,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.6.5"
+#define MO_VERSION_STRING "3.6.6"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@tsi.enst.fr"
@@ -332,6 +332,11 @@ typedef enum _NavigationType {
 	NAVIGATE_FORWARD=4 
 } NavigationType;
 
+typedef enum _NavigationTargetType {
+	NAVIGATE_TARGET_SELF,
+	NAVIGATE_TARGET_ROOT
+} NavigationTargetType;
+
 /* mo_window contains everything related to a single Document View
  * window, including subwindow details. */
 typedef struct _mo_window {
@@ -350,6 +355,7 @@ typedef struct _mo_window {
 	HtmlTextInfo *htinfo;
 
 	NavigationType navigation_action;	/* how we navigate */
+	NavigationTargetType navigation_target_type; /* for frame */
 /* Subwindows. */
 	Widget source_win;
 	Widget save_win;
@@ -549,6 +555,9 @@ typedef struct _mo_window {
 	int	mc_sbh_value;
 #endif
 	int delete_position_from_current_hotlist;
+
+	Widget	popup_b3;
+	struct _PopupItem *popup_b3_items;
 } mo_window;
 
 
@@ -565,10 +574,20 @@ typedef struct {
 
 /* ------------------------------- mo_node -------------------------------- */
 
+typedef struct _NavFrameInfo {
+	char * aframe_src;	/* absolute frame_src */
+	int is_loaded;
+	struct mo_node *frame_node;
+} NavFrameInfo;
+
+typedef enum { NODE_FRAMESET_TYPE, NODE_NOTFRAME_TYPE} NodeType;
+
 /* mo_node is a component of the linear history list.  A single
    mo_node will never be effective across multiple mo_window's;
    each window has its own linear history list. */
 typedef struct mo_node {
+	NodeType node_type;
+	FrameType win_type;
 	char *aurl_wa;	/* the full absolute url with anchor */
 	char *aurl;	/* THE absolute url of this document */
 	char *base_url;	/* a tag <BASE> is dectect, else aurl */
@@ -577,7 +596,7 @@ typedef struct mo_node {
 	char *expires;
 	char *text;	/* a copy of html text , need to be freed */
 			/* when the node is released */
-/*	int position;	 /* Position in the list, starting at 1; last item is*/
+/*	int position;	*/ /* Position in list, starting at 1; last item is*/
 			  /* effectively 0 (according to the XmList widget). */
 	int docid; 	/* This is returned from HTMLPositionToId. */
 	struct _MimeHeaderStruct * mhs;
@@ -586,6 +605,10 @@ typedef struct mo_node {
 	int authType; 	/* Type of authorization */
 	struct mo_node *previous;
 	struct mo_node *next;
+
+	int nframe;
+	int num_frame_target;	/* numero du frame qui provoque la navigation */
+	NavFrameInfo *frame_tab;
 } mo_node;
 
 typedef struct mo_hnode {

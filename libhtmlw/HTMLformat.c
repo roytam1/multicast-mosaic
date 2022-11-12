@@ -40,10 +40,11 @@ static struct mark_up NULL_ANCHOR = {
 
 	NULL,			/* s_picd */
 
-	NULL,			/* anchor_name */
-	NULL,			/* anchor_href */
-	NULL,			/* anchor_title */
+	NULL,			/* anc_name */
+	NULL,			/* anc_href */
+	NULL,			/* anc_title */
 	NULL,			/* anc_target */
+	0,			/* anc_visited */
 
 	NULL,			/* start_obj */
 	NULL,			/* end_obj */
@@ -634,11 +635,13 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 					MT_ANCHOR, AT_TITLE);
 		(*mptr)->anc_target = ParseMarkTag(mark->start,
 					MT_ANCHOR, AT_TARGET);
+		(*mptr)->anc_visited = 0;
 		if (tptr != NULL) { 
 /* we may want to send the href back somewhere else and
  * find out if we've visited it before */
 		        if (hw->html.previously_visited_test != NULL) {
 				if((*(visitTestProc) (hw->html.previously_visited_test)) ((Widget)hw, tptr,hw->html.base_url)) {
+					(*mptr)->anc_visited = 1;
 			        	pcc->fg_text = MMPushColorFg(hw, hw->html.cur_res.fg_vlink);
 			        	pcc->underline_number = hw->html.num_visitedAnchor_underlines;
 			        	pcc->dashed_underlines= hw->html.dashed_visitedAnchor_lines;

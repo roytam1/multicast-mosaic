@@ -963,6 +963,16 @@ void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_
 				h_row = fin_pcc.cur_line_height;
 			/* propagate in_form */
 			deb_pcc.in_form = fin_pcc.in_form;
+/*
+12/07/2000 VOIR FONT color=#xxx -DTD page 271-
+Quand 'attribut color n'est pas la il faut prendre le <body text=color> par defaut....
+   size		CDATA 		#IMPLIED
+   color	%Color;		#IMPLIED
+   face		CDATA		#IMPLIED
+*/
+/* les fonts se propage a travers un stack, ainsi que les couleurs. */
+			deb_pcc.fg_text = fin_pcc.fg_text;
+			deb_pcc.cur_font = fin_pcc.cur_font;
 		}
 		for(j=0; j<t->num_col; j++)
 			line[j].height = h_row;
@@ -1278,12 +1288,16 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 					max_line_bot = cell.line_bottom;
 			}
 			line[j] = cell;
+/* #### FIXME we must propagate some attribute */
 			line_pcc.widget_id = work_pcc.widget_id;
 			line_pcc.element_id = work_pcc.element_id;
 			line_pcc.aprog_id = work_pcc.aprog_id;
 			line_pcc.applet_id = work_pcc.applet_id;
 			line_pcc.in_form = work_pcc.in_form;
 			line_pcc.cur_form = work_pcc.cur_form;
+/* les font se propage a travers une pile */
+			line_pcc.fg_text = work_pcc.fg_text;
+			line_pcc.cur_font = work_pcc.cur_font;
 		}
 /*Ajuster les hauteurs des 'cells'.Faire attention au span en ligne et colonne */
 /* pour chaque cellule dans la ligne voir si c'est la fin d'un 'rowspan'*/
@@ -1318,6 +1332,10 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	pcc->applet_id = line_pcc.applet_id ;
 	pcc->in_form = line_pcc.in_form;
 	pcc->cur_form = line_pcc.cur_form;
+
+/* les font se propage a travers une pile */
+	pcc->fg_text = line_pcc.fg_text;
+	pcc->cur_font = line_pcc.cur_font;
 
 	t->width = w_table;
 	h_table += t->cellSpacing + t->borders;

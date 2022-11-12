@@ -160,7 +160,7 @@ int  UcOpenRead(IPAddr ip, unsigned short *port)
 	sin.sin6_family = AF_INET6;
         sin.sin6_addr.s_addr= local_addr;
         sin.sin6_port = *port;
-        if( bind(s, (struct sockaddr *) &sin, sizeof(sin) < 0) {
+        if( bind(s, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 		perror("bind");
 		exit(1);
 	}

@@ -1285,7 +1285,6 @@ static XmxMenubarStruct opts_menuspec[17] = {
 	{ "Clear Global History...",'C',mo_clear_global_history,NULL, NULL },
 	{ "----",	'\0', 	NULL, 		NULL, NULL },	/* spacer */
 
-	{ "Fonts",	'F',	NULL,		NULL, fnts_menuspec },
 	{ "!Fonts",	'F',	NULL,		NULL, fnts_menuspec },
 	{ "Anchor Underlines",'A',NULL,		NULL, undr_menuspec },
 	{ "+Agent Spoofs",'g',	mo_agent_spoofs,NULL, NULL },

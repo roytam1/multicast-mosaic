@@ -42,6 +42,7 @@ static void MMStopTwirl(PafDocDataStruct * pafd)
 
 	assert(win->frame_type == FRAMESET_TYPE || win->frame_type == NOTFRAME_TYPE);
 	XtRemoveTimeOut(pafd->twirl_struct->time_id);
+/*  XmxApplyPixmapToLabelWidget(win->logo, IconPix[0]); */
 	free(pafd->twirl_struct);
 	pafd->twirl_struct = NULL;
 }
@@ -483,8 +484,8 @@ void MMStopPafDocData(PafDocDataStruct * pafd)
 	}
 	if (pafd->paf_child) { /* a embedded object in progress */
 		(*pafd->paf_child->call_me_on_stop)(pafd->paf_child);
+		pafd->paf_child =NULL;
 	}
-	pafd->paf_child =NULL;
 
 /* if a http connection is in progress for html page, abort it */
 	if (pafd->www_con_type /*&& pafd->www_con_type->call_me_on_stop_cb*/ ) {
@@ -681,6 +682,9 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 			MMStopTwirl(pafd);
 		assert(pafd->fd == -1);
 		pafd->aurl = NULL; pafd->aurl_wa = NULL; pafd->mhs = NULL;
+		free(pafd->fname);	/* we don't want to delete the file */
+		pafd->fname = NULL;	/* keep it for presentation */
+					/* the file is delete when process died */
 		FreePafDocDataStruct(pafd);
 		win->pafd = NULL;      
 
@@ -758,10 +762,6 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		free(win->frame_sons);
 		win->frame_sons = NULL;
 		HTMLUnsetFrameSet (win->scrolled_win);
-/* ###################################################################### */
-/*		FreeHtmlTextInfo(win->htinfo); don't free here but in nav. */
-/* ###################################################################### */
-
 		win->frame_type = NOTFRAME_TYPE;
 	}
 
@@ -890,11 +890,14 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 			win->frame_sons[i] = sub_win;
 			rds.ct = rds.post_data = NULL;
 			rds.is_reloading = False;
-			rds.req_url = url;
+			rds.req_url = mo_url_canonicalize_keep_anchor(url,
+                                win->current_node->base_url);
 			rds.gui_action = FRAME_LOADED_FROM_FRAMESET;
-			sub_win->navigation_action = NAVIGATE_NEW;
+			sub_win->navigation_action = win->navigation_action;
+			sub_win->navigation_target_type = NAVIGATE_TARGET_ROOT; /*NAVIGATE_TARGET_SELF*/
 			MMPafLoadHTMLDocInWin (sub_win, &rds); 
 			free(url);
+			free(rds.req_url);
 		}
 
 /*################################ */
@@ -1192,9 +1195,6 @@ void MMPafLoadHTMLDocInFrame(mo_window * fwin, RequestDataStruct * rds)
 /*  mo_gui_done_with_icon (win);
 /* } */
 
-/* win : the mo_window to process. */
-/* req_url : The document's url to load in win */
-/*	 this request_url is maybe, relative... */
 void MMPafLoadHTMLDocInWin( mo_window * win, RequestDataStruct * rds)
 {
 	PafDocDataStruct * pafd = NULL;
@@ -1223,6 +1223,7 @@ void MMPafLoadHTMLDocInWin( mo_window * win, RequestDataStruct * rds)
 	if (win->current_node) { 	/* we used this win in the past */
 		cur_url = win->current_node->base_url;
 	}
+
 
 /* We Turn a URL into its canonical form , based on the previous URL in this
  * context (if appropriate).

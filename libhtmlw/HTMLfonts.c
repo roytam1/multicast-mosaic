@@ -445,12 +445,33 @@ void MMPushFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc)
 		family = NULL;
 		/* #### missing processing of FACE attribute #### */
 		size = ParseMarkTag(mptr->start, MT_FONT, "SIZE");
+
+/*########################## FIXME */
+/* 12/07/2000 VOIR FONT color=#xxx -DTD page 271-
+Quand 'attribut color n'est pas la il faut prendre le <body text=color> par defaut....
+   size         CDATA           #IMPLIED 
+   color        %Color;         #IMPLIED 
+   face         CDATA           #IMPLIED
+/* en realite la size par default doit se copier a partir de BASEFONT */
+/*##########################*/
+		if(!size)
+			size = strdup("3");
+
 		newfont = _LoadFont(hw, fndry, family, NULL, NULL, size, NULL, ofptr);
 		if (size)
 			free(size);
 /* font have color */
 		font_color = ParseMarkTag(mptr->start, MT_FONT, "color");
-		fg = pcc->fg_text;
+/* ### la couleur est implicite pour la font prendre a partir de BASEFONT ou */
+/* de <BODY text=fgcolor> ou de <BODY link=color> ou <BODY vlink=color>*/
+		fg = hw->html.cur_res.fg_text;
+		if (pcc->anchor_tag_ptr->anc_href != NULL) {
+			fg = hw->html.cur_res.fg_link;
+/* soit hw->html.cur_res.fg_vlink si le lien a ete visite */
+			if (pcc->anchor_tag_ptr->anc_visited)
+				fg=hw->html.cur_res.fg_vlink;
+		}
+/*		fg = pcc->fg_text; */
 		if (font_color) {
 			XColor c;
 			int status;

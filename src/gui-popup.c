@@ -1,6 +1,8 @@
 /* Please read copyright.ncsa. Don't remove next line */
 #include "../Copyrights/copyright.ncsa"
 
+#include <assert.h>
+
 #include "../libhtmlw/HTMLP.h"
 #include "mosaic.h"  
 #include "gui.h"
@@ -21,45 +23,41 @@
 #define DEBUG_GUI
 #endif
 
-int do_meta;	/*############*/
-Boolean 	have_popup;
-Widget 		popup = NULL;
+int do_meta;	/*############ FIXME*/
+
 /* static void	fsb(mo_window *win, char *src); */
 void 		rbm_ballonify(Widget w,XtPointer clid, XtPointer calld);
-static Widget 	_PopupMenuBuilder(mo_window * win, Widget parent,
-			int type, char *title, char mnem, PopupItem *items);
 
 static void fmenu_cb ( Widget w , XtPointer clid, XtPointer calld)
 {
-/* ###############*/
         act_struct *acst = (act_struct *) clid;
         struct ele_rec *eptr;
         int which;
-	mo_window * win = acst->win;
+	mo_window * win;
 	RequestDataStruct rds;
               
+	assert(acst);		/* when is it NULL? ; let me know */
+	win = acst->win;
         which = (int)acst->act_code;
         switch (which) { 
-        case M_FileData:              
-        	if(!acst || !acst->eptr)
-                	return;
+        case M_FileData:              /* ### FIXME : get Meta file Data... */
         	eptr = acst->eptr;
         	if(!eptr)                     
                 	return; /* oh, well */
-               do_meta=1;
+                do_meta=1;		/* ###FIXME: do_meta doesnot work */
 		rds.req_url = win->current_node->aurl_wa;
-	rds.gui_action = HTML_LOAD_CALLBACK;
+		rds.gui_action = HTML_LOAD_CALLBACK;
 		rds.post_data = NULL;
 		rds.ct = NULL;
 		rds.is_reloading = False;
-	win->navigation_action = NAVIGATE_NEW;
-               MMPafLoadHTMLDocInWin(win, &rds);
-               do_meta=0;             
-               break;    
+		win->navigation_action = NAVIGATE_NEW;
+		MMPafLoadHTMLDocInWin(win, &rds);
+		do_meta=0;             
+		break;    
         default:                      
 		(*(acst->act_code))(w, (XtPointer) acst->win, calld); 
                break;                 
-        }                             
+        }
         return; 
 }
 
@@ -153,13 +151,18 @@ static void save_link_as_cb ( Widget w , XtPointer clid, XtPointer calld)
 {
         act_struct *acst = (act_struct *) clid;
         struct ele_rec *eptr;
-	mo_window * win = acst->win;
+	mo_window * win;
 	char * url ;
 
-        if(!acst || !acst->eptr)
+	assert(acst);		/* let me know why */
+	win = acst->win;
+
+        if(!acst->eptr)
                 return;              
+
         eptr = acst->eptr;           
-        if(!eptr && !eptr->anchor_tag_ptr && !eptr->anchor_tag_ptr->anc_href)
+
+        if( !eptr->anchor_tag_ptr && !eptr->anchor_tag_ptr->anc_href)
                 return;		/* no ref for this anchor !!! */
 
 	url = eptr->anchor_tag_ptr->anc_href;
@@ -167,184 +170,472 @@ static void save_link_as_cb ( Widget w , XtPointer clid, XtPointer calld)
 	PopSaveLinkFsbDialog(url);
 }
 
-PopupItem image_menu[] = {
-  {PushButton, 0, 0, 0, 0, "Save", {(XtCallbackProc)I_Save, NULL, NULL}, image_cb, 0, NULL, 
-   NULL,  NULL, NULL, 1},
-  {PushButton, 0, 0, 0, 0, "Reload", {(XtCallbackProc)I_Reload, NULL, NULL}, image_cb, 0, 
-   NULL, NULL, NULL,  NULL, 1},
-  {PushButton, 0, 0, 0, 0, "View External", {(XtCallbackProc)I_ViewExternal, NULL, NULL}, 
-   image_cb, 0, NULL, NULL, NULL, NULL, 1},
-  {PushButton, 0, 0, 0, 0, "View Internal", {(XtCallbackProc)I_ViewInternal, NULL, NULL}, 
-   image_cb, 0, NULL, NULL, NULL, NULL, 1},
-  {PushButton, 0, 0, 0, 0, "Get Image Metadata", {(XtCallbackProc)M_ImageData, NULL, NULL},
-   metadata_cb, 0, NULL, NULL, NULL, NULL, 1},
+static void popup_back_cb ( Widget w , XtPointer clid, XtPointer calld)
+{
+	act_struct *acst = (act_struct *) clid;
+	mo_window *win;
+
+	assert(acst);	/* let me know */
+
+	win=acst->win;
+	mo_back (w, (XtPointer)win, NULL);
+}
+
+static void popup_forward_cb ( Widget w , XtPointer clid, XtPointer calld)
+{
+	act_struct *acst = (act_struct *) clid;
+	mo_window *win;                
+
+	assert(acst);	/* let me know */
+	
+	win=acst->win;                 
+	mo_forward(w, (XtPointer)win, NULL);
+}
+
+static void image_cb(Widget w, XtPointer client_data, XtPointer call_data)
+{
+	act_struct *acst = (act_struct *) client_data;
+	char *xurl;
+	struct ele_rec *eptr;
+	int which; 
+	mo_window * win;
+	RequestDataStruct rds;
+
+	assert(acst);
+
+	eptr = acst->eptr;
+	which = (int)acst->act_code;
+	win = acst->win;
+
+	if(!eptr || !eptr->pic_data->image_data || !eptr->pic_data->src){
+		printf("Lost source.\n");
+		return; /* oh, well */
+	}
+
+	switch(which) {
+	case I_Save:	 /* #### look at save_link_as_cb  ### */
+		xurl=eptr->pic_data->src;
+		xurl = mo_url_canonicalize(xurl, win->current_node->base_url);
+		PopSaveLinkFsbDialog(xurl);
+		break;
+	case I_ViewExternal:		/* ### FIXME : is it in external viewer */
+		xurl=eptr->pic_data->src;
+		rds.req_url = xurl;
+		rds.gui_action = HTML_LOAD_CALLBACK;
+		rds.post_data = NULL;
+		rds.ct = NULL;
+		rds.is_reloading = False;
+		win->navigation_action = NAVIGATE_NEW;
+               	MMPafLoadHTMLDocInWin(win, &rds);
+		break;
+	case I_ViewInternal:	/* ### FIXME : is it in mMosaic ? */
+		xurl=eptr->pic_data->src;
+		rds.req_url = xurl;
+		rds.gui_action = HTML_LOAD_CALLBACK;
+		rds.post_data = NULL;
+		rds.ct = NULL;
+		rds.is_reloading = False;
+		win->navigation_action = NAVIGATE_NEW;
+               	MMPafLoadHTMLDocInWin(win, &rds);
+		break;
+	case I_Reload:
+		mo_reload_document(w, (XtPointer) win, NULL);
+		break;
+	}
+}
+
+static Boolean convert_selection(Widget w, Atom *sel, Atom *tar, Atom *typ_ret,
+				 XtPointer *val_ret, unsigned long *val_len,
+				 int *format);
+static char* the_copyed_url = NULL;
+
+static void copy_link_cb(Widget w, XtPointer clid, XtPointer calld)
+{
+	act_struct *acst = (act_struct *) clid;
+	XmPushButtonCallbackStruct *cbs = (XmPushButtonCallbackStruct *)calld;
+	mo_window * win = acst->win;
+	int i;
+	char *copy_str;
+
+	assert(acst);		/* let me know */
+	if( !acst->eptr || !acst->eptr->anchor_tag_ptr->anc_href ||
+	   !*acst->eptr->anchor_tag_ptr->anc_href)
+		return;
+
+	if (the_copyed_url){
+		free(the_copyed_url);	/* free previous */
+		the_copyed_url = NULL;
+	}
+
+	the_copyed_url= mo_url_canonicalize(acst->eptr->anchor_tag_ptr->anc_href, 
+			win->current_node->base_url);
+
+	if(!the_copyed_url)
+		return;
+
+	if(XtOwnSelection(win->scrolled_win, XA_PRIMARY, 
+	    cbs->event->xbutton.time, convert_selection, NULL, NULL) == False) {
+		fprintf(stderr, "Mosaic: Error: Could not copy selection, try again.\n");
+		if (the_copyed_url) {
+			free(the_copyed_url);
+			the_copyed_url = NULL;
+		}
+	}
+
+/* Selection succes */
+
+	copy_str = (char*) malloc(2+ strlen(the_copyed_url) +
+			    strlen("URL:   has been copied  ") );
+
+	sprintf(copy_str, "URL: %s  has been copied",the_copyed_url);
+	mo_gui_notify_progress(copy_str,win);
+}
+
+static void metadata_cb(Widget w, XtPointer client_data, XtPointer call_data)
+{
+	act_struct *acst = (act_struct *) client_data;
+	char *xurl;                          
+	struct ele_rec *eptr;                
+	int which;                           
+	mo_window * win;
+	RequestDataStruct rds;
+
+	assert(acst);	/* let me know */
+
+	if(!acst->eptr)
+		return;              
+
+	eptr = acst->eptr;           
+	which = (int)acst->act_code;      
+	win = acst->win;
+                                     
+	switch (which) {             
+	case M_ImageData:  
+		if (!eptr->pic_data) { /* do what? */
+			return;
+		}            
+		xurl=eptr->pic_data->src;
+		do_meta=1;   	/* ### FIXME : what do 'do_meta' ? */
+		rds.req_url = xurl;
+		rds.gui_action = HTML_LOAD_CALLBACK;
+		rds.post_data = NULL;
+		rds.ct = NULL;
+		rds.is_reloading = False;
+		win->navigation_action = NAVIGATE_NEW;
+		MMPafLoadHTMLDocInWin(win, &rds);
+		do_meta=0;   
+		break; 
+	case M_LinkData:   
+		if (!eptr->anchor_tag_ptr->anc_href || 
+		    !*eptr->anchor_tag_ptr->anc_href) {
+			return;
+		}            
+		xurl=mo_url_canonicalize(eptr->anchor_tag_ptr->anc_href,
+			win->current_node->base_url);
+		do_meta=2;		/* ### FIXME : what do 'do_meta' ? */
+		rds.req_url = xurl;
+		rds.gui_action = HTML_LOAD_CALLBACK;
+		rds.post_data = NULL;
+		rds.ct = NULL;
+		rds.is_reloading = False;
+		win->navigation_action = NAVIGATE_NEW;
+		MMPafLoadHTMLDocInWin(win, &rds);
+		do_meta=0;   
+		break;       
+	default:
+		fprintf(stderr,"Smells like an error...\n");
+		break;  
+	}                            
+	return;                      
+}                                    
+
+static PopupItem model_image_menu[] = {
+  {  PushButton, 0, 0, 0, 0, "Save", 
+     { (XtCallbackProc)I_Save, NULL, NULL,NULL},
+     image_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
+
+  {PushButton, 0, 0, 0, 0, "Reload", 
+     {(XtCallbackProc)I_Reload, NULL, NULL,NULL},
+     image_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
+
+  {PushButton, 0, 0, 0, 0, "View External", 
+     {(XtCallbackProc)I_ViewExternal, NULL, NULL,NULL}, 
+     image_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
+
+  {PushButton, 0, 0, 0, 0, "View Internal",
+     {(XtCallbackProc)I_ViewInternal, NULL, NULL,NULL}, 
+     image_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
+
+  {PushButton, 0, 0, 0, 0, "Get Image Metadata", 
+     {(XtCallbackProc)M_ImageData, NULL, NULL,NULL},
+     metadata_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
   { LastItem }
 };
 
-PopupItem file_menu[] = {
+static PopupItem model_file_menu[] = {
 
-  {PushButton, 0, 0, 0, 0, "Save Page", {mo_save_document, NULL, NULL},
-   fmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+  {PushButton, 0, 0, 0, 0, "Save Page",
+    {mo_save_document, NULL, NULL,NULL},
+    fmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
-  {PushButton, 0, 0, 0, 0, "Print", {mo_print_document, NULL, NULL},
-   fmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+  {PushButton, 0, 0, 0, 0, "Print", 
+    {mo_print_document, NULL, NULL,NULL},
+    fmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
-  {PushButton, 0, 0, 0, 0, "Mail To", {mo_mail_document, NULL, NULL},
-   fmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+  {PushButton, 0, 0, 0, 0, "Mail To", 
+    {mo_mail_document, NULL, NULL,NULL},
+    fmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
-  {PushButton, 0, 0, 0, 0, "Get File Metadata", {(XtCallbackProc)M_FileData, NULL, NULL},
-   fmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+  {PushButton, 0, 0, 0, 0, "Get File Metadata", 
+    {(XtCallbackProc)M_FileData, NULL, NULL,NULL},
+    fmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
   { LastItem },
 };
 
-PopupItem popup_items[] = {		 /* Permanent stuff */
+static PopupItem model_popup_items[] = {	 /* Permanent stuff */
 
   {PushButton, ALL_TYPES, LOOSE, moMODE_ALL, LOOSE,"Back", 
-   {mo_back, NULL, NULL},
-   hotmenu_cb, 0, "B", NULL, NULL, NULL, 1},
+   {NULL, NULL, NULL,NULL},
+   popup_back_cb, 0, NULL, NULL, NULL, 0, NULL, 1,NULL},
 
   {PushButton, ALL_TYPES, LOOSE, moMODE_ALL, LOOSE, "Forward", 
-   {mo_forward, NULL, NULL},
-   hotmenu_cb, 0, "F", NULL, NULL, NULL, 1}, 
+   {NULL, NULL, NULL,NULL},
+   popup_forward_cb, 0, NULL, NULL, NULL, 0, NULL, 1,NULL}, 
 
   {CascadeButton, ALL_TYPES, LOOSE, moMODE_ALL, LOOSE, "Session History",
-   {(XtCallbackProc)-2, NULL, NULL}, NULL, 0, NULL, NULL, NULL, NULL, 1},
+   {(XtCallbackProc)-2, NULL, NULL,NULL},
+    NULL, 0, NULL, NULL, NULL, 0, NULL, 1,NULL},
 
 /* Stuff if on a html page and not on a image or anchor */
 
   {Separator, (E_TEXT | E_BULLET | E_LINEFEED | E_WIDGET | E_HRULE |E_TABLE),
-   LOOSE, moMODE_ALL, LOOSE, "Separator", {0, NULL, NULL},
-   NULL, 0, NULL, NULL, NULL, NULL, 1}, 
+   LOOSE, moMODE_ALL, LOOSE, "Separator",
+   {0, NULL, NULL,NULL},
+   NULL, 0, NULL, NULL, NULL, 0, NULL, 1,NULL}, 
 
   {CascadeButton, (E_TEXT | E_BULLET | E_LINEFEED | E_WIDGET | E_HRULE |
                    E_TABLE),LOOSE,  moMODE_ALL, LOOSE, "File",
-   {0, NULL, NULL}, NULL, 0, NULL, NULL, file_menu, NULL, 1},
+   {0, NULL, NULL,NULL},
+   NULL, 0, NULL, NULL, model_file_menu, sizeof(model_file_menu), NULL, 1, NULL},
+
 /*---------------------------------------------------------------
     Stuff if on any page and an anchor (including image anchor)
 ---------------------------------------------------------------*/
                                      
   {Separator, E_ANCHOR | E_IMAGE, LOOSE, moMODE_ALL, LOOSE, "Separator",
-   {0, NULL, NULL},                  
-   NULL, 0, NULL, NULL, NULL, NULL, 1},
+   {0, NULL, NULL,NULL},                  
+   NULL, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
                                      
 /* Load to local Disk  when in an anchor (binary mode) */
   {PushButton, E_ANCHOR | E_IMAGE, LOOSE, moMODE_ALL, LOOSE, "Save Link As ...",
-   {0, NULL, NULL}, save_link_as_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {0, NULL, NULL,NULL},
+    save_link_as_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, E_ANCHOR | E_IMAGE, LOOSE, moMODE_ALL, LOOSE, COPY_URL_LABEL,
-   {0, NULL, NULL}, copy_link_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {0, NULL, NULL,NULL},
+   copy_link_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
                                      
-  {PushButton, E_ANCHOR | E_IMAGE, LOOSE, moMODE_ALL, LOOSE, "Get Link Metadata",                                  
-   {(XtCallbackProc)M_LinkData, NULL, NULL}, metadata_cb, 0, NULL, NULL, NULL, NULL, 1},
+  {PushButton, E_ANCHOR | E_IMAGE, LOOSE, moMODE_ALL, LOOSE,"Get Link Metadata",
+   {(XtCallbackProc)M_LinkData, NULL, NULL,NULL},
+   metadata_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
 /* Stuff if on any page and a image (not including image link) */
 
   {Separator, E_IMAGE, TIGHT, moMODE_ALL, LOOSE, "Separator", 
-   {0, NULL, NULL}, NULL, 0, NULL, NULL, NULL, NULL, 1}, 
+   {0, NULL, NULL,NULL}, NULL, 0, NULL, NULL, NULL, 0, NULL, 1, NULL}, 
 
   {PushButton, E_IMAGE, TIGHT, moMODE_ALL, LOOSE, "Save", 
-   {(XtCallbackProc)I_Save, NULL, NULL}, image_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {(XtCallbackProc)I_Save, NULL, NULL,NULL},
+   image_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, E_IMAGE, TIGHT, moMODE_ALL, LOOSE, "Reload", 
-   { (XtCallbackProc)I_Reload, NULL, NULL},
-   image_cb, 0, NULL, NULL, NULL,  NULL, 1},
+   { (XtCallbackProc)I_Reload, NULL, NULL,NULL},
+   image_cb, 0, NULL, NULL, NULL,  0, NULL, 1, NULL},
 
   {PushButton, E_IMAGE, TIGHT, moMODE_ALL, LOOSE, "View External", 
-   { (XtCallbackProc)I_ViewExternal, NULL, NULL}, image_cb, 0, NULL, NULL, NULL, NULL, 1},
+   { (XtCallbackProc)I_ViewExternal, NULL, NULL,NULL},
+   image_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, E_IMAGE, TIGHT, moMODE_ALL, LOOSE, "View Internal", 
-   { (XtCallbackProc)I_ViewInternal, NULL, NULL}, image_cb, 0, NULL, NULL, NULL, NULL, 1},
+   { (XtCallbackProc)I_ViewInternal, NULL, NULL,NULL},
+   image_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, E_IMAGE, TIGHT, moMODE_ALL, LOOSE, "Get Image Metadata",
-   {(XtCallbackProc)M_ImageData, NULL, NULL}, metadata_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {(XtCallbackProc)M_ImageData, NULL, NULL,NULL},
+    metadata_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
 /* Stuff if on any page and a image link
  ---------------------------------------------------------------*/
 
   {Separator, E_IMAGE | E_ANCHOR, TIGHT, moMODE_PLAIN, LOOSE, "Separator",  
-   {0, NULL, NULL},
-   NULL, 0, NULL, NULL, NULL, NULL, 1}, 
+   {0, NULL, NULL,NULL},
+   NULL, 0, NULL, NULL, NULL, 0, NULL, 1,NULL}, 
 
   {CascadeButton, E_IMAGE | E_ANCHOR, TIGHT, moMODE_PLAIN, LOOSE, "Image",  
-   {0, NULL, NULL}, 
-   NULL, 0, NULL, NULL, image_menu, NULL, 1},
+   {0, NULL, NULL,NULL}, 
+   NULL, 0, NULL, NULL, model_image_menu, sizeof(model_image_menu), NULL, 1,NULL},
 
 #ifdef NEWS
 /* Stuff if on a news page and not a link
 ---------------------------------------------------------------*/
 
   {Separator, ALL_TYPES, LOOSE, moMODE_NEWS, TIGHT, "Separator", 
-   {0, NULL, NULL},
-   NULL, 0, NULL, NULL, NULL, NULL, 1}, 
+   {0, NULL, NULL,NULL},
+   NULL, 0, NULL, NULL, NULL, 0, NULL, 1, NULL}, 
 
   {PushButton, ALL_TYPES, LOOSE, moMODE_NEWS, TIGHT, "Next Article", 
-   {mo_news_next, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_next, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, ALL_TYPES, LOOSE, moMODE_NEWS, TIGHT, "Previous Article", 
-   {mo_news_prev, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_prev, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, ALL_TYPES, LOOSE, moMODE_NEWS, TIGHT, "Next Thread", 
-   {mo_news_nextt, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_nextt, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, ALL_TYPES, LOOSE, moMODE_NEWS, TIGHT, "Previous Thread", 
-   {mo_news_prevt, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_prevt, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, ALL_TYPES, LOOSE, moMODE_NEWS, TIGHT, "Article Index", 
-   {mo_news_index, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_index, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, ALL_TYPES, LOOSE, moMODE_NEWS, TIGHT, "Group Index", 
-   {mo_news_groups, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_groups, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
   
   {Separator, ALL_TYPES, LOOSE, moMODE_NEWS, TIGHT, NULL, 
-   {0, NULL, NULL},
-   NULL, 0, NULL, NULL, NULL, NULL, 1},
+   {0, NULL, NULL,NULL},
+   NULL, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, ALL_TYPES, LOOSE, moMODE_NEWS, TIGHT, "Post", 
-   {mo_news_post, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_post, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, ALL_TYPES, LOOSE, moMODE_NEWS, TIGHT, "Followup", 
-   {mo_news_follow, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_follow, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   
   {Separator, ALL_TYPES, LOOSE, moMODE_NEWS, TIGHT, NULL, 
-   {0, NULL, NULL},
-   NULL, 0, NULL, NULL, NULL, NULL, 1},
+   {0, NULL, NULL,NULL},
+   NULL, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, NEWS_NOANCHOR, LOOSE, moMODE_NEWS, TIGHT, "Subscribe",
-   {mo_news_sub, NULL, NULL},
-   /*######*/hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_sub, NULL, NULL,NULL},
+   /*######*/hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, NEWS_NOANCHOR, LOOSE, moMODE_NEWS, TIGHT, "Unsubscribe",
-   {mo_news_unsub, NULL, NULL},
-/*######*/hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_unsub, NULL, NULL,NULL},
+/*######*/hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, E_ANCHOR, LOOSE, moMODE_NEWS, TIGHT, "Subscribe",
-   {mo_news_sub_anchor, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_sub_anchor, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
    
   {PushButton, E_ANCHOR, LOOSE, moMODE_NEWS, TIGHT, "Unsubscribe",
-   {mo_news_unsub_anchor, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_unsub_anchor, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
    
   {PushButton, NEWS_NOANCHOR, LOOSE, moMODE_NEWS, TIGHT, "Mark Group Read",
-   {mo_news_mread, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_mread, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 
   {PushButton, E_ANCHOR, LOOSE, moMODE_NEWS, TIGHT, "Mark Group Read",
-   {mo_news_mread_anchor, NULL, NULL},
-   hotmenu_cb, 0, NULL, NULL, NULL, NULL, 1},
+   {mo_news_mread_anchor, NULL, NULL,NULL},
+   hotmenu_cb, 0, NULL, NULL, NULL, 0, NULL, 1, NULL},
 #endif
 
   { LastItem },
 };
+
+static Widget _PopupMenuBuilder(mo_window * win, Widget parent, int type, char *title, 
+			char mnem, PopupItem *items)
+{
+	Widget menu, cascade;
+	XmString str;
+	int i, mapping_del;
+
+	mapping_del = mMosaicAppData.popupCascadeMappingDelay;
+	if(type == XmMENU_POPUP) {
+		menu = XmCreatePopupMenu(mMosaicToplevelWidget, title, NULL, 0);
+	} else if(type == XmMENU_PULLDOWN) { 
+		menu = XmCreatePulldownMenu(parent, title, NULL, 0);
+		str = XmStringCreateLtoR(title, XmSTRING_DEFAULT_CHARSET);
+		cascade =XtVaCreateManagedWidget(title,xmCascadeButtonGadgetClass,
+				parent, XmNsubMenuId, menu,
+				XmNlabelString, str,
+				XmNmnemonic, mnem, 
+				XmNmappingDelay, mapping_del, NULL);
+		XmStringFree(str);
+	} else
+		return (Widget) NULL; /* this shouldn't happen */
+
+	for(i=0;(items[i].classw!=LastItem); i++) {
+		switch(items[i].classw) {
+		case PushButton:
+			items[i]._w = XtVaCreateManagedWidget(items[i].label, 
+					xmPushButtonGadgetClass, menu,
+					XmNuserData, (XtPointer) win, NULL);
+			items[i].win = win;
+			if(items[i].mnemonic)
+				XtVaSetValues(items[i]._w,
+					XmNmnemonic, items[i].mnemonic, NULL);
+			if(items[i].accel) {
+				XtVaSetValues(items[i]._w, 
+					XmNaccelerator , items[i].accel, 
+					NULL);
+			}
+			if(items[i].accel_text) {
+				str = XmStringCreateLtoR(items[i].accel_text,
+					XmSTRING_DEFAULT_CHARSET);
+				XtVaSetValues(items[i]._w, 
+					XmNacceleratorText, str, NULL);
+				XmStringFree(str);
+			}
+			if(items[i].cbfp)
+				XtAddCallback(items[i]._w, XmNactivateCallback, 
+					items[i].cbfp, &(items[i].acst));
+			XtSetSensitive(items[i]._w, items[i].startup);
+			break;
+		case Separator:
+			items[i].win = win;
+			items[i]._w = XtVaCreateManagedWidget(items[i].label, 
+					xmSeparatorGadgetClass, menu, NULL);
+			break;
+		case ToggleButton:
+			items[i].win = win;
+			items[i]._w = XtVaCreateManagedWidget(items[i].label, 
+					xmToggleButtonGadgetClass, menu, NULL);
+			break;
+		case CascadeButton:
+			items[i].win = win;
+			if(items[i].sub_items && 
+			   (items[i].acst.act_code !=(XtCallbackProc) -2)) {
+				PopupItem *private_items;
+/* that's a model */
+				private_items = (PopupItem *)calloc(1,items[i].sub_items_size);
+				memcpy(private_items,items[i].sub_items,items[i].sub_items_size);
+				items[i].sub_items = private_items;
+				items[i]._w = _PopupMenuBuilder(win, menu,
+					XmMENU_PULLDOWN, items[i].label, 
+					items[i].mnemonic, items[i].sub_items);
+			} else {                      
+				items[i]._w = XtVaCreateManagedWidget(
+					"Session History",
+					xmCascadeButtonGadgetClass,
+					menu, XmNsubMenuId,
+					win->session_menu,
+					XmNmappingDelay, mapping_del, 
+					NULL);
+			} 
+		}
+	}
+	return type == XmMENU_POPUP ? menu : cascade;
+}
 
 static void _set_eptr_field(PopupItem *items, struct ele_rec *eptr, mo_window *win)
 {
@@ -352,35 +643,46 @@ static void _set_eptr_field(PopupItem *items, struct ele_rec *eptr, mo_window *w
 
 	for(i=0; items[i].classw != LastItem; i++) {
 		if(items[i].sub_items)
-		_set_eptr_field(items[i].sub_items, eptr,win);
+			_set_eptr_field(items[i].sub_items, eptr,win);
 		items[i].acst.eptr = eptr;
 		items[i].acst.win = win;
 	}
 }
+
 static void ThirdButtonMenu(Widget w, XtPointer clid, XEvent *event,
      Boolean *ctd)
 {
 	mo_window * win = (mo_window*) clid;
+	Widget popup = win->popup_b3;
 	XButtonPressedEvent *BuEvent = (XButtonPressedEvent *) event;
 	static struct ele_rec *eptr;
 	int epos, mode, type, i, del=12;
 	int sens=False;
 	HTMLWidget hw = (HTMLWidget) w;
+	PopupItem *popup_items;
 
-	if( !(have_popup && (BuEvent->button == Button3)))
+#ifdef DEBUG_B3
+	fprintf(stderr,"win->frame_type = %d\n", win->frame_type);
+#endif
+
+	if( ! (BuEvent->type == ButtonPress))
+		return;
+	if( ! (BuEvent->button == Button3) )
 		return;
 
- 
+/* le popup appartient au frameset ou au frame */
+/* le popup doit etre creer a chaque creation de page... */
+
       	while((hw != NULL) && (XtClass((Widget) hw) != htmlWidgetClass))
         	hw = (HTMLWidget) XtParent((Widget) hw);
       	if(hw == NULL)                                                        
         	return; 
+
+	assert(popup);
+
       	eptr = LocateElement(hw, BuEvent->x, BuEvent->y, &epos);
-	if(!popup) {
-		popup = _PopupMenuBuilder(win, (Widget) w, XmMENU_POPUP, 
-			"popup", 0, popup_items);
-	}
 	mode = win->mode;
+
 	if(eptr) {
 		type = eptr->type; 
 		if((type == E_IMAGE) && (eptr->anchor_tag_ptr->anc_href)) { 
@@ -394,6 +696,8 @@ static void ThirdButtonMenu(Widget w, XtPointer clid, XEvent *event,
 	} else
 		type = E_HRULE; /* pick a good normal little element */
  
+	popup_items = win->popup_b3_items;
+
 	for(i = 0; popup_items[i].classw != LastItem; i++) {
 		if(popup_items[i]._w) {/*anything is possible in Mosaic */
 			int good = True;
@@ -454,17 +758,32 @@ static void ThirdButtonMenu(Widget w, XtPointer clid, XEvent *event,
 	XtManageChild(popup);
 }
 
-
 void mo_make_popup(mo_window * win)
 {
 	Widget view;
+	PopupItem *private_items;
 
 	view = win->view;
-	have_popup = True; /* this will cause it to be created later */
-	popup = NULL;
+	win->popup_b3 = NULL;
+	win->popup_b3_items = NULL;
+
+	private_items = (PopupItem *)calloc(1,sizeof(model_popup_items));
+	memcpy(private_items,model_popup_items,sizeof(model_popup_items));
+	win->popup_b3 = _PopupMenuBuilder(win, (Widget) view, XmMENU_POPUP, 
+		"popup", 0, private_items);
+	win->popup_b3_items = private_items;
+
 	XtInsertEventHandler(view, ButtonPressMask, False,
                        (XtEventHandler)ThirdButtonMenu, (XtPointer)win, 
                        XtListHead);
+}
+
+void mo_destroy_popup(mo_window * win)
+{
+	XtDestroyWidget(win->popup_b3);
+	win->popup_b3 = NULL;
+	free(win->popup_b3_items);
+	win->popup_b3_items = NULL;
 }
 
 void mo_popup_set_something(char *what, int to, PopupItem *items)
@@ -472,8 +791,7 @@ void mo_popup_set_something(char *what, int to, PopupItem *items)
 	Widget w=NULL;
 	int i;
 
-	if(items == NULL)
-		items = popup_items;
+	assert(items);
 
 	for(i=0; (items[i].classw != LastItem) && !w; i++) {
 		if(items[i].label && (items[i].label[0] == *what)) {
@@ -493,203 +811,6 @@ void mo_popup_set_something(char *what, int to, PopupItem *items)
 		XtSetSensitive(w, to);
 }
 
-static Widget _PopupMenuBuilder(mo_window * win, Widget parent, int type, char *title, 
-			char mnem, PopupItem *items)
-{
-	Widget menu, cascade;
-	XmString str;
-	int i, mapping_del;
-
-	mapping_del = mMosaicAppData.popupCascadeMappingDelay;
-	if(type == XmMENU_POPUP) {
-		menu =  XmCreatePopupMenu(parent, title, NULL, 0);
-	} else if(type == XmMENU_PULLDOWN) { 
-		menu = XmCreatePulldownMenu(parent, title, NULL, 0);
-		str = XmStringCreateLtoR(title, XmSTRING_DEFAULT_CHARSET);
-		cascade =XtVaCreateManagedWidget(title,xmCascadeButtonGadgetClass,
-				parent, XmNsubMenuId, menu,
-				XmNlabelString, str,
-				XmNmnemonic, mnem, 
-				XmNmappingDelay, mapping_del, NULL);
-		XmStringFree(str);
-	} else
-		return (Widget) NULL; /* this shouldn't happen */
-
-	for(i=0;(items[i].classw!=LastItem); i++) {
-		switch(items[i].classw) {
-		case PushButton:
-			items[i]._w = XtVaCreateManagedWidget(items[i].label, 
-					xmPushButtonGadgetClass, menu,
-					XmNuserData, (XtPointer) win, NULL);
-			items[i].win = win;
-			if(items[i].mnemonic)
-				XtVaSetValues(items[i]._w,
-					XmNmnemonic, items[i].mnemonic, NULL);
-			if(items[i].accel) {
-				XtVaSetValues(items[i]._w, 
-					XmNaccelerator , items[i].accel, 
-					NULL);
-			}
-			if(items[i].accel_text) {
-				str = XmStringCreateLtoR(items[i].accel_text,
-					XmSTRING_DEFAULT_CHARSET);
-				XtVaSetValues(items[i]._w, 
-					XmNacceleratorText, str, NULL);
-				XmStringFree(str);
-			}
-			if(items[i].cbfp)
-				XtAddCallback(items[i]._w, XmNactivateCallback, 
-					items[i].cbfp, &(items[i].acst));
-			XtSetSensitive(items[i]._w, items[i].startup);
-			break;
-		case Separator:
-			items[i].win = win;
-			items[i]._w = XtVaCreateManagedWidget(items[i].label, 
-					xmSeparatorGadgetClass, menu, NULL);
-			break;
-		case ToggleButton:
-			items[i].win = win;
-			items[i]._w = XtVaCreateManagedWidget(items[i].label, 
-					xmToggleButtonGadgetClass, menu, NULL);
-			break;
-		case CascadeButton:
-			items[i].win = win;
-			if(items[i].sub_items && 
-			   (items[i].acst.act_code !=(XtCallbackProc) -2))
-				items[i]._w = _PopupMenuBuilder(win, menu,
-					XmMENU_PULLDOWN, items[i].label, 
-					items[i].mnemonic, items[i].sub_items);
-			else {                      
-				items[i]._w = XtVaCreateManagedWidget(
-					"Session History",
-					xmCascadeButtonGadgetClass,
-					menu, XmNsubMenuId,
-					win->session_menu,
-					XmNmappingDelay, mapping_del, 
-					NULL);
-			} 
-		}
-	}
-	return type == XmMENU_POPUP ? menu : cascade;
-}
-
-void metadata_cb(Widget w, XtPointer client_data, XtPointer call_data)
-{
-	act_struct *acst = (act_struct *) client_data;
-	char *xurl;                          
-	struct ele_rec *eptr;                
-	int which;                           
-	mo_window * win;
-	RequestDataStruct rds;
-
-        if(!acst || !acst->eptr)
-                return;              
-                                     
-        eptr = acst->eptr;           
-        which = (int)acst->act_code;      
-	win = acst->win;
-                                     
-        if(!eptr)
-                return; /* oh, well */
-                                     
-        switch (which) {             
-        case M_ImageData:  
-               if (!eptr->pic_data) { /* do what? */
-                                return;
-               }            
-               xurl=eptr->pic_data->src;
-               do_meta=1;   
-		rds.req_url = xurl;
-	rds.gui_action = HTML_LOAD_CALLBACK;
-		rds.post_data = NULL;
-		rds.ct = NULL;
-		rds.is_reloading = False;
-	win->navigation_action = NAVIGATE_NEW;
-               MMPafLoadHTMLDocInWin(win, &rds);
-               do_meta=0;   
-               break; 
-        case M_LinkData:   
-               if (!eptr->anchor_tag_ptr->anc_href || !*eptr->anchor_tag_ptr->anc_href) {
-               		return;
-               }            
-               xurl=mo_url_canonicalize(eptr->anchor_tag_ptr->anc_href,
-               		win->current_node->base_url);
-               do_meta=2;
-		rds.req_url = xurl;
-	rds.gui_action = HTML_LOAD_CALLBACK;
-		rds.post_data = NULL;
-		rds.ct = NULL;
-		rds.is_reloading = False;
-	win->navigation_action = NAVIGATE_NEW;
-               MMPafLoadHTMLDocInWin(win, &rds);
-               do_meta=0;   
-               break;       
-        default:
-               fprintf(stderr,"Smells like an error...\n");
-               break;  
-        }                            
-        return;                      
-}                                    
-
-void image_cb(Widget w, XtPointer client_data, XtPointer call_data)
-{
-	act_struct *acst = (act_struct *) client_data;
-	char *xurl;
-	struct ele_rec *eptr;
-	int which,tmp; 
-	mo_window * win;
-	RequestDataStruct rds;
-
-	eptr = acst->eptr;
-	which = (int)acst->act_code;
-	win = acst->win;
-
-	if(!eptr || !eptr->pic_data->image_data || !eptr->pic_data->src){
-		printf("Lost source.\n");
-		return; /* oh, well */
-	}
-
-	switch(which) {
-/* #### look at save_link_as_cb  ###
-	case I_Save:
-		/* FIXME: this should be fsb(eptr->edata); */
-/*
-		fsb(win,eptr->pic_data->src);
-		break;
-### */
-	case I_ViewExternal:
-		xurl=eptr->pic_data->src;
-		rds.req_url = xurl;
-	rds.gui_action = HTML_LOAD_CALLBACK;
-		rds.post_data = NULL;
-		rds.ct = NULL;
-		rds.is_reloading = False;
-	win->navigation_action = NAVIGATE_NEW;
-               MMPafLoadHTMLDocInWin(win, &rds);
-		break;
-	case I_ViewInternal:
-		xurl=eptr->pic_data->src;
-/*
-		tmp=imageViewInternal;
-		imageViewInternal=1;
-*/
-		rds.req_url = xurl;
-	rds.gui_action = HTML_LOAD_CALLBACK;
-		rds.post_data = NULL;
-		rds.ct = NULL;
-		rds.is_reloading = False;
-	win->navigation_action = NAVIGATE_NEW;
-               MMPafLoadHTMLDocInWin(win, &rds);
-/*
-		imageViewInternal=tmp;
-*/
-		break;
-	case I_Reload:
-		mo_reload_document(w, (XtPointer) win, NULL);
-		break;
-	}
-}
-
 void fsb_CancelCallback ( Widget w, XtPointer clientData, XtPointer callData )
 {
 	XtUnmanageChild ( w );
@@ -702,60 +823,9 @@ void ungrab_the_____ing_pointer(XtPointer client_data)
 
 static Boolean convert_selection(Widget w, Atom *sel, Atom *tar, Atom *typ_ret,
 				 XtPointer *val_ret, unsigned long *val_len,
-				 int *format);
-void copy_link_cb(Widget w, XtPointer clid, XtPointer calld)
-{
-	act_struct *acst = (act_struct *) clid;
-	XmPushButtonCallbackStruct *cbs = (XmPushButtonCallbackStruct *)calld;
-	char *url;
-	mo_window * win = acst->win;
-
-	if(!acst || !acst->eptr || !acst->eptr->anchor_tag_ptr->anc_href ||
-	   !*acst->eptr->anchor_tag_ptr->anc_href)
-		return;
-
-	url = mo_url_canonicalize(acst->eptr->anchor_tag_ptr->anc_href, 
-			win->current_node->base_url);
-
-	if(XtOwnSelection(win->scrolled_win, XA_PRIMARY, 
-	    cbs->event->xbutton.time, convert_selection,
-	    NULL, NULL) == False) {
-		fprintf(stderr, "Mosaic: Error: Could not copy selection, try again.\n");
-		if (url) {
-			free(url);
-		}
-	}  else {
-		int i;
-
-		for(i=0;popup_items[i].classw!=LastItem; i++) {
-			if(!strcmp(popup_items[i].label, COPY_URL_LABEL) && url) {
-				char *copy_str = (char*) malloc((strlen(url) +
-					strlen("URL:   has been copied  ")) *
-					 sizeof(char));
-
-				if(popup_items[i].acst.str)
-					free(popup_items[i].acst.str);
-				popup_items[i].acst.str = url;
-				sprintf(copy_str, "URL: %s  has been copied",url);
-				mo_gui_notify_progress(copy_str,win);
-				break;
-			} else if (!strcmp(popup_items[i].label, COPY_URL_LABEL)
-				   && !url) { 
-				if(popup_items[i].acst.str)
-					free(popup_items[i].acst.str);
-				popup_items[i].acst.str=NULL;
-				break;
-			}
-		}
-	}
-}
-
-static Boolean convert_selection(Widget w, Atom *sel, Atom *tar, Atom *typ_ret,
-				 XtPointer *val_ret, unsigned long *val_len,
 				 int *format)
 {
 	char *url;
-	int i;
  
 	if(*tar == XA_STRING) {
 #ifdef DEBUG_GUI
@@ -763,15 +833,10 @@ static Boolean convert_selection(Widget w, Atom *sel, Atom *tar, Atom *typ_ret,
 			fprintf (stderr, "Pasting text selection.\n");
 		}
 #endif
-		for(i=0;popup_items[i].classw!=LastItem;i++) {
-			if(!strcmp(popup_items[i].label, COPY_URL_LABEL)) {
-				if(popup_items[i].acst.str)
-					url = (char *) popup_items[i].acst.str;
-				else
-					return False;
-				break;
-			}
-		}
+		if(the_copyed_url)
+			url = the_copyed_url;
+		else
+			return False;
 		*val_ret = strdup(url);
 		*val_len = strlen(url);
 		*typ_ret = XA_STRING;

@@ -484,6 +484,8 @@ void HTExtensionMapInit (void)
 	HTSetSuffix(".movie",	"video/x-sgi-movie", 1.0);
 	HTSetSuffix(".mv",	"video/x-sgi-movie", 1.0);
 	HTSetSuffix(".mime",	"message/rfc822", 1.0);
+	HTSetSuffix(".swf",	"application/x-shockwave-flash", 1.0);
+	HTSetSuffix(".spl",	"application/x-futuresplash", 1.0);
 
 /* These should override everything else. */
 	HTLoadExtensionsConfigFile (mMosaicPersonalExtensionMap);
@@ -858,6 +860,8 @@ void HTPresentationInit (void)
 	HTSetPresentation("application/x-troff-man",MMOSAIC_PRESENT,1.0,3.0, 0.0);
 	HTSetPresentation("application/x-troff-me",MMOSAIC_PRESENT,1.0, 3.0, 0.0);
 	HTSetPresentation("application/x-troff-ms",MMOSAIC_PRESENT,1.0, 3.0, 0.0);
+	HTSetPresentation("application/x-shockwave-flash","swfplayer %s", 1.0, 3.0, 0.0);
+	HTSetPresentation("application/x-futuresplash","swfplayer %s", 1.0, 3.0, 0.0);
 	HTSetPresentation("text/richtext", MMOSAIC_PRESENT, 1.0, 3.0, 0.0);
 	HTSetPresentation("text/tab-separated-values",MMOSAIC_PRESENT,1.0,3.0,0.0);
 	HTSetPresentation("text/x-setext", MMOSAIC_PRESENT, 1.0, 3.0, 0.0);

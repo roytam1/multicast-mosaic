@@ -561,12 +561,13 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 		rds.gui_action = HTML_LOAD_CALLBACK;
 		rds.req_url = mo_url_canonicalize_keep_anchor(href,
 				win->current_node->base_url);
-		win->navigation_action = NAVIGATE_NEW;
 		win = get_frame_target(win, win->current_node->htinfo->base_target, wacd->target);
+		win->navigation_action = NAVIGATE_NEW;
 		if (win){
 			if (win->frame_type != FRAME_TYPE) {
 				MMPafLoadHTMLDocInWin (win, &rds);
 			} else {	/* clic in FRAME */
+				win->navigation_target_type = NAVIGATE_TARGET_SELF; /* the anchor was in FRAME */
 				MMPafLoadHTMLDocInFrame(win, &rds);
 			}
 		} else {	/* win is NULL open a new one */
@@ -894,11 +895,6 @@ void twirl_icon_cb(XtPointer clid, XtIntervalId * id)
 	XFlush(mMosaicDisplay);
 	ts->time_id = XtAppAddTimeOut(mMosaicAppContext,
                 100L, twirl_icon_cb, ts);
-}
-
-void mo_gui_apply_default_icon( mo_window *win)
-{
-        XmxApplyPixmapToLabelWidget(win->logo, IconPix[0]);
 }
 
 extern void ungrab_the_____ing_pointer(XtPointer client_data);
@@ -1685,7 +1681,7 @@ static mo_status mo_fill_window (mo_window *win)
 		NULL);
 	/* now that the htmlWidget is created we can do this  */
 /*############################################################*/
-	mo_make_popup(win); /* c'est pour le cut&paste */
+	mo_make_popup(win); /* create the third button popup */
 
 /*********************** SLAB_STATUS ****************************/
 	win->slab[SLAB_STATUS] = XtVaCreateWidget("slab_status",
@@ -2079,7 +2075,10 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
  *	win->src_search_win_text=0;
  *	win->first_node = NULL;
 */
-	swin->current_node = parent->current_node;
+/*	swin->current_node = parent->current_node; */
+
+	swin->current_node = NULL; 
+
 /*	win->source_text = 0;
  *	win->format_optmenu = 0;
 */
@@ -2116,7 +2115,7 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 			mo_view_keypress_handler, swin);
 	/* now that the htmlWidget is created we can do this  */
 /*############################################################*/
-	mo_make_popup(swin); /* c'est pour le cut&paste */
+	mo_make_popup(swin); /* create the third button popup */
 
 /*********************** SLAB_STATUS ****************************/
 	/* meter */
@@ -2257,8 +2256,8 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 	win->src_search_win=0;
 	win->src_search_win_text=0;
 	win->first_node = NULL;
-	win->current_node = 0;
-	win->source_text = 0;
+	win->current_node = NULL;
+	win->source_text = NULL;
 	win->format_optmenu = 0;
 	win->save_format = mo_plaintext;
 	win->agent_state=selectedAgent;

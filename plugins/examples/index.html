@@ -1,0 +1,879 @@
+<html>
+<head>
+<html>
+<head>
+<title>TP XWindow/Motif 1</title>
+</head>
+
+<body bgcolor="#ffffff">
+
+<center>
+<h1>TP XWindow / Motif 1</h1>
+<h3>
+Module EO / Dominante INF
+<p>
+<a href="http://www.infres.enst.fr/~elc"><i>Eric Lecolinet @ ENST</i></a>
+</h3>
+<p>
+</center>
+
+<br>
+<strong>
+<img src=//www.infres.enst.fr/gif/blueball.gif>
+TP1
+<a href="http://www.infres.enst.fr/~domeo/TP-Motif2/">TP2</a>
+<a href="http://www.infres.enst.fr/~domeo/TP-Motif3/">TP3</a>
+<a href="http://www.infres.enst.fr/~domeo/TP-Java/">Java</a>
+<a href="http://www.infres.enst.fr/~elc">Elc</a>
+<a href="http://www.infres.enst.fr/~elc/prograph">Exemples</a>
+</strong>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>Mode d'Emploi</h2>
+<p>
+<ol>
+<li> Cr&eacute;&eacute;r un nouveau r&eacute;pertoire et y copier les fichiers se trouvant
+dans le r&eacute;pertoire:  <b>~domeo/TP-Motif/Motif1</b>
+<p>
+<li> Faites les exercices qui suivent dans l'ordre car ils d&eacute;pendent
+les uns des autres. Dans certains cas vous aurez juste &agrave; regarder
+le programme et ce qu'il fait. Dans d'autres cas il sera n&eacute;cessaire
+de le compl&eacute;ter.
+<p>
+<li>
+compilez les programmes au fur et &agrave; mesure des exercices.
+Pour compiler un fichier, vous devrez utiliser la commande <b>make</b>.
+Par exemple, pour compiler le programme xxx &agrave; partir du fichier xxx.c,
+tapez la commande :
+<tt>
+	    make xxx
+</tt>
+</ol>
+<p>
+<b>Attention : </b>la commande <b>make</b> depend du fichier <b>Makefile</b>
+situ&eacute; dans le r&eacute;pertoire courant. Ce fichier definit les options de 
+compilation et les librairies ad&eacute;quates pour g&eacute;n&eacute;rer un programme Motif
+sous un syst&egrave;me d'exploitation donn&eacute;. Le Makefile courant est con&ccedil;u pour
+produire des ex&eacute;cutables sous SunOS5 (alias Solaris2).
+<p>
+Remarques:
+<ul>
+<li>
+La commande <i>uname -a</i> indique le syst&egrave;me d'exploitation
+de la machine utilis&eacute;e.
+<br>
+Exemple de r&eacute;ponse:  <i>"<b>SunOS</b> messiaen <b>5</b>.4 generic sun4c sparc"
+<b>==>   SunOS5</b></i>.
+<p>
+<li> les programmes X-Window / Motif utilisent des <b>librairies dynamiques</b>
+(i.e. des librairies qui sont charg&eacute;es au moment de l'ex&eacute;cution du programme).
+Ces librairies doivent correspondre &agrave; celles qui sont indiqu&eacute;es dans le
+Makefile. En cas de probl&egrave;me, l'ordre de recherche des librairies dynamiques 
+peut &ecirc;tre chang&eacute; en modifiant la variable d'environnement 
+<b>LD_LIBRARY_PATH</b> du Shell Unix.
+</ul>
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>
+Afficher un message au moyen d'un Label</h2>
+<p>
+Regarder le fichier <i>label.c</i>. On remarquera qu'il y a cr&eacute;ation 
+de 3 widgets :
+<ul>
+<li>
+<i>toplevel</i>, le widget de plus haut niveau de l'application
+(toplevel est cr&eacute;&eacute; en m&ecirc;me temps que le toolkit est initialis&eacute;)
+<li>
+<i>box</i>, le "conteneur" ou "Manager" de widgets
+<li>
+<i>message</i>, le Label widget qui sert &agrave; afficher un message
+</ul>
+<p>
+Noter que <i>box</i> et <i>message</i> sont <b>"manag&eacute;s"</b>.
+(il faut "manager" les widgets les rendre actifs et les faire appara&icirc;tre a l'&eacute;cran).
+<p>
+Un fois les widgets cr&eacute;es, ils sont <b>r&eacute;alis&eacute;s</b> physiquement 
+(par <i>XtRealizeWidget</i>)
+puis l'application entre dans la boucle infinie de gestion des &eacute;v&eacute;nements.
+<p>
+Compiler et ex&eacute;cuter le programme "label".
+Quel est le message affich&eacute; ?
+<p>
+<b>Attention :</b> ne pas confondre les VARIABLES C qui pointent sur les
+widgets (valeur renvoy&eacute;e par les fonctions <i>XmCreateXXX</i>) avec le 
+NOMS des widgets (2eme argument des fonctions <i>XmCreateXXX</i>). 
+Les premiers sont des pointeurs alors que les second sont des cha&icirc;nes de
+caract&egrave;res servant &agrave; d&eacute;signer les widgets dans les Fichiers de Ressources.
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>Ajouter un PushButton</h2>
+<p>
+Compl&eacute;ter le fichier <i>pushbutton.c</i> comme suit :
+<p>
+<ol>
+<li> Cr&eacute;er (et manager) un nouveau widget :
+<ul>
+<li>
+de classe <b>XmPushButton</b>,
+<li>
+de nom <i>button</i>,
+<li>
+ayant pour p&egrave;re le widget <i>box</i>.
+</ul>
+<p>
+<li> Lier la fonction <i>Sortir</i> (d&eacute;j&agrave; d&eacute;finie dans le code source)
+au bouton que l'on vient de cr&eacute;er de telle sorte que cette fonction
+soit appel&eacute;e quand on clique sur le bouton.
+<p>
+Utiliser la fonction <b>XtAddCallback</b> (faire "man XtAddCallback")
+avec <b>XmNactivateCallback</b> en guise de "callback_name"
+<p>
+<b>Note : </b>
+XmNactivateCallback ==> fonctions de callback appel&eacute;es quand on 
+"active" le bouton, c'est-&agrave;-dire quand on clique dessus avec le bouton 1 
+de la souris ou que l'on frappe la touche SPACE lorsque le widget "a le focus".
+<p>
+<li> Compl&eacute;ter la fonction <i>Sortir</i> de telle sorte :
+<ul>
+<li>
+qu'elle affiche un message d'adieu (en utilisant printf),
+<li>
+puis qu'elle termine l'application.
+</ul>
+<p>
+Compiler et ex&eacute;cuter le programme <i>pushbutton</i>.
+</ol>
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>
+Fichiers de Ressources</h2>
+<p>
+Les fichiers de ressources permettent de sp&eacute;cifier la valeur
+des ressources des widgets sans modifier le code C.
+Les sp&eacute;cifications sont de la forme :
+<p>
+<pre><tt>
+    appli.widget1.widget2. .... widgetN.ressource : valeur
+</tt></pre>
+Avec :
+<ul>
+<li>
+<i>appli</i> = nom ou classe de l'application
+<li>
+<i>widget1 ... widgetN</i> = widgets travers&eacute;s dans l'arborescence
+pour aller de widget1 (le plus "haut") &agrave; widgetN (le plus "bas"
+= celui dont on veut changer les ressources)
+<li>
+<i>widget1</i>, etc ... sont les NOMS des widgets 
+(c'est-&agrave;-dire le 2eme argument des fonctions XmCreateXXX)
+<li>
+<i>ressource</i> = nom de la ressource de widgetN &agrave; modifier
+<li>
+<i>valeur</i> = sa nouvelle valeur (d&eacute;pend du type de ressource)
+</ul>
+<p>
+De plus : <b>* = joker</b> qui &eacute;vite de pr&eacute;ciser les widgets interm&eacute;diaires.
+<p>
+<b>Exemples :</b>
+<pre><tt>
+  *box.message.labelString : Hello New World
+  *button.labelString : Click and Die!
+</tt></pre>
+! les lignes commen&ccedil;ant par ! sont des commentaires
+<br>
+! sur une station couleur seulement (sinon se limiter aux "couleurs" <i>white</i> et <i>black</i>) :
+
+<pre><tt>
+  *background : red
+  *box*foreground : blue
+  *message.background : green
+  *XmPushButton.background : pink
+</tt></pre>
+
+<b>Remarque :</b>
+Comme le montre la derni&egrave;re ligne, 
+on peut &eacute;galement sp&eacute;cifier des <b>classes </b> de widgets.
+On peut ainsi modifier globalement <i>tous les objets</i> d'une m&ecirc;me classe,
+sans avoir &agrave; les sp&eacute;cifier individuellement.
+<br>
+Noter que les <i>noms des classes</i> commencent g&eacute;n&eacute;ralement 
+par une majuscule et ceux des <i>instances</i> par une minuscule.
+<p>
+<b>Exercice :</b>
+<p>
+Cr&eacute;er un fichier de ressources pour les programmes <i>label</i> et <i>pushbutton</i>
+en vous inspirant des exemples pr&eacute;c&eacute;dents.
+Ce fichier devra obligatoirement :
+<ul>
+<li>
+se trouver soit dans votre "home directory", soit dans le r&eacute;pertoire courant
+suivant l'installation.
+<p>
+<li>
+avoir pour nom <i>XMdemos</i>. Ce nom est celui de la <b>classe des 
+applications</b> "label" et "pushbutton" et correspond au 2eme argument 
+de la fonction XtAppInitialize.
+</ul>
+<p>
+Relancer les programmes <i>label</i> et <i>pushbutton</i> apr&egrave;s cr&eacute;ation du fichier 
+de ressources. Essayer diverses variantes (sans oublier de relancer 
+les programmes apr&egrave;s chaque modification du fichier de ressources).
+<p>
+Comment faire pour que les ressources des widgets des programmes
+<i>label</i> et <i>pushbutton</i> aient des valeurs diff&eacute;rentes ?
+<p>
+<b>Remarques :</b>
+<ul>
+<li>
+un m&ecirc;me fichier de ressource peut agir sur plusieurs applications
+si elles sont de m&ecirc;me classe (on rappelle: classe de l'appli. = nom du fichier
+de ressources = 2eme argument de XtAppInitialize)
+<p>
+<li>
+les applications ne sont pas n&eacute;cessairement situ&eacute;es dans les m&ecirc;mes
+r&eacute;pertoires que les fichiers de ressources.
+Ces derniers doivent se trouver dans les repertoires
+d&eacute;finis par les variables d'environnement $XAPPLRESDIR
+ou $XUSERFILESEARCHPATH (-> commande   <i>echo</i>  
+pour visualiser ces variables).
+<p>
+<li>
+le r&eacute;pertoire <i>/usr/lib/X11/app-defaults</i> contient un ensemble de fichiers
+de ressources pr&eacute;d&eacute;finis qui sont communs &agrave; tous les utilisateurs,
+<p>
+<li>
+au lancement d'une application, X lit d'abord les ressources "syst&egrave;me" 
+(i.e. dans <i>/usr/lib/X11/app-defaults</i>) puis les ressources "utilisateur"
+(cf. precedemment) en "&eacute;crasant" les d&eacute;finitions qui existent d&eacute;j&agrave;.
+Pour une fois c'est donc l'utilisateur qui a le dernier mot !
+</ul>
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>
+Fichier .Xdefaults</h2>
+<p>
+Le fichier <i>.Xdefaults</i> permet &eacute;galement d'initialiser des ressources.
+Contrairement au cas pr&eacute;c&eacute;dent, ce fichier est commun &agrave; toutes
+les applications quelle que soit leur classe.
+<p>
+Le principe est le m&ecirc;me que pr&eacute;c&eacute;demment sauf que :
+<ul>
+<li>
+Ce fichier n'est charg&eacute; qu'une fois, au lancement de Xwindow.
+Il faut recharger ce fichier apr&egrave;s modification pour que les nouvelles
+d&eacute;finitions soient prises en compte. Pour ce faire, ex&eacute;cuter la commande :
+<tt>
+    xrdb -load ~/.Xdefaults
+</tt>
+<p>
+<li>
+il faut pr&eacute;fixer les d&eacute;finitions par le nom de l'application
+ou de sa classe (sinon les d&eacute;finitions s'appliquent
+&agrave; TOUTES les applications !), 
+</ul>
+<p>
+<b>Exemples :</b>
+<pre><tt>
+  XMdemos*message.labelString : Message defini dans .Xdefaults
+  pushbutton*message.labelString : Message juste pour l'application "xmbutton"
+  pushbutton*button.labelString : Adieu \n Monde \n Cruel...
+</tt></pre>
+<b>Remarques :</b>
+<li>
+le fichier <i>.Xdefaults</i> est situ&eacute; dans le "home directory",
+<li>
+les definitions dans <i>.Xdefaults</i> sont pr&eacute;pond&eacute;rantes
+sur celles des fichiers de ressources,
+<li>
+les lignes commen&ccedil;ant par des ! sont des commentaires.
+</ul>
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>
+Listes d'Arguments</h2>
+<p>
+Les listes d'arguments (ou <b>ArgLists</b>) permettent d'initialiser 
+ou de modifier les valeurs des ressources dans le fichier C. 
+Leur utilisation est plus complexe (que celle des fichiers de ressource) 
+car les valeurs des ressources  doivent alors &ecirc;tre <b>explicitement</b> 
+converties en un type ad&eacute;quat
+(Par exemple, les cha&icirc;nes de caract&egrave;res C doivent &ecirc;tre converties
+en <b>cha&icirc;nes de caract&egrave;res Motif</b> (de type <b>XmString</b>), les noms
+de couleurs doivent &ecirc;tre convertis en valeurs de type <b>Pixel</b>, etc ...)
+<p>
+Le programme <i>arglist.c</i> montre comment initialiser les ressources 
+du Label <i>message</i>
+pour lui faire afficher un texte en noir sur fond blanc.
+Noter que :
+<ul>
+<li>
+la <i>d&eacute;finition</i> des ressources se fait <b>avant</b> la cr&eacute;ation 
+du widget concern&eacute;
+<p>
+<li> la liste d'arguments <i>args</i> est un tableau de couples (nom-de-resource, valeur-de-resource) que l'on initialise au moyen de la MACRO <b>XtSetArg</b>
+<p>
+<li>
+le 3&egrave;me argument des fonction XmCreateXXX doit &ecirc;tre la liste
+d'arguments (ou NULL s'il n'y en n'a pas), 
+<p>
+<li>
+le 4eme argument doit &ecirc;tre le <b>cardinal</b> de cette liste 
+(i.e. le nombre de couples ressources/valeurs effectivement d&eacute;finis),
+<p>
+<li>
+les <i>noms des ressources</i> commencent toujours par <b>XmN</b>
+suivi d'une lettre minuscule,
+<p>
+<li>
+ces ressources sont d&eacute;sormais fix&eacute;es, elles ne pouront &ecirc;tre modifi&eacute;es
+<b>que dans le code C</b> (les d&eacute;finitions des fichiers
+de ressources seront sans effet sur ces ressources).
+</ul>
+
+<b>Attention</b>
+<ul>
+<li>
+ne <b>pas</b> pr&eacute;fixer les noms des ressources par <b>XmN</b> dans les fichiers
+de ressources. Ce prefixe est seulement n&eacute;cessaire dans le code C.
+<p>
+<li>
+attention aux minuscules et aux majuscules !
+<p>
+<li>
+ne pas se tromper de cardinal, ne pas mettre <i>" n++ "</i> comme
+argument de la macro XtSetArgs, pr&eacute;voir un tableau suffisamment grand, etc ...
+</ul>
+<p>
+<b>Remarque : </b>
+Noter l'utilisation de la fonction <i>XmStringCreateLocalized</i> 
+pour transformer des cha&icirc;nes de caract&egrave;res normales en cha&icirc;nes 
+de caract&egrave;res Motif (de type <b>XmString</b>). On aurait &eacute;galement pu utiliser
+les fonctions <i>XmStringCreate</i> ou <i>XmStringCreateLtoR</i> 
+qui ont des fonctionnalit&eacute;s l&eacute;g&egrave;rement diff&eacute;rentes (ces fonctions permettent 
+de cr&eacute;er des cha&icirc;nes Motif m&eacute;langeant plusieurs polices de caract&egrave;res).
+Enfin, la fonction <i>XmStringFree</i> permet de r&eacute;cup&eacute;rer la place m&eacute;moire
+allou&eacute;e &agrave; la cha&icirc;ne Motif quand on n'en a plus besoin.
+<p>
+Compilez et ex&eacute;cutez <i>arglist.c</i>.
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>
+Modification dynamique des valeurs des ressources</h2>
+<p>
+Les &eacute;tapes pr&eacute;c&eacute;dentes ont montr&eacute; comment sp&eacute;cifier les valeurs des ressources :
+<ul>
+<li>
+via un fichier de ressources ou le fichier <i>.Xdefaults</i>
+<li>
+dans le code C <b>avant</b> cr&eacute;ation des widgets.
+</ul>
+<p>
+Dans les deux cas les ressources sont d&eacute;finies &agrave; l'initialisation,
+c'est-&agrave;-dire de mani&egrave;re "statique".
+Cet exercice propose de les modifier de mani&egrave;re <b>dynamique</b>,
+c'est-&agrave;-dire en cours d'ex&eacute;cution du programme.
+<p>
+Le programme <i>dynarg.c</i> cr&eacute;e 3 widgets : un Label pour afficher 
+un message, un bouton pour terminer l'application et un troisi&egrave;me bouton qui
+<i>aura</b> pour fonction de faire alterner les couleurs du "foreground"
+et du "background" du Label. 
+<p>
+Comme pr&eacute;c&eacute;demment, le texte du Label est affich&eacute; en noir sur fond blanc,
+mais ceci est r&eacute;alis&eacute; d'une mani&egrave;re diff&eacute;rente : le Label est d'abord cr&eacute;e
+<b>puis</b> ses resources sont modifi&eacute;es dynamiquement au moyen de la 
+fonction <b>XtVaSetValues</b>. On remarque que :
+<ul>
+<li> le 1er argument de XtVaSetValues est le widget sur lequel la modification
+s'applique
+<li> le dernier argument doit toujours &ecirc;tre <b>NULL</b>
+<li> les arguments intermediaires constituent des couples (nom-de-ressource, valeur)
+<li> le nombre de couples (nom, valeur) est <i>variable</i>
+<li> cette fonction a entre-autres l'avantage d'&eacute;viter d'avoir &agrave; cr&eacute;er 
+explicitement des tableaux d'arguments comme dans l'exercice pr&eacute;c&eacute;dent
+</ul>
+<p>
+<b>Remarques</b>
+<ul>
+<li> 
+Certaines ressources ne peuvent pas &ecirc;tre modifi&eacute;es une fois le widget cr&eacute;e
+<p>
+<li> 
+La fonction <i>XtVaGetValues</i> remplit le role inverse de 
+<i>XtVaSetValues:</i> elle permet de r&eacute;cup&eacute;rer la valeur courante
+ d'une ressource d'un widget.
+<br><b>! Attention : </b> cette fonction suppose de conna&icirc;tre <b>le type C 
+exact</b> des ressources &agrave; r&eacute;cup&eacute;rer. Le type des ressources est indiqu&eacute; 
+dans le manuel des <b>classes</b> de widgets Motif.
+<p>
+<li> 
+Pour avoir des informations sur une <b>ressource</b> donn&eacute;e (type C, 
+possibilit&eacute; de modification, explications ...) il faut consulter le manuel 
+(via les commandes <i>man</i> ou <i>xman</i>) du <b>WIDGET</b> auquel cette
+ressource appartient (par exemple, pour avoir des infos. sur la ressource
+XmNbackground d'un PushButton, consulter le manuel de <b>XmPushButton</b>).
+</ul>
+<p>
+<b>Exercices</b>
+<p>
+En vous inspirant de ce qui pr&eacute;c&egrave;de, rajoutez une fonction de callback
+qui alterne les couleurs du Bouton <i>xchange</i> quand on clique dessus
+(ie. qui &eacute;change les valeurs de son <i>foreground</i> et de son
+<i>background</i>)
+<p>
+Encore plus fort ! : faire la m&ecirc;me chose mais en &eacute;changeant cette fois
+les couleurs du Label <i>message</i> et sans utiliser de variable globale 
+(aide : regarder le manuel de la fonction <i>XtAddCallback</i>
+ou ... le cours).
+
+<p>
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>Geometry Managers et Orientation</h2>
+<p>
+Cet exemple montre comment modifier les ressources d'un Geometry Manager
+de classe <b>RowColumn</b> afin de disposer verticalement,
+horizontalement ou matriciellement les widgets qu'il contient.
+<p>
+Le programme <i>orientation.c</i> cr&eacute;e un Label et 5 PushButtons.
+<ul>
+<li>
+<i>quit</i> termine l'ex&eacute;cution de l'application
+<li>
+<i>horizontal</i> dispose les widgets horizontalement
+<li>
+<i>vertical</i> dispose les widgets verticalement
+<li>
+<i>lineaire</i> dispose les widgets lin&eacute;airement
+<li>
+<i>matricel</i> dispose les widgets matriciellement.
+</ul>
+<p>
+Les 4 derniers boutons appellent des fonctions de callback
+qui changent dynamiquement certaines ressources du widget <i>box</i>,
+lequel est un manager de type <i>RowColumn</i>.
+<p>
+<ol>
+<li>  Compiler et ex&eacute;cuter le programme. Essayer les 4 possibilit&eacute;s :
+horizontal+lin&eacute;aire, vertical+lin&eacute;aire,
+horizontal+matriciel, vertical+matriciel.
+<p>
+<li>  Changer la taille de la fen&ecirc;tre &agrave; l'aide de la souris
+dans chacun des 4 cas. que constate-t'on ?
+<p>
+<li>  Examiner le code. On voit que :
+<p>
+<ul>
+<li>
+pour simplifier l'&eacute;criture, on a d&eacute;fini une fonction utilitaire
+(<i>CreateButton</i>) qui cree un PushButton et lui associe une
+fonction de callback
+<p><li>
+le dernier argument de cette fonction (le widget <i>box</i>) sera
+automatiquement pass&eacute; &agrave; la fonction de callback lorsque celle-ci
+sera appel&eacute;e. Cette technique &eacute;vite d'avoir a utiliser des variables globales
+<p><li>
+les enfants du RowColumn <i>box</i> sont manag&eacute; globalement au moyen
+de la fonction <i>XtManageChildren</i>
+</ul>
+</ol>
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>Ajout dynamique de widgets et changements de taille</h2>
+<p>
+Cet exemple montre :
+<ul>
+<p><li>
+comment rajouter ou d&eacute;truire <b>dynamiquement</b> des widgets (c'est-&agrave;-dire
+<b>apr&egrave;s</b> la phase d'initialisation)
+<li>
+comment sp&eacute;cifier ou modifier une police de caract&egrave;re (ou une couleur)
+de mani&egrave;re astucieuse
+<li>
+comment cr&eacute;er des <b>ToggleButtons</b> (boutons d'&eacute;tat) exclusifs
+<li>
+comment le Manager <b>RowColumn</b> r&eacute;agit quand on modifie par programme
+la taille d'un de ses enfants ou que l'on rajoute de nouveaux enfants.
+</ul>
+<p>
+Compilez et ex&eacute;cutez le programme <i>addobj</i>. 
+Celui-ci comprend initialement:
+<ul>
+<li> une zone de message
+<li> deux ToggleButtons exclusifs affich&eacute;s avec des fontes (i.e. polices)
+diff&eacute;rentes
+<li> un bouton <i>add</i>
+<li> un bouton <i>quit</i>
+</ul>
+<p>
+Cliquez sur les boutons <i>small</i> et <i>big</i>. Que se passe-t'il ?
+Changez la taille de la fen&ecirc;tre &agrave; l'aide de la souris puis faites de m&ecirc;me
+que pr&eacute;c&eacute;demment. Que constatez-vous ?
+Cliquez maintenant sur le bouton <i>add</i> plusieurs fois.
+M&ecirc;me chose sur <i>remove</i>.
+<p>
+Examinez le code source &agrave; partir de la fonction <i>main</i>
+en faisant attention aux points suivants :
+<ul>
+<li>
+<i>main</i> commence par une definition de <b>fallbacks</b>.
+Les fallbacks permettent de sp&eacute;cifier les ressources &agrave; la mani&egrave;re
+des Fichiers de Ressources externes. Ces d&eacute;nitions servent de "dernier
+recours" (i.e. elles seront &eacute;cras&eacute;es par d'&eacute;ventuelles sp&eacute;cifications
+externes). Noter que la variable <i>fallbacks</i> est un tableau de cha&icirc;nes 
+de caract&egrave;res et que c'est le 7e argument de <i>XtVaAppInitialize</i>.
+<p><li>
+l'interface contient deux Managers embo&icirc;tes: <i>bigform</i> (qui est 
+un RowColumn) et <i>radiobox</i> (qui est une variante de RowColumn).
+<i>radiobox</i> est fils de <i>bigform</i> et sert uniquement &agrave; contenir
+les deux boutons d'&eacute;tat exclusifs. Il est courant d'embo&icirc;ter des Managers
+pour obtenir une pr&eacute;sentation ou une fonctionnalit&eacute; ad&eacute;quate
+(dans le cas pr&eacute;sent c'est parce qu'ils sont fils d'un <i>RadioBox</i> 
+que les deux boutons d'&eacute;tat sont exclusifs).
+<p><li>
+On a d&eacute;fini plusieurs "fonctions utilitaires" pour simplifier l'expression.
+Ces fonctions pourront eventuellement &ecirc;tre r&eacute;utilis&eacute;es dans d'autres 
+programmmes. Les fonctions <i>CreatePushButton</i> et 
+<i>CreateToggleButton</i> servent &agrave; cr&eacute;er des boutons standard, les manager,
+et leur rajouter une fonction de callback. Les fonctions de callback
+<i>DestroyCB</i> et <i>ExitCB</i> servent respectivement &agrave; d&eacute;truire
+un widget et &agrave; sortir de l'application.
+<p><li>
+une astuce est utilis&eacute;e pour &eacute;changer la fonte de la zone de <i>message</i> : 
+la fonction ChangeFontCB r&eacute;cup&egrave;re la fonte du ToggleButton qui l'appelle
+puis l'affecte au <i>message</i>. Cette technique est plus commode et plus
+g&eacute;n&eacute;rale que ce que l'on avait fait dans <i>dynarg.c</i> pour &eacute;changer
+les couleurs (d'autant plus qu'elle permet de d&eacute;finir les valeurs
+souhait&eacute;es dans des fallbacks ou dans un fichier de ressources).
+<p><li>
+la cr&eacute;ation dynamique du nouveau bouton se fait dans la fonction de
+callback <i>AddButtonCB</i> de mani&egrave;re similaire &agrave; ce qui est fait dans
+la fonction <i>main</i>. Le bouton nouvellement cr&eacute;&eacute; sera automatiquement
+mis &agrave; la suite des enfants d&eacute;j&agrave; existants par le RowColumn (c'est une
+propri&eacute;t&eacute; importante de ce type de Manager).
+</ul>
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>Bo&icirc;tes de Dialogue</h2>
+<p>
+Un <b>MessageDialog</b> sert &agrave; afficher un message important tel que :
+message d'erreur, question, avertissement, information, etc ...
+Ce type de bo&icirc;te de dialogue comprend :
+<ul>
+<li>
+un symbole graphique sous forme de <i>pixmap</i>
+<li>
+une zone de message,
+<li>
+trois boutons nomm&eacute;s OK, Cancel et Help.
+</ul>
+<p>
+Les MessageDialogs sont cr&eacute;es au moyen des fonctions Motif 
+<i>XmCreateXXXDialog</i> avec XXX = <i>Message, Error, Information, Question, 
+Warning</i> et <i>Working</i>. Toutes ces fonctions cr&eacute;ent des 
+bo&icirc;tes de dialogue identiques au pixmap pr&egrave;s.
+Dans tous les cas l'objet cr&eacute;e est un Manager particulier de classe
+<b>XmMessageBox</b> (voir manuel Motif).
+<p>
+Les principales ressources des MessageDialogs sont:
+<ul>
+<li>
+<i>XmNdialogTitle</i> : titre du Dialogue
+<p><li>
+<i>XmNmessageString</i> et <i>XmNsymbolPixmap</i> : message et pixmap affich&eacute;s
+<p><li>
+<i>XmNokLabelString</i>, <i>XmNcancelLabelString</i> et <i>XmNhelpLabelString</i> : 
+<br>
+labels (i.e. texte) des boutons <b>OK</b>, <b>Cancel</b> et <b>Help</b>
+<p><li>
+<i>XmNokCallback</i>, <i>XmNcancelCallback</i> et <i>XmNhelpCallback</i> : 
+<br>
+fonctions de callback associ&eacute;es aux boutons 
+<b>OK</b>, <b>Cancel</b> et <b>Help</b>
+<p><li>
+<i>XmNautoUmanage</i> : si cette ressource vaut <i>True</i> (le d&eacute;faut),
+le Dialogue disparaitra automatiquement quand on cliquera sur 
+les boutons <b>OK</b> ou <b>Cancel</b>
+<p><li>
+<i>XmNdialogStyle</i> : d&eacute;cide si le dialogue est modal (= bloquant)
+</ul>
+<p>
+De m&ecirc;me que pr&eacute;c&eacute;demment, les valeurs des ressources <i>XmNxxxString</i>
+sont des <b>XmStrings</b> (i.e. des cha&icirc;nes de caract&egrave;res Motif)
+qui sont cr&eacute;&eacute;es au moyen des fonctions <i>XmStringCreate...</i>
+(et que l'on peut avantageusement sp&eacute;cifier dans les <i>fallbacks</i>
+(voir exercice pr&eacute;c&eacute;dent) ou dans les fichiers de ressources).
+<p>
+Les callbacks s'ajoutent aux boutons <b>OK</b>, <b>Cancel</b> et <b>Help</b>
+de la m&ecirc;me fa&ccedil;on que pr&eacute;c&eacute;demment (c'est-&agrave;-dire &agrave; l'aide de la fonction
+<i>XtAddCallback</i> mais avec les "callback_names" ad&eacute;quats).
+<p>
+Les bo&icirc;tes de dialogues sont g&eacute;neralement des <b>objets &eacute;ph&eacute;m&egrave;res</b>
+("transient" en anglais) qui n'apparaissent &agrave; l'&eacute;cran 
+que de mani&egrave;re temporaire (par exemple pour signaler une erreur, 
+demander confirmation d'une commande, etc ...).
+Pour faire appara&icirc;tre un Dialog, on utilise la fonction
+<b>XtManageChild</b> (comme pour les autres widgets). 
+Inversement, la fonction <b>XtUnmanageChild</b> permet de faire dispara&icirc;tre
+un Dialogue. La ressource <b>XmNautoUmanage</b> entraine une disparition
+implicite quand on clique sur les boutons OK ou Cancel du dialogue.
+<p>
+<b>Exemple :</b>
+Compilez et ex&eacute;cutez le programme <i>dialog.c</i>. On remarquera :
+<ul>
+<li> 
+que l'on peut encore cliquer sur les touches de la fen&ecirc;tre principale
+lorsque le dialogue est ouvert (le dialogue n'est pas <i>modal</i>)
+<li> 
+que le bouton <i>open</i> permet non seulement d'ouvrir le dialogue
+mais aussi de le faire revenir au premier plan lorsqu'il est recouvert
+par une autre fen&ecirc;tre
+</ul>
+<p>
+Ce programme utilise les m&ecirc;mes "fonctions utiles" que l'exemple
+pr&eacute;c&eacute;dent. La bo&icirc;te de dialogue est cr&eacute;&eacute;e une seule fois
+en m&ecirc;me temps que les autres widgets et n'est jamais d&eacute;truite.
+Elle est initialement invisible (i.e. pas manag&eacute;e) et n'appara&icirc;t que 
+lorsque l'on clique sur le bouton <i>open</i>. Ce bouton appelle
+la fonction de callback <i>OpenDialogCB</i>, une nouvelle "fonction utile" 
+que l'on pourra r&eacute;utiliser ailleurs.
+<p>
+<b>Exercice :</b>
+<p>
+Rajouter un <i>QuestionDialog</i> demandant &agrave; l'utilisateur de confirmer
+lorsque l'on clique sur le bouton <i>quit</i> (i.e. cliquer sur <i>quit</i> 
+ouvrira ce dialogue de confirmation (au lieu de sortir directement)
+et il faudra alors cliquer sur le bouton "OK" de ce dialogue pour terminer 
+l'application). 
+<br>
+<b>Remarque: </b> il faudra utiliser 2 fonctions de callback,
+l'une pour ouvrir le QuestionDialog et l'autre pour terminer l'application.
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>R&eacute;cuperer des donn&eacute;es depuis une bo&icirc;te de Dialogue</h2>
+<ul>
+<li>
+Un <b>PromptDialog</b> est similaire &agrave; un MessageDialog sauf qu'il 
+permet &agrave; l'utilisateur d'entrer une donn&eacute;e tap&eacute;e au clavier.
+<p><li>
+un <b>SelectionDialog</b> fait de m&ecirc;me mais permet &eacute;galement de s&eacute;lectionner
+une donn&eacute;e dans une liste.
+<p><li>
+un <b>FileSelectionDialog</b> sert &agrave; s&eacute;lectionner un fichier dans un r&eacute;pertoire
+(ce dialogue pr&eacute;d&eacute;fini est particuli&egrave;rement utile !).
+</ul>
+<p>
+L'objet cr&eacute;e est un Manager particulier de classe <b>XmSelectionBox</b> 
+dans les deux premiers cas et <b>XmFileSelectionBox</b> dans le dernier cas.
+Ces dialogues n'ont pas de ressources <i>XmNmessageString</i> 
+ni <i>XmNsymbolPixmap</i>. Les <b>PromptDialogs</b> ont par contre les
+ressources suivantes:
+<ul>
+<li>
+<i>XmNtextString</i> : texte entr&eacute; par l'utilisateur (sous forme de XmString)
+<li>
+<i>XmNselectionLabelString</i> : message affich&eacute; au dessus de la zone
+de texte
+</ul>
+Pour les autres ressources, voir le manuel le Motif de ces classes.
+<p>
+<b>Exemple :</b>
+Compilez et ex&eacute;cutez le programme <i>promptdialog</i>. Ce programme montre 
+comment r&eacute;cup&eacute;rer une cha&icirc;ne de caract&egrave;res depuis un PromptDialog.
+<p>
+Regardez comment la fonction de callback <i>GetAndSetTextCB</i> r&eacute;cup&egrave;re
+le texte tap&eacute; par l'utilisateur. 
+Le 3eme argument (ou "call_data") de cette fonction pointe vers
+une structure d&eacute;pendante du PromptDialog (c'est-&agrave;-dire du widget qui
+a appel&eacute; cette fonction). Cette structure comprend entre-autres un champ
+<i>value</i> qui contient le texte entr&eacute; par l'utilisateur
+(pour savoir ce que contient cette structure, voir
+<i>manuel de <b>XmSelectionBox</b></i>). Comme d'habitude, ce texte
+est stock&eacute; sous forme de <b>XmString</b> qu'il faut &eacute;ventuellement convertir
+en String standard au moyen de la fonction <i>XmStringGetLtoR</i>,
+<p>
+Remarques: 
+<ul>
+<li>
+on pourrait &eacute;galement faire un <i>XtVaGetValues</i> sur la ressource
+<i>XmNtextString</i> pour r&eacute;cuperer le texte entr&eacute;.
+<p><li>
+le texte tap&eacute;e dans le dialogue ne s'efface pas quand on ferme la bo&icirc;te
+de dialogue et qu'on la rouvre ensuite: il y a "persistance" des donn&eacute;es.
+</ul>
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>Modalit&eacute; et Fonctions Utiles</h2>
+<p>
+Le programme <i>modaldialog.c</i> est semblable au pr&eacute;c&eacute;dent sauf que:
+<ul>
+<li>
+il utilise un certain nombre de "fonctions utilitaires" simplifi&eacute;es
+que l'on pourra &eacute;ventuellement utiliser par la suite pour rendre
+les programmes plus concis et plus lisibles,
+<p><li>
+ce programme g&egrave;re explicitement la modalit&eacute; des bo&icirc;tes de dialogue:
+en essayant ce programme, on remarquera :
+<ul>
+<li>
+que le dialogue de confirmation de sortie est <b>modal</b> (c'est-&agrave;-dire
+bloquant) mais pas celui qui sert &agrave; entrer les donn&eacute;es
+<li>
+que le dialogue d'entr&eacute;e des donn&eacute;es reste pr&eacute;sent quand on clique sur OK
+(mais pas quand on clique sur Cancel)
+</ul>
+</ul>
+<p>
+Examinez le code source:
+<ul>
+<li>
+En plus des fonctions d&eacute;j&agrave; d&eacute;finies dans <i>addobj.c</i> ce programme
+comprend la fonction </i>CreateAnyDialog</i> (et des variantes du type 
+<i>CreateXxxDialog</i>)
+qui sert a cr&eacute;er une bo&icirc;te de dialogue et &agrave; attacher une fonction de callback 
+au bouton OK. L'argument <i>modal_dialog</i> indique si le dialog 
+doit &ecirc;tre modal. Si l'argument <i>auto_unmanage</i> vaut True, le dialogue
+disparaitra quand on clique sur OK ou Cancel, sinon il ne disparaitra
+QUE si l'on clique sur Cancel.
+<p>
+<li>
+L'utilisation de la fonction GetDialogChild montre comment enlever
+le bouton Help (ou d'autres widgets) des boites de dialogue pr&eacute;d&eacute;finies.
+<p>
+<li>
+Noter que certains widgets sont cr&eacute;es &agrave; l'aide de la fonction 
+<i>XtVaCreateManagedWidget</i>. 
+Cette forme est &eacute;quivalente &agrave; : XmCreateXXX + XtManageChild.
+Elle permet de plus de sp&eacute;cifier de sp&eacute;cifier des couples (ressource, valeur)
+&agrave; la mani&egrave;re de <i>XtVaSetValues</i>.
+<p>
+<b>Attention : </b> cette fonction ne peut
+pas &ecirc;tre utilis&eacute;e dans tous les cas. On est par exemple oblig&eacute;
+d'utiliser la fonction <i>XmCreatePromptDialog</i> pour cr&eacute;er un PromptDialog
+car ce widget n'est pas une classe &agrave; part enti&egrave;re mais une 
+<i><b>variante</i></b> de la classe <i>XmSelectionBox</i>.
+</ul>
+
+<p>
+<b>Exercices : </b>
+<ol>
+<li>
+Rajouter un bouton qui ouvre un <b>FileSelectionDialog</b>.
+Le bouton <i>OK</i> du FileSelectionDialog devra lancer la lecture
+du fichier selectionn&eacute; par l'utilisateur. Si ce fichier existe, il faudra
+en afficher le contenu sur le Label <i>message</i>, sinon, il faudra ouvrir
+un dialogue d'alerte <b>modal</b> pour signaler l'erreur &agrave; l'utilisateur.
+<p>
+<b>Remarques : </b>
+<ul>
+<li>
+utiliser la fonction <i>XmStringCreateLtoR</i> pour transformer les cha&icirc;nes
+de caract&egrave;res C en XmString Motif. Cette fonction interpr&egrave;te les \n
+comme des passage &agrave; la ligne contrairement &agrave; <i>XmStringCreateLocalized</i>.
+<li>
+on pourra se contenter d'afficher la premi&egrave;re ligne du fichier sur le
+Label <i>message</i>.
+</ul>
+
+<p><li>
+positionner interactivement le PromptDialog lorsque
+l'on tape un couple de coordonn&eacute;es (i.e. x puis y s&eacute;par&eacute;s par des blancs) 
+dans le champ texte du PromptDialog.
+<p>
+<b>Remarque : </b>
+modifier dynamiquement les ressources <i>XmNx</i>, <i>XmNy</i> 
+et <i>XmNdefaultPosition</i> du PromptDialog. 
+Noter que <i>XmNdefaultPosition</i> 
+doit valoir False sinon le dialog est positionn&eacute; automatiquement 
+par le <b>Window Manager</b> sans tenir compte des valeurs de <i>XmNx</i> et 
+de <i>XmNy</i>.
+</ul>
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>
+Autres Dialogues Pr&eacute;d&eacute;finis</h2>
+<ul>
+<li>
+un <b>CommandDialog</b> sert &agrave; taper une commande qui est conserv&eacute;e
+dans une historique.
+<p><li>
+un <b>TemplateDialog</b> est un MessageDialog vide (&agrave; part les 3 boutons
+OK, Cancel et Help), servant de base &agrave; la cr&eacute;ation de dialogues complexes
+<p><li>
+un <b>FormDialog</b> (resp. <b>BulletinBoardDialog</b>)
+est une bo&icirc;te de dialogue enti&egrave;rement vide comprenant uniquement 
+un <b>Form</b> (resp. <b>BulletinBoard</b>) Manager. Ces bo&icirc;tes de dialogues
+servent &agrave; cr&eacute;er des fen&ecirc;tres secondaires complexes.
+</ul>
+
+<p>
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+
+<h2>Annexe A: Afficher un pixmap</h2>
+
+Regarder le fichier <i>pixmap.c</i>. On remarquera qu'il y a cr&eacute;ation 
+de 3 widgets :
+<ul>
+<li>
+<i>toplevel</i>, le widget de plus haut niveau de l'application
+(toplevel est cr&eacute;&eacute; en m&ecirc;me temps que le toolkit est initialis&eacute;)
+<li>
+<i>box</i>, le "conteneur" ou "Manager" de widgets
+<li>
+<i>label1</i>, le Label widget qui servira &agrave; afficher un pixmap
+</ul>
+<p>
+
+Ceci s'apparente au programme "label.c". <p>
+Cependant on cr&eacute;e maintenant un <B>Pixmap</B> qui peut &ecirc;tre vu comme 
+un masque de points. Il y a diff&eacute;rentes fa&ccedil;ons de cr&eacute;er un Pixmap,
+nous utilisons ici la fonction	<I>XmGetPixmap</I> qui prends en 
+argument un nom de fichier au format <B>xbm</B> (format <I>bitmap</I>)
+, ainsi que les couleurs d'avant et d'arri&egrave;re-plan du dessin. <p>
+Les fichiers au format <B>xbm</B> peuvent &ecirc;tre cr&eacute;&eacute;s par le programme 
+<B>bitmap</B>
+
+<p>
+Compiler et ex&eacute;cuter le programme "pixmap".
+<p>
+
+<img src="//www.infres.enst.fr/gif/lignes/rouj.gif">
+<p>
+<strong>
+<img src=//www.infres.enst.fr/gif/blueball.gif>
+<a href="http://www.infres.enst.fr/~elc">Elc:</a>
+<a href="http://www.infres.enst.fr/~elc/cours">Cours & Exemples</a>
+</strong>
+<p>
+<address>
+<img align=top src="/cgi-bin/Count.cgi?ft=2|md=5|dd=C|sh=1|df=domeo_TP-Motif1.cnt">
+Page maintenue par <a href="http://www.infres.enst.fr/~elc">Eric Lecolinet</a>
+ <i><a href="mailto:elc@enst.fr">(elc@enst.fr)</a></i>. Sept 95 / Apr 97. 
+
+</body>
+</html>
+
+

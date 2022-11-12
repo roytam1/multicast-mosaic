@@ -540,8 +540,6 @@ works on my linux box, hopefully on solaris, too */
 		XEvent event;
 
 		XtAppNextEvent(mMosaicAppContext, &event);
-		if (mc_send_win)
-			McEmitCursor(mc_send_win, &event);
 		XtDispatchEvent(&event);
 	}
 #endif

@@ -260,8 +260,8 @@ typedef struct _HTMLPart {
 	int		nframe;		/* number of frame in FRAMESET_TYPE */
 	TopFrameSetInfo *topframeset_info; /* when i am the top frameset */
 
-/*      String   	frame_src;      /* source document */
-/*      String   	frame_name;     /* internal frame name */
+/*      String   	frame_src;    */  /* source document */
+/*      String   	frame_name;   */  /* internal frame name */
 
 	FontStack	*font_stack;	/* Widget have font stack */
 	XFontStruct	*default_font;	/* start with this font */
@@ -328,12 +328,6 @@ extern void ObjectPlace(HTMLWidget hw, struct mark_up **mptr,
 
 extern void ObjectRefresh(HTMLWidget hw, struct ele_rec *eptr);
 
-/*extern void _FreeAprogStruct(AprogInfo * aps);
-/*extern void _FreeAppletStruct(AppletInfo * ats);
-/*extern void _FreeTableStruct(TableInfo * t);
-/*extern void             AppletPlace(HTMLWidget hw, struct mark_up **mptr, 
-                                PhotoComposeContext * pcc, Boolean save); 
-/*extern void             AppletRefresh(HTMLWidget hw, struct ele_rec *eptr);
-
-*/
+/*extern void _FreeAprogStruct(AprogInfo * aps); */
+/*extern void _FreeTableStruct(TableInfo * t); */
 #endif /* HTMLP_H */

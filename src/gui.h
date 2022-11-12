@@ -29,7 +29,6 @@ XmxCallbackPrototype (menubar_cb);
 
 void mo_gui_check_security_icon_in_win(int type, mo_window *win);
 
-void mo_gui_apply_default_icon(mo_window *);
 void mo_flush_passwd_cache (mo_window *win);
 
 void mo_exit (void);

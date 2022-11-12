@@ -10,7 +10,7 @@
 #	- NetWinder (StrongArm based machine)
 #	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.6.5
+MCVER=3.6.6
 
 ##
 ## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
@@ -21,8 +21,8 @@ MCVER=3.6.5
 ##
 
 #CC = gcc
-CC = cc
-#CC = CC
+#CC = cc
+CC = CC
 
 ##
 ## Linker options
@@ -49,9 +49,9 @@ CC = cc
 # SGI Mipspro
 #prereleaseflags = -g -n32 -Xcpluscomm -woff 1009,1014,1048,1110,1116,1185,1188,1204,1230,1233
 # Sun Workshop C Compiler
-prereleaseflags = -v -g -xstrconst
+#prereleaseflags = -v -g -xstrconst
 # Sun Workshop C++ Compiler
-#prereleaseflags = +w -g
+prereleaseflags = +w -g
 
 # For building a shared lib add this	(don't use: experimental)
 #prereleaseflags = $prereleaseflags -fPIC
@@ -236,12 +236,23 @@ mcflag = -I$(mcdir) -DMULTICAST
 mclib = $(mcdir)/libmc.a
 
 ##
-## APROG support (obsolete)
+## OBJECT dynamique plugin support (new and experimental)
 ## 
 
-#adir = $(PWD)/libaprog
-#aflag = -I$(adir) -DAPROG
-#alib = $(adir)/libaprog.a
+# to compile mMosaic with plugins
+plugdir = $(PWD)/plugins/pluglib
+pluglib = $(plugdir)/libmMplug.a
+plugflags = -I$(plugdir) -DOBJECT
+
+# to compile plugins given as examples
+explugdir = $(PWD)/plugins/examples
+# for gcc
+#explugccflag = -fpic
+#explugldflag = -shared
+#
+# for Solaris cc workshop
+explugccflag = -I$(plugdir) -KPIC
+explugldflag = -G
 
 ##
 ## Customization flags
@@ -266,15 +277,15 @@ mclib = $(mcdir)/libmc.a
 #
 # Common
 
-customflags = -DOBJECT
+customflags = 
 
 ##
 ## ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------
 ##
 
-CFLAGS = $(sysconfigflags) $(prereleaseflags) $(mcflag) $(aflag) $(customflags)
+CFLAGS = $(sysconfigflags) $(prereleaseflags) $(mcflag) $(plugflags) $(customflags)
 
-all: libhtmlw libnut $(mclib) $(alib) src
+all: libhtmlw libnut $(mclib) $(pluglib) $(explugdir) src
 	@echo \*\*\* Welcome to mMosaic.
 
 libhtmlw::
@@ -289,30 +300,42 @@ $(mclib) ::
 	@echo --- Building libmc
 	(cd libmc; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc)")
 
-$(alib) ::
-	@echo --- Building libaprog
-	(cd libaprog; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc)" X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)")
+$(pluglib) ::
+	@echo --- Building pluglib
+	(cd plugins/pluglib; make CC=$(CC) RANLIB=$(RANLIB) CFLAGS="$(CFLAGS) $(xinc)" X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)")
  
 
 src::
 	@echo --- Building src
-	(cd src; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(xinc) $(jpegflags) $(pngflags) $(krbflags) -I.." X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut LIBMC=$(mclib) MOSAIC="mMosaic")
+	(cd src; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(ldflags)" CFLAGS="$(CFLAGS) $(xinc) $(jpegflags) $(pngflags) $(krbflags) -I.." X_LIBS="$(xlibs)" SYS_LIBS="$(sockslibs) $(syslibs)" JPEG_LIBS="$(jpeglibs)" PNG_LIBS="$(pnglibs)" KRB_LIBS="$(krblibs)" LIBNUT_DIR=../libnut LIBMC=$(mclib) PLUGLIB=$(pluglib) MOSAIC="mMosaic")
 
+$(explugdir) ::
+	@echo --- Building plugins examples
+	(cd plugins/examples; make CC=$(CC) RANLIB=$(RANLIB) LDFLAGS="$(explugldflag)" CFLAGS="$(xinc) $(prereleaseflags) $(explugccflag)" )
 
 install: all
+	- cp src/mMosaic /usr/local/bin/mMosaic.old
+	- chmod 755 /usr/local/bin/mMosaic.old
+	- mkdir -p /usr/local/mMosaic/plugins
+	- cp plugins/gifview /usr/local/mMosaic/plugins/gifview.old
+	- cp plugins/mtvp /usr/local/mMosaic/plugins/mtvp.old
+	- chmod 755 /usr/local/mMosaic/plugins/*
 	- strip src/mMosaic
 	- cp src/mMosaic /usr/local/bin/mMosaic	
 	- chmod 755 /usr/local/bin/mMosaic
 	- mkdir /usr/local/mMosaic
 	- mkdir /usr/local/mMosaic/plugins
-	- cp plugins/* /usr/local/mMosaic/plugins
+	- cp plugins/wrappers/* /usr/local/mMosaic/plugins
 	- chmod 755 /usr/local/mMosaic/plugins/*
+
 
 clean:
 	cd libhtmlw; $(MAKE) clean
 	cd libnut; $(MAKE) clean
 	cd libmc; $(MAKE) clean
 	cd src; $(MAKE) clean MOSAIC="Mosaic"
+	cd plugins/pluglib; $(MAKE) clean
+	cd plugins/examples; $(MAKE) clean
 	rm -f *.core core
 	@echo "Done cleaning..."
 

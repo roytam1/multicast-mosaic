@@ -296,7 +296,7 @@ static enum InIpV HTParseInet (SockA4 *sin4, const char *str)
 #ifdef DEBUG_HTTP
 		fprintf(stderr, "TCP: Parsed address as port %d, IP address %s\n",
 			(int)ntohs(sin4->sin_port),
-			HTInetString(sin4,sin6,IN_IPV_4));
+			HTInetString(sin6,IN_IPV_4));
 #endif
 		return cip_v;	/* OK */
 	}
@@ -343,7 +343,7 @@ static enum InIpV HTParseInet (SockA4 *sin4, const char *str)
 #ifdef DEBUG_HTTP
 		fprintf(stderr, "TCP: Parsed address as port %d, IP address %s\n",
 			(int)ntohs(sin4->sin_port),
-			HTInetString(sin4,sin6,cip_v));
+			HTInetString(sin6,cip_v));
 #endif
 #endif /* IPV6 */
 	return cip_v;	/* OK */

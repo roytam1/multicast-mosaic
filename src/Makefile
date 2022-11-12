@@ -2,9 +2,8 @@ All: $(MOSAIC)
 
 LIBHTMLW_DIR = ../libhtmlw
 
-# PROGRAM_LIBS = $(LIBWWW_DIR)/libwww.a $(LIBHTMLW_DIR)/libhtmlw.a $(LIBNUT_DIR)/libnut.a $(LIBMC_DIR)/libmc.a
 PROGRAM_LIBS = $(LIBHTMLW_DIR)/libhtmlw.a $(LIBNUT_DIR)/libnut.a $(LIBMC)
-LIBS = $(PROGRAM_LIBS) $(JPEG_LIBS) $(PNG_LIBS) $(X_LIBS) $(KRB_LIBS) $(MATH_LIB) $(SYS_LIBS)
+LIBS = $(PROGRAM_LIBS) $(JPEG_LIBS) $(PNG_LIBS) $(X_LIBS) $(KRB_LIBS) $(PLUGLIB) $(MATH_LIB) $(SYS_LIBS)
 
 CFILES = main.c gui.c  gui-dialogs.c gui-menubar.c gui-documents.c gui-news.c\
   newsrc.c gui-extras.c hotlist.c navigate.c globalhist.c img.c picread.c\

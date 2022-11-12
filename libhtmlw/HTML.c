@@ -92,7 +92,7 @@ static XtActionsRec actionsList[] = {
    { "extend-start",    (XtActionProc) ExtendStart },
    { "extend-adjust",   (XtActionProc) ExtendAdjust },
    { "extend-end",      (XtActionProc) ExtendEnd },
-   { "track-motion",    (XtActionProc) TrackMotion }
+   { "track-motion",    (XtActionProc) TrackMotion },
 };
 
 /*

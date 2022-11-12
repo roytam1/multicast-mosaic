@@ -25,8 +25,11 @@
 
 #define NEWS_NOANCHOR (E_TEXT | E_BULLET | E_LINEFEED | E_WIDGET | E_HRULE |E_TABLE)
 
-typedef enum _w_class { LastItem=1, PushButton, Separator, CascadeButton,
-			ToggleButton, Widgt } w_class;
+typedef enum _w_class {
+	LastItem=1, PushButton, Separator, CascadeButton,
+			ToggleButton, Widgt
+} w_class;
+
 enum { I_Save, I_ViewExternal, I_ViewInternal, I_Reload,                    
         M_ImageData, M_LinkData, M_FileData };
 
@@ -37,7 +40,7 @@ typedef struct act_struct {
 	mo_window * win;
 } act_struct;
 
-typedef struct PopupItem {
+typedef struct _PopupItem {
 /* the top half must be filled in if this is to appear in the popup */
 
   w_class              classw; /* this is a button, separator, label, cascade */
@@ -58,32 +61,20 @@ typedef struct PopupItem {
   char                 *accel;
 
 /* this is needed for a cascade class */
-  struct               PopupItem *sub_items; /* NULL if this isn't a 
-						    pull_right */
+  struct  _PopupItem   *sub_items; /* NULL if this isn't a pull_right */
+  int 			sub_items_size;
 /* this is for internal uses */
    Widget               _w;
    int                  startup; /* are we sensitive when we start */
    mo_window 		*win;     /* which mo_window call me ? */
 } PopupItem;
 
-XmxCallbackPrototype (image_cb);
-XmxCallbackPrototype (metadata_cb);
-XmxCallbackPrototype (user_defs_cb);
-XmxCallbackPrototype (fsb_CancelCallback);
-XmxCallbackPrototype (copy_link_cb);
 XmxCallbackPrototype (rbm_ballonify);
 extern void mo_make_popup(mo_window * win);
 
 char *getFileName(char *file_src);
 void mo_popup_set_something(char *what, int to, PopupItem *items);
-PopupItem *popup_build_user_defs();
-
-extern Boolean have_popup;
-extern Widget popup ;
-
-extern PopupItem image_menu[];
-extern PopupItem file_menu[];
-extern PopupItem popup_items[];
 
 extern void PopSaveLinkFsbDialog(char * url);
+extern void mo_destroy_popup(mo_window * win);
 #endif

@@ -229,10 +229,16 @@ static char ExpandEscapes(char *esc)
 	char val;
 	char *endc;
 	int escLen, ampLen;
+	int base = 10;
 
 	esc++;
-	if (*esc == '#') {
-		val = (char)strtol((esc + 1),&endc,10);
+	if (*esc == '#') {	/* HTML4.0 page 41 */
+		esc++;
+		if( *esc == 'x' || *esc == 'X') {
+			base = 16;
+			esc++;
+		}
+		val = (char)strtol(esc ,&endc,base);
 		if ( *endc != '\0')
 			return 0;
 		return val;
