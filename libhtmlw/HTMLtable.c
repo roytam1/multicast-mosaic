@@ -721,7 +721,7 @@ void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_
 {
 	PhotoComposeContext deb_pcc;
 	PhotoComposeContext fin_pcc;
-	int i,j;
+	int i,j,k;
 	CellStruct * line;
 	CellStruct  cell;
 	int line_min_w ;
@@ -756,19 +756,24 @@ void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext * orig_
 	for(i=0; i< t->num_row; i++){
 		line = t->row_list->cells_lines[i];
 		h_row = 0;
-		for(j=0; j<t->num_col; j++){ /* prendre chaque element */
+		for(j=0; j<t->num_col; ){ /* prendre chaque element */
 			fin_pcc = deb_pcc;
 			cell = line[j];		/* un element */
 			if(cell.cell_type == M_TABLE_HEADER){
 				fin_pcc.cur_font = hw->html.bold_font;
 			}
 			FormatChunk(hw,cell.td_start,cell.td_end,&fin_pcc,0);
-			line[j].min_width = 1+fin_pcc.computed_min_x/cell.colspan;
-			line[j].max_width = 1+fin_pcc.computed_max_x/cell.colspan;
-			if (t->col_min_w[j] < line[j].min_width)
-				t->col_min_w[j] = line[j].min_width;
-			if (t->col_max_w[j] < line[j].max_width)
-				t->col_max_w[j] = line[j].max_width;
+			for(k = 0; k < cell.colspan; k++){
+				line[j].min_width = 
+					1+fin_pcc.computed_min_x/cell.colspan;
+				line[j].max_width = 
+					1+fin_pcc.computed_max_x/cell.colspan;
+				if (t->col_min_w[j] < line[j].min_width)
+					t->col_min_w[j] = line[j].min_width;
+				if (t->col_max_w[j] < line[j].max_width)
+					t->col_max_w[j] = line[j].max_width;
+				j++;
+			}
 			if ( fin_pcc.cur_line_height > h_row)
 				h_row = fin_pcc.cur_line_height;
 		}
@@ -840,10 +845,10 @@ void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc)
 /* once we have a table, we compute the min and max size of each cell */
 /* save the contexte for each cell, parse beetween marker , the return context */
 /* give the size. When doing this NEVER create element */
-/* save the img struct or aprog struct in the mark_up struct, NOT in */
+/* save the img struct or aprog struct or applet struct in the mark_up struct, NOT in */
 /* ele_rec struct */
 
-#ifdef TODO
+#ifdef TO_DO
 	Faire un premier tour pour caption avec un pcc artificiel
 	stocker le pcc_caption(min,max)
 #endif
@@ -1084,6 +1089,7 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 			line_pcc.element_id = work_pcc.element_id;
 			line_pcc.internal_mc_eo = work_pcc.internal_mc_eo;
 			line_pcc.aprog_id = work_pcc.aprog_id;
+			line_pcc.applet_id = work_pcc.applet_id;
 		}
 /*Ajuster les hauteurs des 'cells'*/
 /*Faire attention au span en ligne et colonne */
@@ -1120,6 +1126,7 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	pcc->element_id =line_pcc.element_id ;
 	pcc->internal_mc_eo = line_pcc.internal_mc_eo ;
 	pcc->aprog_id =	line_pcc.aprog_id ;
+	pcc->applet_id = line_pcc.applet_id ;
 
 	t->width = w_table;
 	t->height = h_table;

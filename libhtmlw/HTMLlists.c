@@ -363,6 +363,30 @@ void FreeLineList( struct ele_rec *list, Widget w, Boolean save_obj)
 				eptr->pic_data->src = NULL;
 			}
 		}
+		if((eptr->type == E_APPLET) && eptr->applet_struct && eptr->applet_struct->frame){
+			static Atom delete_atom = 0;
+			static Atom proto_atom = 0;
+
+			if (!delete_atom)
+        			delete_atom = XInternAtom(XtDisplay(w),
+						"WM_DELETE_WINDOW", False);
+			if(!proto_atom)
+        			proto_atom = XInternAtom(XtDisplay(w),
+						"WM_PROTOCOLS", False);
+			if (save_obj == False){
+				fprintf(stderr,"****mMosaic*** send WM_DELETE_WINDOW****\n");
+        			send_clientmessage(XtDisplay(w), 
+					XtWindow(eptr->applet_struct->frame),
+					proto_atom, delete_atom, CurrentTime);
+				XFlush(XtDisplay(w));
+				XtSetMappedWhenManaged(eptr->applet_struct->frame,
+					False);
+				XFlush(XtDisplay(w));
+				XtDestroyWidget(eptr->applet_struct->frame);
+			}
+/*##### need lot of other stuff to free the allocated struct ######### */
+
+		}
 		if((eptr->type == E_APROG) && eptr->aprog_struct && eptr->aprog_struct->frame){
 			static Atom delete_atom = 0;
 			static Atom proto_atom = 0;
@@ -386,15 +410,13 @@ void FreeLineList( struct ele_rec *list, Widget w, Boolean save_obj)
 /*##### need lot of other stuff to free the allocated struct ######### */
 
 		}
-#ifdef TODO
+#ifdef TO_DO
 /*        	if(eptr->pic_data->fptr != NULL) {#########don't know what to do ##### */
 /*			typedef struct form_rec {
 *        			Widget hw;
 *        			char *action;
 *        			char *method;
 *        			char *enctype;
-*        			char *enc_entity;
-*        			char *format;
 *        			int start, end;
 *			        Widget button_pressed;
 *			        struct form_rec *next;
@@ -466,16 +488,16 @@ void FreeLineList( struct ele_rec *list, Widget w, Boolean save_obj)
 		free((char *)eptr);
 	}
         /* Now take care of the background image! -- SWP */
-        if (hw->html.bgmap_SAVE!=None) {  
-                XFreePixmap(XtDisplay(hw),
-                            hw->html.bgmap_SAVE);
-                hw->html.bgmap_SAVE=None; 
-        }                            
-        if (hw->html.bgclip_SAVE!=None) { 
-                XFreePixmap(XtDisplay(hw),
-                            hw->html.bgclip_SAVE);
-                hw->html.bgclip_SAVE=None;
-        }
+/* this code is now in hw_do_bg */
+/*        if (hw->html.bgmap_SAVE!=None) {  
+/*                XFreePixmap(XtDisplay(hw), hw->html.bgmap_SAVE);
+/*                hw->html.bgmap_SAVE=None; 
+/*        }                            
+/*        if (hw->html.bgclip_SAVE!=None) { 
+/*                XFreePixmap(XtDisplay(hw), hw->html.bgclip_SAVE);
+/*                hw->html.bgclip_SAVE=None;
+/*        }
+*/
 }
 
 /*

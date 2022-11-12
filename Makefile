@@ -6,7 +6,7 @@
 ## Scott Powers
 ##
 
-MCVER=3.0.13
+MCVER=3.1.0
 
 all: dev_$(DEV_ARCH)
 
@@ -25,6 +25,7 @@ dev_::
 	@echo "  linux -- x86 running Linux 1.2.13 DYNAMIC"
 	@echo "  linux-static -- x86 running Linux 1.2.13 ALL STATIC"
 	@echo "  linux-static-motif -- x86 running Linux 1.2.13 STATIC MOTIF"
+	@echo "  QNX  running QNX4.23A"
 	@echo "  sgi -- SGI Iris running IRIS 4.0.2"
 	@echo "  solaris-23 -- SPARCstation 20 running Solaris 2.3"
 	@echo "  solaris-24 -- SPARCstation 20 running Solaris 2.4"
@@ -77,6 +78,10 @@ linux_static:
 dev_linux_static_motif: linux_static_motif
 linux_static_motif:
 	$(MAKE) -f makefiles/Makefile.linux static_motifd
+
+dev_qnx: qnx
+qnx:
+	$(MAKE) -f makefiles/Makefile.qnx
 
 dev_sgi: sgi
 sgi:

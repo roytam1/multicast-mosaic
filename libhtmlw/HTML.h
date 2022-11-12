@@ -1,4 +1,4 @@
-/* Please read copyright.tmpl. Don't remove next line */
+/* Please read copyright.ncsa. Don't remove next line */
 #include "copyright.ncsa"
 
 #ifndef HTML_H
@@ -12,9 +12,7 @@
 
 #include <X11/StringDefs.h>
 
-/*
- * defines and structures used for the HTML parser, and the parsed object list.
- */
+/* defines and structures used for the HTML parser, and the parsed object list. */
 
 typedef enum _MarkType {
 	M_INIT_STATE = -2,
@@ -204,6 +202,7 @@ struct mark_up {
 	char *end;
 	struct mark_up *next;
 	struct aprog_rec * saved_aps;
+	struct applet_rec * saved_ats;
 	struct table_rec * table_info1;	/* First pass table */
 	char * anchor_name;
 	char * anchor_href;
@@ -261,8 +260,6 @@ typedef struct fcall_rec {
 	char *href;
         char *method;
         char *enctype;
-        char *enc_entity;
-	char *format;
 	int attribute_count;
 	char **attribute_names;
 	char **attribute_values;
@@ -273,8 +270,6 @@ typedef struct form_rec {
 	char *action;
         char *method;
         char *enctype;
-        char *enc_entity;
-	char *format;
 	int start, end;
         Widget button_pressed; /* match button pressed to one of submits */
 	struct form_rec *next;
@@ -378,7 +373,6 @@ typedef enum {
 } HalignType;
 
 
-
 typedef struct _CellStruct {
         int td_count;
         int tr_count;
@@ -471,14 +465,38 @@ typedef enum {
 	E_TABLE	,
 	E_CELL_TABLE,
 	E_APROG,
+	E_APPLET,
 	E_MAP
 } ElementType;
 
 typedef enum {
 	CODE_TYPE_UNKNOW,
 	CODE_TYPE_BIN,
-	CODE_TYPE_SRC
+	CODE_TYPE_SRC,
+	CODE_TYPE_APPLET
 } CodeType;
+
+typedef struct applet_rec {
+	CodeType ctype;
+	char * src;
+	int width;
+	int height;
+	int x;
+	int y;
+	int border_width;
+	ValignType valignment;
+	int param_count;
+	char **param_name_t;
+	char **param_value_t;
+	int url_arg_count;
+	char **url_arg;
+	McMoWType wtype;
+	int *internal_numeos;
+	char ** ret_filenames;
+	Boolean cw_only;
+	Widget w;
+	Widget frame;
+} AppletInfo;
 
 typedef struct aprog_rec {
 	CodeType ctype;
@@ -517,6 +535,7 @@ struct ele_rec {
 	WidgetInfo *widget_data;
 	TableInfo *table_data;
 	AprogInfo * aprog_struct;
+	AppletInfo * applet_struct;
 	XFontStruct *font;
 	ValignType valignment;
 	HalignType halignment;
@@ -532,6 +551,7 @@ struct ele_rec {
 	int line_number;
 	int ele_id;
 	int aprog_id;
+	int applet_id;
 	int underline_number;
 	Boolean dashed_underline;
 	Boolean strikeout;

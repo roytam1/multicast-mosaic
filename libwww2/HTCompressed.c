@@ -1,6 +1,8 @@
 #include <sys/wait.h>
 #include <sys/time.h>
+#ifndef __QNX__
 #include <sys/resource.h>
+#endif
 #include <unistd.h>
 
 

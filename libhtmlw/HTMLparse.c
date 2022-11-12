@@ -855,6 +855,8 @@ static MarkType ParseMarkType(char *str)
 		type = M_TABLE_DATA;
 	} else if (caseless_equal(str, MT_APROG)){
 		type = M_APROG;
+	} else if (caseless_equal(str, MT_APPLET)){
+		type = M_APPLET;
 	} else if (caseless_equal(str, MT_PARAM)){
 		type = M_PARAM;
 	} else if (caseless_equal(str, MT_HTML)){

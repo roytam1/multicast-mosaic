@@ -54,13 +54,13 @@ MO_SIGHANDLER_RETURNTYPE ProcessExternalDirective (MO_SIGHANDLER_ARGS)
 	sprintf (filename, "/tmp/Mosaic.%d", getpid ());
 	fp = fopen (filename, "r");
 	if (!fp){
-		signal (SIGUSR1, ProcessExternalDirective);
+		signal (SIGUSR1, (void*)ProcessExternalDirective);
 		return;
 	}
 	status = fgets (line, MO_LINE_LENGTH, fp);
 	if (!status || !(*line)) {
 		fclose(fp);
-		signal (SIGUSR1, ProcessExternalDirective);
+		signal (SIGUSR1, (void*)ProcessExternalDirective);
 		return;
 	}
 	directive = strdup (line);
@@ -75,7 +75,7 @@ MO_SIGHANDLER_RETURNTYPE ProcessExternalDirective (MO_SIGHANDLER_ARGS)
 	free (directive);
 	free (url);
 	fclose(fp);
-	signal (SIGUSR1, ProcessExternalDirective);
+	signal (SIGUSR1, (void*)ProcessExternalDirective);
 }  
 
 static void RealFatal (void)
@@ -142,7 +142,7 @@ system.\n");
 
 	InitChildProcessor();
 	MoCCIPreInitialize();
-#ifdef SVR4
+#if defined(SVR4) || defined(__QNX__)
 	signal(SIGCHLD, (void (*)(int))ChildTerminated);
 #else
 	signal(SIGCLD, (void (*)())ChildTerminated);

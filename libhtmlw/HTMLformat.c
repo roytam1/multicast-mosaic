@@ -1,5 +1,10 @@
-/* Please read copyright.tmpl. Don't remove next line */
+/* Please read copyright.ncsa. Don't remove next line */
 #include "copyright.ncsa"
+
+/* Some part of this file is Copyright (C) 1996 - G.Dauphin
+ * See the file "license.mMosaic" for information on usage and redistribution
+ * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+ */
 
 #include <stdlib.h>
 #include <sys/time.h>
@@ -10,6 +15,8 @@
 #include "HTMLPutil.h"
 #include "../src/mo-www.h"
 #include "../src/mosaic.h"
+
+#include "HTMLform.h"
 
 #include <Xm/Frame.h>
 #include <Xm/DrawingA.h>
@@ -45,22 +52,19 @@ static struct timezone Tz;
 /* ############## This is may be as global ####*/
 static FontRec FontBase;
 static FontRec *FontStack;
-static SelectInfo *CurrentSelect;
 
 /* ##############  This is maybe in a context stack ####*/
 static DescRec BaseDesc;
 static DescRec *DescType;
-static int Ignore;
 static Boolean Strikeout;
 static char *TitleText;
-static char *TextAreaBuf;
 static XFontStruct *nonScriptFont;
 static int InDocHead;
 static MapInfo *CurrentMap=NULL; /* csi stuff -- swp */
 /* ############ */
 
-/*
- * Set the formatted element into the format list. 
+/* GD ########## */
+/* Set the formatted element into the format list. 
  * If hw->html.cur_elem_to_format is initialised to NULL each time
  * we reformat the widget, CreateElement alway create and elem. at end.
  */
@@ -120,6 +124,7 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
 	eptr->widget_data = NULL;
 	eptr->table_data = NULL;
 	eptr->aprog_struct = NULL;
+	eptr->applet_struct = NULL;
 
 	eptr->line_next = NULL;
 
@@ -144,6 +149,7 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
         		/* eptr->prev is set when allocate */
 	return eptr;
 }
+/* end GD ###### */
 
 void AdjustBaseLine(HTMLWidget hw,struct ele_rec *eptr,
 		PhotoComposeContext * pcc)
@@ -220,11 +226,9 @@ void AdjustBaseLine(HTMLWidget hw,struct ele_rec *eptr,
 	}
 }
 
-/*
- * Place the number at the beginning of an numbered
+/* Place the number at the beginning of an numbered
  * list item. Create and add the element record for it.
  */
-
 void ListNumberPlace( HTMLWidget hw, PhotoComposeContext * pcc, int val)
 {
 	int width;
@@ -291,49 +295,6 @@ static XFontStruct * PopFont()
 		font = FontStack->font;
 	}
 	return(font);
-}
-
-/*
- * We've just terminated the current OPTION.
- * Put it in the proper place in the SelectInfo structure.
- * Move option_buf into options, and maybe copy into
- * value if is_value is set.
- */
-static void ProcessOption( SelectInfo *sptr)
-{
-	int i, cnt;
-	char **tarray;
-
-	clean_white_space(sptr->option_buf);
-	tarray = sptr->options;
-	cnt = sptr->option_cnt + 1;
-	sptr->options = (char **)malloc(sizeof(char *) * cnt);
-	for (i=0; i<(cnt - 1); i++)
-		sptr->options[i] = tarray[i];
-	if (tarray != NULL)
-		free((char *)tarray);
-	sptr->options[cnt - 1] = sptr->option_buf;
-	sptr->option_cnt = cnt;
-	tarray = sptr->returns;
-	cnt = sptr->option_cnt;
-	sptr->returns = (char **)malloc(sizeof(char *) * cnt);
-	for (i=0; i<(cnt - 1); i++)
-		sptr->returns[i] = tarray[i];
-	if (tarray != NULL)
-		free((char *)tarray);
-	sptr->returns[cnt - 1] = sptr->retval_buf;
-	if (sptr->is_value) {
-		tarray = sptr->value;
-		cnt = sptr->value_cnt + 1;
-		sptr->value = (char **)malloc(sizeof(char *) * cnt);
-		for (i=0; i<(cnt - 1); i++)
-			sptr->value[i] = tarray[i];
-		if (tarray != NULL)
-			free((char *)tarray);
-		sptr->value[cnt - 1] =(char *)malloc(strlen(sptr->option_buf) +1);
-		strcpy(sptr->value[cnt - 1], sptr->option_buf);
-		sptr->value_cnt = cnt;
-	}
 }
 
 /* Horrible code for the TEXTAREA element.  Escape '\' and ''' by
@@ -405,12 +366,12 @@ char * TextAreaAddValue( char *value, char *text)
 	if (InDocHead) {
 		if((type != M_TITLE)&&(type != M_NONE)&&(type != M_BASE)&&
 		   (type != M_INDEX)&&(type != M_COMMENT)) {
-			Ignore = 0;
+			pcc->ignore = 0;
 			InDocHead = 0;
 	  	}
 	}
-	/* If Ignore is set, we ignore all further elements until we get to the
-	 * end of the Ignore
+	/* If pcc->ignore is set, we ignore all further elements until we get to the
+	 * end of the pcc->ignore
 	 * Let text through so we can grab the title text.
 	 * Let title through so we can hit the end title.
 	 * Now also used for SELECT parseing
@@ -418,7 +379,7 @@ char * TextAreaAddValue( char *value, char *text)
 	 * Let OPTION through so we can hit the OPTIONs.
 	 * Let TEXTAREA through so we can hit the TEXTAREAs.
 	 */
-	if ((Ignore)&&(!InDocHead)&&(type != M_TITLE)&&(type != M_NONE)&&
+	if ((pcc->ignore)&&(!InDocHead)&&(type != M_TITLE)&&(type != M_NONE)&&
 		(type != M_SELECT)&&(type != M_OPTION)&&
 		(type != M_TEXTAREA)&&(type != M_DOC_HEAD))
 		        return;
@@ -429,7 +390,7 @@ char * TextAreaAddValue( char *value, char *text)
 	 * is pre-formatted or not.
 	 */
 	case M_NONE:
-		if ((Ignore)&&(CurrentSelect == NULL)&& (TextAreaBuf == NULL)) {
+		if ((pcc->ignore)&&(pcc->current_select == NULL)&& (pcc->text_area_buf == NULL)) {
 			if (TitleText == NULL) {
 				TitleText = (char *)
 					malloc(strlen((*mptr)->text) + 1);
@@ -444,20 +405,20 @@ char * TextAreaAddValue( char *value, char *text)
 			}
 			break;
 		}
-		if ((Ignore)&&(CurrentSelect != NULL)) {
-			if (CurrentSelect->option_buf != NULL) {
+		if ((pcc->ignore)&&(pcc->current_select != NULL)) {
+			if (pcc->current_select->option_buf != NULL) {
 				tptr = (char *)malloc(strlen(
-					CurrentSelect->option_buf) +
+					pcc->current_select->option_buf) +
 					       strlen((*mptr)->text) + 1);
-				strcpy(tptr, CurrentSelect->option_buf);
+				strcpy(tptr, pcc->current_select->option_buf);
 				strcat(tptr, (*mptr)->text);
-				free(CurrentSelect->option_buf);
-				CurrentSelect->option_buf = tptr;
+				free(pcc->current_select->option_buf);
+				pcc->current_select->option_buf = tptr;
 			}
 			break;
 		}
-		if ((Ignore)&&(TextAreaBuf != NULL)) {
-			TextAreaBuf = TextAreaAddValue(TextAreaBuf,(*mptr)->text);
+		if ((pcc->ignore)&&(pcc->text_area_buf != NULL)) {
+			pcc->text_area_buf = TextAreaAddValue(pcc->text_area_buf,(*mptr)->text);
 			break;
 		}
 		if (pcc->preformat) {
@@ -511,11 +472,11 @@ char * TextAreaAddValue( char *value, char *text)
 	case M_TITLE:
 		if (mark->is_end) {
 		       if (!InDocHead)
-			    Ignore = 0;
+			    pcc->ignore = 0;
 		       hw->html.title = TitleText;
 		       TitleText = NULL;
 		} else {
-			Ignore = 1;
+			pcc->ignore = 1;
 			TitleText = NULL;
 		}
 		break;
@@ -611,16 +572,16 @@ char * TextAreaAddValue( char *value, char *text)
 /* amb - ignore text inside a HEAD element */
 	case M_DOC_HEAD:
 		InDocHead = 1;
-		Ignore = 1;
+		pcc->ignore = 1;
 		if (mark->is_end) {
 		        InDocHead = 0;
-			Ignore = 0;
+			pcc->ignore = 0;
 		}
 		break;
 	case M_DOC_BODY:
 		if (!mark->is_end) {
 		        InDocHead = 0;   /* end <head> section */
-			Ignore = 0;
+			pcc->ignore = 0;
 		}
 		break;
 	case M_UNDERLINED:
@@ -787,240 +748,41 @@ if(pcc->anchor_tag_ptr->anchor_title)
 
 /* Can only be inside a SELECT tag. */
 	case M_OPTION:
-		if (CurrentSelect != NULL) {
-			if (CurrentSelect->option_buf != NULL)
-				ProcessOption(CurrentSelect);
-			CurrentSelect->option_buf = (char *)malloc(1);
-			strcpy(CurrentSelect->option_buf, "");
-
-			/*
-			 * Check if this option starts selected
-			 */
-			tptr = ParseMarkTag(mark->start, MT_OPTION, "SELECTED");
-			if (tptr != NULL) {
-				CurrentSelect->is_value = 1;
-				free(tptr);
-			} else {
-				CurrentSelect->is_value = 0;
-			}
-
-			/*
-			 * Check if this option has an different
-			 * return value field.
-			 */
-			tptr = ParseMarkTag(mark->start, MT_OPTION, "VALUE");
-			if (tptr != NULL) {
-			    if (*tptr != '\0') {
-				CurrentSelect->retval_buf = tptr;
-			    } else {
-				CurrentSelect->retval_buf = NULL;
-				free(tptr);
-			    }
-			} else {
-				CurrentSelect->retval_buf = NULL;
-			}
-		}
+		if (mark->is_end)	/* no end mark on <option> */
+			return;
+		FormSelectOptionField( hw, mptr, pcc, save_obj);
 		break;
-/*
- * Special INPUT tag.  Allows an option menu or a scrolled list.
- * Due to a restriction in SGML, this can't just be a subset of 
- * the INPUT markup.  However, I can treat it that way to avoid duplicating
- * code. As a result I combine SELECT and OPTION into a faked up INPUT mark.
- */
+
+/* Special INPUT tag. */
 	case M_SELECT:
-		if (pcc->cur_form == NULL)
-			break;
-		if ((mark->is_end)&&(CurrentSelect != NULL)) {
-			int len;
-			char *buf;
-			char *start;
-			char *options, *returns, *value;
-
-			if (CurrentSelect->option_buf != NULL)
-				ProcessOption(CurrentSelect);
-
-			options = ComposeCommaList( CurrentSelect->options,
-				CurrentSelect->option_cnt);
-			returns = ComposeCommaList( CurrentSelect->returns,
-				CurrentSelect->option_cnt);
-			value = ComposeCommaList( CurrentSelect->value,
-				CurrentSelect->value_cnt);
-			FreeCommaList( CurrentSelect->options,
-				CurrentSelect->option_cnt);
-			FreeCommaList( CurrentSelect->returns,
-				CurrentSelect->option_cnt);
-			FreeCommaList( CurrentSelect->value,
-				CurrentSelect->value_cnt);
-/*
- * Construct a fake INPUT tag.
- */
-			len = strlen(MT_INPUT) + strlen(options) +
-				strlen(returns) + strlen(value) + strlen(
-			     " type=select options=\"\" returns=\"\" value=\"\"");
-			buf = (char *)malloc(len +
-			    strlen(CurrentSelect->mptr->start) + 1);
-			strcpy(buf, MT_INPUT);
-			strcat(buf, " type=select");
-			strcat(buf, " options=\"");
-			strcat(buf, options);
-			strcat(buf, "\" returns=\"");
-			strcat(buf, returns);
-			strcat(buf, "\" value=\"");
-			strcat(buf, value);
-			strcat(buf, "\"");
-			strcat(buf, (char *) (CurrentSelect->mptr->start +
-				strlen(MT_SELECT)));
-/*
- * stick the fake in, saving the real one.
- */
-			start = CurrentSelect->mptr->start;
-			CurrentSelect->mptr->start = buf;
-			WidgetPlace(hw, CurrentSelect->mptr, pcc);
-/* free the fake, put the original back */
-			free(buf);
-			free(options);
-			free(returns);
-			free(value);
-			CurrentSelect->mptr->start = start;
-
-			free((char *)CurrentSelect);
-			CurrentSelect = NULL;
-			Ignore = 0;
-		}
-		else if ((!mark->is_end)&&(CurrentSelect == NULL)) {
-			CurrentSelect = (SelectInfo *)malloc( sizeof(SelectInfo));
-			CurrentSelect->hw = (Widget)hw;
-			CurrentSelect->mptr = *mptr;
-			CurrentSelect->option_cnt = 0;
-			CurrentSelect->returns = NULL;
-			CurrentSelect->retval_buf = NULL;
-			CurrentSelect->options = NULL;
-			CurrentSelect->option_buf = NULL;
-			CurrentSelect->value_cnt = 0;
-			CurrentSelect->value = NULL;
-			CurrentSelect->is_value = -1;
-			Ignore = 1;
+		if (mark->is_end) {
+			FormSelectEnd(hw,mptr,pcc,save_obj);
+		} else {
+			FormSelectBegin(hw,mptr,pcc,save_obj);
 		}
 		break;
 
-/*
- * TEXTAREA is a replacement for INPUT type=text size=rows,cols
- * because SGML will not allow an arbitrary length value
- * field.
- */
 	case M_TEXTAREA:
-		if (pcc->cur_form == NULL)
-			break;
-		if ((mark->is_end)&&(TextAreaBuf != NULL)) {
-			char *start;
-			char *buf;
-
-
-/* Finish a fake INPUT tag. */
-			buf = (char *)malloc( strlen(TextAreaBuf) + 2);
-			strcpy(buf, TextAreaBuf);
-			strcat(buf, "\"");
-/* stick the fake in, saving the real one. */
-			start = mark->start;
-			mark->start = buf;
-			mark->is_end = 0;
-			WidgetPlace(hw, mark, pcc);
-
-/* free the fake, put the original back */
-			free(buf);
-			free(TextAreaBuf);
-			mark->start = start;
-			mark->is_end = 1;
-			TextAreaBuf = NULL;
-			Ignore = 0;
-		}else if ((!mark->is_end)&&(TextAreaBuf == NULL)) {
-			char *buf;
-			int len;
-
-/* Construct  the start of a fake INPUT tag. */
-			len = strlen(MT_INPUT) +
-				strlen( " type=textarea value=\"\"");
-			buf = (char *)malloc(len + strlen(mark->start)+1);
-			strcpy(buf, MT_INPUT);
-			strcat(buf, (char *) (mark->start + strlen(MT_TEXTAREA)));
-			strcat(buf, " type=textarea");
-			strcat(buf, " value=\"");
-			TextAreaBuf = buf;
-			Ignore = 1;
+		if (mark->is_end) {
+			FormTextAreaEnd(hw, mptr, pcc, save_obj);
+		}else {
+			FormTextAreaBegin(hw, mptr, pcc, save_obj);
 		}
 		break;
-/*
- * Just insert the widget.
- * Can only inside a FORM tag.
- * Special case the type=image stuff to become a special
- * IMG tag.
- */
+
+/* Just insert the widget. */
 	case M_INPUT:
-		if (pcc->cur_form != NULL) {
-			char *tptr2;
-
-			tptr = ParseMarkTag((*mptr)->start, MT_INPUT, "TYPE");
-			if ((tptr != NULL)&& (caseless_equal(tptr, "image"))) {
-				free(tptr);
-				tptr = (char *)malloc(
-					strlen((*mptr)->start) +
-					strlen(" ISMAP") +
-					strlen(MT_IMAGE) -
-					strlen(MT_INPUT) + 1);
-				strcpy(tptr, MT_IMAGE);
-				strcat(tptr, (char *)
-					((*mptr)->start + strlen(MT_INPUT))
-					);
-				strcat(tptr, " ISMAP");
-				tptr2 = (*mptr)->start;
-				(*mptr)->start = tptr;
-				ImagePlace(hw, *mptr, pcc);
-				(*mptr)->start = tptr2;
-				free(tptr);
-			}
-/* hidden inputs have no element associated with them, just a widget record. */
-			else if ((tptr != NULL)&& (caseless_equal(tptr, "hidden")))
-			{
-				free(tptr);
-				pcc->widget_id++;
-				(void)MakeWidget(hw, (*mptr)->start, pcc,
-					pcc->widget_id);
-			} else {
-				if (tptr != NULL) {
-					free(tptr);
-				}
-				WidgetPlace(hw, *mptr, pcc);
-			}
-		}
+		if (mark->is_end)	/* no end mark on <input> */
+			return;
+		FormInputField( hw, mptr, pcc, save_obj);
 		break;
 
-/*
- * Fillout forms.  Cannot be nested.
- */
+/* Fillout forms.  Cannot be nested. */
 	case M_FORM:
-		if ((mark->is_end)&&(pcc->cur_form != NULL)) {
-			pcc->cur_form->end = pcc->widget_id;
-			AddNewForm(hw, pcc->cur_form);
-			pcc->cur_form = NULL;
-			break;
-		}
-		if ((!mark->is_end)&&(pcc->cur_form == NULL)) {
-			pcc->cur_form = (FormInfo *)malloc(sizeof(FormInfo));
-			pcc->cur_form->next = NULL;
-			pcc->cur_form->hw = (Widget)hw;
-			pcc->cur_form->action = ParseMarkTag(mark->start,
-				MT_FORM, "ACTION");
-			pcc->cur_form->format = ParseMarkTag(mark->start,
-				MT_FORM, "FORMAT");
-                        pcc->cur_form->method = ParseMarkTag(mark->start,
-                                MT_FORM, "METHOD");
-                        pcc->cur_form->enctype = ParseMarkTag(mark->start,
-                                MT_FORM, "ENCTYPE");
-                        pcc->cur_form->enc_entity = ParseMarkTag(mark->start,
-				MT_FORM, "ENCENTITY");
-			pcc->cur_form->start = pcc->widget_id;
-			pcc->cur_form->end = -1;
-                        pcc->cur_form->button_pressed=NULL;
+		if (mark->is_end) {
+			EndForm  (hw, mptr, pcc, save_obj);
+		} else {
+			BeginForm(hw, mptr, pcc, save_obj);
 		}
 		break;
 
@@ -1245,11 +1007,8 @@ if(pcc->anchor_tag_ptr->anchor_title)
 		pcc->cur_form->hw = (Widget)hw;
 		pcc->cur_form->action = NULL;
 		pcc->cur_form->action = ParseMarkTag(mark->start,MT_INDEX,"ACTION");
-		pcc->cur_form->format = ParseMarkTag(mark->start,MT_INDEX,"FORMAT");
 		pcc->cur_form->method = ParseMarkTag(mark->start,MT_INDEX,"METHOD");
 		pcc->cur_form->enctype=ParseMarkTag(mark->start,MT_INDEX,"ENCTYPE");
-		pcc->cur_form->enc_entity = ParseMarkTag(mark->start, 
-						MT_INDEX, "ENCENTITY");
 		pcc->cur_form->start = pcc->widget_id;
 		pcc->cur_form->end = -1;
 /* Horizontal rule */
@@ -1295,6 +1054,11 @@ if(pcc->anchor_tag_ptr->anchor_title)
 			return;
 		ImagePlace(hw, *mptr, pcc);
 		break;
+	case M_APPLET:
+		if ((*mptr)->is_end) 		/* end of applet */
+			return;
+		AppletPlace(hw,mptr,pcc,save_obj);
+		break;
 	case M_APROG:
 		if ((*mptr)->is_end) 		/* end of aprog */
 			return;
@@ -1328,7 +1092,7 @@ if(pcc->anchor_tag_ptr->anchor_title)
 
 	case M_HTML:			/* don't know what to do with */
 	case M_COMMENT:
-	case M_PARAM:			/* maybe seen in APROG */
+	case M_PARAM:			/* maybe seen in APROG/APPLET */
 	case M_CAPTION:
 	case M_TABLE_HEADER:
 	case M_TABLE_DATA:		/* <TD> peut reaparaitre dans une */
@@ -1343,6 +1107,7 @@ if(pcc->anchor_tag_ptr->anchor_title)
 	}
 } /* TriggerMarkChanges() */
 
+/* GD ######### */
 /*############# */
 	/* copy and push the state */
 	/* cur_hst = *(chst); */
@@ -1377,7 +1142,9 @@ void FormatChunk( HTMLWidget hw, struct mark_up * start_mark,
 			mptr = mptr->next;
 	}
 }
+/* end GD ####### */
 
+/* GD: add PhotoComposeContext struct ### */
 /*
  * Called by the widget to format all the objects in the
  * parsed object list to fit its current window size.
@@ -1443,16 +1210,21 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 	pcc.computed_min_x = 0;
 	pcc.computed_max_x = 0;
 	pcc.cur_form = NULL;
+	pcc.in_form = False;
 	pcc.widget_id = 0;
 	pcc.aprog_id = 0;
+	pcc.applet_id = 0;
         pcc.superscript = 0;
         pcc.subscript = 0;
 	pcc.indent_level = 0;
 	pcc.internal_mc_eo = 0;
 	pcc.parent_html_object_desc = NULL;
+	pcc.text_area_buf = NULL;
+	pcc.ignore = 0;
+	pcc.current_select = NULL;
+	pcc.in_select = False;
 
 /* Initialize local variables, some from the widget */
-	Ignore = 0;
 	Strikeout = False;
 	DescType = &BaseDesc;
 	DescType->type = D_NONE;
@@ -1463,8 +1235,6 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 	DescType->indent_margin = pcc.left_margin;
 	DescType->save_cur_line_width = pcc.cur_line_width;
 	DescType->cur_line_width = pcc.cur_line_width;
-	CurrentSelect = NULL;
-	TextAreaBuf = NULL;
 	InDocHead = 0;
 	if (hw->html.title != NULL) { /* Free the old title, if there is one. */
 		free(hw->html.title);
@@ -1581,6 +1351,9 @@ void RefreshElement(HTMLWidget hw,struct ele_rec *eptr)
 		break;
 	case E_APROG:
 		AprogRefresh(hw,eptr);
+		break;
+	case E_APPLET:
+		AppletRefresh(hw,eptr);
 		break;
 	default:
 		fprintf(stderr,"[PlaceLine] Unknow Element %d\n",eptr->type);

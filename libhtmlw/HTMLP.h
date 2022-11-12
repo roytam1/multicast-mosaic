@@ -1,4 +1,4 @@
-/* Please read copyright.tmpl. Don't remove next line */
+/* Please read copyright.ncsa. Don't remove next line */
 #include "copyright.ncsa"
 
 #ifndef HTMLP_H
@@ -113,20 +113,23 @@ typedef struct _PhotoComposeContext {
 	int		in_underlined ;
 	Boolean		dashed_underlines ;
 	FormInfo *	cur_form ; /* the CurrentForm */
+	Boolean		in_form;	/* is in_form ? */
 	int		widget_id ;
 	int		aprog_id;
+	int		applet_id;
 	int		superscript ;
 	int		subscript ;
 	int		indent_level ;
-	ParentHTMLObjectDesc * parent_html_object_desc;
+	ParentHTMLObjectDesc * parent_html_object_desc; /* for TABLE */
+	char *		text_area_buf ; /* buffer pour Form TextArea */
+	int		ignore ;	/* ignore some tag when formating */
+	SelectInfo *	current_select ; /* SELECT in FORM */
+	Boolean		in_select;	/* is in_select ? */
 /*#############################*/
 	int		is_index ;
 	int		Width ;
-	int		Ignore ;
 	Boolean		Strikeout ;
 	DescRec		DescType ;
-	SelectInfo *	CurrentSelect ;
-	char *		TextAreaBuf ;
 	int		InDocHead ;
 	char *		TitleText ;
 	FontRec		FontBase ;

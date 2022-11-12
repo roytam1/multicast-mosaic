@@ -214,6 +214,10 @@ MIPS unix
 extern int errno;
 #endif
 
+#ifdef __QNX__
+#include <sys/select.h>
+#endif
+
 
 /*
 

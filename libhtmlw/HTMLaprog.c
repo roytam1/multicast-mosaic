@@ -1,14 +1,10 @@
 /* HTMLaprog.c
- * Author: Gilles Dauphin
  * Version 3.0 [Sep96]
  *
  * Copyright (C) 1996 - G.Dauphin
  * See the file "license.mMosaic" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES. 
- *
- * Bug report :  dauphin@sig.enst.fr
  */
-
 
 #include "../libmc/mc_defs.h"
 #include "HTMLP.h"
@@ -17,7 +13,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <Xm/XmAll.h>
-
 
 void AprogPlace(HTMLWidget hw, struct mark_up ** mptr, PhotoComposeContext * pcc,
 	Boolean save_obj)

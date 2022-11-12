@@ -27,6 +27,27 @@
 #include <sys/param.h>
 #include <Xm/XmAll.h>
 
+#ifdef __QNX__
+/*From frank@ctcqnx4.ctc.cummins.com Mon Apr 28 02:33:01 1997
+/*QNX tcp/ip is not as complete, and I have to modify "libmc/mc_sockio.c"
+/*to make it compile. I am wondering IP multicast is supported, I will
+/*check with QNX to see ..  
+/*I will let you know, maybe we will have to disable this for QNX.
+*/
+
+/*those are borrowed from Linux */
+/*QNX's <netinet/in.h> is far from complete, some stuffs are not supported */
+#define IP_MULTICAST_TTL        0x11    /* set/get IP multicast timetolive */
+#define IP_ADD_MEMBERSHIP       0x13    /* add  an IP group membership     */
+/*
+ * Argument structure for IP_ADD_MEMBERSHIP and IP_DROP_MEMBERSHIP.
+ */
+struct ip_mreq {
+        struct in_addr  imr_multiaddr;  /* IP multicast address of group */
+        struct in_addr  imr_interface;  /* local IP address of interface */
+};
+#endif
+
 #include "../libhtmlw/HTML.h"
 #include "../libhtmlw/HTMLP.h"
 #include "../src/mo-www.h"

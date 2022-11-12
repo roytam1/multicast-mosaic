@@ -28,8 +28,6 @@
 
 extern char *ParseMarkTag();
 
-static Boolean ModifyIgnore = False;
-
 char ** 	ParseCommaList( char *str, int *count);
 void 		FreeCommaList( char **list, int cnt);
 char * 		MapOptionReturn( char *val, char **mapping);
@@ -290,10 +288,8 @@ void ImageSubmitForm( FormInfo *fptr, XEvent *event, int x, int y)
 
 	cbdata.event = event;
 	cbdata.href = fptr->action;
-	cbdata.format = fptr->format;
         cbdata.method = fptr->method;
         cbdata.enctype = fptr->enctype;
-        cbdata.enc_entity = fptr->enc_entity;
 
 	name_list = NULL;
 	value_list = NULL;
@@ -341,9 +337,7 @@ void CBSubmitForm( Widget w, caddr_t client_data, caddr_t call_data)
 	cbdata.event = pb->event;
 	cbdata.href = fptr->action;
         cbdata.method = fptr->method;
-	cbdata.format = fptr->format;
         cbdata.enctype = fptr->enctype;
-        cbdata.enc_entity = fptr->enc_entity;
 	fptr->button_pressed = w;
 
 	cbdata.attribute_count = CollectSubmitInfo(fptr,
@@ -467,10 +461,6 @@ void CBPasswordModify( Widget w, caddr_t client_data, caddr_t call_data)
 	/* by default accept nothing
 	tv->doit = False;
 	 */
-
-	/* Ignore when ModifyIgnore is true */
-	if (ModifyIgnore == True)
-		return;
 
 	/* only accept text modification of password fields */
 	if (tv->reason != XmCR_MODIFYING_TEXT_VALUE)
@@ -1395,19 +1385,16 @@ WidgetInfo * MakeWidget( HTMLWidget hw, char *text,
 			label = NULL;
 			value = ParseMarkTag(text, MT_INPUT, "VALUE");
 			if ((value == NULL)||(*value == '\0')) {
-				value = (char *)malloc(strlen("Submit Query") +1);
-				strcpy(value, "Submit Query");
+				value = (char *)malloc(strlen("Submit") +1);
+				strcpy(value, "Submit");
 			}
 			argcnt = 0;
 			XtSetArg(arg[argcnt], XmNx, x); argcnt++;
 			XtSetArg(arg[argcnt], XmNy, y); argcnt++;
-			/*XtSetArg(arg[argcnt], XmNnavigationType, XmNONE);
-			argcnt++;*/
-			if (value != NULL) {
-				label = XmStringCreateSimple(value);
-				XtSetArg(arg[argcnt], XmNlabelString, label);
-				argcnt++;
-			}
+/*XtSetArg(arg[argcnt], XmNnavigationType, XmNONE); argcnt++;*/
+			label = XmStringCreateSimple(value);
+			XtSetArg(arg[argcnt], XmNlabelString, label);
+			argcnt++;
 			w = XmCreatePushButton(hw->html.view, widget_name,
 				arg, argcnt);
                         if(!hw->html.focus_follows_mouse)
@@ -1814,49 +1801,30 @@ WidgetInfo * MakeWidget( HTMLWidget hw, char *text,
 		}
 		else if((type_str!=NULL)&&(strcasecmp(type_str, "textarea") ==0))
 		{
-			char **list;
-			int list_cnt;
 			int rows, cols;
 			Widget scroll;
 
 			type = W_TEXTAREA;
 
-			/*
-			 * If there is no SIZE, look for ROWS and COLS
-			 * directly.
-			 * SIZE is COLUMNS,ROWS parse the list
-			 */
-			rows = -1;
-			cols = -1;
-			tptr = ParseMarkTag(text, MT_INPUT, "SIZE");
-			if (tptr == NULL) {
-				tptr = ParseMarkTag(text, MT_INPUT, "ROWS");
-				if (tptr != NULL) {
-					rows = atoi(tptr);
-					free(tptr);
-				}
-				tptr = ParseMarkTag(text, MT_INPUT, "COLS");
-				if (tptr != NULL) {
-					cols = atoi(tptr);
-					free(tptr);
-				}
-			} else {
-				list = ParseCommaList(tptr, &list_cnt);
+			/* look for ROWS and COLS directly. */
+			rows = 4;
+			cols = 40;
+			tptr = ParseMarkTag(text, MT_INPUT, "ROWS");
+			if (tptr != NULL) {
+				rows = atoi(tptr);
 				free(tptr);
-
-				if (list_cnt == 1) {
-					cols = atoi(list[0]);
-				}
-				else if (list_cnt > 1)
-				{
-					cols = atoi(list[0]);
-					rows = atoi(list[1]);
-				}
-				FreeCommaList(list, list_cnt);
 			}
+			if ( rows <= 0)
+				rows = 4;
+			tptr = ParseMarkTag(text, MT_INPUT, "COLS");
+			if (tptr != NULL) {
+				cols = atoi(tptr);
+				free(tptr);
+			}
+			if (cols <=0)
+				cols = 40;
 
-			/*
-			 * Grab the starting value of the text here.
+			/* Grab the starting value of the text here.
 			 * NULL if none.
 			 */
 			value = ParseMarkTag(text, MT_INPUT, "VALUE");
@@ -1871,20 +1839,13 @@ WidgetInfo * MakeWidget( HTMLWidget hw, char *text,
 			argcnt = 0;
 			XtSetArg(arg[argcnt], XmNeditMode, XmMULTI_LINE_EDIT);
 			argcnt++;
-			if (cols > 0) {
-				XtSetArg(arg[argcnt], XmNcolumns, cols);
-				argcnt++;
-			}
-			if (rows > 0) {
-				XtSetArg(arg[argcnt], XmNrows, rows);
-				argcnt++;
-			}
+			XtSetArg(arg[argcnt], XmNcolumns, cols); argcnt++;
+			XtSetArg(arg[argcnt], XmNrows, rows); argcnt++;
 			if (value != NULL) {
 				XtSetArg(arg[argcnt], XmNvalue, value);
 				argcnt++;
 			}
-                        /*XtSetArg(arg[argcnt], XmNnavigationType, XmNONE);
-                        argcnt++;*/ 
+/*XtSetArg(arg[argcnt], XmNnavigationType, XmNONE); argcnt++;*/ 
 			w = XmCreateText(scroll, widget_name, arg, argcnt);
 			XtManageChild(w);
                         XtOverrideTranslations(w, XtParseTranslationTable(text_translations));                           
@@ -1896,130 +1857,47 @@ WidgetInfo * MakeWidget( HTMLWidget hw, char *text,
 			XtSetMappedWhenManaged(w, False);
 			XtManageChild(w);
 		}
-		else /* if no type, assume type=text */
+		else /* if no type, assume type=text . Single line text field */
 		{
-			char **list;
-			int list_cnt;
-			int rows, cols;
-			Widget scroll;
+			int cols=40;
 
-			/*
-			 * SIZE can be either COLUMNS or COLUMNS,ROWS
-			 * we assume COLUMNS,ROWS and parse the list
-			 */
+			/* SIZE can be  COLUMNS, assume a TEXTFIELD */
+			type = W_TEXTFIELD;
 			tptr = ParseMarkTag(text, MT_INPUT, "SIZE");
-			list = ParseCommaList(tptr, &list_cnt);
-			if (tptr != NULL)
+			if (tptr != NULL){
+				cols = atoi(tptr);
 				free(tptr);
-
-			/*
-			 * If only COLUMNS specified, or SIZE not specified
-			 * assume a TEXTFIELD
-			 * Otherwise a TEXTAREA.
-			 */
-			if (list_cnt <= 1) {
-				type = W_TEXTFIELD;
-				if (list_cnt == 1) {
-					cols = atoi(list[0]);
-				} else {
-					cols = -1;
-				}
-			} else {
-				type = W_TEXTAREA;
-				cols = atoi(list[0]);
-				rows = atoi(list[1]);
-				       /* be a textfield if only one row */
-                                if(rows==1)
-                                  type=W_TEXTFIELD;
 			}
-			/*
-			 * Now that we have cols, and maybe rows, free the list
-			 */
-			FreeCommaList(list, list_cnt);
-
-			/*
-			 * Grab the starting value of the text here.
-			 * NULL if none.
-			 */
+			/* Grab the starting value of text here. NULL if none. */
 			value = ParseMarkTag(text, MT_INPUT, "VALUE");
 
-			/*
-			 * For textfileds parse maxlength and
-			 * set up the widget.
-			 */
-			if (type == W_TEXTFIELD) {
-				maxlength = -1;
-				tptr = ParseMarkTag(text, MT_INPUT,"MAXLENGTH");
-				if (tptr != NULL) {
-					maxlength = atoi(tptr);
-					free(tptr);
-				}
-				argcnt = 0;
-				XtSetArg(arg[argcnt], XmNx, x); argcnt++;
-				XtSetArg(arg[argcnt], XmNy, y); argcnt++;
-				if (cols > 0) {
-					XtSetArg(arg[argcnt], XmNcolumns, cols);
-					argcnt++;
-				}
-				if (maxlength > 0) {
-					XtSetArg(arg[argcnt], XmNmaxLength,
-						maxlength);
-					argcnt++;
-				}
-				if (value != NULL) {
-					XtSetArg(arg[argcnt], XmNvalue, value);
-					argcnt++;
-				}
-                                /*XtSetArg(arg[argcnt], XmNnavigationType, XmNONE);                      
-                                argcnt++;*/
-
-				w = XmCreateTextField(hw->html.view,
-					widget_name, arg, argcnt);
-				
-                                XtOverrideTranslations(w, XtParseTranslationTable(text_translations));
-                                if(!hw->html.focus_follows_mouse)
-				   XtOverrideTranslations(w, 
-				     XtParseTranslationTable(traversal_table));
-			} else {
-			/*
-			 * Else this is a TEXTAREA.  Maxlength is ignored,
-			 * and we set up the scrolled window
-			 */
-				argcnt = 0;
-				XtSetArg(arg[argcnt], XmNx, x); argcnt++;
-				XtSetArg(arg[argcnt], XmNy, y); argcnt++;
-				scroll = XmCreateScrolledWindow(hw->html.view,
-					"Scroll", arg, argcnt);
-
-				argcnt = 0;
-				XtSetArg(arg[argcnt], XmNeditMode,
-					XmMULTI_LINE_EDIT);
-				argcnt++;
-				if (cols > 0) {
-					XtSetArg(arg[argcnt], XmNcolumns, cols);
-					argcnt++;
-				}
-				if (rows > 0) {
-					XtSetArg(arg[argcnt], XmNrows, rows);
-					argcnt++;
-				}
-				if (value != NULL) {
-					XtSetArg(arg[argcnt], XmNvalue, value);
-					argcnt++;
-				}
-				XtSetArg(arg[argcnt], XmNnavigationType, XmNONE);
-				argcnt++;
-				w = XmCreateText(scroll, widget_name,arg, argcnt);
-				XtManageChild(w);
-                                XtOverrideTranslations(w, XtParseTranslationTable(text_translations));
-                                if(!hw->html.focus_follows_mouse)
-                                  XtOverrideTranslations(w,
-                                     XtParseTranslationTable(traversal_table));
-				w = scroll;
+			/* parse maxlength and set up the widget. */
+			maxlength = -1;
+			tptr = ParseMarkTag(text, MT_INPUT,"MAXLENGTH");
+			if (tptr != NULL) {
+				maxlength = atoi(tptr);
+				free(tptr);
 			}
+			argcnt = 0;
+			XtSetArg(arg[argcnt], XmNx, x); argcnt++;
+			XtSetArg(arg[argcnt], XmNy, y); argcnt++;
+			XtSetArg(arg[argcnt], XmNcolumns, cols); argcnt++;
+			if (maxlength > 0) {
+				XtSetArg(arg[argcnt], XmNmaxLength, maxlength);
+				argcnt++;
+			}
+			if (value != NULL) {
+				XtSetArg(arg[argcnt], XmNvalue, value); argcnt++;
+			}
+/*XtSetArg(arg[argcnt], XmNnavigationType, XmNONE); argcnt++;*/
 
-/*
- * The proper order here is XtSetMappedWhenManaged, XtManageChild.  But a bug
+			w = XmCreateTextField(hw->html.view,
+					widget_name, arg, argcnt);
+                        XtOverrideTranslations(w, XtParseTranslationTable(text_translations));
+                        if(!hw->html.focus_follows_mouse)
+			   XtOverrideTranslations(w, 
+				XtParseTranslationTable(traversal_table));
+/* The proper order here is XtSetMappedWhenManaged, XtManageChild.  But a bug
  * in some versions of Motif1.1 makes us do it the other way.  All versions
  * of 1.2 should have this fixed
  */
@@ -2031,13 +1909,9 @@ WidgetInfo * MakeWidget( HTMLWidget hw, char *text,
 			XtSetMappedWhenManaged(w, False);
 #endif /* MOTIF1_2 */
 
-			/*
-			 * For textfields, a CR might be an activate
-			 */
-			if (type == W_TEXTFIELD) {
-				XtAddCallback(w, XmNactivateCallback,
-					(XtCallbackProc)CBActivateField, (caddr_t)fptr);
-			}
+			/* For textfields, a CR might be an activate */
+			XtAddCallback(w, XmNactivateCallback,
+				(XtCallbackProc)CBActivateField, (caddr_t)fptr);
 		}
 		if (type_str != NULL)
 			free(type_str);

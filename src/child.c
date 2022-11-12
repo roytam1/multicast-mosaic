@@ -92,7 +92,7 @@ void ChildTerminated(int sig)
 	ProcessHandle *p;
 	int stat_loc;
 
-#ifdef SVR4
+#if defined(SVR4) || defined(__QNX__)
 	pid = waitpid((pid_t)(-1),NULL,WNOHANG);
 	signal(SIGCHLD, (void (*)(int))ChildTerminated); /*Solaris resets the signal on a catch*/
 #else

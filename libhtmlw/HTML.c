@@ -73,7 +73,8 @@ static void		ViewRedisplay(HTMLWidget hw, int x, int y,
 void             	ViewClearAndRefresh(HTMLWidget hw);
 static void             CallLinkCallbacks(HTMLWidget hw);
 static Boolean 		html_accept_focus(Widget w, Time *t);
-static void Realize(Widget ww, XtValueMask *valueMask, XSetWindowAttributes *attrs); 
+static void 		Realize(Widget ww, XtValueMask *valueMask, 
+				XSetWindowAttributes *attrs); 
 
 char CurrentURL[8096];	/*if url bigger than this...too bad*/
 
@@ -412,7 +413,6 @@ HTMLClassRec htmlClassRec = {
       (XtInitProc) Initialize,			/* initialize         */
       NULL,					/* initialize_hook    */
       Realize,					/* realize            */
-/*      XtInheritRealize,				/* realize            */
       actionsList,				/* actions	      */
       XtNumber(actionsList),			/* num_actions	      */
       resources,				/* resources          */
@@ -512,6 +512,16 @@ void hw_do_bg(Widget w, char *bgname)
 {
 	ImageInfo pic_data;
 	HTMLWidget hw=(HTMLWidget) w;
+
+/* clear previous GD 28 Apr 96 Voir aussi HTMLlists.c*/
+        if (hw->html.bgmap_SAVE!=None) {  
+                XFreePixmap(XtDisplay(hw), hw->html.bgmap_SAVE);
+                hw->html.bgmap_SAVE=None; 
+        }                            
+        if (hw->html.bgclip_SAVE!=None) { 
+                XFreePixmap(XtDisplay(hw), hw->html.bgclip_SAVE);
+                hw->html.bgclip_SAVE=None;
+        }
 
 	if (!bgname || !*bgname )
 		return;
@@ -655,14 +665,12 @@ static void DrawExpose(Widget w, caddr_t data, XEvent *event)
                 return;              
         }               
 
-                                     
         if (event->xany.type==Expose) {
                 x = event->xexpose.x;
                 y = event->xexpose.y;
                 width = event->xexpose.width;
                 height = event->xexpose.height;
-        }                           
-        else {                       
+        } else {                       
                 x = event->xgraphicsexpose.x;
                 y = event->xgraphicsexpose.y;
                 width = event->xgraphicsexpose.width;
@@ -769,15 +777,12 @@ void ResetWidgetsOnResize( HTMLWidget hw)
         WidgetInfo *wptr;
         
         wptr = hw->html.widget_list;
-        while (wptr != NULL)
-        {
-                if (wptr->w != NULL)
-                {                    
+        while (wptr != NULL) {
+                if (wptr->w != NULL) {                    
                         wptr->seeable=1;
                 }
                 wptr = wptr->next;   
-        }       
-                                     
+        }
         return;                      
 }
 
@@ -820,8 +825,7 @@ void ScrollWidgets(HTMLWidget hw)
                               (x+wptr->width)<=hw->html.view_width))) {
                                 wptr->seeable=1;
                                 XtMoveWidget(w, x, y);
-                        }            
-                        else if (wptr->seeable) {
+                        } else if (wptr->seeable) {
                                 wptr->seeable=0;
                                 XtMoveWidget(w, x, y);
                         }  
@@ -1031,23 +1035,19 @@ void ConfigScrollBars( HTMLWidget hw)
 	XtMoveWidget(hw->html.view, vx, vy);
 	XtResizeWidget(hw->html.view, hw->html.view_width, hw->html.view_height,
 		hw->html.view->core.border_width);
-	/*
-	 * Set up vertical scrollbar
-	 */
+				/* Set up vertical scrollbar */
 	if (hw->html.use_vbar == True) {
 		int maxv;
 		int ss;
 
-		/*
-		 * Size the vertical scrollbar to the height of
+		/* Size the vertical scrollbar to the height of
 		 * the viewing area
 		 */
 		XtResizeWidget(hw->html.vbar, hw->html.vbar->core.width,
 		    hw->html.view_height + (2 * hw->manager.shadow_thickness),
 		    hw->html.vbar->core.border_width);
 
-		/*
-		 * Set the slider size to be the percentage of the
+		/* Set the slider size to be the percentage of the
 		 * viewing area that the viewing area is of the
 		 * document area.  Or set it to 1 if that isn't possible.
 		 */
@@ -1066,8 +1066,7 @@ void ConfigScrollBars( HTMLWidget hw)
 			ss = 1;
 		if (htmlwTrace)
 			fprintf (stderr, "computed ss to be %d\n", ss);
-		/*
-		 * If resizing of the document has made scroll_y
+		/* If resizing of the document has made scroll_y
 		 * greater than the max, we want to hold it at the max.
 		 */
 		maxv = hw->html.doc_height - (int)hw->html.view_height;
@@ -1075,15 +1074,13 @@ void ConfigScrollBars( HTMLWidget hw)
 			maxv = 0;
 		if (hw->html.scroll_y > maxv)
 			hw->html.scroll_y = maxv;
-		/*
-		 * Prevent the Motif max value and slider size
+		/* Prevent the Motif max value and slider size
 		 * from going to zero, which is illegal
 		 */
 		maxv = maxv + ss;
 		if (maxv < 1)
 			maxv = 1;
-		/*
-		 * Motif will not allow the actual value to be equal to
+		/* Motif will not allow the actual value to be equal to
 		 * its max value.  Adjust accordingly.
 		 * Since we might decrease scroll_y, cap it at zero.
 		 */
@@ -1106,36 +1103,31 @@ void ConfigScrollBars( HTMLWidget hw)
 			fprintf (stderr, "real slider size %d\n", ss);
 		}
 	}
-	/*
-	 * Set up horizontal scrollbar
-	 */
+				/* Set up horizontal scrollbar */
 	if (hw->html.use_hbar == True) {
 		int maxv;
 		int ss;
 
-		/*
-		 * Size the horizontal scrollbar to the width of
+		/* Size the horizontal scrollbar to the width of
 		 * the viewing area
 		 */
 		XtResizeWidget(hw->html.hbar,
 		    hw->html.view_width + (2 * hw->manager.shadow_thickness),
 		    hw->html.hbar->core.height, hw->html.hbar->core.border_width);
-		/*
-		 * Set the slider size to be the percentage of the
+		/* Set the slider size to be the percentage of the
 		 * viewing area that the viewing area is of the
 		 * document area.  Or set it to 1 if that isn't possible.
 		 */
 		if (hw->html.doc_width == 0) {
 			ss = 1;
 		} else {
-                        /* Added by marca: this produces results *very* close (~1 pixel)
-                           to the original scrolled window behavior. */
+                        /* marca: this produces results *very* close (~1 pixel)
+                         * to the original scrolled window behavior. */
                         ss = hw->html.view_width;
 		}
 		if (ss < 1)
 			ss = 1;
-		/*
-		 * If resizing of the document has made scroll_x
+		/* If resizing of the document has made scroll_x
 		 * greater than the max, we want to hold it at the max.
 		 */
 		maxv = hw->html.doc_width - (int)hw->html.view_width;
@@ -1143,8 +1135,7 @@ void ConfigScrollBars( HTMLWidget hw)
 			maxv = 0;
 		if (hw->html.scroll_x > maxv)
 			hw->html.scroll_x = maxv;
-		/*
-		 * Prevent the Motif max value and slider size
+		/* Prevent the Motif max value and slider size
 		 * from going to zero, which is illegal
 		 */
 		maxv = maxv + ss;
@@ -1434,8 +1425,7 @@ void ViewClearAndRefresh( HTMLWidget hw)
 {
 	int r,b;
 
-	/*
-	* Only refresh if we have a window already.
+	/* Only refresh if we have a window already.
 	* (if we have a GC we have a window)
 	*/
 	if (!XtIsRealized((Widget)hw))
@@ -1481,14 +1471,11 @@ static void Redisplay( HTMLWidget hw, XEvent * event, Region region)
 	XExposeEvent *ExEvent = (XExposeEvent *)event;
 	int dx, dy;
 
-	/*
-	 * find out where the shadow is based on scrollbars
-	 */
+	/* find out where the shadow is based on scrollbars */
 	Dimension st = hw->manager.shadow_thickness;
 
 	dx = dy = 0;
-	/*
-	 * Redraw the shadow around the scrolling area which may have been
+	/* Redraw the shadow around the scrolling area which may have been
 	 * messed up.
 	 */
 	_XmDrawShadows(XtDisplay(hw), XtWindow(hw),
@@ -1634,9 +1621,7 @@ static void DrawSelection( HTMLWidget hw, struct ele_rec *start,
 
 	if ((start == NULL)||(end == NULL))
 		return;
-	/*
-	 * Keep positions within bounds (allows us to be sloppy elsewhere)
-	 */
+	/* Keep positions within bounds (allows us to be sloppy elsewhere) */
 	if (start_pos < 0)
 		start_pos = 0;
 	if (start_pos >= start->edata_len - 1)
@@ -2063,18 +2048,14 @@ static void SelectStart( Widget w, XEvent *event,
 			hw->html.but_press_time = BuEvent->time;
 			return;
 		}
-		/*
-		 * Else if we used button2, we can't select text, so exit
-		 * here.
-		 */
+		/* Else if we used button2, we can't select text, so exit here. */
 		else if (BuEvent->button == Button2) {
 			hw->html.press_x = BuEvent->x;
 			hw->html.press_y = BuEvent->y;
 			hw->html.but_press_time = BuEvent->time;
 			return;
 		}
-		/*
-		 * Else a single click will not select a new object
+		/* Else a single click will not select a new object
 		 * but it will prime that selection on the next mouse
 		 * move.
 		 */
@@ -2148,8 +2129,7 @@ static void ExtendStart( Widget w, XEvent *event,
 			}
 		} else {
 			if (SwapElements(eptr, hw->html.new_start,
-				epos, hw->html.new_start_pos))
-			{
+			    epos, hw->html.new_start_pos)) {
 				start = hw->html.new_start;
 				start_pos = hw->html.new_start_pos;
 				end = eptr;
@@ -2405,10 +2385,10 @@ static void ExtendEnd( Widget w, XEvent *event,
 					free(text);
 			} else {
 				XtOwnSelection((Widget)hw, atoms[i],
-					       BuEvent->time,
-					       (XtConvertSelectionProc )ConvertSelection,
-					       (XtLoseSelectionProc )LoseSelection,
-					       (XtSelectionDoneProc )SelectionDone);
+				       BuEvent->time,
+				       (XtConvertSelectionProc )ConvertSelection,
+				       (XtLoseSelectionProc )LoseSelection,
+				       (XtSelectionDoneProc )SelectionDone);
 			}
 		}
 		free((char *)atoms);
@@ -2691,34 +2671,24 @@ static Boolean SetValues( HTMLWidget current, HTMLWidget request, HTMLWidget nw)
 	    (request->html.header_text != current->html.header_text)||
 	    (request->html.footer_text != current->html.footer_text))
 	{
-		/*
-		 * Free up the old visited href list.
-		 */
+		/* Free up the old visited href list.  */
 		FreeHRefs(current->html.my_visited_hrefs);
 		nw->html.my_visited_hrefs = NULL;
 
-		/*
-		 * Free up the old visited delayed images list.
-		 */
+		/* Free up the old visited delayed images list.  */
 		FreeDelayedImages(current->html.my_delayed_images);
 		nw->html.my_delayed_images = NULL;
 
-		/*
-		 * Free any old colors and pixmaps
-		 */
+		/* Free any old colors and pixmaps */
 		FreeColors(XtDisplay(current),
 			   (installed_colormap ? installed_cmap :
 			    DefaultColormapOfScreen(XtScreen(current))));
-		/*
-		 * Hide any old widgets
-		 */
+		/* Hide any old widgets */
 		HideWidgets(current);
 		nw->html.widget_list = NULL;
 		nw->html.form_list = NULL;
 
-		/*
-		 * Parse the raw text with the HTML parser
-		 */
+		/* Parse the raw text with the HTML parser */
 		nw->html.html_objects = HTMLParse(current->html.html_objects,
 			request->html.raw_text, (Widget) nw);
 		CallLinkCallbacks(nw);
@@ -2729,9 +2699,7 @@ static Boolean SetValues( HTMLWidget current, HTMLWidget request, HTMLWidget nw)
 			HTMLParse(current->html.html_footer_objects,
 			request->html.footer_text, (Widget) nw);
 
-		/*
-		 * Redisplay for the changed data.
-		 */
+		/* Redisplay for the changed data. */
 		nw->html.scroll_x = 0;
 		nw->html.scroll_y = 0;
 		nw->html.max_pre_width = DocumentWidth(nw,
@@ -2739,9 +2707,7 @@ static Boolean SetValues( HTMLWidget current, HTMLWidget request, HTMLWidget nw)
 		ReformatWindow(nw,False);
 		ViewClearAndRefresh(nw);
 
-		/*
-		 * Clear any previous selection
-		 */
+		/* Clear any previous selection */
 		nw->html.select_start = NULL;
 		nw->html.select_end = NULL;
 		nw->html.sel_start_pos = 0;
@@ -2751,8 +2717,7 @@ static Boolean SetValues( HTMLWidget current, HTMLWidget request, HTMLWidget nw)
 		nw->html.new_start_pos = 0;
 		nw->html.new_end_pos = 0;
 		nw->html.active_anchor = NULL;
-	}
-	else if ((request->html.font != current->html.font)||
+	} else if ((request->html.font != current->html.font)||
 	         (request->html.italic_font != current->html.italic_font)||
 	         (request->html.bold_font != current->html.bold_font)||
 	         (request->html.fixed_font != current->html.fixed_font)||
@@ -2955,9 +2920,7 @@ static void SelectionDone( Widget w, Atom * selection, Atom * target)
 }
 
 
-/*
- ******************************* PUBLIC FUNCTIONS ************************
- */
+/******************************* PUBLIC FUNCTIONS *************************/
 /*
  * Convenience function to return the text of the HTML document as a plain
  * ascii text string.
@@ -2994,8 +2957,7 @@ char * HTMLGetText(Widget w, int pretty, char *url, char *time_str)
 		tptr = ParseTextToPSString(hw, start, start, end, 0, 0,
 				hw->html.font->max_bounds.width,
 				hw->html.margin_width , pretty-2, url, time_str);
-	}
-	else if (pretty) {
+	} else if (pretty) {
 		tptr = ParseTextToPrettyString(hw, start, start, end, 0, 0,
 				hw->html.font->max_bounds.width,
 				hw->html.margin_width);
@@ -3474,8 +3436,7 @@ void HTMLRetestAnchors(Widget w, visitTestProc testFunc)
 		/*
 		 * Since the element may have changed, redraw it
 		 */
-		switch(start->type)
-		{
+		switch(start->type) {
 		case E_TEXT:
 			TextRefresh(hw, start, 0, (start->edata_len - 2));
 			break;
@@ -3960,8 +3921,6 @@ int HTMLSearchNews(Widget w, ElementRef *m_start, ElementRef *m_end)
       return(-1);
 }
 
-
-
 /*
  * Convenience function to search the text of the HTML document as a single
  * white space separated string. Linefeeds are converted into spaces.
@@ -4271,9 +4230,7 @@ HTMLSearchText (Widget w, char *pattern, ElementRef *m_start, ElementRef *m_end,
 					}
 				}
 			    }
-			}
-			else if (eptr->type == E_LINEFEED)
-			{
+			} else if (eptr->type == E_LINEFEED) {
 				if (equal) {
 					if (*mptr == ' ') {
 						mptr++;
@@ -4513,25 +4470,21 @@ void HTMLSetFocusPolicy(Widget w, int to)
 
   if(hw->html.focus_follows_mouse == to)
     return;
-  else
-    { 
+  else { 
       Widget shell = w;
 
       while(!XtIsTopLevelShell(shell))
         shell = XtParent(shell);
 
       hw->html.focus_follows_mouse = to;
-      if(to)
-        {   
+      if(to) {   
           XtVaSetValues(shell, XmNkeyboardFocusPolicy, XmPOINTER, NULL);
-        }
-      else
-        { 
+      } else { 
           XtVaSetValues(shell, XmNkeyboardFocusPolicy, XmEXPLICIT, NULL);
           /* when we have preference dialog this will have to
              undo all the translations that are currently installed
              in the widgets and set the keyboardFocus policy of the
              toplevel shell to pointer */
-        }
-    }   
+      }
+  }   
 }

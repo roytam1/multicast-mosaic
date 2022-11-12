@@ -24,7 +24,6 @@ extern int srcTrace;
 #include "bitmaps/gopher_binary.xbm"
 #include "bitmaps/gopher_unknown.xbm"
 
-
 static ImageInfo *gopher_image = NULL;
 static ImageInfo *gopher_movie = NULL;
 static ImageInfo *gopher_menu = NULL;

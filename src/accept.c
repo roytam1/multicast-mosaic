@@ -28,6 +28,10 @@
 # endif
 #endif
 
+#ifdef __QNX__
+#include <sys/select.h>
+#endif
+
 #include "port.h"
 #include "accept.h"
 

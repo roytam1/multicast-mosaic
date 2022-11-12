@@ -145,6 +145,9 @@ extern void 		TableRefresh( HTMLWidget hw, struct ele_rec *eptr);
 extern void 		AprogPlace(HTMLWidget hw, struct mark_up **mptr, 
 				PhotoComposeContext * pcc, Boolean save);
 extern void 		AprogRefresh(HTMLWidget hw, struct ele_rec *eptr);
+extern void 		AppletPlace(HTMLWidget hw, struct mark_up **mptr, 
+				PhotoComposeContext * pcc, Boolean save);
+extern void 		AppletRefresh(HTMLWidget hw, struct ele_rec *eptr);
 
 extern void 		ViewClearAndRefresh( HTMLWidget hw);
 extern void		ScrollWidgets(HTMLWidget hw);

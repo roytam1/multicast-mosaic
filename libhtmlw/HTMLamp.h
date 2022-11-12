@@ -1,4 +1,4 @@
-/* Please read copyright.tmpl. Don't remove next line */
+/* Please read copyright.ncsa. Don't remove next line */
 #include "copyright.ncsa"
 
 typedef struct amp_esc_rec {

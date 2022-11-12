@@ -477,7 +477,7 @@ void MoCCINewConnection(XtPointer clid, int *source, XtInputId *inputID)
 	XtRemoveInput(*inputID);
 */
 
-	MCCISendResponseLine(client,MCCIR_OK,"VERSION 01 mMosaic 3.0.13");
+	MCCISendResponseLine(client,MCCIR_OK,"VERSION 01 mMosaic 3.1.0");
 
 	con = (struct Connection *) malloc(sizeof(struct Connection));
 	con->client = client;

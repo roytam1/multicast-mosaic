@@ -980,8 +980,6 @@ XmxCallback (submit_form_callback)
 	int len, i;
 	WbFormCallbackData *cbdata = (WbFormCallbackData *)call_data;
 	int do_post_urlencoded = 0;
-	int plaintext=0;
-	char *entity=NULL;
 
 	if (!cbdata)
 		return;
@@ -1011,9 +1009,6 @@ XmxCallback (submit_form_callback)
 			/* Grab enctype if it's there. */
 	if (cbdata->enctype && *(cbdata->enctype))
 		enctype = cbdata->enctype;
-		/* Grab encentity if it's there and we have an enctype. */
-	if (enctype && cbdata->enc_entity && *(cbdata->enc_entity))
-		entity = cbdata->enc_entity;
 #ifndef DISABLE_TRACE
 	if (srcTrace) {
 		fprintf (stderr, "[submit_form_callback] method is '%s'\n",
@@ -1034,17 +1029,8 @@ XmxCallback (submit_form_callback)
 		strtok (query, "?");	 /* Clip out old query. */
 		if (query[strlen(query)-1] != '?')
 			strcat (query, "?");
-		plaintext=0;
 	} else 
-		if(cbdata->format && *cbdata->format && 
-		   !strcasecmp(cbdata->format,"PLAIN")) {
-					/* Get ready for cats below. */
-			query[0] = 0;
-			plaintext=1;
-		} else {		/* Get ready for cats below. */
-			query[0] = 0;
-			plaintext=0;
-		}
+		query[0] = 0;
 				/* Take isindex possibility into account. */
 	if (cbdata->attribute_count == 1 &&
 	    strcmp (cbdata->attribute_names[0], "isindex") == 0) {
@@ -1077,8 +1063,8 @@ XmxCallback (submit_form_callback)
 	if (do_post_urlencoded) {
 		if (!strcasecmp(method,"cciPOST"))
 			MoCCIFormToClient(NULL, NULL, NULL,NULL,1);
-		mo_post_access_document (win, url, (plaintext?"text/plain":
-				"application/x-www-form-urlencoded"), query);
+		mo_post_access_document (win, url, 
+				"application/x-www-form-urlencoded", query);
 	} else {
 		mo_access_document (win, query);
 	}
@@ -3376,7 +3362,7 @@ void mo_do_gui (int argc, char **argv)
 	gargv = argv;
 	gargc = argc;
 
-	signal (SIGUSR1, ProcessExternalDirective);
+	signal (SIGUSR1, (void*)ProcessExternalDirective);
 
 	createBusyCursors(toplevel); /* Only create cursor */
 	MakePixmaps(toplevel);

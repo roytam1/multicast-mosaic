@@ -2,6 +2,12 @@
 
 #include "copyright.ncsa"
 
+ /* Copyright (C) 1996 - G.Dauphin
+ * See the file "license.mMosaic" for information on usage and redistribution
+ * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+ */
+
+
 /* HTMLtext.c
  * Author: Gilles Dauphin
  * Version 3.0 [Sep96]
@@ -66,7 +72,7 @@ void LinefeedPlace(HTMLWidget hw, struct mark_up * mptr,
 		return;
 #ifdef REMEMBER
 if (pcc->cw_only) {	/* compute width only , dont create Element*/
-/* deb_pcc.computed_min_x = 0; /* celui-ci pour MOT IMAGE APROG */
+/* deb_pcc.computed_min_x = 0; /* celui-ci pour MOT IMAGE APROG APPLET*/
 /* attention aussi au increment genre MENU*/
 /* UL OL etc... */
 }

@@ -1,4 +1,4 @@
-/* Please read copyright.tmpl. Don't remove next line */
+/* Please read copyright.ncsa. Don't remove next line */
 #include "copyright.ncsa"
 
 #include <stdio.h>
@@ -173,6 +173,69 @@ static int highbit( unsigned long ul)
 #ifdef NEW                           
 extern int bits_per_pixel(int dpy, int depth); /*this is in ../src/pixmaps.c*/
 #endif   
+/*
+ * Rescale an image GD 24 Apr 97 #######
+ * from the XV Software 3.10a . See the copyright notice of xv-3.10a 
+ */
+
+ImageInfo * RescalePic(HTMLWidget hw, ImageInfo * picd, int nw, int nh)
+{ 
+	int          cy,ex,ey,*cxarr, *cxarrp;
+	unsigned char *clptr,*elptr,*epptr, *epic;
+	int bperpix;                      
+
+
+	if ( !picd->image_data)
+		return picd;
+/* change image_data width height in picd*/
+
+	clptr = NULL;  cxarrp = NULL;  cy = 0;  /* shut up compiler */
+/* fprintf(stderr,"RescalePic(%d,%d) picd.(w,h)=%d,%d\n",
+			nw,nh,picd->width,picd->height);
+*/
+	bperpix =  1 ;	 /*    bperpix = (picType == PIC8) ? 1 : 3; */
+                                      
+/* create a new pic of the appropriate size */
+	epic = (unsigned char *) malloc((size_t) (nw * nh * bperpix));
+	cxarr = (int *) malloc(nw * sizeof(int));
+	if (!epic || !cxarr) {
+		fprintf(stderr,"memory overflow\n");
+		exit(1);
+	}
+/* the scaling routine.  not really all that scary after all... */
+/* OPTIMIZATON:  Malloc an nw array of ints which will hold the
+/* values of the equation px = (pWIDE * ex) / nw.  Faster than doing
+/* a mul and a div for every point in picture */
+                                      
+	for (ex=0; ex<nw; ex++)        
+		cxarr[ex] = bperpix * ((picd->width * ex) / nw);
+	elptr = epptr = epic;             
+	for (ey=0;  ey<nh;  ey++, elptr+=(nw*bperpix)) {
+		cy = (picd->height * ey) / nh;      
+		epptr = elptr;
+		clptr = picd->image_data + (cy * picd->width * bperpix);
+/*		if (bperpix == 1) {             */
+			for (ex=0, cxarrp = cxarr;  ex<nw;  ex++, epptr++)
+				*epptr = clptr[*cxarrp++];  
+/*		} else {                          */
+/*			int j;  unsigned char *cp;  */
+/*			for (ex=0, cxarrp = cxarr; ex<nw; ex++,cxarrp++) {*/
+/*				cp = clptr + *cxarrp;       */
+/*				for (j=0; j<bperpix; j++)   */
+/*					*epptr++ = *cp++;         */
+/*			}                             */
+/*		}                               */
+	}                                 
+	free(cxarr);
+/* at this point, we have a raw epic.  Potentially dither it */
+/*      free(picd->image_data); ###### trouver un moyen pour faire free */
+	picd->image_data = epic;
+	picd->width = nw;
+	picd->height = nh;
+	return picd;
+}
+/*######################*/
+
 /*
  * Make am image of appropriate depth for display from image data.
  */
@@ -774,6 +837,16 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 	}
 	if(height == 0)
 		height = picd->height;
+/*######## rescale  image */
+	if((width != picd->width ) || (height != picd->height)) { /* rescale*/
+		ImageInfo * n_picd;
+
+		n_picd = RescalePic(hw, picd, width, height);
+/*#### liberer picd */
+		picd = n_picd;
+	}
+
+/*#######################*/
 	if(baseline == 0)
 		baseline = height;
 	tptr = ParseMarkTag(mptr->start, MT_IMAGE, "BORDER");
@@ -852,7 +925,7 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 	 * change the size, or anchor status of the image, thus we MUST
 	 * doit before we muck with the Baseline and stuff.
 	 */
-#ifdef TODO
+#ifdef TO_DO
 	if (picd->ismap) {
 		/* SUPER SPECIAL CASE!  (Thanks Marc)
 		 * If you have an ISMAP image inside a form, And that form

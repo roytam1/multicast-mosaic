@@ -6,7 +6,9 @@
 #include <ctype.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#ifndef __QNX__
 #include <sys/resource.h>
+#endif
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
@@ -360,7 +362,7 @@ char **buildArgv(char *cmd, int *new_argc)
  *   condition checking inbetween each 100 milliseconds. But...it's pretty
  *   darn close.
  */
-int my_sleep(int length, int interrupt) 
+int my_sleep(int length, int intrupt) 
 {
 	struct timeval timeout;
 	int count=0;
@@ -372,7 +374,7 @@ int my_sleep(int length, int interrupt)
 		timeout.tv_usec=100000;
 		select(0, NULL, NULL, NULL, &timeout);
 		count+=100000;
-		if (interrupt && sleep_interrupt) {
+		if (intrupt && sleep_interrupt) {
 			return(1);
 		}
 	}
