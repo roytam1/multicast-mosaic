@@ -178,7 +178,7 @@ typedef struct _PhotoComposeContext {
 	int		ignore ;	/* ignore some tag when formating */
 	SelectInfo *	current_select ; /* SELECT in FORM */
 	Boolean		in_select;	/* is in_select ? */
-	Boolean		is_in_paragraph; /* am I in paragraph block ? */
+	Boolean		processing_text;
         XFontStruct 	*cur_font;
 	Boolean		strikeout ;
 /*#############################*/

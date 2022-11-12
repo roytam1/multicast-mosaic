@@ -404,6 +404,8 @@ void MMPushFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc)
 	FontStack *ofstack;
 	FontRec *ofptr=NULL;
 	char * fndry, *family, *size;
+	char * font_color = NULL;
+	Pixel fg;
 
 	ofptr = hw->html.font_stack->font;
 
@@ -442,6 +444,22 @@ void MMPushFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc)
 		newfont = _LoadFont(hw, fndry, family, NULL, NULL, size, NULL, ofptr);
 		if (size)
 			free(size);
+/* font have color */
+		font_color = ParseMarkTag(mptr->start, MT_FONT, "color");
+		fg = pcc->fg_text;
+		if (font_color) {
+			XColor c;
+			int status;
+
+			status = XParseColor(XtDisplay(hw),hw->core.colormap,
+				font_color, &c);
+			if (status) {
+				fg = HTMLXColorToPixel(&c);
+			}
+			free(font_color);
+		}
+/* always push color */
+		pcc->fg_text = MMPushColorFg(hw, fg);
 		break;
 
 /* Since HTML Headings may not occur inside a <font></font> declaration,
@@ -502,6 +520,7 @@ void MMPopFont(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc)
 	free(ofstack);
 	hw->html.cur_font = hw->html.font_stack->font->xfont;
 	pcc->cur_font = hw->html.cur_font;
+	pcc->fg_text = MMPopColorFg(hw);
 	return;
 }
 

@@ -356,9 +356,11 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		}
 		if (pcc->preformat) {
 			PartOfPreTextPlace(hw, *mptr, pcc);
+			pcc->processing_text = True;
 			break;
 		} 
 		PartOfTextPlace(hw, *mptr, pcc);
+		pcc->processing_text = True;
 		break;
 	case M_CENTER:
 		if (mark->is_end) {
@@ -369,11 +371,13 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 			LinefeedPlace(hw,*mptr,pcc);
 			pcc->div = DIV_ALIGN_CENTER;
 		}
+		pcc->processing_text = False;
 		break;
 	case M_DIV:
 		if (mark->is_end) {
 			LineBreak(hw,*mptr,pcc);
 			pcc->div = DIV_ALIGN_LEFT;
+			pcc->processing_text = False;
 			break;
 		}
 		LineBreak(hw,*mptr,pcc);
@@ -386,6 +390,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 			pcc->div = DIV_ALIGN_RIGHT;
 		if(tptr)
 			free(tptr);
+		pcc->processing_text = False;
 		break;
 /*
  * Just insert a linefeed, or ignore if this is prefomatted
@@ -396,15 +401,12 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
 			pcc->div = DIV_ALIGN_LEFT;
-			pcc->is_in_paragraph = False;
 		} else {
-			if (pcc->is_in_paragraph){ /* end the paragraph */
-				LineBreak(hw,*mptr,pcc);
+			LineBreak(hw,*mptr,pcc);
+			if (pcc->processing_text){ /* end the paragraph */
 				LinefeedPlace(hw,*mptr,pcc);
 				pcc->div = DIV_ALIGN_LEFT;
-				pcc->is_in_paragraph = False;
 			}
-			LineBreak(hw,*mptr,pcc);
 			pcc->div = DIV_ALIGN_LEFT;
 			tptr = ParseMarkTag(mark->start, MT_PARAGRAPH, "ALIGN");
 			if ( tptr && !strcasecmp(tptr, "CENTER"))
@@ -413,21 +415,22 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 				pcc->div = DIV_ALIGN_RIGHT;
 			if(tptr)
 				free(tptr);
-			pcc->is_in_paragraph = True;
 		}
+		pcc->processing_text = False;
 		break;
 
 	case M_HRULE:
 		LineBreak(hw,*mptr,pcc);
-		LinefeedPlace(hw,*mptr,pcc);
 		HRulePlace(hw, *mptr, pcc);
 		LinefeedPlace(hw,*mptr,pcc);
+		pcc->processing_text = False;
 		break;
 	/*
 	 * Titles are just set into the widget for retrieval by
 	 * XtGetValues().
 	 */
 	case M_TITLE:
+		pcc->processing_text = False;
 		break;
 /* Strikeout means draw a line through the text.
  * Right now we just set a boolean flag which gets shoved
@@ -475,6 +478,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		} else {
 			MMPushFont(hw, *mptr, pcc);
 		}
+		pcc->processing_text = False;
 		break;
 /* Plain and listing text. A single pre-formatted chunk of text in its own font.*/
 	case M_PREFORMAT:
@@ -500,20 +504,20 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	case M_HEADER_5:
 	case M_HEADER_6:
 		if (mark->is_end) {
-			MMPopFont(hw, *mptr, pcc);
 			LineBreak(hw,*mptr,pcc);
-			LinefeedPlace(hw,*mptr,pcc);
-		} else {
-			if (pcc->is_in_paragraph){ /* end the paragraph */
-				LineBreak(hw,*mptr,pcc);
-				LinefeedPlace(hw,*mptr,pcc);
-				pcc->div = DIV_ALIGN_LEFT;
-				pcc->is_in_paragraph = False;
+			if (pcc->processing_text){
+		/*		LinefeedPlace(hw,*mptr,pcc); */
 			}
-
+			MMPopFont(hw, *mptr, pcc);
+		} else {
 			LineBreak(hw,*mptr,pcc);
 			MMPushFont(hw, *mptr, pcc);
+/* si j'ai vu du texte , j'ajoute une ligne */
+			if (pcc->processing_text) { 
+				LinefeedPlace(hw,*mptr,pcc);
+			}
 		}
+		pcc->processing_text = False;
 		break;
 
 /*#############
@@ -556,9 +560,11 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		        InDocHead = 0;
 			pcc->ignore = 0;
 		}
+		pcc->processing_text = False;
 		break;
 	case M_FRAMESET:
 		_XmHTMLCreateFrameSet(hw, hw, mptr, pcc);
+		pcc->processing_text = False;
 		break;
 	case M_BODY:
 		if (!mark->is_end) {
@@ -584,6 +590,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		        InDocHead = 0;   /* end <head> section */
 			pcc->ignore = 0;
 		}
+		pcc->processing_text = False;
 		break;
 	case M_UNDERLINED:
 		pcc->underline_number = 1;
@@ -733,10 +740,9 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 			DescRec *dptr;
 
 			LineBreak(hw,*mptr,pcc);
-			if (pcc->is_in_paragraph){ /* end the paragraph */
+			if (pcc->processing_text){ /* end the paragraph */
 				LinefeedPlace(hw,*mptr,pcc);
 				pcc->div = DIV_ALIGN_LEFT;
-				pcc->is_in_paragraph = False;
 			}
 			dptr = (DescRec *)malloc(sizeof(DescRec));
 /* Save the old state, and start a new */
@@ -767,6 +773,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		}
 		pcc->x = pcc->eoffsetx + pcc->left_margin;
 		pcc->is_bol =1;
+		pcc->processing_text = False;
 		break;
 /* Place the bullet element at the beginning of this item. */
 	case M_LIST_ITEM:
@@ -784,6 +791,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 				BulletPlace(hw, *mptr, pcc);
 			}	
 		}
+		pcc->processing_text = False;
 		break;
 /* Description lists */
 	case M_DESC_LIST:
@@ -834,20 +842,25 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		}
 		pcc->x = pcc->eoffsetx + pcc->left_margin;
 		pcc->is_bol =1;
+		pcc->processing_text = False;
 		break;
 	case M_DESC_TITLE:
-		if (mark->is_end)
+		if (mark->is_end){
+			pcc->processing_text = False;
 			break;
+		}
 		LineBreak(hw,*mptr,pcc);
 		pcc->left_margin= DescType->save_left_margin;
 		pcc->cur_line_width= DescType->save_cur_line_width;
 		pcc->x = pcc->eoffsetx + pcc->left_margin;
 		pcc->is_bol =1;
+		pcc->processing_text = False;
 		break;
 	case M_DESC_TEXT:
 		if (mark->is_end){
 			pcc->left_margin= DescType->save_left_margin;
 			pcc->cur_line_width= DescType->save_cur_line_width;
+			pcc->processing_text = False;
 			break;
 		}
 		/* For a compact list we want to stay on the same
@@ -861,10 +874,12 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 			pcc->cur_line_width= DescType->cur_line_width;
 			pcc->x = pcc->eoffsetx + pcc->left_margin;
 			pcc->is_bol =1;
+			pcc->processing_text = False;
 			break;
 		} 
 		pcc->left_margin= DescType->indent_margin;
 		pcc->cur_line_width= DescType->cur_line_width;
+		pcc->processing_text = False;
 		break;
 
 /*
@@ -927,11 +942,14 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 
 	case M_BR:
 		LinefeedPlace(hw,*mptr,pcc); /* miss named break!!! */
+		pcc->processing_text = False;
 		break;
 	case M_BUGGY_TABLE:
+		pcc->processing_text = False;
 		break;
 	case M_TABLE:
 		TablePlace(hw, mptr, pcc, save_obj);
+		pcc->processing_text = False;
 		break;
 	case M_IMAGE:		/* Just insert the image for now */
 		if (mark->is_end)
@@ -980,6 +998,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	case M_TBODY:
 	case M_TFOOT:
 	case M_THEAD:
+		pcc->processing_text = False;
 		break;
 	default:
 #ifdef HTMLTRACE
@@ -1096,7 +1115,7 @@ int FormatAll(HTMLWidget hw, int Fwidth, Boolean save_obj)
 	pcc.ignore = 0;
 	pcc.current_select = NULL;
 	pcc.in_select = False;
-	pcc.is_in_paragraph = False;
+	pcc.processing_text = False;
 	pcc.strikeout = False;
 
 /* Initialize local variables, some from the widget */

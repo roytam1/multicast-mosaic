@@ -163,10 +163,10 @@ static XtResource resources[] = {
 	  XtOffset (HTMLWidget, html.def_res.fg_link), XtRString, "#0000ff"
 	},
 	{ WbNvisitedAnchorColor, XtCForeground, XtRPixel, sizeof (Pixel),
-	  XtOffset (HTMLWidget, html.def_res.fg_vlink), XtRString, "purple4"
+	  XtOffset (HTMLWidget, html.def_res.fg_vlink), XtRString, "#00FFFF"
 	},
 	{ WbNactiveAnchorFG, XtCBackground, XtRPixel, sizeof (Pixel),
-	  XtOffset (HTMLWidget, html.def_res.fg_alink), XtRString, "Red"
+	  XtOffset (HTMLWidget, html.def_res.fg_alink), XtRString, "#ff0000"
 	},
 	{ WbNisIndex, WbCIsIndex, XtRBoolean, sizeof (Boolean),
 	  XtOffset (HTMLWidget, html.is_index), XtRString, "False"

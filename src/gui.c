@@ -1910,7 +1910,7 @@ mo_status mo_delete_window (mo_window *win)
 	while (node) {
 		mo_node *tofree = node;
 		node = node->next;
-		mo_free_node_data (tofree);
+/*		mo_free_node_data (tofree); ####### FIXME*/
 		free (tofree);
 	}
 	win->first_node=NULL;

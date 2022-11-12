@@ -336,7 +336,7 @@ static String color_resources[] = {
   "*XmMessageBox*TopShadowColor:        #e7e7e7e7e7e7",
 
 /* Remember to update this in the app-defaults file. */
-  "*visitedAnchorColor:                 #3f3f0f0f7b7b",
+/*  "*visitedAnchorColor:                 #3f3f0f0f7b7b", */
   "*anchorColor:                        #00000000FFFF",
   "*activeAnchorFG:                     #ffff00000000",
   "*activeAnchorBG:                     #bfbfbfbfbfbf",
