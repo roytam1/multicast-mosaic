@@ -460,7 +460,6 @@ static void McSendNewObject(char *fname, char *aurl, MimeHeaderStruct *mhs,
 {
 	int cache_found;
 	int moid = 0;
-	int stateid =0;
 	MimeHeaderStruct mhs_ret;
 	char * fname_ret;
 
@@ -634,11 +633,9 @@ static void McRtpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 static void UcRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 {
         int len;
-	int status;
         unsigned char * buf;
 	IPAddr addr_from;
 	unsigned short port_from;
-	Source * s;
 
 #ifdef DEBUG_MULTICAST
 	fprintf(stderr,"UcRtcpReadCb\n");
@@ -662,10 +659,8 @@ static void UcRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 static void McRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id)
 {
         int len;
-	int status;
         unsigned char * buf;
 	IPAddr addr_from;
-	Source * s;
 
 #ifdef DEBUG_MULTICAST
 	fprintf(stderr,"McRtcpReadCb\n");

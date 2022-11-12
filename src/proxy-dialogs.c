@@ -1164,6 +1164,23 @@ static void CommitNoproxyInfo( Widget w, XtPointer client, XtPointer call)
 	XtPopdown(EditNoproxyDialog);
 }
 
+static struct Proxy * FindNoproxyEntry(char *txt)
+{
+        struct Proxy *p;
+        char *ptr;
+
+        p = Noproxy_List;
+                
+        while (p != NULL) {  
+                if (strcmp(p->address, txt) == 0) {
+			return p;
+                } 
+                p = p->next;           
+        }
+	assert(0);
+        return NULL; /* whoops */
+}
+
 static void EditNoproxyInfo( Widget w, XtPointer client, XtPointer call, int type)
 {
 	Widget text_form, form, address, port;
@@ -1189,7 +1206,7 @@ static void EditNoproxyInfo( Widget w, XtPointer client, XtPointer call, int typ
 		}
 		XmStringGetLtoR(selected_string, XmSTRING_DEFAULT_CHARSET, 
 					&selected_text);
-		Noproxy_Edit_Info->editing = FindProxyEntry(selected_text);
+		Noproxy_Edit_Info->editing = FindNoproxyEntry(selected_text);
 		XtFree(selected_text);
 		if (Noproxy_Edit_Info->editing == NULL) {
 			assert(0);
@@ -1358,23 +1375,6 @@ static void EditNoproxyInfo( Widget w, XtPointer client, XtPointer call, int typ
 	XtPopup(EditNoproxyDialog, XtGrabNone);
 }
 
-static struct Proxy * FindNoproxyEntry(char *txt)
-{
-        struct Proxy *p;
-        char *ptr;
-
-        p = Noproxy_List;
-                
-        while (p != NULL) {  
-                if (strcmp(p->address, txt) == 0) {
-			return p;
-                } 
-                p = p->next;           
-        }
-	assert(0);
-        return NULL; /* whoops */
-}
-
 static void CallWriteNoproxies(Widget w, XtPointer client, XtPointer call)
 {
 	FILE *fp;
@@ -1460,7 +1460,7 @@ static void CallRemoveNoproxy(Widget w, XtPointer client, XtPointer call)
         pEditing = FindNoproxyEntry(selected_text);
         
         DeleteNoproxy(pEditing);
-        ShowProxyList();
+        ShowNoproxyList();
         XtFree(selected_text);
 }
 

@@ -122,7 +122,6 @@ void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 	char * param_valuePtr;
 	char * param_valuetypePtr;
 	AlignType valignment;
-	HtmlObjectStruct * saved_obs=omptr->s_obs;
 	HtmlObjectStruct *obs;
 	MosaicPlugjectClass mp_class;
 
@@ -159,8 +158,8 @@ void MMPreParseObjectTag(mo_window * win, struct mark_up ** mptr)
 	if (classidPtr && strchr(classidPtr,'/') ){
 		fprintf(stderr,"Object not secure \n");
 		/* virer l'objet */
-		assert(0);
 		return;
+		assert(0);
 	}
 	if (classidPtr) {	/* get absolute path name */
 		char * buf = (char*)malloc(strlen(MMOSAIC_PLUGIN_DIR) +
@@ -412,17 +411,11 @@ static HtmlObjectStruct* MpxCreatePlugject(HtmlObjectStruct *obs)
 
 static void RunP(mo_window *win, struct mark_up *mptr)
 {
-	int get_cnt = 0;      
-	int i;
 	HtmlObjectStruct *obs, *mp_rec;
-	Widget frame;
-        int *val;
-	MosaicPlugjectClass mp_class;
 
 	obs = mptr->s_obs;
 	if (!obs || !obs->mp_class)
 		return;
-
 
 	mp_rec = MpxCreatePlugject(obs); /* create a Rec and start plugin */
 	obs->mp_rec = obs;	/* point to me */

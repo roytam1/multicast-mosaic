@@ -88,7 +88,27 @@ void ChildTerminated(int sig)
 	ProcessHandle *p;
 	int stat_loc;
 
-#if defined(SVR4) || defined(__QNX__)
+/* From seanm@storm.ca  Fri Dec  8 04:44:43 2000
+ * Since switching to XFree86 4.0.1, I
+ * could not compile mMosaic under Linux. Basically, the define SVR4 for
+ * linux was causing alot of grief. Some of the stock X include files had
+ * code like:
+ * 
+ * 	#ifdef SVR4
+ * 	       blah
+ * 	#elif linux
+ * 	       bother
+ * 	#endif
+ *
+ * Since SVR4 was set, the correct linux code was ignored. I have fixed
+ * it by removing the SVR4 from the Makefile for Linux and fixing all the
+ * references to SVR4 in the code (there are not that many). I have
+ * included that in the patch also.
+ */
+/* old : #if defined(SVR4) || defined(__QNX__) */
+
+/* new 8 Dec 2000 */
+#if defined(SVR4) || defined(__QNX__) || defined(linux) 
 	pid = waitpid((pid_t)(-1),NULL,WNOHANG);
 	signal(SIGCHLD, (void (*)(int))ChildTerminated); /*Solaris resets the signal on a catch*/
 #else

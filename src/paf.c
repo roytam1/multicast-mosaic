@@ -525,8 +525,6 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	int docid;
 	char * title;
 	char * base_url;
-	char * base_target = NULL;
-	int moid_ret = -1;
 	HtmlTextInfo *htinfo;
 	PafDocDataStruct spafd;
 

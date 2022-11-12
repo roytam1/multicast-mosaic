@@ -17,7 +17,8 @@
 #include <assert.h>
 
 
-#if defined(SVR4) && !defined(SCO) && !defined(linux)
+/* From seanm@storm.ca  Fri Dec  8 04:44:43 2000 */
+#if defined(SVR4) && !defined(SCO)
 #include <sys/filio.h>
 #include <unistd.h>
 #endif

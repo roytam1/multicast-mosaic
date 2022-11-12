@@ -279,7 +279,6 @@ void McSenderCachePutDataInCache(char *fname_r, char *aurl, MimeHeaderStruct *mh
 	McHashEntry * deb;
 	char smoid[40];
 	int h, i;
-	int exist = 0;
 	char *fname_w;
 	int fdr, fdw;
 	struct timeval tv;
@@ -655,13 +654,10 @@ void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
 	McHashEntry * deb;
 	char smoid[40];
 	int h;
-	int exist = 0;
 	char *fname_w;
 	int fdw;
 	struct timeval tv;
 	int data_size;
-	char *buf=NULL;
-	char *do_buf=NULL;
 	MimeHeaderStruct *cmhs;
 
 /* look if an entry still exist, if yes abort */

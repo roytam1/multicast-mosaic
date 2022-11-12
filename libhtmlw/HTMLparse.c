@@ -1004,6 +1004,12 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		case M_TITLE:
 		case M_ISINDEX:
 		case M_UNKNOWN:
+		case M_TD:
+		case M_TD_CELL_PAD:
+		case M_TD_CELL_FREE:
+		case M_TD_CELL_PROPAGATE:
+		case M_TH:
+		case M_TR:
 			return REMOVE_TAG;
 		case M_BODY:
 			if (mptr->is_end) { /* match the open BODY */
@@ -1081,11 +1087,6 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 		case M_DIV:
 		case M_PREFORMAT:
 		case M_BUGGY_TABLE:
-		case M_TD:
-		case M_TD_CELL_PAD:
-		case M_TD_CELL_FREE:
-		case M_TH:
-		case M_TR:
 		case M_APPLET:
 		case M_BLOCKQUOTE:
 		case M_CAPTION:
@@ -1590,7 +1591,6 @@ static void FreeArea(AreaRec * area)
 }
 static void FreeMap(MapRec * map)
 {
-	AreaRec * area;
 	int n_area = map->n_area;
 	int i;
 
@@ -2053,12 +2053,10 @@ int * CoordVals(char *coords, int n)
 static MapRec * CreateMap(ParserContext *pc, struct mark_up * map_start,
         struct mark_up * map_end, int area_count)
 {
-	char *map_name = 0, *coords, *end;
-	char *val;           
+	char *map_name = 0, *coords;
 	MapRec *cur_map = NULL;  
 	AreaRec *cur_area = NULL;
 	int i_area;
-	int * cur_coord;
 	struct mark_up *mptr;
  
 	if( area_count <=0)

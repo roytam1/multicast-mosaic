@@ -14,7 +14,8 @@
 
 #include "mplugin.h"
 
-#define MTVP_PATH "/usr/local/bin/mtvp"
+/* #define MTVP_PATH "/usr/local/bin/mtvp" */
+#define MTVP_PATH "mtvp"
  
 typedef struct {
 	Widget mosaic_frame;

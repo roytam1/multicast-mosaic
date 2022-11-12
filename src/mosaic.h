@@ -178,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.7.0"
+#define MO_VERSION_STRING "3.7.1"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "dauphin@enst.fr"
@@ -275,7 +275,9 @@ typedef enum {
 #define MO_SIGHANDLER_RETURNTYPE void
 #endif
 
-#ifdef SVR4
+/* From seanm@storm.ca  Fri Dec  8 04:44:43 2000 */
+/* old : #ifdef SVR4 */
+#if defined(SVR4) || defined(linux)
 #define MO_SIGHANDLER_ARGS int sig
 #else /* not ultrix */
 #define MO_SIGHANDLER_ARGS void

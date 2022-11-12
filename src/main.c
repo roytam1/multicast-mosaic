@@ -295,7 +295,11 @@ int main (int argc, char **argv, char **envp)
 
 	InitChildProcessor();
 
-#if defined(SVR4) || defined(__QNX__) || defined(NETBSD) || defined(FreeBSD)
+/* From seanm@storm.ca  Fri Dec  8 04:44:43 2000 */
+/* old : #if defined(SVR4) || defined(__QNX__) || defined(NETBSD) || defined(FreeBSD) */
+
+/* new */
+#if defined(SVR4) || defined(__QNX__) || defined(NETBSD) || defined(FreeBSD) || defined(linux)
 	signal(SIGCHLD, (void (*)(int))ChildTerminated);
 #else
 	signal(SIGCLD, (void (*)())ChildTerminated);

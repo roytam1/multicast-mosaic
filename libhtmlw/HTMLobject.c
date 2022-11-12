@@ -26,21 +26,9 @@
 
 void ObjectPlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext *pcc)
 {
-	char * classidPtr;
-	char * content_typePtr;
-	char * codebasePtr;
-	char * dataPtr;
-	char * hPtr;
-	char * wPtr;
-	char * bwPtr;
-	char * alignPtr;
 	int border_width;
 	struct mark_up * omptr = *mptr;
-	char * param_namePtr;
-	char * param_valuePtr;
-	char * param_valuetypePtr;
 	AlignType valignment;
-	HtmlObjectStruct * saved_obs=omptr->s_obs;
 	int height;
 	int width;
 
@@ -54,7 +42,6 @@ void ObjectPlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext *pcc)
 
 	XWindowAttributes xwa;
 	XSetWindowAttributes xswa;
-	int i;
 	Widget frame;
 
 #ifdef TODO

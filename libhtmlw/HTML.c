@@ -2834,6 +2834,7 @@ void HTMLRetestAnchors(Widget w, visitTestProc testFunc, char * base_url)
 		case E_CELL_TABLE:
 		case E_OBJECT:
 		case E_APPLET:
+		case E_INPUT_IMAGE:
 			break;
 		}
 		start = start->next;
@@ -2856,7 +2857,7 @@ void HTMLSetSelection(Widget w, ElementRef *start, ElementRef *end)
 	struct ele_rec *eptr;
 	struct ele_rec *e_start=NULL;
 	struct ele_rec *e_end=NULL;
-	int start_pos, end_pos=NULL;
+	int start_pos=0, end_pos=0;
 	Atom *atoms;
 	int i, buffer;
 	char *text;

@@ -971,14 +971,10 @@ void mo_kerberosv5_login(Widget w, XtPointer clid, XtPointer calld)
 #endif
 void mo_proxy(Widget w, XtPointer clid, XtPointer calld)
 {
-	mo_window * win = (mo_window*) clid;
-
 	PopProxyDialog();
 }
 void mo_no_proxy(Widget w, XtPointer clid, XtPointer calld)
 {
-	mo_window * win = (mo_window*) clid;
-
 	PopNoproxyDialog();
 }
 void mo_exit_program(Widget w, XtPointer clid, XtPointer calld)

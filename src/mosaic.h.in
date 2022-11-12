@@ -252,7 +252,7 @@ typedef enum {
 # define MO_SIGHANDLER_ARGS int sig
 
 # if 0 /* mjr-- */
-#  ifdef SVR4
+#  if defined(SVR4) || defined(linux)
 #   define MO_SIGHANDLER_ARGS int sig
 #  else /* not ultrix */
 #   define MO_SIGHANDLER_ARGS void

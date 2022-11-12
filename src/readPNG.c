@@ -40,7 +40,6 @@ unsigned char * ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 	double screen_gamma;
 	png_byte *png_pixels=NULL, **row_pointers=NULL;
 	int i, j;
-	unsigned int packets;
 	png_color std_color_cube[216];
 	int ret;
 	png_byte buf[8];

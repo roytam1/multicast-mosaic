@@ -746,7 +746,6 @@ static void back_from_html(mo_window *win, mo_node *cur_node, mo_node *new_node)
 /* Back up a node. */
 void mo_back (Widget w, XtPointer clid, XtPointer calld)
 {
-	RequestDataStruct rds;
 	mo_window *ewin = (mo_window*) clid; /* event win */
 	mo_window *stop_win=NULL ; 	/* win ou on envoie le stop */
 
@@ -968,7 +967,6 @@ static void forward_from_html(mo_window *win, mo_node *cur_node, mo_node *new_no
 /* Go forward a node. */
 void mo_forward (Widget w, XtPointer clid, XtPointer calld)
 {
-	RequestDataStruct rds;
 	mo_window *ewin = (mo_window*) clid;
 	mo_window *stop_win=NULL ;           /* win ou on envoie le stop */
 
