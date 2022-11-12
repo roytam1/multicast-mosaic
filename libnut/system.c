@@ -367,26 +367,7 @@ int my_sleep(int length, int intrupt)
 	return(0);
 }
 
-/*
- * Written by: Tommy Reilly
- *
- * Simple function that stat's a file to see if it exists. 
- *
- * Simple returns 1 or 0. 
- */
-int file_exists(char* name)
-{
-	struct stat buf;
-
-	if(!name)
-		return(0);
-	if(!stat(name, &buf))
-		return(1);
-	return(0);
-}
-
-/*
- * Written by: Tommy Reilly (with major code snarfing from Scott Powers)
+/* Written by: Tommy Reilly (with major code snarfing from Scott Powers)
  *
  * This is essentially Scott's my_move function re-written without rename
  * and without erasing the source file. 
@@ -483,39 +464,3 @@ int my_copy(char *src, char *dest, char *retBuf, int bufsize, int overwrite)
 	close(fd_dest);
 	return(SYS_SUCCESS);
 } 
-
-/*
- * Written by: Tommy Reilly (originally by Scott Powers I think)
- *
- * This is a function that finds the users home directory. 
- *
- * Return Values:
- *   SYS_NO_MEMORY -- No memory to allocate with.
- *   SYS_INTERNAL_FAIL -- Not an error that user would want to know about.
- *   SYS_SUCCESS -- Success.
- */
-int get_home(char **ret)
-{
-	char *home = NULL;
-	struct passwd *pwdent;
-  
-	if(!(home = getenv("HOME"))) {
-		if (!(pwdent=getpwuid(getuid()))) {
-			fprintf(stderr, "Could not find home dir.\n");
-			*ret=NULL;
-			return(SYS_INTERNAL_FAIL);
-		} else {
-			home=strdup(pwdent->pw_dir);
-		}
-	} else {
-		home=strdup(home);
-	}
-
-	if(home)
-		*ret = home; /* he better free it */
-	else {
-		*ret = NULL;
-		return(SYS_INTERNAL_FAIL);
-	}
-	return(SYS_SUCCESS);
-}

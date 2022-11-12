@@ -411,14 +411,13 @@ void PartOfPreTextPlace(HTMLWidget hw, 	/* the widget */
 	char *end;
 	struct ele_rec *eptr;
 	int ntab, char_cnt;
-	int dir, ascent, descent;
-        XCharStruct all;
 	char *line;
 	int tmp_cnt=0;
 	int cur_char_in_line=0;
 	int line_str_len;
 	int i;
 	int font_height;
+	int line_width=0;
 
 	font_height = pcc->cur_font->ascent+pcc->cur_font->descent;
 	line = (char*) malloc(COMP_LINE_BUF_LEN);
@@ -433,12 +432,17 @@ void PartOfPreTextPlace(HTMLWidget hw, 	/* the widget */
 		} 
 		if(*end == '\n'){	/*line break */
 			if (line[0] != '\0') {
-				XTextExtents(pcc->cur_font, line, strlen(line),
-					&dir, &ascent, &descent, &all);
+				line_width = XTextWidth(pcc->cur_font,
+					line, strlen(line));
+			    if(pcc->computed_min_x < 
+		              (line_width+pcc->eoffsetx+pcc->left_margin)){
+			         pcc->computed_min_x= line_width + pcc->eoffsetx +
+					      pcc->left_margin;
+			    }
 			    if(!pcc->cw_only){
 				eptr = CreateElement(hw, E_TEXT,
 					pcc->cur_font,
-                               		pcc->x, pcc->y, all.width,
+                               		pcc->x, pcc->y, line_width,
 					pcc->cur_font->ascent+pcc->cur_font->descent,
 					pcc->cur_font->ascent,pcc);
 				Set_E_TEXT_Element(hw, eptr, line,pcc);
@@ -450,7 +454,7 @@ void PartOfPreTextPlace(HTMLWidget hw, 	/* the widget */
 				pcc->pf_lf_state = 0;
 			}
 			end++;
-			pcc->x = pcc->x + all.width;
+			pcc->x = pcc->x + line_width;
 			LinefeedPlace(hw, mptr,pcc); /* line feed change le contexte*/
 			char_cnt =0;
 			line[0] = '\0';
@@ -489,12 +493,12 @@ void PartOfPreTextPlace(HTMLWidget hw, 	/* the widget */
 		end++;
 	}
 	if (line[0] != '\0') {
-		XTextExtents(pcc->cur_font, line, strlen(line),
-			&dir, &ascent, &descent, &all);
+		line_width = XTextWidth(pcc->cur_font,
+				line, strlen(line));
 	    if(!pcc->cw_only){
 		eptr = CreateElement(hw, E_TEXT,
 			pcc->cur_font,
-               		pcc->x, pcc->y, all.width,
+               		pcc->x, pcc->y, line_width,
 			pcc->cur_font->ascent+pcc->cur_font->descent,
 			pcc->cur_font->ascent,pcc);
 		Set_E_TEXT_Element(hw, eptr, line,pcc);
@@ -503,10 +507,12 @@ void PartOfPreTextPlace(HTMLWidget hw, 	/* the widget */
                      if (pcc->cur_line_height < font_height)
                                 pcc->cur_line_height = font_height;
             }
-		pcc->x = pcc->x + all.width;
+		pcc->x = pcc->x + line_width;
 		pcc->is_bol =0;
 		pcc->pf_lf_state = 0;
 	}
+	if (pcc->x > pcc->computed_max_x)
+		pcc->computed_max_x = pcc->x;
 	pcc->have_space_after = 0;
 	free(line);
 }

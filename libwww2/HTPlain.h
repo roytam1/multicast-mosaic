@@ -1,6 +1,4 @@
-/*              Plain text object                       HTPlain.h
-**              -----------------
-*/
+/*              Plain text object */
 
 #ifndef HTPLAIN_H
 #define HTPLAIN_H

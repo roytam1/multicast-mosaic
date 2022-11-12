@@ -1,5 +1,4 @@
 /*		Structured stream to Rich hypertext converter
-**		============================================
 **
 **	This generates a hypertext object.  It converts from the
 **	structured stream interface from HTML events into the style-
@@ -18,7 +17,6 @@
 #include "HTML.h"
 #include "HTAtom.h"
 #include "HText.h"
-
 #include "HTAlert.h"
 #include "HTParse.h"
 
@@ -113,9 +111,8 @@ static char * ISO_Latin1[] = {
 **			A C T I O N 	R O U T I N E S
 */
 
-/*	Character handling
-**	------------------
-*/
+/*	Character handling */
+
 PRIVATE void HTML_put_character (HTStructured *me, char c, caddr_t appd)
 {
 	if (!me->text) {
@@ -126,12 +123,12 @@ PRIVATE void HTML_put_character (HTStructured *me, char c, caddr_t appd)
 }
 
 /*	String handling
-**	---------------
 **
 **	This is written separately from put_character becuase the loop can
 **	in some cases be promoted to a higher function call level for speed.
 */
-PRIVATE void HTML_put_string (HTStructured * me, WWW_CONST char* s, caddr_t appd)
+
+PRIVATE void HTML_put_string(HTStructured * me, WWW_CONST char* s, caddr_t appd)
 {
 	if (!me->text) {
 		me->text = HText_new();
@@ -140,9 +137,8 @@ PRIVATE void HTML_put_string (HTStructured * me, WWW_CONST char* s, caddr_t appd
 	HText_appendText(me->text, s);
 }
 
-/*	Buffer write
-**	------------
-*/
+/*	Buffer write */
+
 PRIVATE void HTML_write (HTStructured * me, WWW_CONST char* s, int l, caddr_t appd)
 {
 	WWW_CONST char* p;
@@ -153,7 +149,6 @@ PRIVATE void HTML_write (HTStructured * me, WWW_CONST char* s, int l, caddr_t ap
 }
 
 /*		Expanding entities
-**		------------------
 **	(In fact, they all shrink!)
 */
 
@@ -163,7 +158,6 @@ PRIVATE void HTML_put_entity (HTStructured *me, int entity_number, caddr_t appd)
 }
 
 /*	Free an HTML object
-**	-------------------
 **
 ** If the document is empty, the text object will not yet exist.
    So we could in fact abandon creating the document and return
@@ -201,9 +195,8 @@ PRIVATE void HTML_end_document (HTStructured * me, caddr_t appd)
 {			/* Obsolete */
 }
 
-/*	Structured Object Class
-**	-----------------------
-*/
+/*	Structured Object Class */
+
 PRIVATE WWW_CONST HTStructuredClass HTMLPresentation =/*As opposed to print etc */
 {		
 	"text/html",
@@ -215,15 +208,12 @@ PRIVATE WWW_CONST HTStructuredClass HTMLPresentation =/*As opposed to print etc 
 
 
 /*		New Structured Text object
-**		--------------------------
 **
 **	The strutcured stream can generate either presentation,
 **	or plain text, or HTML.
 */
-PUBLIC HTStructured* HTML_new ARGS3(
-	HTParentAnchor *, 	anchor,
-	HTFormat,		format_out,
-	HTStream*,		stream)
+HTStructured* HTML_new(HTParentAnchor *anchor, HTFormat	format_out,
+	HTStream *stream)
 {
 	HTStructured * me;
 

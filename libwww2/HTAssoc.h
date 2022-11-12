@@ -18,8 +18,6 @@ typedef struct {
     char * value;
 } HTAssoc;
 
-
-PUBLIC HTAssocList *HTAssocList_new NOPARAMS;
 PUBLIC void HTAssocList_delete PARAMS((HTAssocList * alist));
 
 PUBLIC void HTAssocList_add PARAMS((HTAssocList *       alist,

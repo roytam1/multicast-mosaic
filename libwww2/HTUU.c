@@ -1,6 +1,4 @@
-
-/* MODULE							HTUU.c
-**			UUENCODE AND UUDECODE
+/*			UUENCODE AND UUDECODE
 **
 ** ACKNOWLEDGEMENT:
 **	This code is taken from rpem distribution, and was originally

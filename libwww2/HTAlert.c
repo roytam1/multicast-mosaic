@@ -1,5 +1,4 @@
 /*	Displaying messages and getting input for LineMode Browser
-**	==========================================================
 **
 **	REPLACE THIS MODULE with a GUI version in a GUI environment!
 **

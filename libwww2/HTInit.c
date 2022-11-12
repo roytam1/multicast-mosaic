@@ -3,7 +3,6 @@
 
 #include "HText.h"
 #include "HTInit.h"
-
 #include "HTML.h"
 #include "HTPlain.h"
 #include "HTMosaicHTML.h"
@@ -11,7 +10,6 @@
 #include "HTFormat.h"
 #include "HTMIME.h"
 #include "HTWSRC.h"
-
 #include "tcp.h"
 #include "HTUtils.h"
 #include "HTParams.h"
@@ -301,7 +299,7 @@ int HTLoadTypesConfigFile (char *fn)
 **	with different values.
 */
 
-PUBLIC void HTFileInit NOARGS
+PUBLIC void HTFileInit (void)
 {
   if (wWWParams.use_default_extension_map) {
       if (wWWParams.trace)

@@ -253,8 +253,6 @@ extern void HTFormatInit ();
 
 /* Epilogue */
 
-extern HT_BOOL HTOutputSource;     /* Flag: shortcut parser */
-
 extern void HTRemoveConversion (
         WWW_CONST char * representation_in,
         WWW_CONST char * representation_out,

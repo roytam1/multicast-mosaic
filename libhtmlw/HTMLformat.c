@@ -20,6 +20,7 @@
 #include "../src/mosaic.h"
 
 #include "HTMLform.h"
+#include "HTMLframe.h"
 
 #include <Xm/Frame.h>
 #include <Xm/DrawingA.h>
@@ -41,7 +42,7 @@ static struct mark_up NULL_ANCHOR = {
 	NULL			/* anchor_title */
 };
 
-static struct mark_up * NULL_ANCHOR_PTR = &NULL_ANCHOR ;
+struct mark_up * NULL_ANCHOR_PTR = &NULL_ANCHOR ;
 
 /* ############## This is may be as global ####*/
 static FontRec FontBase;
@@ -590,7 +591,7 @@ char * TextAreaAddValue( char *value, char *text)
 				}
 			}
 			if (tmp_bgname) {
-				hw_do_bg(hw,tmp_bgname);
+				hw_do_bg(hw,tmp_bgname,pcc);
 				free(tmp_bgname);
 				tmp_bgname=NULL;
 			}
@@ -683,7 +684,7 @@ char * TextAreaAddValue( char *value, char *text)
 	 * No linefeeds, so they can be imbedded anywhere.
 	 */
 	case M_FRAME:
-		printf("Tag <FRAME> not implemented\n");
+		FramePlace(hw, *mptr, pcc);
 		break;
 	case M_ANCHOR:
 		if (mark->is_end) {

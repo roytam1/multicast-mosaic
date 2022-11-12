@@ -95,7 +95,7 @@ static XmxCallback (mailto_win_cb0)		/* send */
 	mo_window *win = (mo_window*)client_data;
 	char *msg, *subj, *to;
       
-	XtUnmanageChild (win->mailto_win);
+	XtPopdown (XtParent(win->mailto_win));
 	msg = XmTextGetString (win->mailto_text);
 	if (!msg)
 		return;
@@ -112,7 +112,7 @@ static XmxCallback (mailto_win_cb1)		/* dismiss */
 {
 	mo_window *win = (mo_window*)client_data;
 
-	XtUnmanageChild (win->mailto_win); 
+	XtPopdown (XtParent(win->mailto_win)); 
 }
 static XmxCallback (mailto_win_cb2)		/* help */
 {
@@ -195,35 +195,32 @@ static XmxCallback (mailto_form_win_cb2)		/* help */
 
 mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject)
 {
-  FILE *fp;
-  long pos;
-  char namestr[1024],tmp[1024];
+	FILE *fp;
+	long pos;
+	char namestr[1024],tmp[1024];
 
-  if (do_post) {
-	if (!subject || !*subject) {
-		char str[BUFSIZ];
+	if (do_post) {
+		if (!subject || !*subject) {
+			char str[BUFSIZ];
 
-		sprintf(str,"Form Result(s) Posted from %s",pre_title);
-		return(mo_post_mailto_form_win(win,to_address,str));
-	} else {
-		return(mo_post_mailto_form_win(win,to_address,subject));
+			sprintf(str,"Form Result(s) Posted from %s",pre_title);
+			return(mo_post_mailto_form_win(win,to_address,str));
+		} else {
+			return(mo_post_mailto_form_win(win,to_address,subject));
+		}
 	}
-  }
-
-  if (!win->mailto_win) {
-      Widget dialog_frame;
-      Widget dialog_sep, buttons_form;
-      Widget mailto_form;
-      Widget tolabel, sublabel, fromlabel;
+	if (!win->mailto_win) {
+		Widget dialog_frame;
+		Widget dialog_sep, buttons_form;
+		Widget mailto_form;
+		Widget tolabel, sublabel, fromlabel;
       
       /* Create it for the first time. */
-      win->mailto_win = XmxMakeFormDialog (win->base, 
-		"NCSA Mosaic: Mail To Author");
+      win->mailto_win = XmxMakeFormDialog (win->base, "mMosaic: Mail To Author");
       dialog_frame = XmxMakeFrame (win->mailto_win, XmxShadowOut);
       
       /* Constraints for base. */
-      XmxSetConstraints 
-        (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
+      XmxSetConstraints (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, 
          XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
       
       /* Main form. */
@@ -255,28 +252,23 @@ mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject)
 
       /* constraints for FROM */
       XmxSetOffsets(fromlabel, 14, 10, 10, 10);
-      XmxSetConstraints
-	(fromlabel, XmATTACH_FORM, XmATTACH_NONE, XmATTACH_FORM, 
+      XmxSetConstraints (fromlabel, XmATTACH_FORM, XmATTACH_NONE, XmATTACH_FORM, 
 	 XmATTACH_NONE, NULL, NULL, NULL, NULL);
       XmxSetOffsets(win->mailto_fromfield, 10, 10, 10, 10);
-      XmxSetConstraints
-	(win->mailto_fromfield, XmATTACH_FORM, XmATTACH_NONE, XmATTACH_WIDGET,
+      XmxSetConstraints (win->mailto_fromfield, XmATTACH_FORM, XmATTACH_NONE, XmATTACH_WIDGET,
 	 XmATTACH_FORM, NULL, NULL, fromlabel, NULL);
 
       /* constraints for TO */
       XmxSetOffsets(tolabel, 14, 10, 10, 10);
-      XmxSetConstraints
-	(tolabel, XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_NONE,
+      XmxSetConstraints (tolabel, XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_NONE,
 	 win->mailto_fromfield, NULL, NULL, NULL);
       XmxSetOffsets(win->mailto_tofield, 10, 10, 10, 10);
-      XmxSetConstraints
-	(win->mailto_tofield, XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_WIDGET, 
+      XmxSetConstraints (win->mailto_tofield, XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_WIDGET, 
 	 XmATTACH_FORM, win->mailto_fromfield, NULL, tolabel, NULL);
 
       /* constraints for SUBJECT */
       XmxSetOffsets(sublabel, 14, 10, 10, 10);
-      XmxSetConstraints
-	(sublabel, XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, 
+      XmxSetConstraints (sublabel, XmATTACH_WIDGET, XmATTACH_NONE, XmATTACH_FORM, 
 	 XmATTACH_NONE, win->mailto_tofield, NULL, NULL, NULL);
       XmxSetOffsets(win->mailto_subfield, 10, 10, 10, 10);
       XmxSetConstraints (win->mailto_subfield, XmATTACH_WIDGET, XmATTACH_NONE, 
@@ -291,18 +283,15 @@ mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject)
 		(XtPointer)win);
 
       XmxSetOffsets (XtParent (win->mailto_text), 3, 0, 3, 3);
-      XmxSetConstraints
-        (XtParent (win->mailto_text), XmATTACH_WIDGET, XmATTACH_WIDGET, 
+      XmxSetConstraints (XtParent (win->mailto_text), XmATTACH_WIDGET, XmATTACH_WIDGET, 
          XmATTACH_FORM, XmATTACH_FORM,
          win->mailto_subfield, dialog_sep, NULL, NULL);
 
       XmxSetArg (XmNtopOffset, 10);
-      XmxSetConstraints 
-        (dialog_sep, XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_FORM, 
+      XmxSetConstraints (dialog_sep, XmATTACH_NONE, XmATTACH_WIDGET, XmATTACH_FORM, 
          XmATTACH_FORM,
          NULL, buttons_form, NULL, NULL);
-      XmxSetConstraints 
-        (buttons_form, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_FORM, 
+      XmxSetConstraints (buttons_form, XmATTACH_NONE, XmATTACH_FORM, XmATTACH_FORM, 
 	 XmATTACH_FORM, NULL, NULL, NULL, NULL);
     }
 
@@ -318,8 +307,7 @@ mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject)
 
 	sprintf(str,"Mail from %s",pre_title);
   	XmTextFieldSetString(win->mailto_subfield,str);
-  }
-  else {
+  } else {
   	XmTextFieldSetString(win->mailto_subfield,subject);
   }
 
@@ -346,7 +334,7 @@ mo_status mo_post_mailto_win (mo_window *win, char *to_address, char *subject)
   XmTextSetInsertionPosition (win->mailto_text, 0);
       
   XmxManageRemanage (win->mailto_win);
-
+  XtPopup(XtParent(win->mailto_win),XtGrabNone);
   return mo_succeed;
 }
 
@@ -599,7 +587,7 @@ FILE *mo_start_sending_mailto_message (char *to, char *subj,
   fprintf (_fp, "Subject: %s\n", subj);
   fprintf (_fp, "Content-Type: %s\n", content_type);
   fprintf (_fp, "Mime-Version: 1.0\n");
-  fprintf (_fp, "X-Mailer: NCSA Mosaic %s on %s\n", 
+  fprintf (_fp, "X-Mailer: mMosaic %s on %s\n", 
            MO_VERSION_STRING, MO_MACHINE_TYPE);
   if (url)
     fprintf (_fp, "X-URL: %s\n", url);

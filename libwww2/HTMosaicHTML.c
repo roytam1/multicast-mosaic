@@ -1,5 +1,4 @@
 /*		Mosaic HTML text object
-**		=================
 **
 **	This version of the stream object just writes to a socket.
 **	The socket is assumed open and left open.

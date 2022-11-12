@@ -4,37 +4,27 @@
 
 CC=gcc
 CFLAGS=-g -O
-ODIR=./objs
-OBJDIR=objs
 LIB=libnut.a
-####Set in main Mosaic Makefile -- uncomment if not compiled under Mosaic
-#RANLIB=ranlib
-OBJ=$(ODIR)/str-tools.o \
-$(ODIR)/system.o \
-$(ODIR)/url-utils.o \
-$(ODIR)/ellipsis.o
+OBJ=str-tools.o system.o url-utils.o ellipsis.o
 
-all: objs $(LIB)
+all: $(LIB)
 
 $(LIB): $(OBJ)
 	-rm -f $(LIB)
 	ar rv $(LIB) $(OBJ)
 	$(RANLIB) $(LIB)
 
-$(ODIR)/str-tools.o: str-tools.c
-	$(CC) $(CFLAGS) -c str-tools.c -o $(ODIR)/str-tools.o
+str-tools.o: str-tools.c
+	$(CC) $(CFLAGS) -c str-tools.c -o str-tools.o
 
-$(ODIR)/system.o: system.c system.h
-	$(CC) $(CFLAGS) -c system.c -o $(ODIR)/system.o
+system.o: system.c system.h
+	$(CC) $(CFLAGS) -c system.c -o system.o
 
-$(ODIR)/url-utils.o: url-utils.c url-utils.h
-	$(CC) $(CFLAGS) -c url-utils.c -o $(ODIR)/url-utils.o
+url-utils.o: url-utils.c url-utils.h
+	$(CC) $(CFLAGS) -c url-utils.c -o url-utils.o
 
-$(ODIR)/ellipsis.o: ellipsis.c
-	$(CC) $(CFLAGS) -c ellipsis.c -o $(ODIR)/ellipsis.o
-
-objs:
-	mkdir objs
+ellipsis.o: ellipsis.c
+	$(CC) $(CFLAGS) -c ellipsis.c -o ellipsis.o
 
 clean:
 	rm -f $(LIB) $(OBJ)

@@ -192,17 +192,6 @@ void FreeLineList( struct ele_rec *list, Widget w, Boolean save_obj)
 		eptr->prev = NULL;
 		free((char *)eptr);
 	}
-        /* Now take care of the background image! -- SWP */
-/* this code is now in hw_do_bg */
-/*        if (hw->html.bgmap_SAVE!=None) {  
-/*                XFreePixmap(XtDisplay(hw), hw->html.bgmap_SAVE);
-/*                hw->html.bgmap_SAVE=None; 
-/*        }                            
-/*        if (hw->html.bgclip_SAVE!=None) { 
-/*                XFreePixmap(XtDisplay(hw), hw->html.bgclip_SAVE);
-/*                hw->html.bgclip_SAVE=None;
-/*        }
-*/
 }
 
 /*

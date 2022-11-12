@@ -6,7 +6,7 @@
 ## Scott Powers
 ##
 
-MCVER=3.2.1
+MCVER=3.2.3
 
 all: dev_$(DEV_ARCH)
 

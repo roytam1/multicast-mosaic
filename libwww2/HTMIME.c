@@ -1,5 +1,4 @@
-/*			MIME Message Parse			HTMIME.c
-**			==================
+/*			MIME Message Parse
 **
 **	This is RFC 1341-specific code.
 **	The input stream pushed into this parser is assumed to be
@@ -100,11 +99,7 @@ struct _HTStream
   int interrupted;
 };
 
-
-/*_________________________________________________________________________
-**
-**			A C T I O N 	R O U T I N E S
-*/
+/*			A C T I O N 	R O U T I N E S */
 
 /*	Character handling
 **
@@ -655,36 +650,33 @@ PRIVATE void HTMIME_put_character(HTStream *me, char c, caddr_t appd)
   return;
 }
 
-/*	String handling
-**
-**	Strings must be smaller than this buffer size.
+/*	Strings must be smaller than this buffer size.
 */
 PRIVATE void HTMIME_put_string (HTStream *me, WWW_CONST char*s, caddr_t appd)
 {
-  WWW_CONST char * p;
-  if (wWWParams.trace)
-    fprintf (stderr, "[HTMIME_put_string] Putting '%s'\n", s);
-  if (me->state == MIME_TRANSPARENT)		/* Optimisation */
-    {
-      if (wWWParams.trace)
-        fprintf (stderr, "[HTMIME_put_string] Doing transparent put_string\n");
-      (*me->targetClass.put_string)(me->target,s,appd);
-    }
-  else if (me->state != MIME_IGNORE)
-    {
-      if (wWWParams.trace)
-        fprintf (stderr, "[HTMIME_put_string] Doing char-by-char put_character\n");
-      for (p=s; *p; p++) 
-        HTMIME_put_character(me, *p,appd);
-    } else {
-      if (wWWParams.trace)
-        fprintf (stderr, "[HTMIME_put_string] DOING NOTHING!\n");
-    }
-  return;
+	WWW_CONST char * p;
+
+	if (wWWParams.trace)
+		fprintf (stderr, "[HTMIME_put_string] Putting '%s'\n", s);
+	if (me->state == MIME_TRANSPARENT) {		/* Optimisation */
+		if (wWWParams.trace)
+			fprintf(stderr,
+			  "[HTMIME_put_string] Doing transparent put_string\n");
+		(*me->targetClass.put_string)(me->target,s,appd);
+	} else if (me->state != MIME_IGNORE) {
+		if (wWWParams.trace)
+			fprintf(stderr, "[HTMIME_put_string] Doing char/char put_character\n");
+		for (p=s; *p; p++) 
+			HTMIME_put_character(me, *p,appd);
+	} else {
+		if (wWWParams.trace)
+			fprintf(stderr,"[HTMIME_put_string] DOING NOTHING!\n");
+	}
+	return;
 }
 
-
 /*	Buffer write.  Buffers can (and should!) be big.  */
+
 PRIVATE void HTMIME_write(HTStream *me, WWW_CONST char*s, int l, caddr_t appd)
 {
   WWW_CONST char * p;
@@ -709,63 +701,60 @@ PRIVATE void HTMIME_write(HTStream *me, WWW_CONST char*s, int l, caddr_t appd)
 }
 
 /*	Free an HTML object */
+
 PRIVATE void HTMIME_free (HTStream *me, caddr_t appd)
 {
-  if (!me->target) {
-      if (wWWParams.trace)
-        fprintf (stderr, "[HTMIME_free] Caught case where we didn't get a target.\n");
-      if (wWWParams.trace)
-        fprintf (stderr, "  me 0x%08x, me->target 0x%08x\n", me, me->target);
-      me->format = HTAtom_for ("text/html");
-      me->target = HTStreamStack(me->format, me->targetRep, 0,
-                                 me->sink, me->anchor,appd);
-      if (wWWParams.trace)
-        fprintf (stderr, "  me->target->isa 0x%08x\n", me->target->isa);
-      if (wWWParams.trace)
-        fprintf (stderr, "  *me->target->isa 0x%08x\n", *me->target->isa);
-      me->targetClass = *me->target->isa;
-      (*me->targetClass.put_string) (me->target, "<H1>ERROR IN HTTP/1.0 RESPONSE</H1> The remote server returned a HTTP/1.0 response that Mosaic's MIME parser could not understand.  Please contact the server maintainer.<P> Sorry for the inconvenience,<P> <ADDRESS>The Management</ADDRESS>",appd);
-      securityType=HTAA_UNKNOWN;
-    } 
-  if (me->target) 
-    (*me->targetClass.free)(me->target,appd);
-      
-  if (me->expires) {
-       char *p;
+	if (!me->target) {
+		if (wWWParams.trace){
+			fprintf (stderr, "[HTMIME_free] Caught case where we didn't get a target.\n");
+			fprintf (stderr, "  me 0x%08x, me->target 0x%08x\n", me, me->target);
+		}
+		me->format = HTAtom_for ("text/html");
+		me->target = HTStreamStack(me->format, me->targetRep, 0,
+				me->sink, me->anchor,appd);
+		if (wWWParams.trace) {
+			fprintf (stderr, "  me->target->isa 0x%08x\n", me->target->isa);
+			fprintf (stderr, "  *me->target->isa 0x%08x\n", *me->target->isa);
+		}
+		me->targetClass = *me->target->isa;
+		(*me->targetClass.put_string) (me->target,
+			"<H1>ERROR IN HTTP/1.0 RESPONSE</H1>The remote server returned a HTTP/1.0 response that mMosaic's MIME parser could not understand. Please contact the server maintainer.<P> Sorry for the inconvenience,<P><ADDRESS>The Management</ADDRESS>",appd);
+		securityType=HTAA_UNKNOWN;
+	} 
+	if (me->target) 
+		(*me->targetClass.free)(me->target,appd);
+	if (me->expires) {
+		char *p;
 
-       if (HTTP_expires)
-       free(HTTP_expires);
-       HTTP_expires = me->expires;
-       for (p = HTTP_expires + strlen(HTTP_expires) - 1;
-          p > HTTP_expires && isspace(*p); p--)
-       {
-         *p = '\0';
-       }
+		if (HTTP_expires)
+			free(HTTP_expires);
+		HTTP_expires = me->expires;
+		for (p = HTTP_expires + strlen(HTTP_expires) - 1;
+				p > HTTP_expires && isspace(*p); p--) {
+			*p = '\0';
+		}
+	}
+	if (me->last_modified) {
+		char *p;
 
-     }
-
-   if (me->last_modified) {
-       char *p;
-
-       if (HTTP_last_modified)
-       free(HTTP_last_modified);
-       HTTP_last_modified = me->last_modified;
-       for (p = HTTP_last_modified + strlen(HTTP_last_modified) - 1;
-          p > HTTP_last_modified && isspace(*p); p--)
-       {
-         *p = '\0';
-       }
-     }
-  free(me);
-  return;
+		if (HTTP_last_modified)
+			free(HTTP_last_modified);
+		HTTP_last_modified = me->last_modified;
+		for (p = HTTP_last_modified + strlen(HTTP_last_modified) - 1;
+				p > HTTP_last_modified && isspace(*p); p--) {
+			*p = '\0';
+		}
+	}
+	free(me);
+	return;
 }
 
 /*	End writing */
 
 PRIVATE void HTMIME_end_document (HTStream *me, caddr_t appd)
 {
-  if (me->target) 
-    (*me->targetClass.end_document)(me->target,appd);
+	if (me->target) 
+		(*me->targetClass.end_document)(me->target,appd);
 }
 
 PRIVATE void HTMIME_handle_interrupt (HTStream *me, caddr_t appd)

@@ -1,8 +1,7 @@
-/*		Manage different file formats			HTFormat.c
-**		=============================
-*/
+/*		Manage different file formats */
 
 /* Connection: Keep-Alive support -bjs */
+
 #include <stdio.h>
 #include <unistd.h>
 
@@ -27,14 +26,10 @@ PUBLIC float HTMaxLength = 1e10;	/* No effective limit */
 #include "HTML.h"
 #include "HTParams.h"		/* params from X resources */
 
-PUBLIC	HT_BOOL HTOutputSource = NO;	/* Flag: shortcut parser to stdout */
-extern  HT_BOOL interactive;
-
 struct _HTStream {
       WWW_CONST HTStreamClass*	isa;
       /* ... */
 };
-
 
 /* Whoooooooooooooa ugly!!! */
 int loading_length = -1;
@@ -43,23 +38,19 @@ int noLength=1;
 /*SWP -- Even Uglier*/
 extern int ftpKludge;
 
-/*	Presentation methods
-**	--------------------
-*/
+/*	Presentation methods */
 
 PUBLIC  HTList * HTPresentations = 0;
 PUBLIC  HTPresentation* default_presentation = 0;
 
 
-/*	Define a presentation system command for a content-type
-**	-------------------------------------------------------
-*/
-PUBLIC void HTSetPresentation ARGS5(
-	WWW_CONST char *, representation,
-	WWW_CONST char *, command,
-	float,	quality,
-	float,	secs, 
-	float,	secs_per_byte)
+/*	Define a presentation system command for a content-type */
+
+void HTSetPresentation( WWW_CONST char *representation,
+	WWW_CONST char *command,
+	float	quality,
+	float	secs, 
+	float	secs_per_byte)
 {
     HTPresentation * pres = (HTPresentation *)malloc(sizeof(HTPresentation));
     
@@ -83,15 +74,14 @@ PUBLIC void HTSetPresentation ARGS5(
 }
 
 /*	Define a built-in function for a content-type
-**	---------------------------------------------
 */
-PUBLIC void HTSetConversion ARGS6(
-	WWW_CONST char *, representation_in,
-	WWW_CONST char *, representation_out,
-	HTConverter*,	converter,
-	float,	quality,
-	float,	secs, 
-	float,	secs_per_byte)
+void HTSetConversion(
+	WWW_CONST char * representation_in,
+	WWW_CONST char * representation_out,
+	HTConverter*	converter,
+	float	quality,
+	float	secs, 
+	float	secs_per_byte)
 {
     HTPresentation * pres = (HTPresentation *)malloc(sizeof(HTPresentation));
     
@@ -146,7 +136,6 @@ PUBLIC void HTRemoveConversion ARGS3(
 /***************** end ddt*/
 
 /*	File buffering
-**	--------------
 **
 **	The input file is read using the macro which can read from
 **	a socket or a file.
@@ -166,7 +155,7 @@ PRIVATE int input_file_number;
 **	many parsers, and on PCs and Macs we should not duplicate
 **	the static buffer area.
 */
-PUBLIC void HTInitInput ARGS1 (int,file_number)
+PUBLIC void HTInitInput (int file_number)
 {
     input_file_number = file_number;
     input_pointer = input_limit = input_buffer;
@@ -267,7 +256,6 @@ nope:
   
 
 /*		Create a filter stack
-**		---------------------
 **
 **	If a wildcard match is made, a temporary HTPresentation
 **	structure is made to hold the destination format while the
@@ -283,19 +271,19 @@ PUBLIC HTStream * HTStreamStack (
 	HTParentAnchor*	anchor,
 	caddr_t		appd)
 {
-  HTAtom * wildcard = HTAtom_for("*");
-  HTPresentation temp;
+	HTAtom * wildcard = HTAtom_for("*");
+	HTPresentation temp;
 
   /* Inherit force_dump_filename from mo-www.c. */
   extern char* force_dump_filename;
 
-  if (wWWParams.trace) 
+  if (wWWParams.trace) {
     fprintf(stderr,
-            "[HTStreamStack] Constructing stream stack for %s to %s\n",
+            "[HTStreamStack] Constructing stream stack for %s to %s ...\n",
             HTAtom_name(format_in),	
             HTAtom_name(rep_out));
-  if (wWWParams.trace)
-    fprintf (stderr, "               Compressed is %d\n", compressed);
+    fprintf (stderr, "... Compressed is %d\n", compressed);
+  }
     
   if (rep_out == WWW_SOURCE || rep_out == format_in) {
       if (wWWParams.trace)
@@ -326,9 +314,8 @@ PUBLIC HTStream * HTStreamStack (
               fprintf (stderr, "HTFormat: pres->command doesn't exist\n");
         }
         if (pres->rep == format_in ||
-            partial_wildcard_matches (pres->rep, format_in))
-          {
-            if (pres->command && strstr (pres->command, "mosaic-internal-present"))
+            partial_wildcard_matches (pres->rep, format_in)) {
+            if (pres->command && strstr(pres->command, "mosaic-internal-present"))
               {
                 if (wWWParams.trace)
                   fprintf (stderr, "[HTStreamStack] HEY HEY HEY caught internal-present\n");
@@ -359,7 +346,6 @@ PUBLIC HTStream * HTStreamStack (
 
 
 /*		Find the cost of a filter stack
-**		-------------------------------
 **
 **	Must return the cost of the same stack which StreamStack would set up.
 **
@@ -372,40 +358,37 @@ PUBLIC float HTStackValue ARGS4(
 	float,			initial_value,
 	long int,		length)
 {
-    HTAtom * wildcard = HTAtom_for("*");
-
-    if (wWWParams.trace) fprintf(stderr,
-    	"HTFormat: Evaluating stream stack for %s worth %.3f to %s\n",
-	HTAtom_name(format_in),	initial_value,
-	HTAtom_name(rep_out));
-		
-    if (rep_out == WWW_SOURCE ||
-    	rep_out == format_in) return 0.0;
-
-    if (!HTPresentations) HTFormatInit();	/* set up the list */
-    
-    {
-	int n = HTList_count(HTPresentations);
-	int i;
+	HTAtom * wildcard = HTAtom_for("*");
 	HTPresentation * pres;
+	int i,n;
+
+	if (wWWParams.trace)
+		fprintf(stderr,
+			"HTFormat: Eval stream stack for %s worth %.3f to %s\n",
+			HTAtom_name(format_in),	initial_value,
+			HTAtom_name(rep_out));
+	if (rep_out == WWW_SOURCE || rep_out == format_in)
+		return 0.0;
+	if (!HTPresentations)
+		HTFormatInit();	/* set up the list */
+
+	n = HTList_count(HTPresentations);
 	for(i=0; i<n; i++) {
-	    pres = (HTPresentation*)HTList_objectAt(HTPresentations, i);
-	    if (pres->rep == format_in && (
-	    		pres->rep_out == rep_out ||
-			pres->rep_out == wildcard)) {
-	        float value = initial_value * pres->quality;
-		if (HTMaxSecs != 0.0)
-		value = value - (length*pres->secs_per_byte + pres->secs)
-			                 /HTMaxSecs;
-		return value;
-	    }
+		pres = (HTPresentation*)HTList_objectAt(HTPresentations, i);
+		if (pres->rep == format_in && 
+		    ( pres->rep_out == rep_out || pres->rep_out == wildcard)) {
+			float value = initial_value * pres->quality;
+			if (HTMaxSecs != 0.0)
+				value = value - 
+					(length*pres->secs_per_byte + pres->secs)/
+					HTMaxSecs;
+			return value;
+		}
 	}
-    }
-    return -1e30;		/* Really bad */
+	return -1e30;		/* Really bad */
 }
 	
 /*	Push data from a socket down a stream
-**	-------------------------------------
 **
 **   This routine is responsible for creating and PRESENTING any
 **   graphic (or other) objects described by the file.
@@ -415,11 +398,7 @@ PUBLIC float HTStackValue ARGS4(
 **   when the format is textual.
 */
 
-
-PUBLIC int HTCopy (int		file_number,
-                   HTStream*	sink,
-                   int          bytes_already_read,
-		caddr_t		appd)
+int HTCopy(int file_number, HTStream *sink, int bytes_already_read, caddr_t appd)
 {
 	HTStreamClass targetClass;    
 	char line[256];

@@ -1,5 +1,4 @@
-/*		FILE WRITER				HTFWrite.h
-**		===========
+/*		FILE WRITER
 **
 **	This version of the stream object just writes to a C file.
 **	The file is assumed open and left open.
@@ -13,7 +12,6 @@
 
 #include "HText.h"
 #include "HTFWriter.h"
-
 #include "HTFormat.h"
 #include "HTAlert.h"
 #include "HTFile.h"
@@ -28,15 +26,12 @@ extern char *currentURL;
 
 int imageViewInternal=0;
 
-/*		Stream Object
-**		------------
-*/
+/*		Stream Object */
 
 struct _HTStream {
 	WWW_CONST HTStreamClass *	isa;
-	
 	FILE *			fp;
-        char * fnam;
+        char *			fnam;
 	char * 			end_command;
         int compressed;
         int interrupted;
@@ -57,14 +52,9 @@ extern char *force_dump_filename;
 
 extern int binary_transfer;
 
-/*_________________________________________________________________________
-**
-**			A C T I O N 	R O U T I N E S
-*/
+/*			A C T I O N 	R O U T I N E S */
 
-/*	Character handling
-**	------------------
-*/
+/*	Character handling */
 
 PRIVATE void HTFWriter_put_character(HTStream *me, char c, caddr_t appd)
 {
@@ -73,18 +63,16 @@ PRIVATE void HTFWriter_put_character(HTStream *me, char c, caddr_t appd)
 	if (me->write_error)
 		return;
 
-  /* Make sure argument to putc is in range 0-255, to avoid weirdness
-     with rv == -1 == EOF when it's not supposed to. */
+/* Make sure argument to putc is in range 0-255, to avoid weirdness
+ * with rv == -1 == EOF when it's not supposed to. */
 	rv = putc ((int)(unsigned char)c, me->fp);
-
 	if (rv == EOF) {
-	HTProgress ("Error writing to temporary file.",appd);
-	me->write_error = 1;
+		HTProgress ("Error writing to temporary file.",appd);
+		me->write_error = 1;
 	}
 }
 
 /*	String handling
-**	---------------
 **
 **	Strings must be smaller than this buffer size.
 */
@@ -102,7 +90,6 @@ PRIVATE void HTFWriter_put_string (HTStream *me, WWW_CONST char* s, caddr_t appd
 }
 
 /*	Buffer write.  Buffers can (and should!) be big.
-**	------------
 */
 PRIVATE void HTFWriter_write(HTStream *me, WWW_CONST char*s, int l, caddr_t appd)
 {
@@ -150,7 +137,6 @@ int supportedImageType(char *mt)
 }
 
 /*	Free an HTML object
-**	-------------------
 **
 **	Note that the SGML parsing context is freed, but the created
 **	object is not,
@@ -344,7 +330,6 @@ outtahere:
 }
 
 /*	Structured Object Class
-**	-----------------------
 */
 PRIVATE WWW_CONST HTStreamClass HTFWriter = /* As opposed to print etc */
 {		
@@ -358,7 +343,6 @@ PRIVATE WWW_CONST HTStreamClass HTFWriter = /* As opposed to print etc */
 
 
 /*	Take action using a system command
-**	----------------------------------
 **
 **	Creates temporary file, writes to it, executes system command
 **	on end-document.  The suffix of the temp file can be given

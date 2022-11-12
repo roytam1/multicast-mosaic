@@ -1,5 +1,4 @@
-/*		Access Manager					HTAccess.c
-**		==============
+/*		Access Manager
 **
 ** Authors
 **	TBL	Tim Berners-Lee timbl@info.cern.ch
@@ -30,8 +29,6 @@
 #include "HTParse.h"
 #include "HTUtils.h"
 #include "HTML.h"		/* SCW */
-
-
 #include "HTList.h"
 #include "HTAlert.h"
 #include "HTParams.h"	/* params from X resources */
@@ -50,7 +47,7 @@ PUBLIC char *proxy_host_fix=NULL; /* Host: header fix */
 PRIVATE HTList * protocols = NULL;   /* List of registered protocol descriptors */
 
 extern HTProtocol HTTP, HTFile, HTTelnet, HTTn3270, HTRlogin;
-extern HTProtocol HTFTP, HTNews, HTGopher, HTMailto, HTNNTP;
+extern HTProtocol HTFTP, HTNews, HTGopher, HTNNTP;
 #ifdef DIRECT_WAIS
 extern HTProtocol HTWAIS;
 #endif
@@ -88,7 +85,6 @@ PRIVATE void HTAccessInit NOARGS			/* Call me once */
 	HTRegisterProtocol(&HTTelnet);
 	HTRegisterProtocol(&HTTn3270);
 	HTRegisterProtocol(&HTRlogin);
-	HTRegisterProtocol(&HTMailto);
 	HTRegisterProtocol(&HTNNTP);
 }
 
@@ -102,19 +98,16 @@ PRIVATE void HTAccessInit NOARGS			/* Call me once */
 **	returns		HT_NO_ACCESS		Error has occured.
 **			HT_OK			Success
 */
-PRIVATE int get_physical ARGS3(
-	char *,		addr,
-	HTParentAnchor *, anchor,
-	int,		bong)
+PRIVATE int get_physical(char *addr, HTParentAnchor *anchor, int bong)
 {
 	char * access=NULL;	/* Name of access method */
 	char * physical = NULL;
 	struct Proxy *GetNoProxy(char *access, char *site);
 	char *tmp_access,*tmp_host,*ptr;
 
-	HTAnchor_setPhysical(anchor, addr);
-	access =  HTParse(HTAnchor_physical(anchor), "file:", PARSE_ACCESS);
-	tmp_host = HTParse(HTAnchor_physical(anchor), "", PARSE_HOST);
+	StrAllocCopy(anchor->physical, addr);
+	access =  HTParse(anchor->physical, "file:", PARSE_ACCESS);
+	tmp_host = HTParse(anchor->physical, "", PARSE_HOST);
 /*
 ** set useKeepAlive to the default here because the last pass might
 ** have turned this off, and the default might have been on.
@@ -161,12 +154,12 @@ PRIVATE int get_physical ARGS3(
 			int fMatchEnd;
 			char *scheme_info;
 
-			scheme_info =HTParse(HTAnchor_physical(anchor), "", PARSE_HOST);
+			scheme_info =HTParse(anchor->physical, "", PARSE_HOST);
 			fMatchEnd = 1; /* match hosts from the end */
 
 			if ((scheme_info != NULL) && (*scheme_info == '\0')) {
 				free(scheme_info);
-				scheme_info = HTParse(HTAnchor_physical(anchor), "", PARSE_PATH);
+				scheme_info = HTParse(anchor->physical, "", PARSE_PATH);
 				fMatchEnd = 0; /* match other scheme_info at beginning*/
 			}
 
@@ -199,12 +192,12 @@ PRIVATE int get_physical ARGS3(
 			StrAllocCopy(gatewayed,proxy);
 			StrAllocCat(gatewayed,addr);
 			using_proxy = YES;
-			HTAnchor_setPhysical(anchor, gatewayed);
+			StrAllocCopy(anchor->physical, gatewayed);
 			free(gatewayed);
 			free(access);
 			if (proxyentry)
 				free(proxyentry);
-			access =  HTParse(HTAnchor_physical(anchor),
+			access =  HTParse(anchor->physical,
 						"http:", PARSE_ACCESS);
 		} else if (gateway) {
 			char * gatewayed;
@@ -213,10 +206,10 @@ PRIVATE int get_physical ARGS3(
 			StrAllocCopy(gatewayed,gateway);
 			StrAllocCat(gatewayed,addr);
 			using_gateway = YES;
-			HTAnchor_setPhysical(anchor, gatewayed);
+			StrAllocCopy(anchor->physical, gatewayed);
 			free(gatewayed);
 			free(access);
-			access =  HTParse(HTAnchor_physical(anchor),
+			access =  HTParse(anchor->physical,
 						"http:", PARSE_ACCESS);
 		} else {
 			if (proxy_host_fix) {
@@ -242,7 +235,7 @@ PRIVATE int get_physical ARGS3(
 			HTProtocol *p=(HTProtocol *)HTList_objectAt(protocols, i);
 
 			if (strcmp(p->name, access)==0) {
-				HTAnchor_setProtocol(anchor, p);
+				anchor->protocol = p;
 				free(access);
 				return (HT_OK);
 			}
@@ -283,7 +276,7 @@ PRIVATE int HTLoad(WWW_CONST char * addr, HTParentAnchor * anchor,
      *   than looping through all of the proxy list everytime a proxy fails!
      *   --SWP
      */
-	p = (HTProtocol*)HTAnchor_protocol(anchor);
+	p = (HTProtocol*)anchor->protocol;
 	if (!p) {
 		return(HT_NOT_LOADED);
 	}
@@ -294,8 +287,8 @@ PRIVATE int HTLoad(WWW_CONST char * addr, HTParentAnchor * anchor,
 		retry=5;
 
 retry_proxy:
-		p = (HTProtocol*)HTAnchor_protocol(anchor);
-		ret = (*(p->load))(HTAnchor_physical(anchor),
+		p = (HTProtocol*)anchor->protocol;
+		ret = (*(p->load))(anchor->physical,
 					anchor, format_out, NULL,appd);
 
 		if (ret==HT_INTERRUPTED || HTCheckActiveIcon(0,appd)==HT_INTERRUPTED) {
@@ -322,7 +315,7 @@ retry_proxy:
 
 /* must be using proxy and have a problem to get here! */
 
-		host=HTParse(HTAnchor_physical(anchor), "", PARSE_HOST);
+		host=HTParse(anchor->physical, "", PARSE_HOST);
 		finbuf=(char *)calloc(strlen(host)+ strlen(buf1)+ strlen(buf2)+ 5,
 					sizeof(char));
 		sprintf(finbuf,"%s%s?%s",buf1,host,buf2);
@@ -364,17 +357,20 @@ char *use_this_url_instead;
 **                  -1      Interrupted
 */
 
-PUBLIC int HTLoadAbsolute ( char *addr, caddr_t appd)
+int HTLoadAbsolute( char *addr, caddr_t appd)
 {
 	HTParentAnchor *anchor;
 	HTFormat format_out;
 	int	        status;
+	HTAnchor *	tmpa;
 
 	if (currentURL)
 		free(currentURL);
 	currentURL=strdup(addr);
 
-	anchor = HTAnchor_parent(HTAnchor_findAddress(addr));
+	tmpa = HTAnchor_findAddress(addr);
+	anchor = tmpa ? tmpa->parent : NULL ;
+
 	format_out = WWW_PRESENT;
 
 	use_this_url_instead = NULL;

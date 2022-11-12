@@ -22,7 +22,7 @@
 PRIVATE HTAtom * hash_table[HASH_SIZE];
 PRIVATE HT_BOOL initialised = NO;
 
-PUBLIC HTAtom * HTAtom_for(char * string)
+HTAtom * HTAtom_for(char * string)
 {
 	int hash;
 	WWW_CONST char * p;
@@ -62,7 +62,7 @@ PUBLIC HTAtom * HTAtom_for(char * string)
 	return a;
 }
 
-PUBLIC HTAtom * HTAtom_exists(char * string)
+HTAtom * HTAtom_exists(char * string)
 {
 	int hash;
 	WWW_CONST char * p;

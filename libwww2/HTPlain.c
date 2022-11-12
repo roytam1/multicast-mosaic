@@ -24,10 +24,7 @@ struct _HTStream {
         int compressed;
 };
 
-/*_________________________________________________________________________
-**
-**			A C T I O N 	R O U T I N E S
-*/
+/*			A C T I O N 	R O U T I N E S */
 
 /*	Character handling */
 
@@ -74,8 +71,8 @@ PRIVATE void HTPlain_handle_interrupt (HTStream * me, caddr_t appd)
 	HText_doAbort(me->text);
 }
 
-/*		Structured Object Class
-*/
+/*		Structured Object Class */
+
 PUBLIC WWW_CONST HTStreamClass HTPlain =
 {		
 	"SocketWriter",
@@ -86,6 +83,7 @@ PUBLIC WWW_CONST HTStreamClass HTPlain =
 }; 
 
 /*		New object */
+
 PUBLIC HTStream* HTPlainPresent(HTPresentation *pres, HTParentAnchor *anchor,
 	HTStream *sink, HTFormat format_in, int compressed, caddr_t appd)
 {

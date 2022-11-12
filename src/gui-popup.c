@@ -18,7 +18,6 @@
 extern int do_meta;	/*############*/
 Boolean 	have_popup;
 Widget 		popup = NULL;
-void 		_set_eptr_field(PopupItem *items, struct ele_rec *eptr);
 static void	fsb(mo_window *win, char *src);
 void 		rbm_ballonify(Widget w,XtPointer clid, XtPointer calld);
 static Widget 	_PopupMenuBuilder(mo_window * win, Widget parent,
@@ -249,6 +248,17 @@ PopupItem popup_items[] = {		 /* Permanent stuff */
   { LastItem },
 };
 
+static void _set_eptr_field(PopupItem *items, struct ele_rec *eptr, mo_window *win)
+{
+	int i;
+
+	for(i=0; items[i].classw != LastItem; i++) {
+		if(items[i].sub_items)
+		_set_eptr_field(items[i].sub_items, eptr,win);
+		items[i].acst.eptr = eptr;
+		items[i].acst.win = win;
+	}
+}
 static void ThirdButtonMenu(Widget w, XtPointer clid, XEvent *event,
      Boolean *ctd)
 {
@@ -336,7 +346,7 @@ static void ThirdButtonMenu(Widget w, XtPointer clid, XEvent *event,
 		}
 	} /* for */
 			/* set all the widgets eptr data */
-	_set_eptr_field(popup_items, eptr);
+	_set_eptr_field(popup_items, eptr,win);
 
 			/*motif puts menu in a boring place lets fix it*/ 
 			/* BuEvent->x_root -= 40;  middle of buttons*/
@@ -346,16 +356,6 @@ static void ThirdButtonMenu(Widget w, XtPointer clid, XEvent *event,
 	XtManageChild(popup);
 }
 
-void _set_eptr_field(PopupItem *items, struct ele_rec *eptr)
-{
-	int i;
-
-	for(i=0; items[i].classw != LastItem; i++) {
-		if(items[i].sub_items)
-		_set_eptr_field(items[i].sub_items, eptr);
-		items[i].acst.eptr = eptr;
-	}
-}
 
 void mo_make_popup(mo_window * win)
 {

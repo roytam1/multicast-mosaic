@@ -1,5 +1,4 @@
-/* MODULE							HTAAUtil.c
-**		COMMON PARTS OF ACCESS AUTHORIZATION MODULE
+/*		COMMON PARTS OF ACCESS AUTHORIZATION MODULE
 **			FOR BOTH SERVER AND BROWSER
 **
 ** IMPORTANT:
@@ -83,8 +82,7 @@ PUBLIC HTAAScheme HTAAScheme_enum ARGS1(WWW_CONST char*, name)
 	return HTAA_UNKNOWN;
 }
 
-/* PUBLIC						HTAAScheme_name()
-**			GET THE NAME OF A GIVEN SCHEME
+/*			GET THE NAME OF A GIVEN SCHEME
 ** ON ENTRY:
 **	scheme		is one of the scheme enum values:
 **			HTAA_NONE, HTAA_BASIC, HTAA_PUBKEY, ...
@@ -107,8 +105,7 @@ PUBLIC char *HTAAScheme_name ARGS1(HTAAScheme, scheme)
 	}
 }
 
-/* PUBLIC						    HTAAMethod_enum()
-**		TRANSLATE METHOD NAME INTO AN ENUMERATED VALUE
+/*		TRANSLATE METHOD NAME INTO AN ENUMERATED VALUE
 ** ON ENTRY:
 **	name		is the method name to translate.
 **
@@ -141,8 +138,7 @@ PUBLIC HTAAMethod HTAAMethod_enum ARGS1(WWW_CONST char *, name)
 		return METHOD_UNKNOWN;
 }
 
-/* PUBLIC						HTAA_templateMatch()
-**		STRING COMPARISON FUNCTION FOR FILE NAMES
+/*		STRING COMPARISON FUNCTION FOR FILE NAMES
 **		   WITH ONE WILDCARD * IN THE TEMPLATE
 ** NOTE:
 **	This is essentially the same code as in HTRules.c, but it
@@ -150,7 +146,6 @@ PUBLIC HTAAMethod HTAAMethod_enum ARGS1(WWW_CONST char *, name)
 **	(In fact, HTRules.c should use this routine, but then this
 **	 routine would have to be more sophisticated... why is life
 **	 sometimes so hard...)
-**
 ** ON ENTRY:
 **	template	is a template string to match the file name
 **			agaist, may contain a single wildcard
@@ -158,7 +153,6 @@ PUBLIC HTAAMethod HTAAMethod_enum ARGS1(WWW_CONST char *, name)
 **			arbitrary characters.
 **	filename	is the filename (or pathname) to be matched
 **			agaist the template.
-**
 ** ON EXIT:
 **	returns		YES, if filename matches the template.
 **			NO, otherwise.
@@ -189,15 +183,13 @@ PUBLIC HT_BOOL HTAA_templateMatch ARGS2(WWW_CONST char *, tmplate,
 	return NO;			/* Length or character mismatch */
 }
 
-/* PUBLIC					HTAA_makeProtectionTemplate()
-**		CREATE A PROTECTION TEMPLATE FOR THE FILES
+/*		CREATE A PROTECTION TEMPLATE FOR THE FILES
 **		IN THE SAME DIRECTORY AS THE GIVEN FILE
 **		(Used by server if there is no fancier way for
 **		it to tell the client, and by browser if server
 **		didn't send WWW-ProtectionTemplate: field)
 ** ON ENTRY:
 **	docname	is the document pathname (from URL).
-**
 ** ON EXIT:
 **	returns	a template matching docname, and other files
 **		files in that directory.
@@ -230,19 +222,16 @@ PUBLIC char *HTAA_makeProtectionTemplate ARGS1(WWW_CONST char *, docname)
 	return tmplate;
 }
 
-/*
-** Skip leading whitespace from *s forward
+/* Skip leading whitespace from *s forward
 */
 #define SKIPWS(s) while (*s==' ' || *s=='\t') s++;
 
-/*
-** Kill trailing whitespace starting from *(s-1) backwords
+/* Kill trailing whitespace starting from *(s-1) backwords
 */
 #define KILLWS(s) {char *c=s-1; while (*c==' ' || *c=='\t') *(c--)=(char)0;}
 
 
-/* PUBLIC						HTAA_parseArgList()
-**		PARSE AN ARGUMENT LIST GIVEN IN A HEADER FIELD
+/*		PARSE AN ARGUMENT LIST GIVEN IN A HEADER FIELD
 ** ON ENTRY:
 **	str	is a comma-separated list:
 **
@@ -267,9 +256,9 @@ PUBLIC char *HTAA_makeProtectionTemplate ARGS1(WWW_CONST char *, docname)
 **		the number of order number of that item. E.g.
 **		"1" for the first, etc.
 */
-PUBLIC HTAssocList *HTAA_parseArgList ARGS1(char *, str)
+PUBLIC HTAssocList *HTAA_parseArgList(char * str)
 {
-    HTAssocList *assoc_list = HTAssocList_new();
+    HTAssocList *assoc_list = (HTAssocList *)HTList_new();
     char *cur = NULL;
     char *name = NULL;
     int index = 0;
@@ -319,8 +308,6 @@ PUBLIC HTAssocList *HTAA_parseArgList ARGS1(char *, str)
 
     return assoc_list;
 }
-
-
 
 /************** HEADER LINE READER -- DOES UNFOLDING *************************/
 

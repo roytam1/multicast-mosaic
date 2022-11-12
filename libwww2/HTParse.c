@@ -1,6 +1,4 @@
-/*		Parse HyperText Document Address		HTParse.c
-**		================================
-*/
+/*		Parse HyperText Document Address */
 
 #include <stdio.h>
 
@@ -20,7 +18,6 @@ struct struct_parts {
 };
 
 /*	Strip white space off a string
-**	------------------------------
 **
 ** On exit,
 **	Return value points to first non-white character, or to 0 if none.
@@ -42,7 +39,6 @@ char * HTStrip(char * s)
 
 
 /*	Scan a filename for its consituents
-**	-----------------------------------
 **
 ** On entry,
 **	name	points to a document name which may be incomplete.
@@ -117,7 +113,6 @@ PRIVATE void scan(char * name, struct struct_parts *parts)
 
 
 /*	Parse a Name relative to another name
-**	-------------------------------------
 **
 **	This returns those parts of a name which are given (and requested)
 **	substituting bits from the related name where necessary.
@@ -217,9 +212,6 @@ char * HTParse(char * aName, char * relatedName, int wanted)
                     if (wWWParams.trace)
                       fprintf (stderr, "[Parse] Copying '%s' to '%s', %d bytes\n", 
                                p+1, p, strlen (p+1));
-/*
-                    bcopy (p+1, p, strlen(p+1));
-*/
                     memcpy (p, p+1, strlen(p+1));
                     if (wWWParams.trace)
                       fprintf (stderr, "[Parse] Setting '%c' to 0...\n",
@@ -289,7 +281,6 @@ char * HTParse(char * aName, char * relatedName, int wanted)
 
 
 /*	        Simplify a filename
-//		-------------------
 //
 // A unix-style file is allowed to contain the seqeunce xxx/../ which may be
 // replaced by "" , and the seqeunce "/./" which may be replaced by "/".
@@ -331,7 +322,6 @@ void HTSimplify(char * filename)
   
 
 /*		Make Relative Name
-**		------------------
 **
 ** This function creates and returns a string which gives an expression of
 ** one address as related to another. Where there is no relation, an absolute
@@ -427,8 +417,7 @@ char *HTEscape (char *part)
   return escaped;
 }
 
-/*		Decode %xx escaped characters			HTUnEscape()
-**		-----------------------------
+/*		Decode %xx escaped characters
 **
 **	This function takes a pointer to a string in which some
 **	characters may have been encoded in %xy form, where xy is
@@ -445,23 +434,24 @@ PRIVATE char from_hex ARGS1(char, c)
 
 PUBLIC char * HTUnEscape ARGS1( char *, str)
 {
-    char * p = str;
-    char * q = str;
-    while(*p) {
-        if (*p == HEX_ESCAPE) {
-	    p++;
-	    if (*p) *q = from_hex(*p++) * 16;
-	    if (*p) *q = (*q + from_hex(*p++));
-	    q++;
-        } else if (*p == '+') {
-            p++;
-            *q++ = ' ';
-	} else {
-	    *q++ = *p++; 
+	char * p = str;
+	char * q = str;
+
+	while(*p) {
+		if (*p == HEX_ESCAPE) {
+			p++;
+			if (*p)
+				*q = from_hex(*p++) * 16;
+			if (*p)
+				*q = (*q + from_hex(*p++));
+			q++;
+		} else if (*p == '+') {
+			p++;
+			*q++ = ' ';
+		} else {
+			*q++ = *p++; 
+		}
 	}
-    }
-    
-    *q++ = 0;
-    return str;
-    
-} /* HTUnEscape */
+	*q++ = 0;
+	return str;
+}

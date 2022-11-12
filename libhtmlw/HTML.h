@@ -69,8 +69,6 @@ extern void HTMLSetText (Widget w, char *text, int element_id,
 extern int HTMLSearchText (Widget w, char *pattern,
 	ElementRef *m_start, ElementRef *m_end, int backward, int caseless);
 extern int HTMLSearchNews(Widget w,ElementRef *m_start, ElementRef *m_end);
-extern void HTMLSetAppInsensitive(Widget hw);
-extern void HTMLSetAppSensitive(Widget hw);
 extern void HTMLDrawBackgroundImage(Widget w, int x, int y, int width, 
 				    int height);
 extern void McUpdateWidgetObject(Widget w, int num_eo, char * data, int len_data);
@@ -83,6 +81,7 @@ typedef struct acall_rec {
 	int element_id;
 	char *text;
 	char *href;
+	char *title;
 } WbAnchorCallbackData;
 
 typedef struct fcall_rec {

@@ -331,7 +331,7 @@ HTMLClassRec htmlClassRec = {
       NULL,					/* set_values_hook    */
       XtInheritSetValuesAlmost,			/* set_values_almost  */
       NULL,					/* get_values_hook    */
-      (XtAcceptFocusProc)NULL /* html_accept_focus*/,	/* accept_focus       */
+      html_accept_focus,			/* accept_focus       */
       XtVersion,				/* version            */
       NULL,					/* callback_private   */
       defaultTranslations,			/* tm_table           */
@@ -372,8 +372,6 @@ HTMLClassRec htmlClassRec = {
 WidgetClass htmlWidgetClass = (WidgetClass)&htmlClassRec;
 
 static Cursor in_anchor_cursor = (Cursor)NULL;
-static char *mailToKludgeSubject = NULL; 
-static char *mailToKludgeURL = NULL;
 
 int installed_colormap=0;
 Colormap installed_cmap;
@@ -390,9 +388,9 @@ static void InitBody(HTMLWidget hw)
 	return;
 }
 
-void hw_do_bg(HTMLWidget hw, char *bgname) 
+void hw_do_bg(HTMLWidget hw, char *bgname,PhotoComposeContext * pcc) 
 {
-	ImageInfo pic_data;
+	ImageInfo lpicd;
 
 /* clear previous GD 28 Apr 96 Voir aussi HTMLlists.c*/
         if (hw->html.bgmap_SAVE!=None) {  
@@ -417,29 +415,56 @@ void hw_do_bg(HTMLWidget hw, char *bgname)
 /*!!! Need to do delayed image loading junk*/
 /*!!! Need the ability to free up the pixmap when done with it (in cache)*/
 /*#########################*/
-	pic_data.src=bgname;
-	pic_data.internal_numeo = 0;
-	XtCallCallbackList ((Widget)hw, hw->html.image_callback,
-				(XtPointer)&pic_data);
+	lpicd.src=bgname;
+	lpicd.alt_text = NULL;
+	lpicd.align = ALIGN_NONE;     
+	lpicd.height = 0;             
+	lpicd.req_height = -1;  /* no req_height */
+	lpicd.width = 0;              
+	lpicd.req_width = -1;   /* no req_width */
+	lpicd.border = 0;
+	lpicd.hspace = 0;
+	lpicd.vspace = 0;
+	lpicd.usemap = NULL;     
+	lpicd.map = NULL;             
+	lpicd.ismap = 0;              
+	lpicd.fptr = NULL;            
+	lpicd.internal = 0;           
+	lpicd.delayed = hw->html.delay_image_loads;
+	lpicd.fetched = 0;            
+	lpicd.cached = 0;             
+	lpicd.num_colors = 0;         
+/*      lpicd.colrs = NULL;     */    
+	lpicd.bg_index = 0;           
+	lpicd.image_data = NULL;      
+	lpicd.clip_data = NULL;       
+	lpicd.transparent=0;          
+	lpicd.image = None;           
+	lpicd.clip = None;            
+	lpicd.internal_numeo = pcc->internal_mc_eo;
+	lpicd.cw_only = pcc->cw_only;
+
+	/* got an image in picd */            
+	HtmlGetImage(hw, &lpicd, pcc, False); /* don't force load */
 /*#########################*/
-	if (pic_data.fetched) { /* Plop the background image here */
-		pic_data.image=InfoToImage(hw,&pic_data,0);
-		if (pic_data.transparent && pic_data.clip==None) {
+	if (lpicd.fetched) { /* Plop the background image here */
+		lpicd.image=InfoToImage(hw,&lpicd,0);
+		if (lpicd.transparent && lpicd.clip==None) {
 /*#########################*/
-			pic_data.clip = XCreatePixmapFromBitmapData(XtDisplay(hw),
+			lpicd.clip = XCreatePixmapFromBitmapData(XtDisplay(hw),
 						 XtWindow(hw->html.view),
-						 (char*)pic_data.clip_data,
-						 pic_data.width,
-						 pic_data.height,
+						 (char*)lpicd.clip_data,
+						 lpicd.width,
+						 lpicd.height,
 						 1, 0, 1);
 		} else 
-			if (!pic_data.transparent)
-				pic_data.clip = None;
+			if (!lpicd.transparent)
+				lpicd.clip = None;
 		hw->html.bg_image=1;
-		hw->html.bg_height=pic_data.height;
-		hw->html.bg_width=pic_data.width;
-		hw->html.bgmap_SAVE=pic_data.image;
-		hw->html.bgclip_SAVE=pic_data.clip;
+		hw->html.bg_height=lpicd.height;
+		hw->html.bg_width=lpicd.width;
+		hw->html.bgmap_SAVE=lpicd.image;
+		hw->html.bgclip_SAVE=lpicd.clip;
         }
 }
 
@@ -2204,20 +2229,6 @@ static void TrackMotion( Widget w, XEvent *event,
 	return;
 }
 
-/* We're adding a subject attribute to the anchor tag 
-   of course this subject attribute is dependent on that the HREF attribute
-   is set to a mailto URL.  I think this is a kludge.  libwww is not set up
-   for this, so to minimize modifications, this routine exists for 
-   libwww:HTSendMaitlTo() to call to get the subject for the mailto URL.
-   The static globals mailToKludgeSubject, etc are set in HTMLInput when
-   an anchor is clicked.  
-*/
-void GetMailtoKludgeInfo(char **url, char **subject)
-{
-	*url = mailToKludgeURL;
-	*subject = mailToKludgeSubject;
-}
-
 /* Process mouse input to the HTML widget
  * Currently only processes an anchor-activate when Button1 is pressed
  */
@@ -2248,7 +2259,6 @@ static void _HTMLInput( Widget w, XEvent *event,
 		return;
 	if (eptr->anchor_tag_ptr->anc_href == NULL)
 		return;
-	HTMLSetAppInsensitive((Widget) hw);
 		   /* Save the anchor text, replace newlines with * spaces. */
 	tptr = ParseTextToString(hw->html.select_start,
 		hw->html.select_start, hw->html.select_end,
@@ -2265,8 +2275,6 @@ static void _HTMLInput( Widget w, XEvent *event,
 #ifdef EXTRA_FLUSH
 	XFlush(XtDisplay(hw));
 #endif
-	mailToKludgeSubject = eptr->anchor_tag_ptr->anc_title;
-	mailToKludgeURL = eptr->anchor_tag_ptr->anc_href;
 
 	if((eptr->pic_data != NULL)&& (eptr->pic_data->delayed)&&
 	  (eptr->anchor_tag_ptr->anc_href != NULL)&&
@@ -2286,8 +2294,6 @@ static void _HTMLInput( Widget w, XEvent *event,
 		ReformatWindow(hw,True);
 		ScrollWidgets(hw);
 		ViewClearAndRefresh(hw);
-		mailToKludgeSubject = NULL;
-		mailToKludgeURL = NULL;
 		return;
 	} 
 /* An ISMAP image but in Form */
@@ -2299,8 +2305,6 @@ static void _HTMLInput( Widget w, XEvent *event,
 		form_y = event->xbutton.y + hw->html.scroll_y - eptr->y;
 		ImageSubmitForm(eptr->pic_data->fptr, event,
 			form_x, form_y);
-		mailToKludgeSubject = NULL;
-		mailToKludgeURL = NULL;
 		return;
 	} 
 /* Send the selection location along with the HRef
@@ -2325,12 +2329,11 @@ static void _HTMLInput( Widget w, XEvent *event,
 	cbdata.element_id = eptr->ele_id;
 	cbdata.href = buf;
 	cbdata.text = tptr;
+	cbdata.title = eptr->anchor_tag_ptr->anc_title;
 	XtCallCallbackList ((Widget)hw, hw->html.anchor_callback,
 			(XtPointer)&cbdata);
        	if (buf) free(buf);
        	if (tptr != NULL) free(tptr);
-	mailToKludgeSubject = NULL;
-	mailToKludgeURL = NULL;
 }
 
 /* SetValues is called when XtSetValues is used to change resources in this
@@ -2808,7 +2811,7 @@ int HTMLAnchorToId(Widget w, char *name)
 	eptr = NULL;
 	start = hw->html.formatted_elements;
 	while (start != NULL) {
-		if ((start->anchor_tag_ptr->anc_name)&&
+		if (start->anchor_tag_ptr && start->anchor_tag_ptr->anc_name &&
 		    (strcmp(start->anchor_tag_ptr->anc_name, name) == 0)) {
 			eptr = start;
 			break;
@@ -3816,36 +3819,6 @@ int HTMLSearchText(Widget w, char *pattern,
 	return(-1);
 }
 
-/* the following is a hack to make the html widget not acknowledge
-any button events while it is busy so that the rbm will not grab the 
-server. Hopefully this will be removed when the application is re-written
-to pay more attention to the event loop - TPR 2/9/96 */
-
-Window sens_win = (Window)NULL;
-
-void HTMLSetAppInsensitive(Widget hw)
-{
-  int x, y, width, height;
-
-  x = hw->core.x;
-  y = hw->core.y;
-  width = hw->core.width;
-  height = hw->core.height;
-
-/* ???? Should this be cast to a HTMLWidget and XtWindow changed to html.view*/
-  sens_win = XCreateWindow(XtDisplay((Widget) hw), XtWindow(hw), x, 
-			   y, width, height, 0,CopyFromParent, InputOnly, 
-			   CopyFromParent, 0, NULL);
-  XMapRaised(XtDisplay((Widget) hw), sens_win);
-}
-
-void HTMLSetAppSensitive(Widget hw)
-{
-  if(sens_win)
-    XDestroyWindow(XtDisplay((Widget) hw), sens_win);
-  sens_win = (Window)NULL;
-}
-
 void HTMLDrawBackgroundImage(Widget wid, int x, int y, int width, int height) 
 {
 int	w_whole=0, h_whole=0,
@@ -3993,5 +3966,5 @@ HTMLPart * McGetInternalHtmlPart( Widget w)
  
 static Boolean html_accept_focus(Widget w, Time *t)
 {
-  return False;
+  return True;
 }

@@ -1,5 +1,4 @@
-/*			File Access				HTFile.c
-**			===========
+/*			File Access
 **
 **	This is unix-specific code in general, with some VMS bits.
 **	These are routines for file access used by browsers.
@@ -9,7 +8,6 @@
 **	   Apr 91	vms-vms access included using DECnet syntax
 **	26 Jun 92 (JFG) When running over DECnet, suppressed FTP.
 **			Fixed access bug for relative names on VMS.
-**
 ** Bugs:
 **	FTP: Cannot access VMS files from a unix machine.
 **      How can we know that the
@@ -78,11 +76,8 @@ PRIVATE HTSuffix unknown_suffix = { "*.*", NULL, NULL, 1.0};
 **	Calling this with suffix set to "*.*" will set the default
 **	representation for unknown suffix files which contain a ".".
 */
-PUBLIC void HTSetSuffix ARGS4(
-	WWW_CONST char *,	suffix,
-	WWW_CONST char *,	representation,
-	WWW_CONST char *,	encoding,
-	float,		value)
+void HTSetSuffix ( WWW_CONST char *suffix, WWW_CONST char *representation,
+	WWW_CONST char *encoding, float value)
 {
 	HTSuffix * suff;
     	char *enc = NULL, *p;
@@ -110,11 +105,10 @@ PUBLIC void HTSetSuffix ARGS4(
 }
 
 /*	Convert filenames between local and WWW formats
-**	-----------------------------------------------
 ** On exit,
 **	returns	a malloc'ed string which must be freed by the caller.
 */
-PUBLIC char * HTLocalName ARGS1(WWW_CONST char *,name)
+static char * HTLocalName(WWW_CONST char *name)
 {
 	char * access = HTParse(name, "", PARSE_ACCESS);
 	char * host = HTParse(name, "", PARSE_HOST);
@@ -147,16 +141,14 @@ PUBLIC char * HTLocalName ARGS1(WWW_CONST char *,name)
 }
 
 /*	Determine a suitable suffix, given the representation
-**	-----------------------------------------------------
 **
 ** On entry,
 **	rep	is the atomized MIME style representation
-**
 ** On exit,
 **	returns	a pointer to a suitable suffix string if one has been
 **		found, else "".
 */
-PUBLIC WWW_CONST char * HTFileSuffix ARGS1(HTAtom*, rep)
+WWW_CONST char * HTFileSuffix (HTAtom *rep)
 {
     HTSuffix * suff;
     int n;
@@ -174,19 +166,14 @@ PUBLIC WWW_CONST char * HTFileSuffix ARGS1(HTAtom*, rep)
 }
 
 /*	Determine file format from file name
-**	------------------------------------
 **
 **	This version will return the representation and also set
 **	a variable for the encoding.
-**
 **	It will handle for example  x.txt, x.txt.Z, x.Z
 */
 
-PUBLIC HTFormat HTFileFormat ARGS4 (
-			char *,	filename,
-			HTAtom **,	pencoding,
-                        HTAtom *,       default_type,
-                        int *, compressed)
+HTFormat HTFileFormat ( char *filename, HTAtom **pencoding,
+                        HTAtom *default_type, int *compressed)
 {
 	HTSuffix *suff;
 	int n, i, lf;
@@ -278,9 +265,7 @@ done:
 }
 
 /*	Determine file format from file name -- string version */
-PUBLIC char *HTFileMimeType ARGS2 (
-			WWW_CONST char *,	filename,
-                        WWW_CONST char *,   default_type)
+char *HTFileMimeType( WWW_CONST char *filename, WWW_CONST char *default_type)
 {
   HTAtom *pencoding;
   HTFormat format;
@@ -349,12 +334,6 @@ got_subtype:
   if (wWWParams.trace)
     fprintf (stderr, "DESCRIBE: host '%s'\n", host);
 
-#if 0
-  for (i = 0; i < strlen (host); i++)
-    if (host[i] == ':')
-      host[i] = '\0';
-#endif
-  
   if (st) {
       /* Uppercase type, to start sentence. */
       t[0] = toupper(t[0]);
@@ -385,10 +364,9 @@ got_subtype:
   return strdup (line);
 }
 
-/*	Determine value from file name
-*/
+/*	Determine value from file name */
 
-PUBLIC float HTFileValue ARGS1 (WWW_CONST char *,filename)
+float HTFileValue (WWW_CONST char *filename)
 {
     HTSuffix * suff;
     int n;
@@ -411,11 +389,9 @@ PUBLIC float HTFileValue ARGS1 (WWW_CONST char *,filename)
 }
 
 /*	Determine write access to a file
-**	--------------------------------
 **
 ** On exit,
 **	return value	YES if file can be accessed and can be written to.
-**
 ** Bugs:
 **	1.	No code for non-unix systems.
 **	2.	Isn't there a quicker way?
@@ -475,7 +451,6 @@ PUBLIC HT_BOOL HTEditable ARGS1 (WWW_CONST char *,filename)
 }
 
 /*	Load a document
-**	---------------
 **
 ** On entry,
 **	addr		must point to the fully qualified hypertext reference.
@@ -486,7 +461,7 @@ PUBLIC HT_BOOL HTEditable ARGS1 (WWW_CONST char *,filename)
 **			HTLOADED	OK 
 **
 */
-PUBLIC int HTLoadFile (
+int HTLoadFile (
 	WWW_CONST char *	addr,
 	HTParentAnchor *	anchor,
 	HTFormat		format_out,
@@ -778,7 +753,12 @@ open_file:
 	    if (fp) {		/* Good! */
 		if (HTEditable(localname)) {
 		    HTAtom * put = HTAtom_for("PUT");
-		    HTList * methods = HTAnchor_methods(anchor);
+		    HTList * methods ;
+		    if ( !anchor->methods ){
+			anchor->methods = HTList_new();
+		    }
+		    methods = anchor->methods;
+
 		    if (HTList_indexOf(methods, put) == (-1)) {
 			HTList_addObject(methods, put);
 		    }

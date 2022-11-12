@@ -98,7 +98,7 @@ extern String 		ParseTextToPSString(HTMLWidget hw, struct ele_rec *el,
 
 
 
-extern void		hw_do_bg(HTMLWidget, char*);
+extern void		hw_do_bg(HTMLWidget, char*,PhotoComposeContext *);
 extern void		hw_do_color(HTMLWidget,char*,char*,PhotoComposeContext * pcc);
 
 extern void 		TablePlace(HTMLWidget hw, struct mark_up **mptr, 

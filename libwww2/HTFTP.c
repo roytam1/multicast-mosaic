@@ -68,10 +68,6 @@ extern char		*mMosaicMachineWithDomain;
 #define IPPORT_FTP	21
 #endif
 
-#ifndef NIL
-#define NIL 0
-#endif
-
 /*		Hypertext object building machinery */
 #include "HTML.h"
 
@@ -174,7 +170,6 @@ PRIVATE char next_data_char (caddr_t appd)
 }
 
 /*	Execute Command and get Response
-**	--------------------------------
 **
 **	See the state machine illustrated in RFC959, p57. This implements
 **	one command/reply sequence.  It also interprets lines which are to
@@ -186,7 +181,7 @@ PRIVATE char next_data_char (caddr_t appd)
 **
 ** On entry,
 **	con	points to the connection which is established.
-**	cmd	points to a command, or is NIL to just get the response.
+**	cmd	points to a command, or is NULL to just get the response.
 **
 **	The command is terminated with the CRLF pair.
 **
@@ -483,7 +478,7 @@ fprintf(stderr, "FTP connected, assigning control socket %d\n", con);
 	HTInitInput (con);
   
 /* Now we log in; Look up username, prompt for pw. */
-	status = response (NIL,appd);	/* Get greeting */
+	status = response (NULL,appd);	/* Get greeting */
 
 	if (status == HT_INTERRUPTED) {
 if (wWWParams.trace) fprintf (stderr, "FTP: Interrupted at beginning of login.\n");
@@ -1140,7 +1135,7 @@ sprintf(buffer,"<code>%s</code>",full_ftp_name);
 	HText_appendText (HT, "</PRE>\n");
 	HText_endAppend (HT);
 
-	rv = response (NIL,appd);
+	rv = response (NULL,appd);
 	if (rv == HT_INTERRUPTED)
 		return rv;
 	return rv == 2 ? HT_LOADED : -1;
@@ -1466,7 +1461,7 @@ fprintf (stderr, "FTP: Closing data socket %d\n", data_soc);
 		if (rv != HT_INTERRUPTED) {
 if (wWWParams.trace)
 fprintf (stderr, "FTP: Picking up final reply...\n");
-			status = response (NIL,appd);	/* Pick up final reply */
+			status = response (NULL,appd);	/* Pick up final reply */
 			if (status == HT_INTERRUPTED) {
 if (wWWParams.trace)
 fprintf (stderr, "FTP: Interrupted picking up final reply.\n");

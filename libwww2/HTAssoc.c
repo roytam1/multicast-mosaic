@@ -1,18 +1,10 @@
-
-/* MODULE							HTAssoc.c
-**	    ASSOCIATION LIST FOR STORING NAME-VALUE PAIRS.
+/*	    ASSOCIATION LIST FOR STORING NAME-VALUE PAIRS.
 **	    NAMES NOT CASE SENSITIVE, AND ONLY COMMON LENGTH
 **	    IS CHECKED (allows abbreviations; well, length is
 **	    taken from lookup-up name, so if table contains
 **	    a shorter abbrev it is not found).
 ** AUTHORS:
 **	AL	Ari Luotonen	luotonen@dxcern.cern.ch
-**
-** HISTORY:
-**
-**
-** BUGS:
-**
 */
 
 #include <stdio.h>
@@ -23,12 +15,7 @@
 #include "HTString.h"
 #include "HTParams.h"		/* params from X resources */
 
-PUBLIC HTAssocList *HTAssocList_new NOARGS
-{
-    return HTList_new();
-}
-
-PUBLIC void HTAssocList_delete ARGS1(HTAssocList *, alist)
+void HTAssocList_delete(HTAssocList *alist)
 {
     if (alist) {
 	HTAssocList *cur = alist;
@@ -42,9 +29,8 @@ PUBLIC void HTAssocList_delete ARGS1(HTAssocList *, alist)
     }
 }
 
-PUBLIC void HTAssocList_add ARGS3(HTAssocList *,	alist,
-				  WWW_CONST char *,	name,
-				  WWW_CONST char *,	value)
+void HTAssocList_add(HTAssocList *alist, WWW_CONST char *name,
+	 WWW_CONST char *value)
 {
     HTAssoc *assoc;
 
@@ -57,13 +43,13 @@ PUBLIC void HTAssocList_add ARGS3(HTAssocList *,	alist,
 	if (name) StrAllocCopy(assoc->name, name);
 	if (value) StrAllocCopy(assoc->value, value);
 	HTList_addObject(alist, (void*)assoc);
+	return;
     }
-    else if (wWWParams.trace) fprintf(stderr,"HTAssoc_add: ERROR: assoc list NULL!\n");
+    if(wWWParams.trace)
+	fprintf(stderr,"HTAssoc_add: ERROR: assoc list NULL!\n");
 }
 
-
-PUBLIC char *HTAssocList_lookup ARGS2(HTAssocList *,	alist,
-				      WWW_CONST char *,	name)
+char *HTAssocList_lookup(HTAssocList *alist, WWW_CONST char *name)
 {
     HTAssocList *cur = alist;
     HTAssoc *assoc;

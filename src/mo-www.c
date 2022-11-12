@@ -738,57 +738,11 @@ char *mo_unescape_part (char *str)
  *   called ".mosaic-spoof-agents".
  */
 
-void readAgents(void)
-{
-	FILE *fp;                
-	char fname[BUFSIZ],buf[512];
-	char *homedir,*ptr;
-                         
-        if (get_home(&homedir)!=0 || !homedir) {
-                fprintf(stderr,"home: Could not get your home directory.\n");
-                return;
-        }                
-        sprintf(fname,"%s/.mosaic-spoof-agents",homedir);
-        free(homedir);
-                         
-        if (!(fp=fopen(fname,"r")))
-                return;
-                         
-        while (!feof(fp)) {
-                fgets(buf,511,fp);
-                if (feof(fp))
-                        break;
-                if (*buf && *buf!='#') {
-                        buf[strlen(buf)-1]='\0';
-                        for (ptr=buf; *ptr && isspace(*ptr); ptr++);
-                        if (*ptr=='+') { /* This is to be the default*/
-                                if (*(ptr+1)) {
-                                        agent[numAgents]=strdup(ptr+1);
-                                        selectedAgent=numAgents;
-                                } else {
-                                        continue;
-                                }  
-                        } else if (*ptr) {
-                                agent[numAgents]=strdup(ptr);
-                        } else {       
-                                continue;
-                        }            
-                        numAgents++; 
-                        if (numAgents==MAX_AGENTS) { /* limit reached */
-                                fprintf(stderr,"WARNING: Hard limit reached for agent spoof file.\n");               
-                                break;
-                        }
-                } 
-        } 
-        fclose(fp);                   
-        return;                       
-} 
-
 void loadAgents(void) 
 {
 	FILE *fp;
 	char fname[BUFSIZ],buf[512];
-	char *homedir,*ptr;
+	char *ptr;
 	char buf1[512];
 
 	agent=(char **)calloc(MAX_AGENTS+1,sizeof(char *));
@@ -798,12 +752,7 @@ void loadAgents(void)
 	agent[0]=strdup(buf1);
 	numAgents=1;
 
-	if (get_home(&homedir)!=0 || !homedir) {
-		fprintf(stderr,"home: Could not get your home directory.\n");
-		return;
-	}
-	sprintf(fname,"%s/.mosaic-spoof-agents",homedir);
-	free(homedir);
+	sprintf(fname,"%s/agents",mMosaicRootDirName);
 
 	if (!(fp=fopen(fname,"r")))
 		return;

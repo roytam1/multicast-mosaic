@@ -202,6 +202,7 @@ void MMCacheInit( char * root_dirname)
 				free(fname);
 				free(scid);
 				free(href);
+				mptr = mptr->next;
 				continue;
 			}
 			if ( t - s.st_mtime  > lcachettl) { /* look at  date; */
@@ -209,6 +210,7 @@ void MMCacheInit( char * root_dirname)
 				free(fname);
 				free(scid);
 				free(href);
+				mptr = mptr->next;
 				continue;
 			}
 			/* date of file is in ttl */

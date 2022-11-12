@@ -500,10 +500,31 @@ static XmxCallback (anchor_cb)
 	      (XButtonReleasedEvent *)((WbAnchorCallbackData *)call_data)->event;
 	int force_newwin = (event->button == Button2 ? 1 : 0);
 	int old_binx_flag;
+	WbAnchorCallbackData *wacd = (WbAnchorCallbackData *)call_data;
 
 	
-	if (cci_event) MoCCISendEventOutput(MOSAIC_URL_TRIGGER);
-		/* if shift was down, make this a Load to Local Disk -- amb */
+	if (wacd->href)
+		href = strdup (wacd->href);
+	else
+		href = strdup ("Unlinked");
+
+/* it is a mailto: anchor */
+	if (!strncasecmp (href, "mailto:", 7)){ /* mailto:user@... */
+		char *email = href+7;
+		char * subj = wacd->title;
+
+		if (!*email){
+			free(href);
+			href = strdup("no-email-address");
+			email = href;
+		}
+		mo_post_mailto_win(win, email, subj);
+		free (href);
+		return;
+	}
+	if (cci_event) 
+		MoCCISendEventOutput(MOSAIC_URL_TRIGGER);
+/* if shift was down, make this a Load to Local Disk -- amb */
 	old_binx_flag = win->binary_transfer;
 	if ( (event->state & ShiftMask) == ShiftMask)
 		win->binary_transfer = 1;
@@ -515,7 +536,7 @@ static XmxCallback (anchor_cb)
 #endif
 	if (mMosaicAppData.protect_me_from_myself) {
 		int answer = XmxModalYesOrNo (win->base, mMosaicAppContext,
-	 "BEWARE: NCSA disclaims all responsibility regarding your emotional and mental health.\n\nAre you *sure* you want to follow this hyperlink?" , "I'm sure.",
+	 "BEWARE: mMosaic disclaims all responsibility regarding your emotional and mental health.\n\nAre you *sure* you want to follow this hyperlink?" , "I'm sure.",
 		"No! Get me outta here." );
 		if (!answer)
 			return;
@@ -532,10 +553,6 @@ static XmxCallback (anchor_cb)
 	} else
 		HTReferer = NULL;
   
-	if (((WbAnchorCallbackData *)call_data)->href)
-		href = strdup (((WbAnchorCallbackData *)call_data)->href);
-	else
-		href = strdup ("Unlinked");
 	if (((WbAnchorCallbackData *)call_data)->text)
 		reftext = strdup (((WbAnchorCallbackData *)call_data)->text);
 	else
@@ -567,8 +584,7 @@ static XmxCallback (anchor_cb)
 	return;
 }
 
-/*
- * name:    anchor_visited_predicate (PRIVATE)
+/* name:    anchor_visited_predicate (PRIVATE)
  * purpose: Called by the HTML widget to determine whether a given URL
  *          has been previously visited.
  * inputs:  
@@ -887,7 +903,6 @@ void mo_gui_done_with_icon (mo_window * win)
 	makeBusy = 0;
 	animateCursor(win);
 	logo_count = 0;
-	HTMLSetAppSensitive((Widget) win->scrolled_win);
 	/* this works dammit (trust me) - TPR */
 	XtAppAddTimeOut(mMosaicAppContext, 10,
                     (XtTimerCallbackProc)ungrab_the_____ing_pointer, NULL);

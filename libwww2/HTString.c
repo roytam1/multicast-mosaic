@@ -1,4 +1,4 @@
-/*		Case-independent string comparison		HTString.c
+/*		Case-independent string comparison
 **
 **	Original version came with listserv implementation.
 **	Version TBL Oct 91 replaces one which modified the strings.
@@ -10,17 +10,10 @@
 #include "HTUtils.h"
 #include "tcp.h"
 
+WWW_CONST char * HTLibraryVersion = "2.12m"; /* String for help screen etc */
 
-#ifndef VC
-#define VC "unknown"
-#endif
-
-PUBLIC WWW_CONST char * HTLibraryVersion = "2.12 modified"; /* String for help screen etc */
-
-/*	Strings of any length
-**	---------------------
-*/
-PUBLIC int strcasecomp ARGS2 (WWW_CONST char*,a, WWW_CONST char *,b)
+/*	Strings of any length */
+int strcasecomp(WWW_CONST char *a, WWW_CONST char *b)
 {
 	WWW_CONST char *p =a;
 	WWW_CONST char *q =b;
@@ -33,11 +26,9 @@ PUBLIC int strcasecomp ARGS2 (WWW_CONST char*,a, WWW_CONST char *,b)
 	return 0;		/* Exact match */
 }
 
+/*	With count limit */
 
-/*	With count limit
-**	----------------
-*/
-PUBLIC int strncasecomp ARGS3(WWW_CONST char*,a, WWW_CONST char *,b, int,n)
+int strncasecomp(WWW_CONST char *a, WWW_CONST char *b, int n)
 {
 	WWW_CONST char *p =a;
 	WWW_CONST char *q =b;
@@ -52,9 +43,9 @@ PUBLIC int strncasecomp ARGS3(WWW_CONST char*,a, WWW_CONST char *,b, int,n)
 	/*NOTREACHED*/
 }
 
-/*	Allocate a new copy of a string, and returns it
-*/
-PUBLIC char * HTSACopy ARGS2 (char **,dest, WWW_CONST char *,src)
+/*	Allocate a new copy of a string, and returns it */
+
+char * HTSACopy(char **dest, WWW_CONST char *src)
 {
   if (!dest)
 	return NULL;
@@ -69,9 +60,9 @@ PUBLIC char * HTSACopy ARGS2 (char **,dest, WWW_CONST char *,src)
   return *dest;
 }
 
-/*	String Allocate and Concatenate
-*/
-PUBLIC char * HTSACat ARGS2 (char **,dest, WWW_CONST char *,src)
+/*	String Allocate and Concatenate */
+
+char * HTSACat (char **dest, WWW_CONST char *src)
 {
   if (src && *src) {
     if (*dest) {
@@ -90,7 +81,6 @@ PUBLIC char * HTSACat ARGS2 (char **,dest, WWW_CONST char *,src)
 
 
 /*	Find next Field
-**	---------------
 **
 ** On entry,
 **	*pstr	points to a string containig white space separated
@@ -103,7 +93,7 @@ PUBLIC char * HTSACat ARGS2 (char **,dest, WWW_CONST char *,src)
 **
 **	returns	a pointer to the first field
 */
-PUBLIC char * HTNextField ARGS1(char **, pstr)
+char * HTNextField (char **pstr)
 {
     char * p = *pstr;
     char * start;			/* start of field */

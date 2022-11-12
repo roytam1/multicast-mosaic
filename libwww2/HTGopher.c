@@ -1,5 +1,4 @@
-/*			GOPHER ACCESS				HTGopher.c
-**			=============
+/*			GOPHER ACCESS
 **
 ** History:
 **	26 Sep 90	Adapted from other accesses (News, HTTP) TBL
@@ -74,7 +73,7 @@ PRIVATE int s;					/* Socket for GopherHost */
 PRIVATE HT_BOOL acceptable[256];
 PRIVATE HT_BOOL acceptable_inited = NO;
 
-PRIVATE void init_acceptable NOARGS
+PRIVATE void init_acceptable (void)
 {
     unsigned int i;
     char * good = 

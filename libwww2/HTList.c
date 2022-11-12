@@ -11,7 +11,7 @@
 
 #include <stdio.h>				/* joe@athena, TBL 921019 */
 
-HTList * HTList_new NOARGS
+HTList * HTList_new (void)
 {
 	HTList *newList = (HTList *)malloc (sizeof (HTList));
 
@@ -21,7 +21,7 @@ HTList * HTList_new NOARGS
 	return newList;
 }
 
-void HTList_delete ARGS1(HTList *,me)
+void HTList_delete(HTList *me)
 {
 	HTList *current;
 
@@ -40,11 +40,12 @@ void HTList_addObject ARGS2(HTList *,me, void *,newObject)
 		newNode->object = newObject;
 		newNode->next = me->next;
 		me->next = newNode;
+		return;
 	}
- 	 else
-		if (wWWParams.trace) fprintf(stderr,
-		"HTList: Trying to add object %p to a nonexisting list\n",
-		newObject);
+	if (wWWParams.trace)
+		fprintf(stderr,
+		   "HTList: Trying to add object %p to a nonexisting list\n",
+		   newObject);
 }
 
 void HTList_addObjectAtEnd ARGS2(HTList *,me, void *,newObject)

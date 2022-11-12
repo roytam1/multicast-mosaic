@@ -78,11 +78,8 @@ XmxCallbackPrototype (rbm_ballonify);
 extern void mo_make_popup(mo_window * win);
 
 char *getFileName(char *file_src);
-void _set_eptr_field();
 void mo_popup_set_something(char *what, int to, PopupItem *items);
 PopupItem *popup_build_user_defs();
-char *my_chop(char *str);
-char *my_strndup(char *str, int num);
 extern char *mo_escape_part();
 
 extern Boolean have_popup;

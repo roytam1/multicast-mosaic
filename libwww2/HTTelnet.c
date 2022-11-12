@@ -1,5 +1,4 @@
-/*		Telnet Acees, Roligin, etc			HTAccess.c
-**		==========================
+/*		Telnet Acees, Roligin, etc
 **
 ** Authors
 **	TBL	Tim Berners-Lee timbl@info.cern.ch
@@ -12,8 +11,6 @@
 **	 2 Feb 93 Split from HTAccess.c. Registration.(TBL)
 */
 
-/* Implements:
-*/
 #include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
@@ -35,17 +32,15 @@
 **	system() command.  Make it contain only alphanumneric
 **	characters, or the characters '.', '-', '_', '+'.
 **	Also remove leading '-' or '+'.
-**	-----------------------------------------------------
 */
-PRIVATE void make_system_secure ARGS1(char *, str)
+PRIVATE void make_system_secure (char *str)
 {
 	char *ptr1, *ptr2;
 
 	if ((str == NULL)||(*str == '\0'))
 		return;
 
-	/*
-	 * remove leading '-' or '+' by making it into whitespace that
+	/* remove leading '-' or '+' by making it into whitespace that
 	 * will be stripped later.
 	 */
 	if ((*str == '-')||(*str == '+'))
@@ -67,8 +62,7 @@ PRIVATE void make_system_secure ARGS1(char *, str)
 	*ptr2 = *ptr1;
 }
 
-
-PRIVATE void run_a_command ARGS1(char *, command)
+PRIVATE void run_a_command (char *command)
 {
 	char **argv;
 	int argc;
@@ -124,7 +118,6 @@ PRIVATE void run_a_command ARGS1(char *, command)
 }
 
 /*	Telnet or "rlogin" access
-**	-------------------------
 */
 PRIVATE int remote_session (char * access, char * host, caddr_t appd)
 {
@@ -218,7 +211,6 @@ PRIVATE int remote_session (char * access, char * host, caddr_t appd)
 }
 
 /*	"Load a document" -- establishes a session
-**	------------------------------------------
 **
 ** On entry,
 **	addr		must point to the fully qualified hypertext reference.
@@ -256,9 +248,6 @@ PRIVATE int HTLoadTelnet (WWW_CONST char *addr, HTParentAnchor *anchor,
     return status;
 }
 
-
 PUBLIC HTProtocol HTTelnet = { "telnet", HTLoadTelnet };
 PUBLIC HTProtocol HTRlogin = { "rlogin", HTLoadTelnet };
 PUBLIC HTProtocol HTTn3270 = { "tn3270", HTLoadTelnet };
-
-

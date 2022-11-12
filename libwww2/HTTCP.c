@@ -1,5 +1,4 @@
-/*			Generic Communication Code		HTTCP.c
-**			==========================
+/*			Generic Communication Code
 **
 **	This code is in common between client and server sides.
 **
@@ -54,7 +53,6 @@ PRIVATE char *hostname=0;		/* The name of this host */
 					/* Valid after call to HTHostName() */
 
 /*	Encode INET status (as in sys/errno.h)			  inet_status()
-**	------------------
 **
 ** On entry,
 **	where		gives a description of what caused the error
@@ -71,7 +69,6 @@ extern char *sys_errlist[];		/* see man perror on cernvax */
 extern int sys_nerr;
 
 /*	Produce a string for an Internet address
-**	----------------------------------------
 **
 ** On exit,
 **	returns	a pointer to a static string which must be copied if
@@ -112,7 +109,6 @@ PUBLIC WWW_CONST char * HTInetString ARGS1(SockA*,sin)
 
 
 /*	Parse a network node address and port
-**	-------------------------------------
 **
 ** On entry,
 **	str	points to a string with a node name or number,

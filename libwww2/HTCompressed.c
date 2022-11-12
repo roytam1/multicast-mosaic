@@ -20,7 +20,6 @@
 #include "SGML.h"
 #include "HTParams.h"		/* params from X resources */
 
-
 #include "../libhtmlw/HTML.h"
 #include "../src/mosaic.h"
 
@@ -146,9 +145,8 @@ void HTCompressedHText (HText *text, int compressed, int plain, caddr_t appd)
 	int rv, size_of_data;
   
 	if (wWWParams.trace)
-		fprintf 
-		(stderr, "[HTCompressedHText] Entered; compressed %d\n",
-		compressed);
+		fprintf(stderr,"[HTCompressedHText] Enter; compressed %d\n",
+			compressed);
 
 /* Punt if we can't handle it. */
 	if (compressed != COMPRESSED_BIGZ && compressed != COMPRESSED_GNUZIP)

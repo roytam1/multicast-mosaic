@@ -144,8 +144,7 @@ PUBLIC void HTAASetup_clearall (HTList *s)
 
 /**************************** HTAAServer ***********************************/
 
-/* PUBLIC                                               HTAAServer_clearall()
-**              Clears password information for all servers
+/*             Clears password information for all servers
 ** On Entry: nothing
 ** On Exit:  password information is gone.
 **
@@ -179,8 +178,7 @@ PUBLIC void HTAAServer_clear ()
 	current_docname = NULL;
 }
 
-/* PRIVATE						HTAAServer_new()
-**		ALLOCATE A NEW NODE TO HOLD SERVER INFO
+/*		ALLOCATE A NEW NODE TO HOLD SERVER INFO
 **		AND ADD IT TO THE LIST OF SERVERS
 ** ON ENTRY:
 **	hostname	is the name of the host that the server
@@ -194,8 +192,7 @@ PUBLIC void HTAAServer_clear ()
 **			the function HTAAServer_delete(), which also
 **			frees the node itself.
 */
-PRIVATE HTAAServer *HTAAServer_new ARGS2(WWW_CONST char*,	hostname,
-					 int,		portnumber)
+PRIVATE HTAAServer *HTAAServer_new(WWW_CONST char *hostname, int portnumber)
 {
 	HTAAServer *server;
 
@@ -214,20 +211,7 @@ PRIVATE HTAAServer *HTAAServer_new ARGS2(WWW_CONST char*,	hostname,
 	return server;
 }
 
-/* PRIVATE						HTAAServer_delete()
-**
-**	DELETE THE ENTRY FOR THE SERVER FROM THE HOST TABLE,
-**	AND FREE THE MEMORY USED BY IT.
-**
-** ON ENTRY:
-**	killme		points to the HTAAServer to be freed.
-**
-** ON EXIT:
-**	returns		nothing.
-*/
-
-/* PRIVATE						HTAAServer_lookup()
-**		LOOK UP SERVER BY HOSTNAME AND PORTNUMBER
+/*		LOOK UP SERVER BY HOSTNAME AND PORTNUMBER
 ** ON ENTRY:
 **	hostname	obvious.
 **	portnumber	if non-positive defaults to 80.
@@ -239,8 +223,7 @@ PRIVATE HTAAServer *HTAAServer_new ARGS2(WWW_CONST char*,	hostname,
 **			representing the looked-up server.
 **			NULL, if not found.
 */
-PRIVATE HTAAServer *HTAAServer_lookup ARGS2(WWW_CONST char *, hostname,
-					    int,	  portnumber)
+PRIVATE HTAAServer *HTAAServer_lookup(WWW_CONST char *hostname, int portnumber)
 {
 	if (hostname) {
 		HTList *cur = server_table;
@@ -355,17 +338,7 @@ PRIVATE HTAASetup *HTAASetup_new ARGS4(HTAAServer *,	server,
     return setup;
 }
 
-/* PRIVATE						HTAASetup_delete()
-**			FREE A HTAASetup STRUCTURE
-** ON ENTRY:
-**	killme		is a pointer to the structure to free().
-**
-** ON EXIT:
-**	returns		nothing.
-*/
-
-/* PRIVATE					HTAASetup_updateSpecifics()
-*		COPY SCHEME SPECIFIC PARAMETERS
+/*		COPY SCHEME SPECIFIC PARAMETERS
 **		TO HTAASetup STRUCTURE
 ** ON ENTRY:
 **	setup		destination setup structure.
@@ -373,7 +346,6 @@ PRIVATE HTAASetup *HTAASetup_new ARGS4(HTAAServer *,	server,
 **			specific parameters for each scheme.
 **			If NULL, all the scheme specific
 **			parameters are set to NULL.
-**
 ** ON EXIT:
 **	returns		nothing.
 */

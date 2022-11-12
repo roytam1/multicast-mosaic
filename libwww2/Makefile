@@ -33,8 +33,7 @@ HTTelnet.c \
 HTWSRC.c \
 HTWAIS.c \
 HTSort.c \
-HTUU.c \
-HTMailto.c
+HTUU.c
 
 OBJS = $(CFILES:.c=.o)
 

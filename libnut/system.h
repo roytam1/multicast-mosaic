@@ -19,7 +19,6 @@ int my_move(char *src, char *dest, char *retBuf, int bufsize, int overwrite);
 char *my_strerror(int errornum);
 char **buildArgv(char *cmd, int *new_argc);
 int my_copy(char *, char *, char *, int, int);
-int file_exists(char *);
 int get_home(char **);
 int compact_string(char *main_string, char *ellipsis_string,
                     int num_chars, int mode, int eLength);
