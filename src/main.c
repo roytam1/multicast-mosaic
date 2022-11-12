@@ -233,7 +233,7 @@ static int error_handler (Display *dsp, XErrorEvent *event)
 
 extern int _Xdebug ;
 
-void main (int argc, char **argv, char **envp)
+int main (int argc, char **argv, char **envp)
 {
 	XVisualInfo vinfo, *vptr;
 	int cnt;
@@ -406,6 +406,7 @@ works on my linux box, hopefully on solaris, too */
 		sprintf(mMosaicAppData.author_email,"%s@%s",
 			pw->pw_name,mMosaicMachineWithDomain);
 	}
+	mMosaicAppData.print_us=0;
 
 /* Initialise the hotlist */
 	MMHotlistInit(mMosaicRootDirName);

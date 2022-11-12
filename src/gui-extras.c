@@ -15,7 +15,7 @@
 #include "mime.h"
 #include "paf.h"
 
-#include "libnut/system.h"
+#include "../libnut/system.h"
 
 static XmxCallback (links_win_cb0)		 /* GOTO */
 {

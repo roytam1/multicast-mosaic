@@ -217,7 +217,7 @@ typedef struct _HtmlTextInfo {
 
 extern void 		clean_white_space(char *txt);
 extern HtmlTextInfo * HTMLParseRepair(char *str);
-extern struct mark_up * HTMLLexem(char *str);
+extern struct mark_up * HTMLLexem( const char *str);
 extern char * 		ParseMarkTag(char *text, char *mtext, char *mtag);
 
 

@@ -14,16 +14,16 @@
 #define SYS_WRITE_FAIL 13
 #define SYS_INTERNAL_FAIL 14
 
-int my_system(char *cmd, char *retBuf, int bufsize);
-int my_move(char *src, char *dest, char *retBuf, int bufsize, int overwrite);
-char *my_strerror(int errornum);
-char **buildArgv(char *cmd, int *new_argc);
-int my_copy(char *, char *, char *, int, int);
-int get_home(char **);
-int compact_string(char *main_string, char *ellipsis_string,
+extern int my_system(char *cmd, char *retBuf, int bufsize);
+extern int my_move(char *src, char *dest, char *retBuf, int bufsize, int overwrite);
+extern char *my_strerror(int errornum);
+extern char **buildArgv(char *cmd, int *new_argc);
+extern int my_copy(char *, char *, char *, int, int);
+extern int get_home(char **);
+extern int compact_string(char *main_string, char *ellipsis_string,
                     int num_chars, int mode, int eLength);
-char *strcasechr(char *src, char srch);
-char *strrcasechr(char *src, char srch);
+extern char *strcasechr(char *src, char srch);
+extern char *strrcasechr(char *src, char srch);
 
 extern char *HTSortFetch (int i);
 extern void HTSortSort (void);

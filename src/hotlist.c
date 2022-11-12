@@ -31,30 +31,31 @@
 
 /* ####Prendre le format netscape: Voir ~/.netscape/bookmark.html##### */
 /* <!DOCTYPE NETSCAPE-Bookmark-file-1>
-<!-- This is an automatically generated file.
-It will be read and overwritten.
-Do Not Edit! -->
-<TITLE>Gilles Dauphin's Bookmarks</TITLE>
-<H1>Gilles Dauphin's Bookmarks</H1>
-
-<DD>primarybook
-<DL><p>
-    <DT><A HREF="http://sig.enst.fr/" ADD_DATE="790876892" LAST_VISIT="874571973" LAST_MODIFIED="869758245">Télécom Paris WWW Server</A>
-    <DT><A HREF="http://www.ensta.fr/" ADD_DATE="790962869" LAST_VISIT="869757049" LAST_MODIFIED="869559368">Serveur WWW de l'ENSTA</A>
-<DD>Oh le beau serveur de l'ENSTA
-    <DT><H3 FOLDED ADD_DATE="842436201">java tool</H3>
-<DD>Different site java
-    <DL><p>
-        <DT><A HREF="http://www.kaffe.org/" ADD_DATE="861286867" LAST_VISIT="869757074" LAST_MODIFIED="869680045">KAFFE - A virtual machine to run Java(tm)* code</A>
-    </DL><p>
-    <DT><H3 FOLDED ADD_DATE="842434326">midi</H3>
-<DD>midi pointers                      
-    <DL><p>                            
-        <DT><A HREF="http://www.hut.fi/~titoivon/" ADD_DATE="863770674" LAST_VISIT="869756961" LAST_MODIFIED="861537900">Tuukka Toivonen / TiMidity</A>
-    </DL><p>
-    <DT><A HREF="http://www.netstore.de/Supply/http-analyze/" ADD_DATE="872183226" LAST_VISIT="872183437" LAST_MODIFIED="872183206">http-analyze - A fast Log Analyzer for web servers</A>
-</DL><p>
-          
+/*
+/* <!-- This is an automatically generated file.
+/* It will be read and overwritten.
+/* Do Not Edit! -->
+/* <TITLE>Gilles Dauphin's Bookmarks</TITLE>
+/* <H1>Gilles Dauphin's Bookmarks</H1>
+/* 
+/* <DD>primarybook
+/* <DL><p>
+/*      <DT><A HREF="http://sig.enst.fr/" ADD_DATE="790876892" LAST_VISIT="874571973" LAST_MODIFIED="869758245">Télécom Paris WWW Server</A>
+/*      <DT><A HREF="http://www.ensta.fr/" ADD_DATE="790962869" LAST_VISIT="869757049" LAST_MODIFIED="869559368">Serveur WWW de l'ENSTA</A>
+/* <DD>Oh le beau serveur de l'ENSTA
+/*     <DT><H3 FOLDED ADD_DATE="842436201">java tool</H3>
+/* <DD>Different site java
+/*     <DL><p>
+/*         <DT><A HREF="http://www.kaffe.org/" ADD_DATE="861286867" LAST_VISIT="869757074" LAST_MODIFIED="869680045">KAFFE - A virtual machine to run Java(tm)* code</A>
+/*     </DL><p>
+/*     <DT><H3 FOLDED ADD_DATE="842434326">midi</H3>
+/* <DD>midi pointers                      
+/*     <DL><p>                            
+/*         <DT><A HREF="http://www.hut.fi/~titoivon/" ADD_DATE="863770674" LAST_VISIT="869756961" LAST_MODIFIED="861537900">Tuukka Toivonen / TiMidity</A>
+/*     </DL><p>
+/*     <DT><A HREF="http://www.netstore.de/Supply/http-analyze/" ADD_DATE="872183226" LAST_VISIT="872183437" LAST_MODIFIED="872183206">http-analyze - A fast Log Analyzer for web servers</A>
+/* </DL><p>
+/*           
 */
 
 #define CHK_OUT_OF_MEM(x) { if ( x == NULL) {\
@@ -716,7 +717,7 @@ static void mo_visit_hotlist_position (mo_window *win, int position)
 	RequestDataStruct rds;
 
 	for (hotnode = win->current_hotlist->nodelist; hotnode != NULL; hotnode = hotnode->any.next) {
-		if (hotnode->any.position == position)
+		if (hotnode->any.position == position) {
 			if (hotnode->type == mo_t_url){
 				rds.req_url = hotnode->hot.url;
 	rds.gui_action = HTML_LOAD_CALLBACK;
@@ -733,6 +734,7 @@ static void mo_visit_hotlist_position (mo_window *win, int position)
 				free(path);
 				mo_load_hotlist_list(win, win->hotlist_list);
 			}
+		}
 	}
 }
 /* ----------- This part deals with the Edit and Insert features ---------- */

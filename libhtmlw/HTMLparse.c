@@ -476,17 +476,20 @@ static struct mark_up * AddObj( struct mark_up **listp, struct mark_up *current,
  * The old list is passed in so it can be freed, and in the future we
  * may want to add code to append to the old list.
  */
-struct mark_up * HTMLLexem( char *str)
+struct mark_up * HTMLLexem( const char *str_in)
 {
 	char *start, *end;
-	char *text;
+	char *text, *str;
 	struct mark_up *mark = NULL;
 	struct mark_up *list = NULL;
 	struct mark_up *current = NULL;
 	int is_white = 0;		/* is a white text ? */
 
-	if (str == NULL)
+	if (str_in == NULL)
 		return(NULL);
+/* Patch From: szukw000@mail.Uni-Mainz.de 29 feb 2000 */
+/* copy str_in , work space */
+	str = strdup(str_in);
 	start = str;
 	end = str;
 	while (*start != '\0') {
@@ -543,6 +546,7 @@ struct mark_up * HTMLLexem( char *str)
 			mark->anc_title = NULL;
 			mark->pcdata = NULL;
 			current = AddObj(&list, current, mark);
+			free(str);
 			return(list);
 		}
 /* end is on '>' */
@@ -566,6 +570,7 @@ struct mark_up * HTMLLexem( char *str)
 				start++;
 		}
 	}
+	free(str);
 	return(list);
 }
 

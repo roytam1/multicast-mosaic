@@ -38,74 +38,45 @@ void application_user_info_wait (char *str);
 
 extern XmxOptionMenuStruct format_opts[];
 
+static int save_print_a4_cb_state;
+static int print_doc_cb_state;
+static int mail_print_a4_cb_state;
+static int print_print_a4_cb_state;
+
 static XmxCallback (save_print_a4_cb)
 {
 	mo_window *win = (mo_window*)client_data;
 
-	XmxSetToggleButton(win->print_a4_toggle_save,
-			   !XmToggleButtonGetState(win->print_a4_toggle_save));
-	XmxSetToggleButton(win->print_us_toggle_save,
-			   !XmToggleButtonGetState(win->print_us_toggle_save));
+	save_print_a4_cb_state ^= 1;
+	XmxSetToggleButton(win->print_a4_toggle_save, save_print_a4_cb_state);
+	XmxSetToggleButton(win->print_us_toggle_save,!save_print_a4_cb_state);
 }
  
 static XmxCallback (print_url_cb)
 {
-    mo_window *win = (mo_window*)client_data;
+	mo_window *win = (mo_window*)client_data;
  
-    XmxSetToggleButton(win->print_doc_only,
-                       !XmToggleButtonGetState(win->print_doc_only));
-    XmxSetToggleButton(win->print_url_only,
-                       !XmToggleButtonGetState(win->print_url_only));
+	print_doc_cb_state ^= 1;
+	XmxSetToggleButton(win->print_doc_only, print_doc_cb_state);
+	XmxSetToggleButton(win->print_url_only,!print_doc_cb_state);
 }
 
 static XmxCallback (mail_print_a4_cb)
 {
 	mo_window *win = (mo_window*)client_data;
 
-	XmxSetToggleButton(win->print_a4_toggle_mail,
-			   !XmToggleButtonGetState(win->print_a4_toggle_mail));
-	XmxSetToggleButton(win->print_us_toggle_mail,
-			   !XmToggleButtonGetState(win->print_us_toggle_mail));
+	mail_print_a4_cb_state ^= 1;
+	XmxSetToggleButton(win->print_a4_toggle_mail, mail_print_a4_cb_state);
+	XmxSetToggleButton(win->print_us_toggle_mail,!mail_print_a4_cb_state);
 }
 
 static XmxCallback (print_print_a4_cb)
 {
 	mo_window *win = (mo_window*)client_data;
 
-	XmxSetToggleButton(win->print_a4_toggle_print,
-			   !XmToggleButtonGetState(win->print_a4_toggle_print));
-	XmxSetToggleButton(win->print_us_toggle_print,
-			   !XmToggleButtonGetState(win->print_us_toggle_print));
-}
-
-static XmxCallback (save_print_us_cb)
-{
-	mo_window *win = (mo_window*)client_data;
-
-	XmxSetToggleButton(win->print_a4_toggle_save,
-			   !XmToggleButtonGetState(win->print_a4_toggle_save));
-	XmxSetToggleButton(win->print_us_toggle_save,
-			   !XmToggleButtonGetState(win->print_us_toggle_save));
-}
-
-static XmxCallback (mail_print_us_cb)
-{
-	mo_window *win = (mo_window*)client_data;
-
-	XmxSetToggleButton(win->print_a4_toggle_mail,
-			   !XmToggleButtonGetState(win->print_a4_toggle_mail));
-	XmxSetToggleButton(win->print_us_toggle_mail,
-			   !XmToggleButtonGetState(win->print_us_toggle_mail));
-}
-
-static XmxCallback (print_print_us_cb)
-{
-	mo_window *win = (mo_window*)client_data;
-
-	XmxSetToggleButton(win->print_a4_toggle_print,
-			   !XmToggleButtonGetState(win->print_a4_toggle_print));
-	XmxSetToggleButton(win->print_us_toggle_print,
-			   !XmToggleButtonGetState(win->print_us_toggle_print));
+	print_print_a4_cb_state ^= 1;
+	XmxSetToggleButton(win->print_a4_toggle_print, print_print_a4_cb_state);
+	XmxSetToggleButton(win->print_us_toggle_print,!print_print_a4_cb_state);
 }
 
 /* ------------------------- mo_save_document -------------------------- */
@@ -179,8 +150,8 @@ void format_sensitive(mo_window *win, int format)
 		XtSetValues(win->print_a4_toggle_save,args,n);
 		XtSetValues(win->print_us_toggle_save,args,n);
 	} else if (format==mo_postscript) { /*POSTSCRIPT*/
-                XmxSetToggleButton(win->print_a4_toggle_save,!mMosaicAppData.print_us);
-                XmxSetToggleButton(win->print_us_toggle_save,mMosaicAppData.print_us);
+		XmxSetToggleButton(win->print_a4_toggle_save, save_print_a4_cb_state);
+		XmxSetToggleButton(win->print_us_toggle_save,!save_print_a4_cb_state);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,TRUE); n++;
 		XtSetValues(win->print_a4_toggle_save,args,n);
@@ -265,19 +236,21 @@ void mo_save_document (Widget w, XtPointer clid, XtPointer calld)
 		win->print_us_toggle_save = XmxMakeToggleButton (
 				paper_size_toggle_box,
 				"US Letter Paper Size",
-				save_print_us_cb,(XtPointer)win);
-		XmxSetToggleButton(win->print_a4_toggle_save,
-				!mMosaicAppData.print_us);
-		XmxSetToggleButton(win->print_us_toggle_save,
-				mMosaicAppData.print_us);      
+				save_print_a4_cb,(XtPointer)win);
+		save_print_a4_cb_state=!mMosaicAppData.print_us;
+		XmxSetToggleButton(win->print_a4_toggle_save, save_print_a4_cb_state);
+		XmxSetToggleButton(win->print_us_toggle_save,!save_print_a4_cb_state);
+
 		format_label = XmxMakeLabel (workarea, "Format for document:" );
 /* SWP -- 10/23/95 -- Set the default mode */
 		if (!(mMosaicAppData.save_mode) || 
 		    !*(mMosaicAppData.save_mode)) {
 			char tbuf[BUFSIZ];
 
-			sprintf(tbuf,"You have set the default %s mode to:\n     [NULL], which is not valid. Defaulting to %s mode.\n\nPlease use one of the following:\n     plain, formatted, postscript, or html." ,
-				"save","plain text save");
+			sprintf(tbuf,"You have set the default %s mode to:\n     [NULL],"
+				" which is not valid. Defaulting to %s mode.\n\n"
+				"Please use one of the following:\n     plain, formatted, "
+				"postscript, or html." ,"save","plain text save");
 			application_user_info_wait(tbuf);
 			mMosaicAppData.save_mode = strdup(MODE_PLAIN);
 		}
@@ -307,8 +280,10 @@ void mo_save_document (Widget w, XtPointer clid, XtPointer calld)
 		} else {
 			char tbuf[BUFSIZ];
 
-			sprintf(tbuf,"You have set the default %s mode to:\n     [%d], which is not valid. Defaulting to %s mode.\n\nPlease use one of the following:\n     plain, formatted, postscript, or html." ,
-			   "save",mMosaicAppData.save_mode,"plain text save");
+			sprintf(tbuf,"You have set the default %s mode to:\n     [%s],"
+			      " which is not valid. Defaulting to %s mode.\n\nPlease use one "
+			      "of the following:\n     plain, formatted, postscript, or html." ,
+			      "save",mMosaicAppData.save_mode,"plain text save");
 
 			application_user_info_wait(tbuf);
                 	format_opts[0].set_state=XmxSet;
@@ -516,8 +491,8 @@ static void mail_win_cb2(Widget w, XtPointer clid, XtPointer calld)
 static XmxCallback (mail_win_cb0)
 {
 	mo_window *win = (mo_window*)client_data;
-	char *to, *subj, *text = 0, *content_type;
-	int free_text;
+	char *to, *subj, *text = 0, *content_type=NULL;
+	int free_text=0;
 
 	XtUnmanageChild (win->mail_win);
 
@@ -541,7 +516,8 @@ static XmxCallback (mail_win_cb0)
 		content_type = "text/plain";
 		free_text = 1;
 	} else if (win->mail_format == mo_postscript) {
-		text = HTMLGetText (win->scrolled_win, 2 + win->font_family, win->current_node->aurl, win->current_node->last_modified);
+		text = HTMLGetText (win->scrolled_win, 2 + win->font_family,
+		      win->current_node->aurl, win->current_node->last_modified);
 		content_type = "application/postscript";
 		free_text = 1;
 	} else if(win->current_node && win->current_node->text) {
@@ -584,9 +560,9 @@ void mail_sensitive(mo_window *win, int format)
                 XtSetValues(win->print_us_toggle_mail,args,n);
 	} else if (format==mo_postscript) { /*POSTSCRIPT*/
                 XmxSetToggleButton(win->print_a4_toggle_mail,
-					!mMosaicAppData.print_us);
+					mail_print_a4_cb_state);
                 XmxSetToggleButton(win->print_us_toggle_mail,
-					mMosaicAppData.print_us);
+					!mail_print_a4_cb_state);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,TRUE); n++;
                 XtSetValues(win->print_a4_toggle_mail,args,n);
@@ -682,9 +658,10 @@ mo_status mo_post_mail_window (mo_window *win)
 		win->print_a4_toggle_mail = XmxMakeToggleButton(paper_size_toggle_box,
 			"A4 Paper Size" ,mail_print_a4_cb,(XtPointer)win);
 		win->print_us_toggle_mail = XmxMakeToggleButton(paper_size_toggle_box,
-			"US Letter Paper Size",mail_print_us_cb,(XtPointer)win);
-		XmxSetToggleButton(win->print_a4_toggle_mail,!mMosaicAppData.print_us);
-		XmxSetToggleButton(win->print_us_toggle_mail,mMosaicAppData.print_us);
+			"US Letter Paper Size",mail_print_a4_cb,(XtPointer)win);
+		mail_print_a4_cb_state = !mMosaicAppData.print_us;
+		XmxSetToggleButton(win->print_a4_toggle_mail, mail_print_a4_cb_state);
+		XmxSetToggleButton(win->print_us_toggle_mail,!mail_print_a4_cb_state);
 
 		format_label = XmxMakeLabel (workarea, "Format for document:" );
 
@@ -692,7 +669,10 @@ mo_status mo_post_mail_window (mo_window *win)
 		if (!mMosaicAppData.mail_mode || !*mMosaicAppData.mail_mode) {
 			char tbuf[BUFSIZ];
 
-			sprintf(tbuf,"You have set the default %s mode to:\n     [NULL], which is not valid. Defaulting to %s mode.\n\nPlease use one of the following:\n     plain, formatted, postscript, or html." ,"mail","plain text mail");
+			sprintf(tbuf,"You have set the default %s mode to:\n     [NULL],"
+			   " which is not valid. Defaulting to %s mode.\n\nPlease use one "
+			   "of the following:\n     plain, formatted, postscript, or html."
+			   ,"mail","plain text mail");
 			application_user_info_wait(tbuf);
 			mMosaicAppData.mail_mode= strdup(MODE_PLAIN);
 		}
@@ -721,8 +701,10 @@ mo_status mo_post_mail_window (mo_window *win)
 		} else {
 			char tbuf[BUFSIZ];
 
-			sprintf(tbuf,"You have set the default %s mode to:\n     [%s], which is not valid. Defaulting to %s mode.\n\nPlease use one of the following:\n     plain, formatted, postscript, or html." ,"mail",mMosaicAppData.mail_mode,"plain text mail");
-
+			sprintf(tbuf,"You have set the default %s mode to:\n     [%s],"
+			   " which is not valid. Defaulting to %s mode.\n\nPlease use one "
+			   "of the following:\n     plain, formatted, postscript, or html."
+			   ,"mail",mMosaicAppData.mail_mode,"plain text mail");
 			application_user_info_wait(tbuf);
 			format_opts[0].set_state=XmxSet;
 			win->mail_format=mo_plaintext;
@@ -751,8 +733,9 @@ mo_status mo_post_mail_window (mo_window *win)
 		win->print_url_only = XmxMakeToggleButton(url_toggle_box,
 				"Mail URL Only",
 				print_url_cb, (XtPointer)win);
-		XmxSetToggleButton(win->print_doc_only, 1);
-		XmxSetToggleButton(win->print_url_only, 0);
+		print_doc_cb_state = !mMosaicAppData.print_us;
+		XmxSetToggleButton(win->print_doc_only, print_doc_cb_state);
+		XmxSetToggleButton(win->print_url_only,!print_doc_cb_state);
 		dialog_sep = XmxMakeHorizontalSeparator (mail_form);
 		buttons_form = XmxMakeFormAndThreeButtons(mail_form, 
 				"Mail" , "Dismiss" , "Help..." , 
@@ -824,7 +807,8 @@ mo_status mo_print_window(mo_window *win,
 			free (text);
 		}
 	} else if (win->print_format == mo_postscript) {
-		char *text = HTMLGetText (win->scrolled_win, 2 + win->font_family, win->current_node->aurl,win->current_node->last_modified);
+		char *text = HTMLGetText (win->scrolled_win, 2 + win->font_family,
+			win->current_node->aurl,win->current_node->last_modified);
 		if (text) {
 			fputs (text, fp);
 			free (text);
@@ -927,8 +911,10 @@ void print_sensitive(mo_window *win, int format)
                 XtSetValues(win->print_a4_toggle_print,args,n);
                 XtSetValues(win->print_us_toggle_print,args,n);
 	} else if (format==mo_postscript) { /*POSTSCRIPT*/
-                XmxSetToggleButton(win->print_a4_toggle_print,!mMosaicAppData.print_us);
-                XmxSetToggleButton(win->print_us_toggle_print,mMosaicAppData.print_us);
+		XmxSetToggleButton(win->print_a4_toggle_print,
+			print_print_a4_cb_state);
+		XmxSetToggleButton(win->print_us_toggle_print,
+			!print_print_a4_cb_state);
 		n=0;
 		XtSetArg(args[n],XmNsensitive,TRUE); n++;
                 XtSetValues(win->print_a4_toggle_print,args,n);
@@ -990,17 +976,21 @@ mo_status mo_post_print_window (mo_window *win)
 		win->print_a4_toggle_print = XmxMakeToggleButton(paper_size_toggle_box,
 			"A4 Paper Size" ,print_print_a4_cb,(XtPointer)win);
 		win->print_us_toggle_print = XmxMakeToggleButton(paper_size_toggle_box,
-			"US Letter Paper Size",print_print_us_cb,(XtPointer)win);
-		XmxSetToggleButton(win->print_a4_toggle_print,!mMosaicAppData.print_us);
-		XmxSetToggleButton(win->print_us_toggle_print,mMosaicAppData.print_us);
-
+			"US Letter Paper Size",print_print_a4_cb,(XtPointer)win);
+		print_print_a4_cb_state = !mMosaicAppData.print_us;
+		XmxSetToggleButton(win->print_a4_toggle_print, print_print_a4_cb_state);
+		XmxSetToggleButton(win->print_us_toggle_print,!print_print_a4_cb_state);
+ 
 		format_label = XmxMakeLabel (workarea, "Format for document:" );
 
 /* SWP -- 10/23/95 -- Set the default mode */
 		if (!mMosaicAppData.print_mode || !*mMosaicAppData.print_mode) {
 			char tbuf[BUFSIZ];
 
-			sprintf(tbuf,"You have set the default %s mode to:\n     [NULL], which is not valid. Defaulting to %s mode.\n\nPlease use one of the following:\n     plain, formatted, postscript, or html." ,"print","plain text print");
+			sprintf(tbuf,"You have set the default %s mode to:\n     [NULL],"
+			" which is not valid. Defaulting to %s mode.\n\nPlease use one of"
+			" the following:\n     plain, formatted, postscript, or html." ,
+			"print","plain text print");
 
 			application_user_info_wait(tbuf);
 			mMosaicAppData.print_mode= strdup(MODE_PLAIN);
@@ -1030,8 +1020,11 @@ mo_status mo_post_print_window (mo_window *win)
 		} else {
 			char tbuf[BUFSIZ];
 
-			sprintf(tbuf,"You have set the default %s mode to:\n     [%s], which is not valid. Defaulting to %s mode.\n\nPlease use one of the following:\n     plain, formatted, postscript, or html." ,"print",mMosaicAppData.print_mode,"plain text print");
-
+			sprintf(tbuf,"You have set the default %s mode to:\n     [%s], "
+				"which is not valid. Defaulting to %s mode.\n\nPlease use one of"
+				" the following:\n     plain, formatted, postscript, or html." ,
+				"print",mMosaicAppData.print_mode,"plain text print");
+ 
 			application_user_info_wait(tbuf);
 			format_opts[0].set_state=XmxSet;
 			win->print_format=mo_plaintext;
@@ -1108,7 +1101,9 @@ mo_status mo_source_search_window(mo_window *win,char *str, int backward,
 	    !(win->current_node) ||
 	    !(win->current_node->text) ||
 	    !*(win->current_node->text)) {
-		application_user_info_wait("This is a bug! Please report what you were\ndoing and the URL you are current at to:\n\nmosaic-x@ncsa.uiuc.edu\n\nThank You!!");
+		application_user_info_wait("This is a bug!"
+			" Please report what you were\ndoing and the URL you are current "
+			"at to:\n\nmosaic-x@ncsa.uiuc.edu\n\nThank You!!");
 		return(mo_fail); 
 	}
 
@@ -1561,8 +1556,9 @@ mo_status mo_post_search_window (mo_window *win)
 		dialog_frame = XmxMakeFrame (win->search_win, XmxShadowOut);
 
 /* Constraints for base. */
-		XmxSetConstraints (dialog_frame, XmATTACH_FORM, XmATTACH_FORM, XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
-      
+		XmxSetConstraints (dialog_frame, XmATTACH_FORM, XmATTACH_FORM,
+			XmATTACH_FORM, XmATTACH_FORM, NULL, NULL, NULL, NULL);
+ 
 /* Main form. */
 		search_form = XmxMakeForm (dialog_frame);
       
@@ -1726,7 +1722,9 @@ mo_status mo_edit_source(mo_window *win)
 			+15+(strlen(buf)+3);
 		final=(char *)calloc(final_len,sizeof(char));
 
-		sprintf(final,"\nUnable to Open Editor Temp File:\n   %s\n\nOpen Error:\n   %s\n" ,(!sourceFileName || !*sourceFileName?" ":sourceFileName),buf);
+		sprintf(final,"\nUnable to Open Editor Temp File:\n   %s\n\n"
+			"Open Error:\n   %s\n" ,  
+			(!sourceFileName || !*sourceFileName?" ":sourceFileName),buf);
 
 		XmxMakeErrorDialog (win->save_win, final, "Edit Source Error" );
 		if (final) {
@@ -1747,11 +1745,14 @@ mo_status mo_edit_source(mo_window *win)
 			sprintf(tmpbuf,"Uknown Error" );
 			buf=tmpbuf;
 		}
-		final_len=30+((!sourceFileName || !*sourceFileName?3:strlen(sourceFileName))+13)+15+(strlen(buf)+3);
+		final_len=30+((!sourceFileName || !*sourceFileName?
+			3:strlen(sourceFileName))+13)+15+(strlen(buf)+3);
 		final=(char *)calloc(final_len,sizeof(char));
 
-		sprintf(final,"\nUnable to Write Editor Temp File:\n   %s\n\nWrite Error:\n   %s\n" ,(!sourceFileName || !*sourceFileName?" ":sourceFileName),buf);
-
+		sprintf(final,"\nUnable to Write Editor Temp File:\n   %s\n\n"
+			"Write Error:\n   %s\n" , 
+			(!sourceFileName || !*sourceFileName?" ":sourceFileName),buf);
+ 
 		XmxMakeErrorDialog (win->save_win, final, "Edit Write Error" );
 		if (final) {
 			free(final);
@@ -1800,7 +1801,7 @@ mo_status mo_edit_source(mo_window *win)
 
 /* need to save file name and pid for later reading of source*/
 	if (!(e = (EditFile *) malloc(sizeof(EditFile)))) {
-		fprintf(stderr,"Out of Memory!\n");
+		fprintf(stderr,"%s:%d:Out of Memory!\n",__FILE__,__LINE__);
 		return mo_fail;
 	}
 	e->fileName = sourceFileName;

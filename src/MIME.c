@@ -265,7 +265,7 @@ typedef struct _HTSuffix {
 	float	quality;
 } HTSuffix;
 
-HTList * HTSuffixes = 0;
+HTList * HTSuffixes = NULL;
 static HTSuffix no_suffix = { "*", NULL, 1.0 };
 static HTSuffix unknown_suffix = { "*.*", NULL, 1.0};
 
@@ -287,7 +287,7 @@ static void HTSetSuffix ( const char *suffix, char *content_type, float value)
                 if (suff == NULL)
                         outofmem(__FILE__, "HTSetSuffix");
                 if (!HTSuffixes)
-                        HTSuffixes = HTList_new();
+                        HTSuffixes = (HTList *) HTList_new();
                 HTList_addObject(HTSuffixes, suff);
                 suff->suffix = strdup(suffix);
         }

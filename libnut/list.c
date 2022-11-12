@@ -15,10 +15,11 @@
  { fprintf(stderr, "%s %s: out of memory.\nProgram aborted.\n", file, func); \
   exit(1);}
 
+
 HTList * HTList_new (void)
 {
 	HTList *newList = (HTList *)malloc (sizeof (HTList));
-
+ 
 	if (newList == NULL) outofmem(__FILE__, "HTList_new");
 	newList->object = NULL;
 	newList->next = NULL;

@@ -1,11 +1,11 @@
 # Toplevel Makefile for mMosaic.
-#This Release 3.4.10 compile on:
+#This Release 3.4.11 compile on:
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
 #	- FreeBSD3.1
 
-MCVER=3.4.10
+MCVER=3.4.11
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
@@ -21,13 +21,15 @@ CC = cc
 #### Linux Intel optimised (does not work well)
 #prereleaseflags = -O3 -fomit-frame-pointer -funroll-loops -finline-functions -m486 -malign-double
 #### Standard gcc Linux FreeBSD NetBSD compiler flags (recommanded )
+#prereleaseflags = -Wall -g -fno-builtin -fwritable-strings -Wwrite-strings
 #prereleaseflags = -Wall -g -fwritable-strings  -O0
+#prereleaseflags = -Wall -g
 # for building a shared lib
 # prereleaseflags = $prereleaseflags -fPIC
 #### Qnx
 #prereleaseflags = -Oeax
 #### Sun Workshop C Compiler
-prereleaseflags = -v -g
+prereleaseflags = -v -g -xstrconst
 #### Sun Workshop C++ Compiler
 #prereleaseflags = +w -g
 
@@ -70,7 +72,7 @@ sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
 # syslibs = -lPW -lbsd
 #### For most other Motif platforms:
 # syslibs = -lPW
-#### For Sun's and Ultrix and HP and BSD/386 and FreeBSD:
+#### For Sun's Ultrix HP BSD/386 FreeBSD and Linux:
 # syslibs =
 #### For SCO ODT:
 # syslibs = -lPW -lsocket -lmalloc
@@ -117,8 +119,16 @@ xlibs += -lXm -lXmu -lXt -lXext -lX11 -lm
 #### For inline PNG support, the following should be defined:
 #### The libraries currently used are PNGLIB 0.99d and ZLIB 1.0.9
 
+# linux Mandrake
+#zlibdir = /usr/lib
+#pngdir = /usr
+#jpegdir = /usr
+
+# Solaris
 zlibdir = /usr/local/lib
 pngdir = /usr/local
+jpegdir = /usr/local
+
 pnglibdir = $(pngdir)/lib
 pngincludedir = /$(pngdir)/include
 pnglibs = $(pnglibdir)/libpng.a $(zlibdir)/libz.a
@@ -128,7 +138,6 @@ pngflags =  -I$(pngincludedir) -DHAVE_PNG
 #### For inline JPEG support, the following should be defined:
 #### The library used is Independent JPEG Group (IJG's) jpeg-6a.  
 
-jpegdir = /usr/local
 jpeglibs = $(jpegdir)/lib/libjpeg.a
 jpegflags = -I$(jpegdir)/include -DHAVE_JPEG
 
@@ -155,9 +164,9 @@ krbflags  = $(krb4flags) $(krb5flags)
 krblibs   = $(krb4libs) $(krb5libs) 
 
 #### MULTICAST support
-#mcdir = $(PWD)/libmc
-#mcflag = -I$(mcdir) -DMULTICAST
-#mclib = $(mcdir)/libmc.a
+mcdir = $(PWD)/libmc
+mcflag = -I$(mcdir) -DMULTICAST
+mclib = $(mcdir)/libmc.a
 
 #### APROG support (obsolete)
 #adir = $(PWD)/libaprog

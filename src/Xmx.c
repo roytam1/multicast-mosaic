@@ -115,7 +115,8 @@ Widget XmxMakeToggleButton (Widget parent, String name, XtCallbackProc cb,
 		xmToggleButtonWidgetClass, parent, Xmx_wargs, Xmx_n);
 /* Used to be XmNarmCallback --- probably not right. */
 	if (cb)
-		XtAddCallback (Xmx_w, XmNvalueChangedCallback, cb, cb_data);
+/*		XtAddCallback (Xmx_w, XmNvalueChangedCallback, cb, cb_data);*/
+		XtAddCallback (Xmx_w, XmNarmCallback, cb, cb_data);
 	XmStringFree (label);
 	Xmx_n = 0;
 	return Xmx_w;
