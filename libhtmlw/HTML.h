@@ -94,19 +94,20 @@ typedef struct fcall_rec {
 * these enumeration values.
 *****/
 enum{
-        XmCR_HTML_FORM,                                         /* XmNformCallback                      */
-        XmCR_HTML_FRAMEDONE,                                        /* XmNframeCallback                     */
-        XmCR_HTML_FRAMECREATE,                          /* XmNframeCallback                     */
-        XmCR_HTML_FRAMEDESTROY,                         /* XmNframeCallback                     */
-	XmCR_HTML_FRAMESET_INIT,		/* XmNframeCallback */
-        XmCR_HTML_IMAGEMAPACTIVATE,                     /* XmNimagemapCallback          */
-        XmCR_HTML_IMAGEMAP,                                     /* XmNimagemapCallback          */
-        XmCR_HTML_LINK,                                         /* XmNlinkCallback                      */
-        XmCR_HTML_MODIFYING_TEXT_VALUE,         /* XmNmodifyVerifyCallback      */                      
-        XmCR_HTML_MOTIONTRACK,                          /* XmNmotionTrackCallback       */              
-        XmCR_HTML_OBJECT,                                       /* XmNobjectCallback            */
-        XmCR_HTML_OBJECTCREATE,                         /* XmNobjectCallback            */
-        XmCR_HTML_OBJECTDESTROY                         /* XmNobjectCallback            */
+        XmCR_HTML_FORM,                 /* XmNformCallback            */
+        XmCR_HTML_FRAMEDONE,            /* XmNframeCallback           */
+        XmCR_HTML_FRAMECREATE,          /* XmNframeCallback           */
+        XmCR_HTML_FRAMEDESTROY,         /* XmNframeCallback           */
+        XmCR_HTML_FRAMESETDESTROY,      /* XmNframeCallback           */
+	XmCR_HTML_FRAMESET_INIT,	/* XmNframeCallback */
+        XmCR_HTML_IMAGEMAPACTIVATE,     /* XmNimagemapCallback        */
+        XmCR_HTML_IMAGEMAP,             /* XmNimagemapCallback        */
+        XmCR_HTML_LINK,                 /* XmNlinkCallback            */
+        XmCR_HTML_MODIFYING_TEXT_VALUE, /* XmNmodifyVerifyCallback    */                      
+        XmCR_HTML_MOTIONTRACK,          /* XmNmotionTrackCallback     */              
+        XmCR_HTML_OBJECT,               /* XmNobjectCallback          */
+        XmCR_HTML_OBJECTCREATE,         /* XmNobjectCallback          */
+        XmCR_HTML_OBJECTDESTROY         /* XmNobjectCallback          */
 };
 /*****
 * XmNframeCallback callback structure.
@@ -129,6 +130,7 @@ typedef struct _XmHTMLFrameCallbackStruct
         Widget html;            /* XmHTML widget id                                                     */
         Boolean doit;           /* destroy/create vetoing flag         */
 	int nframe;
+	int index;
 } XmHTMLFrameCallbackStruct;
 
 typedef struct form_rec {

@@ -104,7 +104,7 @@ void ReadProxies(char *mmosaic_root_dir)
 {
 	FILE *fp;
 	char buf[BUFLEN], *psb;
-	struct Proxy *head, *cur, *next, *p;
+	struct Proxy *head, *cur,*p;
 
 	mMosaicProxyFileName = (char*) malloc(strlen (mmosaic_root_dir) +
                                 strlen ("proxy") + 8);
@@ -173,7 +173,7 @@ void ReadNoProxies(char *mmosaic_root_dir)
 {
 	FILE *fp;
 	char buf[BUFLEN], *psb;
-	struct Proxy *head, *cur, *next, *p;
+	struct Proxy *head, *cur, *p;
 
 	mMosaicNoProxyFileName = (char*) malloc(strlen (mmosaic_root_dir) +
                                 strlen ("noproxy") + 8);
@@ -499,7 +499,6 @@ void CallEdit(Widget w, XtPointer client, XtPointer call)
 void CallAdd(Widget w, XtPointer client, XtPointer call)
 {
 	struct EditInfo *pEditInfo;
-	struct ProxyDomain *p, *next;
 
 	pEditInfo = (struct EditInfo *)client;
 
@@ -733,11 +732,10 @@ void EditNoProxyInfo( Widget w, XtPointer client, XtPointer call, int type)
 void EditProxyInfo( Widget w, XtPointer client, XtPointer call, int type)
 {
 	Widget text_form, form, protocol, address, port;
-	Widget trans_rc, label;
-	Widget main_form, rc, rc2, rc3;
+	Widget label;
+	Widget main_form, rc, rc2;
 	Widget action_area, sep, dismiss, help;
 	Widget commit;
-	static Widget  add, remove, edit;
 	XmString selected_string;
 	char *selected_text;
 	struct EditInfo *pEditInfo ;
@@ -1391,7 +1389,6 @@ void WriteProxies(Widget w, XtPointer client, XtPointer call)
 	struct Proxy *p;
 	struct EditInfo *pEditInfo;
 	FILE *fp;
-	int flag;
 	char msgbuf[256];
 
 	pEditInfo = (struct EditInfo *)client;

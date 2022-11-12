@@ -16,6 +16,8 @@ struct timezone Tz;
 /*for memset*/
 #include <memory.h>
 
+#include "colors.h"
+
 char *_MMxpmColorKeys[] = {
     "s",				/* key #1: symbol */
     "m",				/* key #2: mono visual */
@@ -909,7 +911,9 @@ unsigned char *_MMReadXpm3Pixmap( Widget view, FILE *fp, char *datafile, int *w,
 			tmpcolr.pixel = bg_pixel;
 
 			/* Now query for the full color info. */
-			XQueryColor(XtDisplay(view), mMosaicColormap, &tmpcolr);
+/*			XQueryColor(XtDisplay(view), mMosaicColormap, &tmpcolr); */
+ 			if(XQueryColor(XtDisplay(view), mMosaicColormap, &tmpcolr) == False)
+				near_color(XtDisplay(view), mMosaicColormap, &tmpcolr);
 			*bg = i;
 		} else {
 			XParseColor(mMosaicDisplay, mMosaicColormap, colorName, &tmpcolr);
@@ -999,7 +1003,9 @@ unsigned char *_MMProcessXpm3Data( Widget wid, char **xpmdata,
 			tmpcolr.pixel = bg_pixel;
 
 			/* Now query for the full color info. */
-			XQueryColor(XtDisplay(wid), mMosaicColormap, &tmpcolr);
+/*			XQueryColor(XtDisplay(wid), mMosaicColormap, &tmpcolr); */
+ 			if(XQueryColor(XtDisplay(wid), mMosaicColormap, &tmpcolr) == False)
+				near_color(XtDisplay(wid), mMosaicColormap, &tmpcolr);
 			*bg = i;
 		} else {
 			XParseColor(XtDisplay(wid), mMosaicColormap,

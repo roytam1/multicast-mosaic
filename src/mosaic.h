@@ -178,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.4.2"
+#define MO_VERSION_STRING "3.4.4"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@sig.enst.fr"
@@ -324,6 +324,9 @@ typedef int * DependObjectTab;	/* tab of moid */
 #define moMODE_NEWS   0x0004
 #define moMODE_ALL    0x0007
 
+typedef enum _NavigationType {NAVIGATE_NEW, NAVIGATE_OVERWRITE,
+	NAVIGATE_BACK, NAVIGATE_FORWARD } NavigationType;
+
 /* mo_window contains everything related to a single Document View
  * window, including subwindow details. */
 typedef struct _mo_window {
@@ -336,7 +339,9 @@ typedef struct _mo_window {
 	struct _mo_window ** frame_sons;
 	int frame_sons_nbre;
 	int frame_dot_index;
+	int number_of_frame_loaded;
 
+	NavigationType navigation_action;	/* how we navigate */
 /* Subwindows. */
 	Widget source_win;
 	Widget save_win;
@@ -514,7 +519,7 @@ typedef struct _mo_window {
 				/* MC_MO_TYPE_RCV_ALL */
 	void (*mc_callme_on_new_object)(char *fname, char *aurl_wa, 
 		MimeHeaderStructPtr mhs, DependObjectTab dot,
-		int n_do, int stateless, int *moid_ret);
+		int n_do, int *moid_ret);
 	void (*mc_callme_on_error_object)(char *aurl, int status_code,
 		int * moid_ret);
 	void (*mc_callme_on_new_state)(struct _mo_window * win, int moid_ref, DependObjectTab dot, int ndo);

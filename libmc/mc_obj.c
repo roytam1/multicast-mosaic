@@ -32,8 +32,6 @@ static void McObjectToPacket( McObjectStruct *obs)
 	int object_size;
 	int fdd;
         double d_dur;
-	char *buf=NULL;
-	char *do_buf=NULL;
 	char *odata;
 	char *fname;
 	char *aurl; 
@@ -135,99 +133,6 @@ void McSendOject(int moid)
 	}
 }
 
-static void McErrorObjectToPacket(char *fname, char *aurl, MimeHeaderStruct *mhs, int moid)
-{
-        RtpPacket **ptab;
-        RtpPacket * deb_p, *end_p;
-        int s_dchunk, i, n_t, r_b, offset, p_d_l;
-        int rtp_ts, d_duration;
-	int object_size;
-        double d_dur;
-	char *buf;
-	char *odata;
-	
-        deb_p = mc_rtp_packets_list; /* pointe au debut de la liste  */
-	end_p = mc_rtp_packets_list;
-        if (deb_p) { /* il y a une file d'attente */
-		while (end_p->next){
-			end_p = end_p->next;
-		}
-	}
-	buf = (char*)malloc(strlen(aurl) + 220);
-	sprintf(buf, "ERROR %d %s HTTP/1.0\n\n\n", mhs->status_code, aurl);
-	object_size = strlen(buf);
-	odata = buf;
-	
-        s_dchunk = DATA_CHUNK_SIZE;     /* size of data chunck ~512 */
-
-/* nombre total de packet pour l'objet */ 
-        n_t = (object_size -1) / s_dchunk; /* division entiere */
-        if (object_size > 0)
-		n_t++;
-/* alloc packets. Plus one for NULL*/
-        ptab = (RtpPacket **) malloc(sizeof(RtpPacket*) * (n_t+1));
-        for ( i = 0; i < n_t; i++ )    
-                ptab[i] = (RtpPacket *)malloc(sizeof(RtpPacket) );
-        ptab[n_t] = NULL;              
-                                       
-        r_b = object_size;     /* remaining byte to send */
-        offset = 0;                    
-        if (r_b <= s_dchunk) {         
-                p_d_l = r_b;            /* packet data len */
-        } else {                       
-                p_d_l = s_dchunk;      
-        }                              
-        rtp_ts = McRtpTimeStamp(mhs->ts); /* sample time when file come */                                       
-        for ( i = 0; i < n_t; i++ ) {  
-                d_dur = ((p_d_l + PROTO_OVERHEAD) * 8000)/BAND_WIDTH; /* en millisecond */                               
-                d_duration = (int) d_dur;
-                if (d_duration < 2)    
-                        d_duration = 2;
-                ptab[i]->next = ptab[i+1];
-                ptab[i]->id = moid;
-		ptab[i]->data_type = HTML_OBJECT_DATA_TYPE;
-                ptab[i]->d_len = p_d_l;
-                ptab[i]->d = &odata[offset];
-                ptab[i]->is_eod = 0;   
-		ptab[i]->to_free = NULL;
-                ptab[i]->offset = offset;
-                        /* le temps qu'il faut pour envoyer ce packet*/
-                        /* dependant de la bande passante qu'on s'autorise */
-                ptab[i]->rtp_ts = rtp_ts; /* sample time when file come */
-                ptab[i]->duration = d_duration; /* le temps qu'il faut pour envoie
-                                         * a la vitesse desiree  en millisec*/
-                offset += p_d_l;       
-                r_b = r_b - p_d_l;     
-                if (r_b <= s_dchunk) { 
-                        p_d_l = r_b;            /* packet data len */
-                } else {               
-                        p_d_l = s_dchunk;
-                }                      
-        }                              
-        ptab[n_t -1]->is_eod = 1;   
-	ptab[n_t -1]->to_free = odata; /* free in McSendRtpDataTimeOutCb */
-	if (deb_p){
-		end_p->next = ptab[0];
-	} else {
-        	mc_rtp_packets_list = ptab[0]; 
-	}
-        free(ptab);
-}
-
-void McSendErrorOject(char *fname, char * aurl, MimeHeaderStruct *mhs, int moid)
-{
-	int rearm_timer = mc_rtp_packets_list ? False : True;
-
-	McErrorObjectToPacket(fname, aurl, mhs, moid);
-
-/* a new object */
-	if (rearm_timer == True){
-		mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,
-			mc_write_rtp_data_next_time,
-			McSendRtpDataTimeOutCb, NULL);
-	}
-}
-
 void McStateToPacket( McStateStruct *s)
 {
 	RtpPacket **ptab;
@@ -314,6 +219,9 @@ void McSendState(int stateid)
 
 	state = &mc_sender_state_tab[stateid];
 	McStateToPacket(state);
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr, "McSendState: %s\n", state->sdata);
+#endif
 /* a new state */
 	if (rearm_timer == True){
 		mc_write_rtp_data_timer_id = XtAppAddTimeOut( mMosaicAppContext,

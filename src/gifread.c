@@ -23,9 +23,6 @@
 #define DEBUG_GIF
 #endif
 
-static struct timeval Tv;
-static struct timezone Tz;
-
 #define	MAXCOLORMAPSIZE		256
 
 #define	TRUE	1

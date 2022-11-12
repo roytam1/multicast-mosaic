@@ -9,7 +9,6 @@ extern int 		ElementLessThan(struct ele_rec *s, struct ele_rec *e,
 				int start_pos, int end_pos);
 extern int 		SwapElements( struct ele_rec *start, struct ele_rec *end,
 				int start_pos, int end_pos);
-extern char *		MaxTextWidth(char *txt, int *cnt);
 
 
  
@@ -50,7 +49,6 @@ extern char * 		ParseTextToPrettyString(struct ele_rec *startp,
 				struct ele_rec *endp,
         			int start_pos, int end_pos,
         			int space_width, int lmargin);
-extern int 		DocumentWidth(HTMLWidget hw, struct mark_up *list);
 extern void 		TextRefresh( HTMLWidget hw, struct ele_rec *eptr,
         			int start_pos, int end_pos);
 extern void 		ImageRefresh(HTMLWidget hw, struct ele_rec *eptr);

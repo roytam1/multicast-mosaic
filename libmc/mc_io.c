@@ -72,8 +72,6 @@ static const IPAddr anyaddr = IPV6ADDR_ANY_INIT;
 
 static unsigned char emit_buf[MC_MAX_BUF_SIZE+1];
 static unsigned char recv_buf[MC_MAX_BUF_SIZE+1];
-static unsigned int mc_send_cnt = 0;
-static unsigned int mc_my_upd_time ;
 
 static int		noloopback_broken_ = 1;
 
@@ -182,7 +180,7 @@ int  UcOpenRead(IPAddr ip, unsigned short *port)
 		exit(1);
 	}
 	sd_len = sizeof(sin);
-	if ( getsockname(s, (sockaddr*)&sin, &sd_len) < 0 ) {
+	if ( getsockname(s, (struct sockaddr*)&sin, &sd_len) < 0 ) {
 		perror("getsockname");
 		exit(1);
 	}
@@ -480,8 +478,18 @@ int DewrapRtcpData( unsigned char *buf, int len_buf,
 
 int McWrite( int fd, unsigned char * buf, int len)
 {
+#ifdef LOOSE_PACKET
+	double d;		/* simulation of packet loosing */
+				/* because our net is too good */
+	double p = 0.5;		/* loose 50% */
+#endif
 	int cnt;
 
+#ifdef LOOSE_PACKET
+	d = drand48();
+	if ( d > p )
+		return len;
+#endif
 	cnt = write(fd, (char*)buf, len);
 	if(cnt != len){
 		perror("McWrite: ");
@@ -582,7 +590,9 @@ void McSendRtpDataTimeOutCb(XtPointer clid, XtIntervalId * id)
         cnt = McWrite(mc_fd_rtp_w, emit_buf, len_buf);
 	if (p->is_eod) {
 		if ( p->data_type == HTML_STATE_DATA_TYPE ) {
-			mc_status_report_state_id = p->id;
+			if ( p->id > mc_status_report_state_id) {
+				mc_status_report_state_id = p->id;
+			}
 		}
 		if ( p->data_type == HTML_OBJECT_DATA_TYPE) {
 			/* send alway the hightest object number */

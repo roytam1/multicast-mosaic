@@ -208,11 +208,8 @@ int McRcvrSrcAllocObject(Source * s, int moid)
 static int McRcvrParseStatesData(char *buf_in, int len_buf_in,
 	MimeHeaderStruct *mhs_buf )
 {
-	int status;
-
 	MimeHeaderStruct tmp_mhs;
 	char *lf_ptr, *beg_m, server_status[20], *lflf_ptr;
-	int nfields;
 
 	beg_m = buf_in;
 	lflf_ptr = strstr(beg_m, "\012\012");
@@ -695,7 +692,6 @@ void McProcessRtcpData(unsigned char *buf, int len, IPAddr addr_from)
 {
 	RtcpPacket rcs;
 	Source *s;
-	int status=1;
 	int ind = 0;
 	int lenp = 0;
 	u_long target_ssrc;
@@ -756,7 +752,6 @@ void UcProcessRtcpData(unsigned char *buf, int len, IPAddr addr_from,
 {
 	RtcpPacket rcs;
 	Source *s;
-	int status=1;
 	int ind = 0;
 	int lenp = 0;
 	u_long target_ssrc;

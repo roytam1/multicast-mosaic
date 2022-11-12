@@ -121,6 +121,7 @@ Source * newSource(u_int32_t srcid, IPAddr addr)
         s->cduid = -1;                 
         s->last_valid_object_id = -1;     
         s->last_valid_state_id = -1;     
+	s->current_state_id_in_window = -1;
         s->states = NULL;
         s->objects = NULL;              
 	s->states_tab_size = 0;
@@ -155,10 +156,11 @@ We always get old entry because a match on a cname=user@ip/port/rtptime.
                 }                     
         }                             
         if (s) {
+                int h;
                 remove_from_hashtable(s);
                 s->srcid = srcid;
 		s->addr = addr;
-                int h = SHASH(srcid);
+                h = SHASH(srcid);
                 s->hlink = hashtab_[h];
                 hashtab_[h] = s; 
         }
@@ -195,7 +197,8 @@ Source* mc_rtcp_demux(u_int32_t srcid, IPAddr addr_from, RtcpPacket* rcs)
 	if (srcid == mc_local_srcid ) { /* loop or collision */
 		if (addr_from == mc_local_ip_addr){
 			fprintf(stderr,"Sorry I must restart because of ssrc/addr collision (local)\n");
-			abort();
+			return NULL;
+			/* abort(); */
 		}
 		cnflc_addr = find_conflict_addr(addr_from);
 		if (cnflc_addr ) { 

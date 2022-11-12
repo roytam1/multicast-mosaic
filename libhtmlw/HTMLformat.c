@@ -1026,16 +1026,14 @@ void FormatChunk( HTMLWidget hw, struct mark_up * start_mark,
  * Returns the max_height of the entire document.
  * Title objects are ignored, and not formatted.
  */
-int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
+int FormatAll(HTMLWidget hw, int Fwidth, Boolean save_obj)
 {
-	int saved_width;
 	PhotoComposeContext pcc;
 	int WidthOfViewablePart;
 
-	saved_width = *Fwidth;
 	hw->html.is_index = False;	 /* Clear the is_index flag */
 
-	WidthOfViewablePart = *Fwidth;	/* taille visible de la fenetre */
+	WidthOfViewablePart = Fwidth;	/* taille visible de la fenetre */
 					/* hw->core.width - swidth - (2 * st)*/
 					/* on suppose qu'on a toujours vbar */
 
@@ -1132,9 +1130,10 @@ int FormatAll(HTMLWidget hw, int *Fwidth, Boolean save_obj)
 	pcc.y = pcc.y + hw->html.margin_height;
 
 /* If the passed in MaxWidth was wrong, correct it.*/
-	if (pcc.max_width_return > saved_width)
-		*Fwidth = pcc.max_width_return;
+/*	if (pcc.max_width_return > saved_width) */
+/*		*Fwidth = pcc.max_width_return; */
 
+	hw->html.max_pre_width = pcc.max_width_return;
 	return(pcc.y);
 }
 
@@ -1678,56 +1677,4 @@ char * ParseTextToPrettyString(struct ele_rec *startp, struct ele_rec *endp,
 		line_buf = NULL;
 	}
 	return(text);
-}
-
-/* Find the preferred width of a parsed HTML document
- * Currently unformatted plain text, unformatted listing text, plain files
- * and preformatted text require special width.
- * Preferred width = (width of longest plain text line in document) *
- * 	(width of that text's font)
- */
-int DocumentWidth(HTMLWidget hw, struct mark_up *list)
-{
-	struct mark_up *mptr;
-	int plain_text;
-	int pcnt, pwidth;
-	int width;
-	char *ptr;
-
-	/* Loop through object list looking at the plain, preformatted text
-	 */
-	width = 0;
-	pwidth = 0;
-	plain_text = 0;
-	mptr = list;
-	while (mptr != NULL) {
-		/* All text blocks between the starting and ending
-		 * plain and pre text markers are plain text blocks.
-		 * Manipulate flags so we recognize these blocks.
-		 */
-		if( mptr->type == M_PREFORMAT) {
-			if (mptr->is_end) {
-				plain_text--;
-				if (plain_text < 0)
-					plain_text = 0;
-			} else
-				plain_text++;
-			pcnt = 0;
-		}
-		/* If this is a plain text block, add to line length.
-		 * Find the Max of all line lengths.
-		 */
-		else if ((plain_text)&&(mptr->type == M_NONE)) {
-			ptr = mptr->text;
-			while ((ptr != NULL)&&(*ptr != '\0')) {
-				ptr = MaxTextWidth(ptr, &pcnt);
-				if (pcnt > pwidth)
-					pwidth = pcnt;
-			}
-		}
-		mptr = mptr->next;
-	} /* while */
-/*	width = pwidth * hw->html.plain_font->max_bounds.width; */
-	width = pwidth * hw->html.cur_font->max_bounds.width;
-	return(width);
 }

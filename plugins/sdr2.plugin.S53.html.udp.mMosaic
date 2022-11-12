@@ -1,0 +1,14 @@
+media:html
+proto:udp
+tool:mMosaic
+icon:tools
+fmt:Mosaic
+{
+    fmtname:Mosaic
+    flags:-M mMosaic
+}
+flags:-S $(SESSNAME)
+flags:-t $(TTL)
+flags:-mcDest $(ADDRESS)/$(PORT)
+flags:-a $(YOUREMAIL)
+flags:http://tsi.enst.fr/~dauphin/mMosaic

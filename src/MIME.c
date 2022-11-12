@@ -329,7 +329,7 @@ static void getword(char *word, char *line, char stop, char stop2)
 	if (line[x]) 
 		++x;
 	y=0;
-	while (line[y++] = line[x++])
+	while ( line[y++] = line[x++] )
 		;
 }
 
@@ -866,7 +866,7 @@ char * MMct2Presentation( char * ct)
 /* a ecricre eventuellement :
  * 	si NULL faire un essai sur le type de fichier
  */
-	return MMOSAIC_PRESENT;
+	return ((char*) MMOSAIC_PRESENT);
 }
 
 /* --------------- */

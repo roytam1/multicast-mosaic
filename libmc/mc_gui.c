@@ -182,7 +182,6 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
 {
 	struct mark_up *mlist, *mptr;
 	int docid = 0;		/* we are not in back or forward */
-	char * goto_anchor = NULL;
 	char * aurl = NULL;
 	char * base_url = NULL;
 	char * base_target = NULL;
@@ -336,6 +335,8 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
 			s->frameset_moid = start_moid;
 			s->frameset_dot_count = 0;
 			break;
+		default:
+			break;
 		}                     
 		mptr = mptr->next;    
 	}
@@ -399,6 +400,18 @@ XmxCallback (mc_frame_callback)
                 fprintf(stderr, "mc_frame_callback: reason: XmCR_HTML_FRAMECREATE\n");                                   
 #endif          
                 break;                
+        case XmCR_HTML_FRAMESETDESTROY:
+#ifdef DEBUG_FRAME
+                fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMESETDESTROY\n"); 
+#endif
+                parent = win;
+                free(parent->frame_sons) ;
+                win->frame_name = NULL; 
+                win->frame_parent =NULL;
+                win->frame_sons = NULL; 
+                win->frame_sons_nbre =0;
+                win->number_of_frame_loaded = 0;
+                break;
         case XmCR_HTML_FRAMESET_INIT: 
 #ifdef DEBUG_FRAME
                 fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMESET_INIT\n");
@@ -406,13 +419,21 @@ XmxCallback (mc_frame_callback)
                 win->frame_name = NULL; 
                 win->frame_parent =NULL; 
                 win->frame_sons = NULL; 
-                win->frame_sons_nbre =0;  
-		/*??? = cbs.nframe */ 
+/*                win->frame_sons_nbre =0;  */
+/*??? = cbs.nframe */ 
+                win->frame_sons_nbre =  cbs->nframe ;
+                win->number_of_frame_loaded = 0;
+                parent = win;
+                parent->frame_sons = (mo_window **) realloc(parent->frame_sons,
+                        (parent->frame_sons_nbre) * sizeof(mo_window *));
                 break; 
         default:                      
 		abort();
                 fprintf(stderr, "mc_frame_callback: reason: Unknowed...\n");
                 break;                
+        }                             
+        if (cbs->reason != XmCR_HTML_FRAMEDONE ){
+                return;         /* just for test now */
         }                             
 #ifdef DEBUG_FRAME                    
         fprintf(stderr,"cbs.event = %08x\n cbs.src = %s\n cbs.name = %s\n",
@@ -420,15 +441,16 @@ XmxCallback (mc_frame_callback)
         fprintf(stderr,"bs.html = %08x\n cbs.doit = %d\n",
                 cbs->html, cbs->doit);
 #endif
-        if (cbs->reason != XmCR_HTML_FRAMEDONE ){
-                return;         /* just for test now */
-        }                             
 /* reason = XmCR_HTML_FRAMEDONE */    
         parent = win;                 
         htmlw = cbs->html;            
         url = cbs->src;       
         frame_name = cbs->name;       
         sub_win = MMMakeSubWindow(parent, htmlw, url, frame_name);
+
+	sub_win->frame_dot_index = cbs->index;
+	sub_win->frame_sons_nbre = 0;
+	parent->frame_sons[cbs->index] = sub_win;
 
 /* get the source */
 	s = parent->source;
@@ -511,6 +533,7 @@ void McDoWindowText(Source *s, unsigned int state_id)
         mo_set_win_headers(s->win, aurl);
         
 	s->last_valid_state_id = state_id;
+	s->current_state_id_in_window = state_id;
 /* MAJ de l'history etc... */
 /*### faire un record history pour le multicast  MMUpdateGlobalHistory(aurl);*/
 }

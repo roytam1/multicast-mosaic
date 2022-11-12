@@ -62,7 +62,7 @@ static u_int32_t usec2ntp(u_int32_t usec)
 /*
  * Number of seconds between 1-Jan-1900 and 1-Jan-1970
  */
-#define GETTIMEOFDAY_TO_NTP_OFFSET 2208988800
+#define GETTIMEOFDAY_TO_NTP_OFFSET 2208988800U
  
 /*
  * Return a 64-bit ntp timestamp (UTC time relative to Jan 1, 1970).

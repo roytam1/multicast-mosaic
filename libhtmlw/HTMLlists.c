@@ -62,43 +62,6 @@ void FreeMarkUpList(struct mark_up *List)
 	}
 }
 
-/* Used to find the longest line (in characters) in a collection of text blocks.
- * cnt is the running count of characters, and txt is the pointer to the current
- * text block. Since we are finding line widths, a newline resets the width count.
- */
-char * MaxTextWidth(char *txt, int *cnt)
-{
-	char *start;
-	char *end;
-	int width;
-
-	if (txt == NULL)
-		return(NULL);
-	width = *cnt;
-	start = txt;
-	/* If this blocks starts with a newline, reset the width
-	 * count, and skip the newline.
-	 */
-	if (*start == '\n') {
-		width = 0;
-		start++;
-	}
-	end = start;
-	/* count characters, stoping either at a newline, or at the
-	 * end of this text block.  Expand tabs.
-	 */
-	while ((*end != '\0')&&(*end != '\n')) {
-		if (*end == '\t') {
-			width = ((width / 8) + 1) * 8;
-		} else {
-			width++;
-		}
-		end++;
-	}
-	*cnt = width;
-	return(end);
-}
-
 /* Free up the passed linked list of formatted elements, freeing
  * all memory associates with each element.
  */

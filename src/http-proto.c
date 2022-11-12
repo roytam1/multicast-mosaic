@@ -380,7 +380,7 @@ void read_http_doc_prim_fd_cb( XtPointer clid, int * fd, XtInputId * id)
 			return;
 		case 403:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,
-				"Code 403:\nForbiden");
+				"Code 403:\nForbidden");
 			return;
 		case 404:
 			(*pafd->www_con_type->call_me_on_error_cb)(pafd,

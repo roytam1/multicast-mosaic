@@ -46,7 +46,7 @@ unsigned short	uc_rtcp_addr_port = 0;
 
 			/* delay timer */
 unsigned long	uc_rtcp_w_sdes_time = 20000; 	/* in millisec */
-unsigned long	mc_rtcp_w_time = 4000;		/* in millisec */
+unsigned long	mc_rtcp_w_time = 1000;		/* in millisec */
 
 			/* Events */
 XtInputId	mc_rtp_r_input_id;
@@ -69,7 +69,7 @@ static void UcRtcpReadCb(XtPointer clid, int * fd, XtInputId * input_id);
 
 		/* Actions */
 static void McSendNewObject(char *fname, char *aurl, MimeHeaderStruct *mhs,
-	DependObjectTab dot, int ndo, int stateless, int *moid_ret);
+	DependObjectTab dot, int ndo, int *moid_ret);
 static void McSendNewErrorObject(char *aurl, int status_code,
 	int * moid_ret);
 static void McSendNewState(mo_window * win, int moid_ref, DependObjectTab dot, int ndo);
@@ -313,7 +313,7 @@ static void McSendNewState(mo_window * win, int moid_ref, DependObjectTab dot, i
 /* aurl contient une url absolue avec les ponctuations, mais sans anchor */
 
 static void McSendNewObject(char *fname, char *aurl, MimeHeaderStruct *mhs,
-	DependObjectTab dot, int ndo, int stateless, int *moid_ret)
+	DependObjectTab dot, int ndo, int *moid_ret)
 {
 	int cache_found;
 	int moid = 0;
@@ -346,12 +346,6 @@ static void McSendNewObject(char *fname, char *aurl, MimeHeaderStruct *mhs,
 		*moid_ret = mhs_ret.moid_ref;
 	}
 
-/* si stateless == TRUE */
-/* ajouter stateless dans la partie MIME */
-/* composer un etat */
-	if (stateless) {
-		abort();
-	}
 
 /* Si objet pas dans le cache , on peut maintenant envoyer l'objet */
 	if (!cache_found) {
@@ -494,6 +488,8 @@ static void McSendNewErrorObject(char *aurl, int status_code,
         cache_found = McSenderCacheFindData(aurl, &fname_ret, &mhs_ret);
 	*moid_ret = mhs_ret.moid_ref;   /* un object a toujours un moid */
 					/* meme les erreurs !!! */
+/* ### CAS d'une erreur */
+/* cet objet n'a pas de dependance (objet atomique)  */
 	if (!cache_found) {
 		mc_local_object_id++;
 		moid = mc_local_object_id;
@@ -503,7 +499,7 @@ static void McSendNewErrorObject(char *aurl, int status_code,
 	}
 /* Si objet pas dans le cache , on peut maintenant envoyer l'objet */
 	if (!cache_found) {            
-		McSendErrorOject(fname_ret, aurl, &mhs_ret, moid);
+		McSendOject(moid);
 	}                              
 }
 
@@ -567,15 +563,6 @@ static void McSendNewErrorObject(char *aurl, int status_code,
 /*		gc_vc,0,0,vir_cursor_width,vir_cursor_height,
 /*		x,y);
 /*}
-/*#####################
-/*	if ( obj_entry = IsObjStillSent(aurl,mhs) ) { /* we still sent this obj*/
-/*			/* just reschedule SR. Un client est capable de
-/*			 * determine si cette objet est dans son cache ou pas */
-/*			/* send the header to help the client because */
-/*			/* maybe we reload and modify this object */
-/*		McScheduleSendHeaderOject(mc_local_object_id);
-/*		return;
-/*	}
 /*####### case of navigation ########### */
 /* navigation in history never modify a doc or object... */
 /* juste update the 'RTPtimestamp' in SR. Back to the futur... */

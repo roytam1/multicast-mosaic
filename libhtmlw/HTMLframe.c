@@ -922,6 +922,17 @@ static void mapFrames(HTMLWidget hw /* top XmHTMLWidget */)
         if(!hw->html.frame_callback)
                 return;
         /* map all XmHTML frame childs */
+/* we must know the number of frame to be created */
+	cbs.reason = XmCR_HTML_FRAMESET_INIT;
+	cbs.event = NULL;
+	cbs.src = NULL;
+	cbs.name = NULL;
+	cbs.html = NULL;
+	cbs.doit = False;
+	cbs.nframe = hw->html.nframe;
+	cbs.index = -1;
+	XtCallCallbackList((Widget)hw, hw->html.frame_callback, &cbs);
+	
         for(i = 0; i < hw->html.nframe; i++) {
                 frame = hw->html.frames[i];
 /* map to screen */
@@ -933,6 +944,8 @@ static void mapFrames(HTMLWidget hw /* top XmHTMLWidget */)
         	cbs.name = frame->html.frame_name;
         	cbs.html = frame->html.frame_wid;
         	cbs.doit = False;
+		cbs.index = i;
+		cbs.nframe = hw->html.nframe;
 /* call the callback list */
         	XtCallCallbackList((Widget)hw, hw->html.frame_callback, &cbs);
         }
@@ -1104,6 +1117,7 @@ void  _XmHTMLDestroyFrames(HTMLWidget hw)
 {
         int i = 0;
  	HTMLWidget root_frame = NULL;
+       	XmHTMLFrameCallbackStruct cbs;
 
         /* unmap all XmHTML frame childs */
         for(i = 0; i < hw->html.nframe; i++)
@@ -1115,7 +1129,6 @@ void  _XmHTMLDestroyFrames(HTMLWidget hw)
 
         for(i = 0; i < hw->html.nframe; i++) {
 	        int ret_val;
-        	XmHTMLFrameCallbackStruct cbs;
 		HTMLWidget frame;
 
         	if(!hw->html.frame_callback){
@@ -1166,6 +1179,13 @@ void  _XmHTMLDestroyFrames(HTMLWidget hw)
         hw->html.frames = NULL;
         hw->html.nframe = 0;
 	hw->html.frame_type = NOTFRAME_TYPE;
+       	cbs.reason = XmCR_HTML_FRAMESETDESTROY;
+       	cbs.event = NULL;
+       	cbs.src = NULL;
+       	cbs.name = NULL;
+       	cbs.html = NULL;
+       	cbs.doit = True;
+       	XtCallCallbackList((Widget)hw, hw->html.frame_callback, &cbs);
 }
 
 /*

@@ -106,10 +106,9 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 	struct mark_up * mlist)
 {
 	mo_node *node;
-
+	NavigationType nt = win->navigation_action;
 
 	node = (mo_node *)malloc (sizeof (mo_node));
-
 	node->aurl_wa = strdup(aurl_wa); /* aurl with anchor */
 	node->aurl = strdup(aurl);	/* THE absolute url of doc. */
 	node->goto_anchor = NULL;
@@ -138,31 +137,65 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 /* if we are here then win->current_node = NULL */
 		win->current_node = node;
 		if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) */
-					/* try to enable navigation in frame..*/
+				/* try to enable navigation in frame..*/
 			return;
 		}
 		mo_back_impossible (win);
 	} else {
-				/* Node becomes end of history list. */
-				/* Point back at current node. */
-		node->previous = win->current_node;
-				/* Point forward to nothing. */
-		node->next = NULL;
+		switch (nt) {
+		case NAVIGATE_NEW: /* Node becomes end of history list. */
+			node->previous = win->current_node; /* Point back at current node. */
+			node->next = NULL; /* Point forward to nothing. */
 /* position in the history list widget */
-		node->position = node->previous->position + 1;
+			node->position = node->previous->position + 1;
 				/*Kill descendents of current node,since we'll 
 				 *never be able to go forward to them again. */
-		mo_kill_node_descendents (win, win->current_node);
+			mo_kill_node_descendents (win, win->current_node);
 				/* Current node points forward to this. */
-		win->current_node->next = node;
+			win->current_node->next = node;
 				/* Current node now becomes new node. */
-		win->current_node = node;
-		if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) */
-					/* try to enable navigation in frame..*/
+			win->current_node = node;
+			if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) try to enable navigation in frame..*/
+				return;
+			}
+			mo_forward_impossible (win);
+			mo_back_possible (win);
+			break;
+		case NAVIGATE_OVERWRITE:
+			node->previous = win->current_node->previous;
+			node->next = win->current_node->next;
+			node->position = win->current_node->position;
+			win->current_node = node;
 			return;
+		case NAVIGATE_BACK:
+			node->previous = win->current_node->previous->previous;
+			node->next = win->current_node;
+			node->position = win->current_node->previous->position;
+			win->current_node->previous = node;
+			win->current_node = node;
+			if ( win->menubar == NULL) { /* FIXME (win is a frame)*/
+				return;
+			}
+			if (node->previous == NULL)
+				mo_back_impossible (win);
+			mo_forward_possible(win);
+			return;
+		case NAVIGATE_FORWARD:
+			node->previous = win->current_node;
+			node->next = win->current_node->next->next;
+			node->position = win->current_node->next->position;
+			win->current_node->next = node;
+			win->current_node = node;
+			if ( win->menubar == NULL) { /* FIXME (win is a frame)*/
+				return;
+			}
+			if (node->next == NULL)
+				mo_forward_impossible (win);
+			mo_back_possible (win);
+			return;
+		default:
+			abort();
 		}
-		mo_forward_impossible (win);
-		mo_back_possible (win);
 	}
 	if (win->history_list) {
 		XmString xmstr = XmxMakeXmstrFromString(node->title);
@@ -317,39 +350,57 @@ char *mo_grok_title (mo_window *win, char *url, char *ref)
 /* Back up a node. */
 void mo_back (Widget w, XtPointer clid, XtPointer calld)
 {
+	RequestDataStruct rds;
 	mo_window *win = (mo_window*) clid;
 
 	if (win->pafd )		/* transfert in progress */
 		(*win->pafd->call_me_on_stop)(win->pafd); /* stop it */
-  /* If there is no previous node, choke. */
-  if (!win->current_node || win->current_node->previous == NULL){
-	fprintf(stderr,"Severe Bug , Please report...\n");
-	fprintf(stderr,"mo_back: current_node->previous == NULL\n");
-	fprintf(stderr,"Aborting...\n");
-	abort();
-  }
+/* If there is no previous node, choke. */
+	if (!win->current_node || win->current_node->previous == NULL){
+		fprintf(stderr,"Severe Bug , Please report...\n");
+		fprintf(stderr,"mo_back: current_node->previous == NULL\n");
+		fprintf(stderr,"Aborting...\n");
+		abort();
+	}
 
-  mo_gui_apply_default_icon(win);
-  mo_set_win_current_node (win, win->current_node->previous);
+        rds.req_url = win->current_node->previous->aurl_wa;
+        rds.post_data = NULL;
+        rds.ct = NULL;
+        rds.is_reloading = False;
+        rds.gui_action = HTML_LOAD_CALLBACK;
+	win->navigation_action = NAVIGATE_BACK;
+        MMPafLoadHTMLDocInWin(win, &rds);
+	win->navigation_action = NAVIGATE_NEW; /* reset to default */
+/*  mo_gui_apply_default_icon(win); */
+/*  mo_set_win_current_node (win, win->current_node->previous); */
 }
 
 /* Go forward a node. */
 void mo_forward (Widget w, XtPointer clid, XtPointer calld)
 {
+	RequestDataStruct rds;
 	mo_window *win = (mo_window*) clid;
 
 	if (win->pafd )		/* transfert in progress */
 		(*win->pafd->call_me_on_stop)(win->pafd); /* stop it */
-  /* If there is no next node, choke. */
-  if (!win->current_node || win->current_node->next == NULL) {
-	fprintf(stderr,"Severe Bug , Please report...\n");
-	fprintf(stderr,"mo_forward: current_node->previous == NULL\n");
-	fprintf(stderr,"Aborting...\n");
-	abort();
-  }
+	/* If there is no next node, choke. */
+	if (!win->current_node || win->current_node->next == NULL) {
+		fprintf(stderr,"Severe Bug , Please report...\n");
+		fprintf(stderr,"mo_forward: current_node->previous == NULL\n");
+		fprintf(stderr,"Aborting...\n");
+		abort();
+	}
 
-  mo_gui_apply_default_icon(win);
-  mo_set_win_current_node (win, win->current_node->next);
+        rds.req_url = win->current_node->next->aurl_wa;
+        rds.post_data = NULL;
+        rds.ct = NULL;
+        rds.is_reloading = False;
+        rds.gui_action = HTML_LOAD_CALLBACK;
+	win->navigation_action = NAVIGATE_FORWARD;
+        MMPafLoadHTMLDocInWin(win, &rds);
+	win->navigation_action = NAVIGATE_NEW; /* reset to default */
+/*  mo_gui_apply_default_icon(win); */
+/*  mo_set_win_current_node (win, win->current_node->next); */
 }
 
 /* Visit an arbitrary position.  This is called when a history

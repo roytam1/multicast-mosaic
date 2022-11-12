@@ -152,6 +152,7 @@ void McSenderCacheInit( char * root_name)
 		moid_sender_cache[i].exist = 0;
 		moid_sender_cache[i].aurl = NULL;
 		moid_sender_cache[i].fname = NULL;
+		moid_sender_cache[i].file_len = 0;
 		moid_sender_cache[i].mhs = NULL;
 		moid_sender_cache[i].moid = -1;
 		moid_sender_cache[i].last_modify = 0;
@@ -262,6 +263,8 @@ void McSenderCachePutErrorInCache( char *aurl, int status_code, int moid,
 	char *fname_w;
 	int fdw;
 	struct timeval tv;
+	char * buf;
+	int object_size;
 
 /* look if an entry still exist, if yes abort */
 	h = hash_url(aurl);
@@ -285,6 +288,7 @@ void McSenderCachePutErrorInCache( char *aurl, int status_code, int moid,
 			moid_sender_cache[i].exist = 0;
 			moid_sender_cache[i].aurl = NULL;
 			moid_sender_cache[i].fname = NULL;
+			moid_sender_cache[i].file_len = 0;
 			moid_sender_cache[i].mhs = NULL;
 			moid_sender_cache[i].moid = -1;
 			moid_sender_cache[i].last_modify = 0;
@@ -322,9 +326,15 @@ void McSenderCachePutErrorInCache( char *aurl, int status_code, int moid,
 	gettimeofday(&tv, 0);
         moid_sender_cache[moid].mhs->ts = tv; /* time stamp for multicast */
 
+        buf = (char*)malloc(strlen(aurl) + 220);
+        sprintf(buf, "ERROR %d %s HTTP/1.0\n\n\n", status_code, aurl);
+        object_size = strlen(buf);    
+	moid_sender_cache[moid].file_len = object_size;
+
 	fdw = open(fname_w,O_WRONLY | O_CREAT | O_TRUNC,0744);
-	write(fdw, "", 1);
+	write(fdw, buf, object_size+1);
 	close (fdw);
+	free(buf);
 	*fname_ret = fname_w;
 	(*mhs_ret) = *(moid_sender_cache[moid].mhs);
 	return ;
@@ -385,6 +395,7 @@ void McSenderCachePutDataInCache(char *fname_r, char *aurl, MimeHeaderStruct *mh
 			moid_sender_cache[i].exist = 0;
 			moid_sender_cache[i].aurl = NULL;
 			moid_sender_cache[i].fname = NULL;
+			moid_sender_cache[i].file_len = 0;
 			moid_sender_cache[i].mhs = NULL;
 			moid_sender_cache[i].moid = -1;
 			moid_sender_cache[i].last_modify = 0;
@@ -760,13 +771,12 @@ void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
 {
 	McHashEntry * deb;
 	char smoid[40];
-	int h, i;
+	int h;
 	int exist = 0;
 	char *fname_w;
 	int fdw;
 	struct timeval tv;
-	int data_size,  object_size;
-	char state_buf[50];            
+	int data_size;
 	char *buf=NULL;
 	char *do_buf=NULL;
 	MimeHeaderStruct *cmhs;
@@ -791,7 +801,7 @@ void McSourceCachePutDataInCache(Source *s, char * body, int body_len,
 	McRcvrSrcAllocObject(s, moid);
 
 	if (s->objects[moid].aurl) {
-			abort();	/* incoherence (we still have it*/
+			abort();	/* incoherence (we still have it) */
 	}
 	add_url_to_bucket(s->hash_tab, h, aurl, moid);
 	sprintf(smoid,"%ld",moid); 

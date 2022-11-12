@@ -1569,6 +1569,8 @@ mo_status mo_post_search_window (mo_window *win)
 		label = XmxMakeLabel (search_form, "Find string in document: " );
 		XmxSetArg (XmNcolumns, 25);
 		win->search_win_text = XmxMakeText (search_form);
+		XtVaSetValues(search_form, XmNdefaultButton,
+			win->search_win_text, NULL);
 		XtAddCallback(win->search_win_text, XmNactivateCallback,
 			search_win_cb0, (XtPointer)win);
 

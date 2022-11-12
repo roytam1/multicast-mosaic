@@ -122,7 +122,8 @@ static int HTParseInet (SockA *sin, const char *str)
 	strcpy(host, str);		/* Take a copy we can mutilate */
   
 /* Parse port number if present */    
-	if (port=strchr(host, ':')) {
+	port = strchr(host, ':');
+	if (port) {
 		*port++ = 0;		/* Chop off port */
 		if (port[0]>='0' && port[0]<='9') {
 #ifdef IPV6
@@ -225,7 +226,7 @@ static void doc_cancel_connect_time_out_cb(XtPointer clid, XtIntervalId * id)
 /* remove trigger */
 	pafd->www_con_type->call_me_on_stop_cb = NULL;
 	XtRemoveTimeOut(pafd->loop_connect_time_out_id);
-	pafd->loop_connect_time_out_id = NULL;	/* sanity */
+	pafd->loop_connect_time_out_id = (XtIntervalId) NULL;	/* sanity */
 
 /* close the unsucces socket */
 	close(pafd->www_con_type->prim_fd);
@@ -244,7 +245,7 @@ static void MMStopConnectPostRequestAndGetTypedData(PafDocDataStruct * pafd)
 {
 /* remove trigger */
 	XtRemoveTimeOut(pafd->loop_connect_time_out_id);
-	pafd->loop_connect_time_out_id = NULL;  /* sanity */
+	pafd->loop_connect_time_out_id = (XtIntervalId) NULL;  /* sanity */
 	XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
 
 /* close the pending connect socket */
@@ -273,7 +274,7 @@ static void loop_doc_connect_cb(XtPointer clid, XtIntervalId * id)
 		(struct sockaddr*)&(pafd->www_con_type->sin), sizeof(SockA));
 	if ( (status == 0) || ((status < 0) && (errno == EISCONN))) { /* succes in connect */
 		XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
-		pafd->loop_connect_time_out_id = NULL;  /* sanity */
+		pafd->loop_connect_time_out_id = (XtIntervalId) NULL;  /* sanity */
 		doc_connect_succes(pafd);
 		return;
 	}
@@ -295,7 +296,7 @@ static void loop_doc_connect_cb(XtPointer clid, XtIntervalId * id)
 	free(pafd->www_con_type);
 	pafd->www_con_type = NULL;
 	XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
-	pafd->loop_connect_time_out_id = NULL;  /* sanity */
+	pafd->loop_connect_time_out_id = (XtIntervalId) NULL;  /* sanity */
 	(*pafd->call_me_on_error)(pafd,"Connection Error: Can't connect");
 	return;
 }
@@ -581,6 +582,6 @@ void PostRequestAndGetTypedData( char * aurl, PafDocDataStruct * pafd)
         pafd->www_con_type = NULL;
         XtRemoveTimeOut(pafd->cancel_connect_time_out_id);
 	XtRemoveTimeOut(pafd->loop_connect_time_out_id);
-	pafd->loop_connect_time_out_id = NULL;  /* sanity */
+	pafd->loop_connect_time_out_id = (XtIntervalId) NULL;  /* sanity */
         (*pafd->call_me_on_error)(pafd,"Connection Error: Can't connect");
 }

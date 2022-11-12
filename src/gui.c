@@ -397,10 +397,26 @@ static mo_window * get_frame_target( mo_window *win, char *base_target, char* ta
 {
 	mo_window * pwin, *son;
 	int i;
+	char * default_target = "_self";	/* default target for mMosaic */
 
 	if (win->frame_parent == NULL)
 		return win;
-	if (base_target == NULL && target == NULL) {
+	if ( target == NULL) 
+		target = base_target;
+	if ( target == NULL)
+		target = default_target;
+/* _self   : load the document in the same frame as the element that refers
+             to this target
+/* _blank  : load doc. in a new , unamed window
+/* _parent : load doc. into the immediate FRAMESET parent if the current frame.
+             equiv. to _self if current frame has no parent
+/* _top    : load doc. into full, original window (canceling all other frames).
+             equiv to _self if current frame has no parent
+*/
+	if ( !strcmp(target, "_self") ) {
+		return win;
+	}
+	if ( !strcmp(target, "_top") ) {
 		pwin = win->frame_parent;
 		pwin->frame_name = NULL;
 		pwin->frame_parent =NULL;
@@ -408,8 +424,22 @@ static mo_window * get_frame_target( mo_window *win, char *base_target, char* ta
 		pwin->frame_sons_nbre = 0;
 		return pwin;
 	}
-	if (target == NULL)
-		target = base_target;
+	if ( !strcmp(target, "_blank") ) {     /* like top */
+		pwin = win->frame_parent;
+		pwin->frame_name = NULL;
+		pwin->frame_parent =NULL;
+		pwin->frame_sons = NULL;
+		pwin->frame_sons_nbre = 0;
+		return pwin;
+	}
+	if ( !strcmp(target, "_parent") ) {	/* like top */
+		pwin = win->frame_parent;
+		pwin->frame_name = NULL;
+		pwin->frame_parent =NULL;
+		pwin->frame_sons = NULL;
+		pwin->frame_sons_nbre = 0;
+		return pwin;
+	}
 
 	pwin = win->frame_parent;
 	for( i = 0; i < pwin->frame_sons_nbre; i++){
@@ -418,6 +448,7 @@ static mo_window * get_frame_target( mo_window *win, char *base_target, char* ta
 			return son;
 		}
 	}
+/* not found=> equiv to top */
 	pwin->frame_name = NULL;
 	pwin->frame_parent =NULL;
 	pwin->frame_sons = NULL;
@@ -510,7 +541,7 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 	rds.is_reloading = False;
 	if (!force_newwin){
 		rds.req_url = href;
-	rds.gui_action = HTML_LOAD_CALLBACK;
+		rds.gui_action = HTML_LOAD_CALLBACK;
 		win = get_frame_target(win, win->current_node->base_target, wacd->target);
 		MMPafLoadHTMLDocInWin (win, &rds);
 	} else {
@@ -731,6 +762,18 @@ XmxCallback (frame_callback)
 		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMECREATE\n");
 #endif
 		break;
+	case XmCR_HTML_FRAMESETDESTROY:
+#ifdef DEBUG_FRAME
+		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMESETDESTROY\n");
+#endif
+		parent = win;
+		free(parent->frame_sons) ;
+                win->frame_name = NULL;
+                win->frame_parent =NULL;
+                win->frame_sons = NULL;
+		win->frame_sons_nbre =0;
+		win->number_of_frame_loaded = 0;
+		break;
 	case XmCR_HTML_FRAMESET_INIT:
 #ifdef DEBUG_FRAME
 		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMESET_INIT\n");
@@ -738,15 +781,23 @@ XmxCallback (frame_callback)
                 win->frame_name = NULL;
                 win->frame_parent =NULL;
                 win->frame_sons = NULL;
-		win->frame_sons_nbre =0;
-		/*??? = cbs.nframe */
+/*		win->frame_sons_nbre =0; */
+/*??? = cbs.nframe */
+		win->frame_sons_nbre =  cbs->nframe ;
+		win->number_of_frame_loaded = 0;
+		parent = win;
+		parent->frame_sons = (mo_window **) realloc(parent->frame_sons,
+			(parent->frame_sons_nbre) * sizeof(mo_window *));
 		break;
 	default:
-#ifdef DEBUG_FRAME
 		abort();
+#ifdef DEBUG_FRAME
 		fprintf(stderr, "frame_callback: reason: Unknowed...\n");
 #endif
 		break;
+	}
+	if (cbs->reason != XmCR_HTML_FRAMEDONE ){
+		return;		/* just for test now */
 	}
 #ifdef DEBUG_FRAME
 	fprintf(stderr,"cbs.event = %08x\n cbs.src = %s\n cbs.name = %s\n",
@@ -754,15 +805,16 @@ XmxCallback (frame_callback)
 	fprintf(stderr,"bs.html = %08x\n cbs.doit = %d\n",
 		cbs->html, cbs->doit);
 #endif
-	if (cbs->reason != XmCR_HTML_FRAMEDONE ){
-		return;		/* just for test now */
-	}
 /* reason = XmCR_HTML_FRAMEDONE */
 	parent = win;
 	htmlw = cbs->html;
 	url = strdup(cbs->src);
 	frame_name = cbs->name;
 	sub_win = MMMakeSubWindow(parent, htmlw, url, frame_name);
+
+	sub_win->frame_sons_nbre = 0;
+	sub_win->frame_dot_index = cbs->index;
+	parent->frame_sons[cbs->index] = sub_win;
 	
 	rds.ct = rds.post_data = NULL;
 	rds.is_reloading = False;
@@ -2007,12 +2059,15 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 #endif
 	swin->frame_name = strdup(frame_name);
 	swin->frame_parent =parent;
+/*
 	swin->frame_dot_index = parent->frame_sons_nbre;
 	parent->frame_sons = (mo_window **) realloc(parent->frame_sons,
 		(parent->frame_sons_nbre + 1) * sizeof(mo_window *));
 	parent->frame_sons[parent->frame_sons_nbre] = swin;
 	parent->frame_sons_nbre++ ;
+*/
 
+ 	swin->navigation_action = NAVIGATE_NEW;
 	swin->source_win = 0;
 	swin->save_win = 0;
 
@@ -2150,7 +2205,7 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 	XtAddEventHandler(base, (EventMask) 0, TRUE,
 			(XtEventHandler) _XEditResCheckMessages, NULL);
 
-	win = (mo_window *)malloc (sizeof (mo_window));
+	win = (mo_window *)calloc (1, sizeof (mo_window));
 	win->base = base;
 	win->mode = moMODE_PLAIN;
 
@@ -2169,6 +2224,7 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 	WM_DELETE_WINDOW = XmInternAtom(mMosaicDisplay, "WM_DELETE_WINDOW", False);
 	XmAddWMProtocolCallback(base,WM_DELETE_WINDOW,delete_cb,(XtPointer)win);
 
+ 	win->navigation_action = NAVIGATE_NEW;
 	win->source_win = 0;
 	win->save_win = 0;
 /*  ########### */

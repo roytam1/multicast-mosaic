@@ -24,7 +24,7 @@
 int do_meta;	/*############*/
 Boolean 	have_popup;
 Widget 		popup = NULL;
-static void	fsb(mo_window *win, char *src);
+/* static void	fsb(mo_window *win, char *src); */
 void 		rbm_ballonify(Widget w,XtPointer clid, XtPointer calld);
 static Widget 	_PopupMenuBuilder(mo_window * win, Widget parent,
 			int type, char *title, char mnem, PopupItem *items);
@@ -33,7 +33,6 @@ static void fmenu_cb ( Widget w , XtPointer clid, XtPointer calld)
 {
 /* ###############*/
         act_struct *acst = (act_struct *) clid;
-        char *xurl;
         struct ele_rec *eptr;
         int which;
 	mo_window * win = acst->win;
@@ -74,7 +73,7 @@ static void save_link_as_ok_cb(Widget w, XtPointer clid, XtPointer calld)
 {
 	XmFileSelectionBoxCallbackStruct *cbs =
 		(XmFileSelectionBoxCallbackStruct *) calld;
-	char *filename, *url = (char *) clid, efilename[MO_LINE_LENGTH];
+	char *filename, *url = (char *) clid ;
 
 /* Remove the widget from the screen.  */
 	XtUnmanageChild ( w );

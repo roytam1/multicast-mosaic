@@ -266,7 +266,7 @@ unsigned char *ReadXbmBitmap(Widget view, FILE *fp, char *datafile,
 		if (!(fgets(line, MAX_LINE, fp)))
 			break;
 		if (strlen(line) == (MAX_LINE - 1)) {
-			fprintf(stderr, "[ReadXbmBitmap]Line too long.\n");
+/*			fprintf(stderr, "[ReadXbmBitmap]Line too long.\n"); */
 			return((unsigned char *)NULL);
 		}
 		if (sscanf(line, "#define %s %d", name_and_type, &value) == 2) {

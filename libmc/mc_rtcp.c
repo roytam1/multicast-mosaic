@@ -96,7 +96,7 @@ void McRtcpWriteSdes()
 	
 /* TOOL */
 	itm[3].type = RTCP_SDES_TOOL;
-	strcpy(itm[3].d, "mMosaic-3.4.2");
+	strcpy(itm[3].d, "mMosaic-3.4.4");
 	itm[3].len= strlen(itm[3].d);
 
         ebuf[0] = 0x80;     /* V,P,SC */
@@ -216,7 +216,7 @@ static void McRtcpWriteStateReport()
 	ebuf[24] = ebuf[25] = ebuf[26] = ebuf[27] = 0; /* sender's octet count*/
 
 /* State Report */
-	len = 6 -1;
+	len = 7 -1;
 	ebuf[28] = 0x80;     /* V,P,Reserved[3:7] */
 	ebuf[29] = RTCP_PT_STATR;	/* mMosaic specific State Report */
 
@@ -238,14 +238,20 @@ static void McRtcpWriteStateReport()
 	ebuf[42] = ( mc_status_report_object_id >> 8) & 0xff;
 	ebuf[43] = mc_status_report_object_id & 0xff;
 
-/* we load this o_id at this time (use for maintaining state of FRAME)*/
-	ebuf[44]= ebuf[45]= ebuf[46]= ebuf[47]= 0; /*RTP sample time of o_id */
-	ebuf[48]= ebuf[48]= ebuf[50]= ebuf[51]=0;  /* reserved */
+	ebuf[44] = ( mc_local_state_id >> 24) & 0xff; /* current state_id */
+	ebuf[45] = ( mc_local_state_id >> 16) & 0xff;
+	ebuf[46] = ( mc_local_state_id >> 8) & 0xff;
+	ebuf[47] = mc_local_state_id & 0xff;
 
-	McWrite(mc_fd_rtcp_w, ebuf, 52);
+/* we load this o_id at this time (use for maintaining state of FRAME)*/
+	ebuf[48]= ebuf[49]= ebuf[50]= ebuf[51]= 0; /*RTP sample time of o_id */
+	ebuf[52]= ebuf[53]= ebuf[54]= ebuf[55]=0;  /* reserved */
+
+	McWrite(mc_fd_rtcp_w, ebuf, 56);
 #ifdef DEBUG_MULTICAST
-	fprintf(stderr,"State Report: statid %d objid %d \n",
-		mc_status_report_state_id, mc_status_report_object_id);
+	fprintf(stderr,"State Report: statid %d objid %d cuurent statid %d\n",
+		mc_status_report_state_id, mc_status_report_object_id,
+		mc_local_state_id);
 #endif
 }
 

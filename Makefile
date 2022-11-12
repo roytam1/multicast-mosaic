@@ -1,11 +1,11 @@
 # Toplevel Makefile for mMosaic.
-#This Release 3.4.2 compile on:
+#This Release 3.4.4 compile on:
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
 #	- FreeBSD3.1
 
-MCVER=3.4.2
+MCVER=3.4.4
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
@@ -13,20 +13,26 @@ MCVER=3.4.2
 #### Gnu C, C++, local C.
 #CC = gcc
 #CC = cc
-
 CC = CC
+
+# for building a shared lib
+#ldflags = -G
 
 #### Linux Intel optimised (does not work well)
 #prereleaseflags = -O3 -fomit-frame-pointer -funroll-loops -finline-functions -m486 -malign-double
 #### Standard gcc Linux FreeBSD NetBSD compiler flags (recommanded )
 #prereleaseflags = -Wall -g -fwritable-strings  -O0
+# for building a shared lib
+# prereleaseflags = $prereleaseflags -fPIC
 #### Qnx
 #prereleaseflags = -Oeax
 #### Sun Workshop C Compiler
-#prereleaseflags = -xsb -v -g
+#prereleaseflags = -v -g
 #### Sun Workshop C++ Compiler
-
 prereleaseflags = +w -g
+
+# for building a shared lib
+# prereleaseflags = $prereleaseflags -fPIC
 
 #### On NetBSD, FreeBSD, BSDI, OSF1, IBM , SunOS4this should be ranlib.
 #RANLIB = ranlib
@@ -64,7 +70,7 @@ sysconfigflags = -DSOLARIS -DSVR4 -DMOTIF1_2 -DSOLARIS25
 # syslibs = -lPW -lbsd
 #### For most other Motif platforms:
 # syslibs = -lPW
-#### For Sun's and Ultrix and HP and BSD/386:
+#### For Sun's and Ultrix and HP and BSD/386 and FreeBSD:
 # syslibs =
 #### For SCO ODT:
 # syslibs = -lPW -lsocket -lmalloc
@@ -83,12 +89,9 @@ syslibs = -lsocket -lnsl
 # xinc = -I/usr/include/Motif1.2 -I/usr/local/X11R5/include
 # xinc = -I/usr/include/X11
 # xinc = -I/usr/X11/include
-#### Linux Debian
+#### Linux Debian and FreeBSD
 #xinc = -I/usr/X11R6/include
-#FreeBSD
-#xinc = -I/usr/X11R6/include -I$(HOME)/fpkg/include
 #### Solaris 2.x (Patched X11R5 and Motif libs)
-
 xinc = -I/usr/openwin/include -I/usr/dt/include
 
 #### X library locations.
@@ -152,9 +155,9 @@ krbflags  = $(krb4flags) $(krb5flags)
 krblibs   = $(krb4libs) $(krb5libs) 
 
 #### MULTICAST support
-#mcdir = $(PWD)/libmc
-#mcflag = -I$(mcdir) -DMULTICAST
-#mclib = $(mcdir)/libmc.a
+mcdir = $(PWD)/libmc
+mcflag = -I$(mcdir) -DMULTICAST
+mclib = $(mcdir)/libmc.a
 
 #### APROG support
 #adir = $(PWD)/libaprog
@@ -171,10 +174,15 @@ krblibs   = $(krb4libs) $(krb5libs)
 #### . Other things you can define are spelled out in src/mosaic.h.
 ####
 #### . If you run on IPV6 native kernel set -DIPV6
-#### . For NEWS support -DNEWS
-#### . For APPLET support -DAPPLET
+#### . For NEWS support -DNEWS (obsolete)
+#### . For APPLET support -DAPPLET (don't use)
+#### . -DLOOSE_PACKET for testing multicast packet lost.
+#### . -DDEBUG_MULTICAST
+#### . -DDEBUG_FRAME be verbose on frame
 
-customflags =
+#### customflags = -DLOOSE_PACKET -DDEBUG_MULTICAST -DDEBUG_FRAME
+
+customflags = 
 
 
 # ---------------------- END OF CUSTOMIZABLE OPTIONS -------------------------

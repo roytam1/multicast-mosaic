@@ -817,10 +817,10 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
 	swidth = VbarWidth(hw);
 	sheight = HbarHeight(hw);
 	st = hw->manager.shadow_thickness;
-	if (hw->core.width <= swidth)
-		hw->core.width = swidth + 10;
-	new_width = hw->core.width - swidth ;
-	temp = FormatAll(hw, &new_width,save_obj);
+	if (hw->core.width <= swidth+2*st)
+		hw->core.width = swidth + 10 + 2*st;
+	new_width = hw->core.width - swidth -2*st;
+	temp = FormatAll(hw, new_width,save_obj);
 
 /* if height is too height tell the wiget to use the vbar */
 	if ( temp > hw->core.height - HbarHeight(hw) ){
@@ -861,7 +861,7 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
  * punctuation after anchors at the end of the line.
  */
 	else
-		new_width = new_width - (20 * hw->html.margin_width / 100);
+		new_width = new_width - (10 * hw->html.margin_width / 100);
 
 	hw->html.doc_height = temp;
 	hw->html.doc_width = new_width + (2 * hw->html.margin_width);
@@ -876,6 +876,8 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
 		XtMoveWidget(hw->html.hbar, 0,
 					(hw->core.height - sheight));
 		XtManageChild(hw->html.hbar);
+		if (XtIsRealized(hw->html.hbar) )
+			XtMapWidget(hw->html.hbar);
 		hw->html.view_height = hw->core.height - sheight - (2 * st);
 	} else {
 /* Else we don't need a horizontal scrollbar.
@@ -883,6 +885,8 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
  */
 		hw->html.use_hbar = False;
 		XtUnmanageChild(hw->html.hbar);
+		if (XtIsRealized(hw->html.hbar) )
+			XtUnmapWidget(hw->html.hbar);
 		hw->html.scroll_x = 0;
 		hw->html.view_height = hw->core.height - (2 * st);
 	}
@@ -2250,9 +2254,7 @@ static Boolean SetValues( HTMLWidget current, HTMLWidget request, HTMLWidget nw)
 	         (request->html.num_anchor_underlines != current->html.num_anchor_underlines)||
 	         (request->html.num_visitedAnchor_underlines != current->html.num_visitedAnchor_underlines))
 	{
-/*######## peut etre pas necessaire... ########### */
-		nw->html.max_pre_width = DocumentWidth(nw, nw->html.html_objects);
-/* ##### */
+		nw->html.max_pre_width = 0;
 		ReformatWindow(nw,True);
 		ScrollWidgets(nw);
 		ViewClearAndRefresh(nw);
@@ -3172,7 +3174,7 @@ void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 /* #### */
 	hw->html.html_objects = mlist;
 				/* Reformat the new text */
-	hw->html.max_pre_width = DocumentWidth(hw, hw->html.html_objects);
+	hw->html.max_pre_width = 0;
 	ReformatWindow(hw,False); /* here we rescan all tag and make all */
 
 	/* If a target anchor is passed, override the element id

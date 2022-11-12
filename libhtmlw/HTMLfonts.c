@@ -81,8 +81,11 @@ static FontCacheEntry* CacheFontStore(FontCacheEntry *top, FontCacheEntry *ent)
 
 	ret_val = strcmp(ent->name, top->name);
 	if(ret_val == 0 ) { /* probleme because we test the cache before */
-		abort();
-		return(top);
+/* evguenii@ess.co.at */
+		/* due to an algoritm of font choosing it's normal
+		   that program can come in this point */
+/*		abort();   */
+/*		return(top); */
 	}
 	if(ret_val < 0)
 		top->left = CacheFontStore(top->left, ent);

@@ -300,10 +300,9 @@ int MMCacheFindData(char *aurl_wa, char *aurl, int fdw, MimeHeaderStruct *mhs)
 {
 #define CACHE_BUFSIZ 8192
 	char buf[CACHE_BUFSIZ];
-	int status = 0;
 	int h,i;
 	HashEntry * deb;
-	time_t t = time(NULL);
+	/* time_t t = time(NULL); */
 	char scid[40];
 	int cid;
 	int fdr;
@@ -353,7 +352,7 @@ void MMCachePutDataInCache(char *fname_r, char *aurl_wa, char *aurl,
 	char buf[CACHE_BUFSIZ];
 	HashEntry * deb;
 	char scid[40];
-	int cid, lenget, h, i;
+	int cid, h, i;
 	time_t t = time(NULL);
 	int exist = 0;
 	char *fname_w;

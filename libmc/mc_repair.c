@@ -27,8 +27,9 @@ void UcSendRepair(Source *s, int type, int id, int offset, int lend);
 	reserved
 */
 typedef struct _RtcpStard {
-	u_int32_t	sid;	/* state_id report */
+	u_int32_t	sid;	/* Hightest state_id report */
 	u_int32_t	oid;	/* Hightest object id report */
+	u_int32_t	c_sid;	/* current state id */
 	u_int32_t	rtp_otime; /* RTP sample time of oid */
 	u_int32_t	reserved;  /* extension ... */
 } RtcpStard;
@@ -121,6 +122,7 @@ static void McScheduleQueryRepairObjects(Source *s, int from, int to)
 void McQueryRepairFromStatr(Source *s, RtcpPacket* rcs)
 {
 	RtcpStard *psrd = (RtcpStard *) rcs->d;
+	int c_sid;
 	int sid;
 	int oid;
 	int lvo, lvs;
@@ -131,6 +133,7 @@ void McQueryRepairFromStatr(Source *s, RtcpPacket* rcs)
 		return;
 
 	sid = ntohl (psrd->sid);
+	c_sid = ntohl (psrd->c_sid);
 	oid = ntohl (psrd->oid);
 	rtp_otime = ntohl (psrd->rtp_otime);
 
@@ -162,8 +165,16 @@ void McQueryRepairFromStatr(Source *s, RtcpPacket* rcs)
 		/* schedule a check for sid */
 		/* when check is good we display the valid state */
 		McRcvSrcScheduleCheckState(s, sid);
+		return;
 	}
-
+	if (lvo < oid )	/* FIXME: si tous les obj sont la pour l'etat,
+			/* alors afficher */
+		return;
+	if (lvs < c_sid)	/* because c_sid not transmit yet */
+		return;
+	if (c_sid == s->current_state_id_in_window )
+		return;
+	McDoWindowText(s, c_sid);
 	return;
 }
 
@@ -255,7 +266,6 @@ static void McSendStateRepairAnswerCb(XtPointer clid, XtIntervalId * id)
 	McStateStruct *s;
 	McQueueStateRepairQuery * p = mc_queue_state_repair_query;
 	McQueueStateRepairQuery *pp= NULL;
-	RtpPacket pkt;
 	char *sdata;
 	int data_size, query_offset;
 	int query_len;
@@ -332,7 +342,7 @@ static void McSendStateRepairAnswerCb(XtPointer clid, XtIntervalId * id)
                 	ptab[i]->d = &odata[offset];
                 	ptab[i]->is_eod = 0;   
                 	ptab[i]->to_free = NULL;
-                	ptab[i]->offset = offset;
+                	ptab[i]->offset = offset + query_offset;
                         /* le temps qu'il faut pour envoyer ce packet*/
                         /* dependant de la bande passante qu'on s'autorise */
 	                ptab[i]->rtp_ts = rtp_ts; /* sample time when file come*/
@@ -471,7 +481,6 @@ static void McSendObjectRepairAnswerCb(XtPointer clid, XtIntervalId * id)
         McObjectStruct *ob;
         McQueueObjectRepairQuery * p = mc_queue_object_repair_query;
         McQueueObjectRepairQuery *pp= NULL;
-        RtpPacket pkt;
         char *obdata;
         int data_size, query_offset;
         int query_len;
@@ -557,7 +566,7 @@ static void McSendObjectRepairAnswerCb(XtPointer clid, XtIntervalId * id)
                         ptab[i]->d = &odata[offset];
                         ptab[i]->is_eod = 0;
                         ptab[i]->to_free = NULL;
-                        ptab[i]->offset = offset;
+                        ptab[i]->offset = offset + query_offset;
                         /* le temps qu'il faut pour envoyer ce packet*/
                         /* dependant de la bande passante qu'on s'autorise */
                         ptab[i]->rtp_ts = rtp_ts; /* sample time when file come*/
@@ -698,6 +707,9 @@ void McStoreQueryRepair(Source *s , RtcpPacket* rcs)
 	case HTML_OBJECT_DATA_TYPE:
 		if( !McCheckObjectQuery(id, offset, len) )
 			return;
+#ifdef DEBUG_MULTICAST
+		fprintf(stderr,"McStoreQueryRepair: receive a query for id %d offset %d len %d\n", id , offset, len);
+#endif
 		McScheduleObjectRepairAnswer(s, id, offset, len);
 		break;
 	default:

@@ -191,6 +191,7 @@ typedef struct _Source {
 	int last_valid_state_id;	/* the last full state we see */
 	int last_valid_object_id;	/* the last full object we see */
 					/* sequential */
+	int current_state_id_in_window; /* what state is in current window */
 
 	long		lts;	/* local time stamp (unixtime) */
 
@@ -262,7 +263,7 @@ extern u_int32_t	rtp_init_time;
 
 extern mo_window	*mc_send_win;
 
-extern timeval unixtime();
+extern struct timeval unixtime();
 
 extern void SendBye(int src, char *r);
 extern void SendSdesCname();
@@ -327,7 +328,6 @@ extern void McSenderCachePutErrorInCache( char *aurl, int status_code,
 extern void MakeSenderState(MimeHeaderStruct *mhs, int sid);
 extern void McSendOject(int moid ) ;
 
-extern void McSendErrorOject(char *fname, char * aurl, MimeHeaderStruct *mhs, int moid);
 extern void McSendState(int stateid);
 extern int McCheckStateQuery(int sid, int offset, int len);
 extern int McCheckObjectQuery(int moid, int offset, int len);
