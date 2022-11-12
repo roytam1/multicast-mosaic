@@ -171,7 +171,7 @@ void HTMLInitColors(Widget w, unsigned int nc)
 
 	use_depth = depth > 12 ? 12 : depth; /* max 4096 couleur 16**3  */
 	use_ncell = 1 << depth;
-	use_ncell = (use_ncell * 80) /100 ;
+	use_ncell = (use_ncell * 90) /100 ;
 	if (nc == 0)
 		nc = use_ncell;
 	if ( nc < use_ncell)
@@ -253,7 +253,7 @@ void HTMLInitColors(Widget w, unsigned int nc)
 		XFreeColors (Dpy, Cmap, ct, alloc, 0);
 		free(ct);
 
-		use_ncell = (alloc * 90) /100;
+		use_ncell = (alloc * 80) /100;
 		if (use_ncell < 4)
 			use_ncell = 4;
 		GetColorCubeSize(&use_ncell, &Nr, &Ng, &Nb);

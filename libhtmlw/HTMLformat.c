@@ -1142,23 +1142,11 @@ int FormatAll(HTMLWidget hw, int Fwidth, Boolean save_obj)
 	return(pcc.y);
 }
 
-/*
- * Refresh all elements on a single line into the widget's window
- * C'est la dedans qu'on fait des actions X pour les objets calcules
- * et Parses au paravant. Tout est deja precalcule, Y a pu Qu'a...
- * line_array[i] est la ligne a faire . C'est un tableau de struct ele_rec *
- * line_array[i] est le premier element d'une liste chainee (de eptr).
+/* Refresh all elements beetween x, y, w, h.
  */
-/*void PlaceLine( HTMLWidget hw, int line)
-*/
-void RefreshElement(HTMLWidget hw,struct ele_rec *eptr)
+void RefreshElement(HTMLWidget hw,struct ele_rec *eptr, int win_x, int win_y,
+	Dimension win_w, Dimension win_h)
 {
-/*
-	printf("call PlaceLine at line # %d for %d\n",line, eptr->type);
-	printf("eptr->x = %d, eptr->y = %d\n", eptr->x, eptr->y);
-	printf("eptr->baseline = %d, scroll_x = %d, scroll_y = %d\n",
-		eptr->baseline, hw->html.scroll_x, hw->html.scroll_y);
-*/
 	switch(eptr->type) {
 	case E_TEXT:
 	        TextRefresh(hw, eptr, 0, (eptr->edata_len - 2));
@@ -1169,12 +1157,9 @@ void RefreshElement(HTMLWidget hw,struct ele_rec *eptr)
 	case E_HRULE:
 		HRuleRefresh(hw, eptr);
 		break;
-	case E_CR:
-/*		printf("Refresh E_CR\n"); */
-		break;
 	case E_LINEFEED:
-/*	        if(!hw->html.bg_image) */
 		LinefeedRefresh(hw, eptr); 
+	case E_CR:
 		break;
 	case E_IMAGE:
 		ImageRefresh(hw, eptr);
@@ -1183,10 +1168,9 @@ void RefreshElement(HTMLWidget hw,struct ele_rec *eptr)
 		WidgetRefresh(hw, eptr);
 		break;
 	case E_TABLE:
-		TableRefresh(hw, eptr);
+		TableRefresh(hw, eptr, win_x, win_y, win_w, win_h);
 		break;
 	case E_CELL_TABLE:
-/*		printf("Refresh E_CELL_TABLE\n"); */
 		break;
 #ifdef APROG
 	case E_APROG:
@@ -1199,9 +1183,7 @@ void RefreshElement(HTMLWidget hw,struct ele_rec *eptr)
 		break;
 #endif
 	default:
-#ifdef HTMLTRACE
-		fprintf(stderr,"[PlaceLine] Unknow Element %d\n",eptr->type);
-#endif
+		fprintf(stderr,"[RefreshElement] Unknow Element %d\n",eptr->type);
 		break;
 	}
 }

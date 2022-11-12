@@ -144,75 +144,17 @@ static struct color_rec {
         struct color_rec *hash_next;
 } *Hash[256];
 
-static void FindIconColor(Display *dsp, Colormap colormap, XColor *colr);
 static void PixAddHash(int red, int green, int blue, int pixval);
 static int highbit(unsigned long ul);
 static Pixmap PixmapFromData(Widget wid, unsigned char *data, int width,
                              int height, XColor *colrs, int gray);
 
-static XColor def_colrs[256];
-static int init_colors = 1;
-
 /* Find the closest color by allocating it, or picking an already
  * allocated color
  */
-static void FindIconColor(Display *dsp, Colormap colormap, XColor *colr)
+static void FindIconColor(XColor *colr)
 {
-	int i, match;
-	int rd, gd, bd, dist, mindist;
-	int cindx;
-
-	if (init_colors) {
-		for (i=0; i<256; i++) {
-			def_colrs[i].pixel = -1;
-			def_colrs[i].red = 0;
-			def_colrs[i].green = 0;
-			def_colrs[i].blue = 0;
-		}
-		init_colors = 0;
-	}
-
-	match = XAllocColor(dsp, colormap, colr);
-	if (match == 0) {
-		mindist = 196608;		/* 256 * 256 * 3 */
-/*
-		cindx = colr->pixel;
-*/
-		cindx = (-1);
-		for (i=0; i<256; i++) {
-			if (def_colrs[i].pixel == -1) {
-				continue;
-			}
-			rd = ((int)(def_colrs[i].red >> 8) -
-				(int)(colr->red >> 8));
-			gd = ((int)(def_colrs[i].green >> 8) -
-				(int)(colr->green >> 8));
-			bd = ((int)(def_colrs[i].blue >> 8) -
-				(int)(colr->blue >> 8));
-			dist = (rd * rd) + (gd * gd) + (bd * bd);
-			if (dist < mindist) {
-				mindist = dist;
-				cindx = def_colrs[i].pixel;
-				if (dist == 0) {
-					break;
-				}
-			}
-		}
-                if (cindx<0) {
-                        colr->pixel=BlackPixel(dsp, DefaultScreen(dsp));
-                        colr->red = colr->green = colr->blue = 0;
-		} else {
-			colr->pixel = cindx;
-			colr->red = def_colrs[cindx].red;
-			colr->green = def_colrs[cindx].green;
-			colr->blue = def_colrs[cindx].blue;
-		}
-	} else {
-		def_colrs[colr->pixel].pixel = colr->pixel;
-		def_colrs[colr->pixel].red = colr->red;
-		def_colrs[colr->pixel].green = colr->green;
-		def_colrs[colr->pixel].blue = colr->blue;
-	}
+	colr->pixel = HTMLXColorToPixel(colr);
 }
 
 
@@ -301,8 +243,7 @@ PixmapFromData(Widget wid, unsigned char *data, int width, int height,
 			PixFindHash(tmpcolr.red, tmpcolr.green, tmpcolr.blue,
 				hash_ptr);
 			if (hash_ptr == NULL) {
-				FindIconColor(XtDisplay(wid), mMosaicColormap ,
-					&tmpcolr);
+				FindIconColor(&tmpcolr);
 				PixAddHash(colrs[i].red, colrs[i].green,
 					colrs[i].blue, tmpcolr.pixel);
 				Mapping[i] = tmpcolr.pixel;

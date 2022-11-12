@@ -334,6 +334,7 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 		}
 	}
 #endif
+	XmxMakeErrorDialog(win->base, reason , "Net Error");
 /* stop the twirl */
 	XtRemoveTimeOut(pafd->twirl_struct->time_id);
 	free(pafd->twirl_struct);
@@ -355,7 +356,6 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 	free(pafd->fname);
 	FreeMimeStruct(pafd->mhs);
 	pafd->mhs = NULL;
-/*	XmxMakeErrorDialog(win->base, reason , "Net Error"); */
 
 	free(pafd);
 	win->pafd = NULL;
@@ -1047,6 +1047,7 @@ void MMErrorPafEmbeddedObject (PafDocDataStruct * pafc, char *reason)
 	} else {
 		delayed = False;
 	}
+/* XmxMakeErrorDialog(pafc->win->base, reason, "Net Error"); */
 	close(pafc->fd);
 	unlink(pafc->fname);
 	ppaf = pafc->parent_paf;

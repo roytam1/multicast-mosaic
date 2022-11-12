@@ -272,6 +272,8 @@ typedef struct _CellStruct {
 	int line_bottom;
         AlignType valignement ;
         AlignType halignement ;
+	int have_bgcolor;
+	Pixel bgcolor;
 } CellStruct;
                                 
 typedef struct _ColumnList {

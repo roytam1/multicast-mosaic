@@ -1,19 +1,19 @@
 # Toplevel Makefile for mMosaic.
-#This Release 3.4.7 compile on:
+#This Release 3.4.8 compile on:
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
 #	- FreeBSD3.1
 
-MCVER=3.4.7
+MCVER=3.4.8
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
 #### your compiler (ANSI required). And options
 #### Gnu C, C++, local C.
 #CC = gcc
-#CC = cc
-CC = CC
+CC = cc
+#CC = CC
 
 # for building a shared lib
 #ldflags = -G
@@ -27,9 +27,9 @@ CC = CC
 #### Qnx
 #prereleaseflags = -Oeax
 #### Sun Workshop C Compiler
-#prereleaseflags = -v -g
+prereleaseflags = -v -g
 #### Sun Workshop C++ Compiler
-prereleaseflags = +w -g
+#prereleaseflags = +w -g
 
 # for building a shared lib
 # prereleaseflags = $prereleaseflags -fPIC

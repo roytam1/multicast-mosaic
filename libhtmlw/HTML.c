@@ -21,6 +21,8 @@
 #include "HTMLPutil.h"
 #include "HTMLframe.h"
 
+#define DEBUG_REFRESH 0
+
 #define	MARGIN_DEFAULT		10
 #define	CLICK_TIME		500
 #define	SELECT_THRESHOLD	3
@@ -158,7 +160,7 @@ static XtResource resources[] = {
 	  XtRString, "False"
 	},
 	{ WbNanchorColor, XtCForeground, XtRPixel, sizeof (Pixel),
-	  XtOffset (HTMLWidget, html.def_res.fg_link), XtRString, "blue2"
+	  XtOffset (HTMLWidget, html.def_res.fg_link), XtRString, "#0000ff"
 	},
 	{ WbNvisitedAnchorColor, XtCForeground, XtRPixel, sizeof (Pixel),
 	  XtOffset (HTMLWidget, html.def_res.fg_vlink), XtRString, "purple4"
@@ -1082,18 +1084,23 @@ void ViewRedisplay( HTMLWidget hw, int x, int y, int width, int height)
 
 /* Find Element to Refresh */
 	eptr = hw->html.formatted_elements;
+#if DEBUG_REFRESH
+        fprintf(stderr,"[ViewRedisplay] x, y, w, h : %d, %d, %d, %d\n",     
+                x, y, width, height);
+#endif
 	while(eptr){
-		if (eptr->type == E_APROG || eptr->type == E_APPLET){
-			RefreshElement(hw,eptr);
-			eptr = eptr->next;
-			continue;
-		}
+/*		if (eptr->type == E_APROG || eptr->type == E_APPLET){
+/*			RefreshElement(hw,eptr);
+/*			eptr = eptr->next;
+/*			continue;
+/*		}
+*/
 		if( ((eptr->y + eptr->height) < doc_y) || 
 		    (eptr->y > ( doc_y + height)) ){
 			eptr = eptr->next;
 			continue;
 		}
-		RefreshElement(hw,eptr);
+		RefreshElement(hw,eptr, x, y, width, height );
 		eptr = eptr->next;
 	}
 }

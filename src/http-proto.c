@@ -191,7 +191,7 @@ void MMCancelHTTPReadDocOnError(PafDocDataStruct * pafd, char * msg)
 	pafd->read_stat =0;
 /*	FreeMimeStruct(pafd->mhs); */
 	XtRemoveInput(pafd->www_prim_fd_read_id);
-	XmxMakeErrorDialog(pafd->win->base, msg, "Net Error");
+/*	XmxMakeErrorDialog(pafd->win->base, msg, "Net Error"); */
 
 	close(pafd->www_con_type->prim_fd);
 	free(pafd->www_con_type);

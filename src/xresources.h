@@ -141,9 +141,6 @@ static XtResource resources[] = {
   { "meterForeground", "MeterForeground", XtRPixel, sizeof (Pixel ),
       offset (meterForeground), XtRString, "#FFFF00000000"},
 
-  { "meterBackground", "MeterBackground", XtRPixel, sizeof (Pixel),
-      offset (meterBackground), XtRString, "#2F2F4F4F4F4F"},
-
   { "meterFontForeground", "MeterFontForeground", XtRPixel, sizeof (Pixel),
       offset (meterFontForeground), XtRString, "#FFFFFFFFFFFF"},
 
@@ -322,43 +319,10 @@ static String color_resources[] = {
   "*DashedVisitedAnchorUnderlines:      True",
   "*VerticalScrollOnRight:              True",
 
-#ifdef __sgi
-  "*Foreground:			 	#000000000000",
-  "*XmScrollBar*Foreground:             #afafafafafaf",
-  "*Background:                         #afafafafafaf",
-  "*XmList*Background:     		#afafafafafaf",
-  "*XmText*Background:	 	        #afafafafafaf",
-  "*TroughColor:                        #545454545454",
-  "*XmSelectionBox*Background:	 	#afafafafafaf",
-  "*XmMessageBox*Background:	 	#afafafafafaf",
-  "*XmLabel*Foreground:                 #1d1d15155b5b",
-  "*XmToggleButton*Foreground:          #1d1d15155b5b",
-  "*XmPushButton*Foreground:            #5b5b00000000",
-  "*logo*Foreground:                    #1d1d15155b5b",
-  "*XmTextField*Background: 		#8c8c8c8c8c8c",
-  "*SelectColor:			#ffffffff0000",
-  "*HighlightColor:		 	#afafafafafaf",
-
-  "*TopShadowColor:                     #dfdfdfdfdfdf",
-  "*XmList*TopShadowColor:              #dfdfdfdfdfdf",
-  "*XmText*TopShadowColor:              #dfdfdfdfdfdf",
-  "*XmSelectionBox*TopShadowColor:      #dfdfdfdfdfdf",
-  "*XmMessageBox*TopShadowColor:        #dfdfdfdfdfdf",
-  
-  "*visitedAnchorColor:                 #272705055b5b",
-  "*anchorColor:                        #00000000b0b0",
-  "*activeAnchorFG:                     #ffff00000000",
-  "*activeAnchorBG:                     #afafafafafaf",
-#else /* not sgi */
   "*Foreground:			 	#000000000000",
   "*XmScrollBar*Foreground:             #bfbfbfbfbfbf",
-  "*XmLabel*Foreground:                 #1d1d15155b5b",
-  "*XmToggleButton*Foreground:          #1d1d15155b5b",
-  "*XmPushButton*Foreground:            #5b5b00000000",
-  "*logo*Foreground:                    #1d1d15155b5b",
 
   "*Background:                         #bfbfbfbfbfbf",
-
   "*XmList*Background:     		#bfbfbfbfbfbf",
   "*XmText*Background:	 	        #bfbfbfbfbfbf",
   "*XmSelectionBox*Background:	 	#bfbfbfbfbfbf",
@@ -370,17 +334,15 @@ static String color_resources[] = {
   "*XmText*TopShadowColor:              #e7e7e7e7e7e7",
   "*XmSelectionBox*TopShadowColor:      #e7e7e7e7e7e7",
   "*XmMessageBox*TopShadowColor:        #e7e7e7e7e7e7",
-  
-  "*TroughColor:                        #646464646464",
-  "*SelectColor:			#ffffffff0000",
-  "*HighlightColor:		 	#bfbfbfbfbfbf",
 
-  /* Remember to update this in the app-defaults file. */
+/* Remember to update this in the app-defaults file. */
   "*visitedAnchorColor:                 #3f3f0f0f7b7b",
-  "*anchorColor:                        #00000000b0b0",
+  "*anchorColor:                        #00000000FFFF",
   "*activeAnchorFG:                     #ffff00000000",
   "*activeAnchorBG:                     #bfbfbfbfbfbf",
-#endif
+
+  "*SelectColor:			#ffffffff0000",
+  "*HighlightColor:		 	#bfbfbfbfbfbf",
   /* Disable Motif Drag-N-Drop - BJS */
   "*dragInitiatorProtocolStyle: XmDRAG_NONE",
   "*dragReceiverProtocolStyle:  XmDRAG_NONE",

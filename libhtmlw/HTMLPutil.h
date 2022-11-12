@@ -100,7 +100,9 @@ extern void		hw_do_body_color(HTMLWidget,char*,char*,PhotoComposeContext * pcc);
 
 extern void 		TablePlace(HTMLWidget hw, struct mark_up **mptr, 
 				PhotoComposeContext * pcc, Boolean save_obj);
-extern void 		TableRefresh( HTMLWidget hw, struct ele_rec *eptr);
+extern void 		TableRefresh( HTMLWidget hw, struct ele_rec *eptr,
+				int win_x, int win_y, Dimension win_w,
+				Dimension win_h);
 
 
 extern void 		AprogPlace(HTMLWidget hw, struct mark_up **mptr, 

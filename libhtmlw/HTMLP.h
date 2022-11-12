@@ -357,7 +357,8 @@ typedef struct _HTMLRec {
 extern HTMLPart * McGetInternalHtmlPart( Widget w);
 extern void ReformatWindow( HTMLWidget hw, Boolean save_obj);
 extern int FormatAll(HTMLWidget hw, int Fwidth, Boolean save_obj);
-extern void RefreshElement(HTMLWidget hw,struct ele_rec *eptr);
+extern void RefreshElement(HTMLWidget hw, struct ele_rec *eptr,
+		int win_x, int win_y, Dimension win_w, Dimension win_h);
 extern void LineBreak(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext * pcc);
 extern void HtmlGetImage(HTMLWidget hw, ImageInfo *picd,
 	PhotoComposeContext *pcc, int force_load);

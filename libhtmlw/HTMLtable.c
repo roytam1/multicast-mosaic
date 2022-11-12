@@ -22,6 +22,8 @@
 #include "HTML.h"
 #include "list.h"
 
+#define DEBUG_REFRESH 0
+
 #define TBL_CELL_DEFAULT_PADDING 1
 #define TBL_CELL_DEFAULT_SPACING 2
 
@@ -69,7 +71,7 @@ void _FreeTableStruct(TableInfo * t)
 void UpateColList( ColumnList ** col_list, int td_count,
 		MarkType m_cell_type,
 		struct mark_up * td_start_mark, struct mark_up * td_end_mark,
-		int colspan,int rowspan)
+		int colspan,int rowspan, int have_bgcolor, Pixel bgcolor)
 {
 	ColumnList * cl;
 	int cell_count;
@@ -94,7 +96,7 @@ void UpateColList( ColumnList ** col_list, int td_count,
 	if (!cl->cells)	/* because a SunOS bug : GD 17 Dec 96 */
 		cells = (CellStruct *)malloc(sizeof(CellStruct)* cell_count );
 	else
-		cells = (CellStruct *)realloc(cl->cells, sizeof(CellStruct)* cell_count );
+		cells = (CellStruct *)realloc(cl->cells, sizeof(CellStruct)* cell_count);
 
 	cells[cur_cell_num].td_count = td_count;
 	cells[cur_cell_num].colspan = colspan;
@@ -108,6 +110,8 @@ void UpateColList( ColumnList ** col_list, int td_count,
 	cells[cur_cell_num].width = 0;
 	cells[cur_cell_num].is_colspan = 0;
 	cells[cur_cell_num].is_rowspan = 0;
+	cells[cur_cell_num].have_bgcolor = have_bgcolor;
+	cells[cur_cell_num].bgcolor = bgcolor;
 
 	nspan = colspan -1;
 	cur_cell_num++;
@@ -126,6 +130,8 @@ void UpateColList( ColumnList ** col_list, int td_count,
 		cells[cur_cell_num].height = 0;
 		cells[cur_cell_num].width = 0;
 		cells[cur_cell_num].line_bottom = 0;
+		cells[cur_cell_num].have_bgcolor = False;
+		cells[cur_cell_num].bgcolor = 0;
 		cur_cell_num++;
 		ns--;
 	}
@@ -140,8 +146,13 @@ void AddPadAtEndColList(ColumnList ** cl, int toadd)
 {
 	int i;
 
-	(*cl)->cells = (CellStruct*)realloc((*cl)->cells,
-		sizeof(CellStruct) * ((*cl)->cell_count+toadd));
+	if (!(*cl)->cells) {	/* because Solaris Bug */
+		(*cl)->cells = (CellStruct*)malloc(
+			sizeof(CellStruct) * ((*cl)->cell_count+toadd));
+	} else {
+		(*cl)->cells = (CellStruct*)realloc((*cl)->cells,
+			sizeof(CellStruct) * ((*cl)->cell_count+toadd));
+	}
 	for(i=(*cl)->cell_count; i< ((*cl)->cell_count+toadd); i++){
 			(*cl)->cells[i].td_count = 0;
 			(*cl)->cells[i].colspan = 1;
@@ -156,6 +167,8 @@ void AddPadAtEndColList(ColumnList ** cl, int toadd)
 			(*cl)->cells[i].is_colspan = 0;
 			(*cl)->cells[i].is_rowspan = 0;
 			(*cl)->cells[i].cell_type = M_TD_CELL_PAD;
+			(*cl)->cells[i].have_bgcolor = False;
+			(*cl)->cells[i].bgcolor = 0;
 	}
 	(*cl)->cell_count = (*cl)->cell_count+toadd;
 }
@@ -170,8 +183,13 @@ static void AddPadAtEndRowList(
 	int i,j;
 
 	for(i=0; i<rl->row_count;i++){ /* realloc more cell in each line */
-		rl->cells_lines[i] = (CellStruct*)realloc(rl->cells_lines[i],
-			sizeof(CellStruct)* (rl->max_cell_count_in_line + toadd));
+		if ( !rl->cells_lines[i] ){
+			rl->cells_lines[i] = (CellStruct*)malloc(
+				sizeof(CellStruct)* (rl->max_cell_count_in_line + toadd));
+		} else {
+			rl->cells_lines[i] = (CellStruct*)realloc(rl->cells_lines[i],
+				sizeof(CellStruct)* (rl->max_cell_count_in_line + toadd));
+		}
 	}
 /* add PAD */
 	for(i=0; i<rl->low_cur_line_num;i++){
@@ -190,6 +208,8 @@ static void AddPadAtEndRowList(
 			rl->cells_lines[i][j].is_colspan = 0;
 			rl->cells_lines[i][j].is_rowspan = 0;
 			rl->cells_lines[i][j].cell_type = M_TD_CELL_PAD;
+			rl->cells_lines[i][j].have_bgcolor = False;
+			rl->cells_lines[i][j].bgcolor = 0;
 		}
 	}
 /* add FREE */
@@ -208,6 +228,8 @@ static void AddPadAtEndRowList(
 			rl->cells_lines[i][j].is_colspan = 0;
 			rl->cells_lines[i][j].is_rowspan = 0;
 			rl->cells_lines[i][j].cell_type = M_TD_CELL_FREE;
+			rl->cells_lines[i][j].have_bgcolor = False;
+			rl->cells_lines[i][j].bgcolor = 0;
 		}
 	}
 	rl->max_cell_count_in_line = rl->max_cell_count_in_line + toadd;
@@ -218,9 +240,14 @@ static void AddFreeLineToRow(RowList * rl, int toadd)
 	CellStruct* ncl;
 	int i,j;
 
-	rl->cells_lines = (CellStruct**)realloc(
+	if ( !rl->cells_lines) {
+		rl->cells_lines = (CellStruct**)malloc(
+				sizeof(CellStruct*) * (rl->row_count+toadd));
+	} else {
+		rl->cells_lines = (CellStruct**)realloc(
 				rl->cells_lines,
 				sizeof(CellStruct*) * (rl->row_count+toadd));
+	}
 	for(j = 0; j< toadd; j++){
 		ncl =(CellStruct*)malloc(
 				sizeof(CellStruct) * rl->max_cell_count_in_line);
@@ -237,6 +264,8 @@ static void AddFreeLineToRow(RowList * rl, int toadd)
 			ncl[i].is_colspan = 0;
 			ncl[i].is_rowspan = 0;
 			ncl[i].cell_type = M_TD_CELL_FREE;
+			ncl[i].have_bgcolor = False;
+			ncl[i].bgcolor = 0;
 		}
 		rl->cells_lines[rl->row_count] = ncl;
 		rl->row_count++;
@@ -293,6 +322,8 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 					work_cell.td_start = NULL;
 					work_cell.td_end = NULL;
 					work_cell.cell_type = M_TD_CELL_PAD;
+					work_cell.have_bgcolor = False;
+					work_cell.bgcolor = 0;
 				} else {
 					work_cell.rowspan = 1;
 					work_cell.colspan = 1;
@@ -303,6 +334,8 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 					work_cell.td_start = NULL;
 					work_cell.td_end = NULL;
 					work_cell.cell_type = M_TD_CELL_FREE;
+					work_cell.have_bgcolor = False;
+					work_cell.bgcolor = 0;
 					if (!free_cell_found){
 						free_cell_found = 1;
 						rl->low_cur_line_num = i-1;
@@ -427,6 +460,8 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 	char * mt_cell_type = NULL;
 	int colspan =0;
 	int rowspan =0;
+	Pixel thtd_bgcolor = 0;
+	int thtd_have_bgcolor = False;
 
 /* mptr is a pointer on <TABLE> */
 
@@ -600,7 +635,8 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 				td_end_mark = psm;
 				UpateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
-					colspan,rowspan);
+					colspan,rowspan,
+					thtd_have_bgcolor, thtd_bgcolor);
 			}
 			if(sm->type == M_TD){
 				m_cell_type = M_TD;
@@ -627,6 +663,21 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			}
 			if (rowspan <=0) 
 				rowspan = 1;
+			thtd_have_bgcolor = False;
+			val=ParseMarkTag(sm->start,mt_cell_type,"BGCOLOR");
+			if ( val) {
+				XColor c;
+				int status;
+
+				status = XParseColor(XtDisplay(hw),
+					hw->core.colormap, val, &c);
+				c.flags = DoRed | DoGreen | DoBlue;
+				if (status) {
+					thtd_bgcolor = HTMLXColorToPixel(&c);
+					thtd_have_bgcolor = True;
+				}
+				free(val);
+			}
 			psm = sm;
 			sm = sm->next;
 			continue;
@@ -653,7 +704,8 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 			td_end_mark = sm;
 			UpateColList(&col_list,td_count,m_cell_type,
 				td_start_mark,td_end_mark,
-				colspan,rowspan);
+				colspan,rowspan,
+				thtd_have_bgcolor, thtd_bgcolor);
 			td_start_found = 0;
 			psm = sm;
 			sm = sm->next;
@@ -668,7 +720,8 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 				td_end_mark = psm;
 				UpateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
-					colspan,rowspan);
+					colspan,rowspan,
+					thtd_have_bgcolor, thtd_bgcolor);
 				td_start_found = 0;
 			}
 			if (tr_start_found) {
@@ -706,7 +759,8 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 				td_end_mark = psm;
 				UpateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
-					colspan,rowspan);
+					colspan,rowspan,
+					thtd_have_bgcolor, thtd_bgcolor);
 				td_start_found = 0;
 			}
 			tr_count++;
@@ -736,7 +790,8 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 				td_end_mark = psm;
 				UpateColList(&col_list,td_count,m_cell_type,
 					td_start_mark,td_end_mark,
-					colspan,rowspan);
+					colspan,rowspan,
+					thtd_have_bgcolor, thtd_bgcolor);
 				td_start_found = 0;
 			}
 			if (tr_start_found) {
@@ -1146,10 +1201,17 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
                 			work_pcc.cur_baseline, &work_pcc);
 				cell.start_elem = cr_eptr;
 
+				if ( cell.have_bgcolor ) {
+					work_pcc.bgcolor = MMPushColorBg(hw, cell.bgcolor);
+				}
+
 				FormatChunk(hw,cell.td_start,cell.td_end,
 					&work_pcc, False);
 /* add little vertical space */
 				LineBreak(hw,cell.td_end,&work_pcc);
+				if ( cell.have_bgcolor ) {
+					work_pcc.bgcolor = MMPopColorBg(hw);
+				}
 				cell.end_elem = hw->html.last_formatted_elem;
 /*difference des pcc pour determiner la hauteur*/
 				cell.x = cell_offset + line_pcc.eoffsetx;
@@ -1216,9 +1278,6 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	t->width = w_table;
 	h_table += t->cellSpacing + t->borders;
 	t->height = h_table;
-/* creer l'element graphique qui entoure la table */
-/*	table_eptr = CreateElement(hw,E_TABLE, pcc->cur_font,
-		pcc->x, pcc->y, w_table, h_table, h_table, pcc);  */
 
 	table_eptr->underline_number = 0; /* Table's can't be underlined */
 	table_eptr->table_data = t;
@@ -1250,7 +1309,8 @@ static GC ttopGC, tbotGC, colorGC;
 static char shadowpm_bits[] = { 0x02, 0x01};
 
 /* display table */
-void TableRefresh( HTMLWidget hw, struct ele_rec *eptr)
+void TableRefresh( HTMLWidget hw, struct ele_rec *eptr,
+	int win_x, int win_y, Dimension win_w, Dimension win_h)
 {
 	int x,y; 		/* table origin */
 	TableInfo * t;
@@ -1263,20 +1323,39 @@ void TableRefresh( HTMLWidget hw, struct ele_rec *eptr)
 	GC ltopGC, lbotGC;             
 #define MAX_SEG 128                  
 	XSegment segT[MAX_SEG], segB[MAX_SEG];
-	int iseg;                      
+	int iseg;
+	int rfr_x, rfr_y, rfr_w, rfr_h;
                                        
 	t = eptr->table_data; 
 
-	x = eptr->x;
-	y = eptr->y;
-	x = x - hw->html.scroll_x;
-	y = y - hw->html.scroll_y;
+/* position relative to left corner of top view */
+	x = eptr->x - hw->html.scroll_x;
+	y = eptr->y - hw->html.scroll_y;
 
-	if (y > hw->html.view_height || y + eptr->height < 0)
-		return;                 /* not visible */
+	rfr_x = win_x;		/* refresh zone */
+	rfr_y = win_y;
+	rfr_w = win_w;
+	rfr_h = win_h;
+	if ( x > win_x ) {
+		rfr_x = x;
+		rfr_w = rfr_w - (x - win_x);
+	}
+	if ( y > win_y ) {
+		rfr_y = y;
+		rfr_h = rfr_h - (y - win_y);
+	}
+	if ( (rfr_w <= 0) || (rfr_h <= 0) )	/* object is not in rfr part */
+		return;
 
-/* fill background of table */
-
+	if ( (rfr_x + rfr_w) > (x + eptr->width) ) { /* reduce width */
+		rfr_w = x + eptr->width - rfr_x;
+	}
+	if ( (rfr_y + rfr_h) > (y + eptr->height) ) { /* reduce height */
+		rfr_h = y + eptr->height - rfr_y;
+	}
+	if ( (rfr_w <= 0) || (rfr_h <= 0) )	/* object is not in rfr part */
+		return;
+	
 	if ( colorGC == NULL) {
 		unsigned long valuemask;
 		XGCValues values;
@@ -1289,7 +1368,61 @@ void TableRefresh( HTMLWidget hw, struct ele_rec *eptr)
 	if (t->have_bgcolor) {
 		XSetForeground(dsp, colorGC, t->bgcolor);
 		XFillRectangle(dsp, XtWindow(hw->html.view), colorGC,
-			x, y, eptr->width, eptr->height);
+			rfr_x, rfr_y, rfr_w, rfr_h);
+#if DEBUG_REFRESH
+        fprintf(stderr,"[TableResfresh] Refresh <TABLE> x, y, w, h : %d, %d, %d, %d\n",              
+                rfr_x, rfr_y, rfr_w, rfr_h);
+#endif
+	}
+
+	cells_lines = t->row_list->cells_lines;
+
+/* draw background of cell */
+	for (i = 0; i < t->num_row; i++) {  
+		for (j = 0; j < t->num_col; j++) {
+			int cw1, ch1, cx, cy, r_cw1, r_ch1, r_cx, r_cy;
+
+			cell = cells_lines[i][j];
+			cw1 = cell.width - 1;  
+			ch1 = cell.height - 1; 
+			cx = cell.x - hw->html.scroll_x;
+			cy = cell.y - hw->html.scroll_y;
+			r_cx =	rfr_x;
+			r_cy =	rfr_y;
+			r_cw1 = rfr_w;
+			r_ch1 = rfr_h;
+			if ( cx > rfr_x ) {
+				r_cx = cx;
+				r_cw1 = r_cw1 - (cx - rfr_x);
+			}
+			if ( cy > rfr_y ) {
+				r_cy = cy;
+				r_ch1 = r_ch1 - (cy - rfr_y);
+			}
+			if ( (r_cw1 <= 0) || (r_ch1 <= 0) )	/* object is not in rfr part */
+				continue;
+
+			if ( (r_cx + r_cw1) > (cx + cell.width) ) { /* reduce width */
+				r_cw1 = cx + cell.width - r_cx;
+			}
+			if ( (r_cy + r_ch1) > (cy + cell.height) ) {
+				r_ch1 = cy + cell.height - r_cy;
+			}
+			if ( (r_cw1 <= 0) || (r_ch1 <= 0) )	/* object is not in rfr part */
+				continue;
+	
+			if( (cell.back_rs == 0) && (cell.back_cs == 0) ) {
+				if ( cell.have_bgcolor ) {
+					XSetForeground(dsp, colorGC, cell.bgcolor);
+					XFillRectangle(dsp, XtWindow(hw->html.view), colorGC,
+						r_cx, r_cy, r_cw1, r_ch1);
+#if DEBUG_REFRESH
+        fprintf(stderr,"[TableResfresh] Refresh <TD/TH> x, y, w, h : %d, %d, %d, %d, type = %d\n",
+                r_cx, r_cy, r_cw1, r_ch1, cell.cell_type);
+#endif
+				}
+			}
+		}
 	}
 
 /* ### trace seulement les contours de la table */
@@ -1440,7 +1573,6 @@ void TableRefresh( HTMLWidget hw, struct ele_rec *eptr)
 			XSetFillStyle(dsp, lbotGC, FillSolid);
 		}                          
 	} 
-	cells_lines = t->row_list->cells_lines;
 	iseg = 0;                      
 
 /*printf("scroll_x=%d, scroll_y=%d, view w=%d h=%d doc w=%d
@@ -1459,47 +1591,52 @@ h=%d\n"
 			ch1 = cell.height - 1; 
 			cx = cell.x - hw->html.scroll_x;
 			cy = cell.y - hw->html.scroll_y;
-			if (cy + ch1 < 0)      
-				continue;   /* not visible : before */                                     
+			if (cy + ch1 < 0)
+				continue;   /* not visible : before */
 			if (cy - 1 > hw->html.view_height)
 				continue;   /* not visible : after */
 
 			if( (cell.back_rs == 0) && (cell.back_cs == 0) ) {
 				XSegment *pseg = segB + iseg;
-/* top line */     
-				pseg->x1 = cx;     
-				pseg->y1 = cy;     
+/* top line */
+				pseg->x1 = cx;
+				pseg->y1 = cy;
 				pseg->x2 = cx + cw1;
-				pseg->y2 = cy;     
-				pseg++;            
-/* left line */    
-				pseg->x1 = cx;     
-				pseg->y1 = cy;     
-				pseg->x2 = cx;     
+				pseg->y2 = cy;
+				pseg++;
+/* left line */
+				pseg->x1 = cx;
+				pseg->y1 = cy;
+				pseg->x2 = cx;
 				pseg->y2 = cy + ch1;
 
 				pseg = segT + iseg;
-/* bottom line */  
-				pseg->x1 = cx;     
+/* bottom line */
+				pseg->x1 = cx;
 				pseg->y1 = cy + ch1;
 				pseg->x2 = cx + cw1;
 				pseg->y2 = cy + ch1;
-				pseg++;            
+				pseg++;
 /* draw right line */
 				pseg->x1 = cx + cw1;
-				pseg->y1 = cy;     
+				pseg->y1 = cy;
 				pseg->x2 = cx + cw1;
 				pseg->y2 = cy + ch1;
-				iseg += 2;         
+				iseg += 2;
 				if (iseg > MAX_SEG - 1) {
 					XDrawSegments(dsp, XtWindow(hw->html.view)
 						, lbotGC, segB, iseg);
 					XDrawSegments(dsp, XtWindow(hw->html.view)
 						, ltopGC, segT, iseg);
-					iseg = 0;      
-				}                  
-			}                      
-		}                          
+					iseg = 0;
+				}
+				if ( cell.have_bgcolor ) {
+					XSetForeground(dsp, colorGC, cell.bgcolor);
+					XFillRectangle(dsp, XtWindow(hw->html.view), colorGC,
+						cx, cy, cw1, ch1);
+				}
+			}
+		}
 	}
 	if (iseg > 0) {                
 		XDrawSegments(dsp, XtWindow(hw->html.view), lbotGC, segB, iseg);
