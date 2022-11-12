@@ -18,12 +18,6 @@
 
 /* defines and structures used for the HTML parser, and the parsed object list. */
 
-typedef enum {
-	DIV_ALIGN_LEFT,
-	DIV_ALIGN_CENTER,
-	DIV_ALIGN_RIGHT
-} DivAlignType;
-
 typedef int (*visitTestProc)(Widget, char* , char *);
 typedef void (*pointerTrackProc)();
 
@@ -204,8 +198,8 @@ typedef struct _CellStruct {
         int max_width;
         int min_width;          
 	int line_bottom;
-        AlignType valignment ;
-        AlignType halignment ;
+        AlignType valignment;
+        AlignType halignment;
 	int have_bgcolor;
 	Pixel bgcolor;
 } CellStruct;

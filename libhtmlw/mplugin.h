@@ -69,7 +69,7 @@ typedef struct _HtmlObjectStruct {
         int width;
         int height;
         int border_width;
-        int valignment;
+        AlignType valignment;
 
 	char * class_id;	/* name of ... */
         char * bin_path;	/* classidPtr donne le bin_path */

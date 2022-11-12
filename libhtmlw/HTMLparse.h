@@ -13,6 +13,24 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+
+/* define alignment values */
+typedef enum {  
+        VALIGN_BOTTOM,		/* image, obj, caption */
+        VALIGN_TOP,
+
+        VALIGN_MIDDLE,		/* image, obj */
+
+	HALIGN_NONE,
+
+        HALIGN_CENTER,		/* text, P, DIV, Hn */
+	HALIGN_LEFT,		/* + caption */
+	HALIGN_RIGHT,
+
+        HALIGN_LEFT_FLOAT,	/* image, table , float object */
+        HALIGN_RIGHT_FLOAT
+} AlignType;
+
 #include "mplugin.h"
 
 typedef enum _MarkType {
@@ -188,17 +206,6 @@ typedef enum _MarkType {
 			/* non blank space character */
 #define NBSP_CONST '\240'
 
-
-/* define alignment values */
-typedef enum {  
-        ALIGN_NONE,
-        VALIGN_BOTTOM,
-        VALIGN_MIDDLE,
-        VALIGN_TOP,
-        HALIGN_LEFT,
-        HALIGN_CENTER,
-        HALIGN_RIGHT
-} AlignType;
 
 
 typedef struct _TableRec	*TablePtr;
@@ -385,7 +392,7 @@ typedef struct _HtmlTextInfo {
 extern void 		clean_white_space(char *txt);
 extern HtmlTextInfo 	*HTMLParseRepair(char *str);
 extern struct mark_up 	*HTMLLexem( const char *str);
-extern char * 		ParseMarkTag(char *text, char *mtext, char *mtag);
+extern char * 		ParseMarkTag(char *text, const char *mtext, const char *mtag);
 
 extern void		FreeHtmlTextInfo(HtmlTextInfo * htinfo);
 

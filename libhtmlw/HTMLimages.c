@@ -7,6 +7,7 @@
 #include "HTMLP.h"
 #include "HTMLPutil.h"
 
+#define DEBUG_IMAGE_PLACE 1
 
 /* Place an image. Add an element record for it. */
 void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
@@ -17,6 +18,9 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 	int baseline =0;
 	ImageInfo * picd;
 	AlignType valignment,halignment;
+
+	valignment = VALIGN_BOTTOM;	/* default vert. align for image */
+	halignment = HALIGN_NONE;	/* default horiz. align for image */
 
 /* saved work:  got an image in picd */
 	picd = mptr->s_picd;
@@ -48,11 +52,11 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 			/* <INPUT type="image" src=url ...> */
 		picd->fptr = pcc->cur_form;
 	}
-	baseline = height = picd->height + picd->border;
-	width = picd->width + picd->border;
+	baseline = height = picd->height + 2*picd->border;
+	width = picd->width + 2*picd->border;
 
 	valignment = VALIGN_BOTTOM;
-	halignment = ALIGN_NONE;
+	halignment = HALIGN_NONE;
 /* Check if this image will be top aligned */
 	if (picd->align == VALIGN_TOP) {
 		valignment = VALIGN_TOP;
@@ -63,11 +67,13 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 	} else if ( picd->align == VALIGN_BOTTOM){
 		valignment = VALIGN_BOTTOM;
 		/* baseline unchanged */
-	} else if ( picd->align == HALIGN_LEFT) {
-		halignment = HALIGN_LEFT;
+	} else if ( picd->align == HALIGN_LEFT_FLOAT) {
+		halignment = HALIGN_LEFT_FLOAT;
 		/* baseline unchanged ######???  */
-	} else if ( picd->align == HALIGN_RIGHT) {
-		halignment = HALIGN_RIGHT;
+		baseline =0;
+	} else if ( picd->align == HALIGN_RIGHT_FLOAT) {
+		halignment = HALIGN_RIGHT_FLOAT;
+		baseline =0;
 		/* baseline unchanged ######???  */
 	}
 		
@@ -76,6 +82,9 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 		if ( (pcc->x + width) >
 		     (pcc->eoffsetx+pcc->left_margin+pcc->cur_line_width)) 
 			LinefeedPlace(hw, mptr, pcc);
+	}
+	if (halignment == HALIGN_LEFT_FLOAT) {
+		LineBreak( hw, mptr, pcc);
 	}
 
         if(pcc->computed_min_x < (width+pcc->eoffsetx+pcc->left_margin)){
@@ -90,6 +99,7 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 				pcc->x, pcc->y, width, height, baseline, pcc);
 			eptr->fptr = picd->fptr;
 		} else {
+			
 			eptr = CreateElement(hw, E_IMAGE, pcc->cur_font,
 				pcc->x, pcc->y, width, height, baseline, pcc);
 		}
@@ -99,13 +109,30 @@ void ImagePlace(HTMLWidget hw, struct mark_up *mptr, PhotoComposeContext *pcc)
 		AdjustBaseLine(hw,eptr,pcc);
 		eptr->pic_data=picd;
 		eptr->bwidth=picd->border ;
+		if (halignment == HALIGN_RIGHT_FLOAT ) {
+			eptr->x = pcc->eoffsetx+pcc->left_margin+pcc->cur_line_width - width;
+		}
 	} else {
 		if (pcc->cur_line_height < height)
 			pcc->cur_line_height = height;
 	}
 
+	if (halignment == HALIGN_LEFT_FLOAT ){
+		SetFloatAlignLeft(pcc, width, height);
+		pcc->have_space_after = 0;
+		pcc->is_bol = True;
+		return;
+	}
+	if (halignment == HALIGN_RIGHT_FLOAT ) {
+		SetFloatAlignRight(pcc, width, height);
+		return;
+	}
 /* update pcc */
 	pcc->have_space_after = 0;
+#ifdef DEBUG_IMAGE_PLACE
+	fprintf(stderr,"Place Image: pcc->x=%d, width=%d\n",
+		pcc->x, width);
+#endif
 	pcc->x = pcc->x + width ;
 	pcc->is_bol = False;
 	if (!pcc->preformat) {
@@ -174,6 +201,10 @@ void ImageRefresh(HTMLWidget hw, struct ele_rec *eptr)
 		  0, 0,
 		  eptr->pic_data->width, eptr->pic_data->height,
 		  (x + extra), (y + extra));
+#ifdef DEBUG_IMAGE_PLACE
+	fprintf( stderr, "corner x=%d, y=%d, width=%d, height=%d (extra=%d)\n",
+		(x + extra), (y + extra), eptr->pic_data->width,eptr->pic_data->height,extra);
+#endif
 	values.clip_mask=None;
 	values.clip_x_origin=0;
 	values.clip_y_origin=0;

@@ -1,3 +1,6 @@
+#ifndef _MO_MIME_H_
+#define _MO_MIME_H_
+
 #include <sys/time.h>
 
 #define NO_ENCODING		0
@@ -39,3 +42,5 @@ extern void ParseMimeHeader(char * b, MimeHeaderStruct * mhs);
 
 extern char *HTgeticonname(char *format, char *defaultformat);
 extern char *HTFileName2ct(char *filename, char *default_type, int *compressed);
+
+#endif /* _MO_MIME_H_ */

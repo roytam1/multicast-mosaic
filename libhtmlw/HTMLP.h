@@ -84,6 +84,20 @@ typedef struct _ColorStack {
 	struct _ColorStack *next;	/* to be stacked */
 } ColorStack;
 
+typedef struct _FloatAlignRec {	/* For float align object and indent */
+				/* level stack (left and right) */ 
+	int	offsetx;	/* how many indent (left or right) */
+				/* that's the width of object */
+	int	ret_topy;	/* where is the top to return */
+	int	trap_boty;	/* where is the end of indent */
+}FloatAlignRec;
+
+typedef struct _FloatAlignStackRec {
+	FloatAlignRec fa;
+	int float_align_sum;	/* indent @ this level */
+	struct _FloatAlignStackRec * next;
+} FloatAlignStackRec;
+	
 /* a stack to maintain a html fifo stack */
 typedef struct _PhotoComposeContext {
 	int width_of_viewable_part;	/* never change */
@@ -97,6 +111,11 @@ typedef struct _PhotoComposeContext {
 	int y;			/* Element */
 	int ex;			/* x,y relative to object */
 	int ey;
+
+	FloatAlignStackRec *fasl; /* Float left */
+	int float_align_left;		/* result of all align left */
+	FloatAlignStackRec *fasr; /* Float right */
+	int float_align_right;		/* result of all align right */
 
 /* when cw_only we never create Element */
 /* but we compute 2 values : computed_min_x, computed_max_x */
@@ -124,7 +143,7 @@ typedef struct _PhotoComposeContext {
 				/* initial value is WidthOfViewablePart */
 	int pf_lf_state; 	/* state for linefeed */
 	int preformat;		/* is in <PRE> ? */
-	DivAlignType div;	/* is in <CENTER> ? */
+	AlignType div;		/* is in <CENTER> ? */
 	unsigned long	fg_text;	/* the current text foreground */
 	unsigned long	bgcolor;	/* the current background */
 	int		underline_number ;
@@ -151,6 +170,7 @@ typedef struct _PhotoComposeContext {
 	DescRec		DescType ;
 	int		InDocHead ;
 	MapRec *	cur_map;
+	int nowrap; /* inherited from CellStruct: <NOWRAP> or <NOBR> */
 } PhotoComposeContext;
 
 typedef struct _HTMLSubRessources {	
@@ -331,5 +351,10 @@ extern void ObjectRefresh(HTMLWidget hw, struct ele_rec *eptr);
 extern void SkipMap(struct mark_up **map_start);
 extern int MapAreaFound(HTMLWidget hw,struct ele_rec * eptr,
 	Dimension x,Dimension y, char** href);
+
+extern void UnsetFloatAlignRight(PhotoComposeContext * pcc);
+extern void UnsetFloatAlignLeft(PhotoComposeContext * pcc);
+extern void SetFloatAlignRight(PhotoComposeContext *pcc, int width, int height);
+extern void SetFloatAlignLeft(PhotoComposeContext *pcc, int width, int height);
 
 #endif /* HTMLP_H */

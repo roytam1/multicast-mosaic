@@ -1850,8 +1850,6 @@ mo_status mo_delete_window (mo_window *win)
 	if (!win->base)
 		return mo_fail;
 
-	node = win->first_node;
-
 	POPDOWN (source_win);
 	POPDOWN (save_win);
 /* ########### */
@@ -1890,16 +1888,21 @@ mo_status mo_delete_window (mo_window *win)
 }
 ################ */
 
-	if(node->node_type == NODE_NOTFRAME_TYPE) {
-		mo_kill_node_descendents(win, node);
-		mo_free_node_data (node);
-		free (node);
-	} else {		/* NODE_FRAMESET_TYPE */
-		mo_node *next;
+	node = win->first_node;
 
-		mo_kill_node_descendents_frame(win, node, &next);
-		mo_free_node_data (node);
-                free(node);
+	if (win->first_node) { 	/* win->first_node would be NULL, if we stop */
+				/* at very first html load */
+		if(node->node_type == NODE_NOTFRAME_TYPE) {
+			mo_kill_node_descendents(win, node);
+			mo_free_node_data (node);
+			free (node);
+		} else {		/* NODE_FRAMESET_TYPE */
+			mo_node *next;
+
+			mo_kill_node_descendents_frame(win, node, &next);
+			mo_free_node_data (node);
+                	free(node);
+		}
 	}
 	win->first_node=NULL;
 	free (win->search_start);

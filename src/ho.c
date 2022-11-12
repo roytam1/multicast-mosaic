@@ -18,8 +18,8 @@
 #include <Xm/XmAll.h>
 
 #include "../src/URLParse.h"
-#include "../libhtmlw/mplugin.h"
 #include "../libhtmlw/HTMLparse.h"
+#include "../libhtmlw/mplugin.h"
 #include "mosaic.h"
 
 
@@ -337,7 +337,7 @@ static MosaicPlugjectClass MpxCreatePlugjectClass(HtmlObjectStruct *obs)
 	MosaicPlugjectClass mpclass;
 	void *dl_handle;
 
-	mpclass = calloc(1, sizeof(MosaicPlugjectClassRec));
+	mpclass = (MosaicPlugjectClass)calloc(1, sizeof(MosaicPlugjectClassRec));
 	mpclass->release = MP_PLUGIN_RELEASE;
 	mpclass->i_cid = n;
         mpclass->class_id= strdup(obs->class_id);
@@ -368,7 +368,7 @@ static MosaicPlugjectClass MpxCreatePlugjectClass(HtmlObjectStruct *obs)
 /*	mpclass->MPP_Demande=(MPPDemandeProc)dlsym(dl_handle,"MPP_Demande"); */
 
 	if (MP_Class_Tab == NULL ) {
-		MP_Class_Tab = calloc(1, sizeof(MosaicPlugjectClass));
+		MP_Class_Tab = (MosaicPlugjectClass*)calloc(1, sizeof(MosaicPlugjectClass));
 		MP_Class_Tab[n] = mpclass;
 		N_MPClass_Loaded++;
 		return MP_Class_Tab[n];

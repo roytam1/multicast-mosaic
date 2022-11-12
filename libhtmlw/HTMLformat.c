@@ -61,6 +61,79 @@ static DescRec BaseDesc;
 static DescRec *DescType;
 /* ############ */
 
+void SetFloatAlignLeft(PhotoComposeContext *pcc, int width, int height)
+{
+	struct _FloatAlignStackRec *fasl;
+
+	fasl = (struct _FloatAlignStackRec *) calloc(1,
+			sizeof(struct _FloatAlignStackRec));
+
+	fasl->fa.offsetx = width;
+	fasl->fa.ret_topy = pcc->y;
+	fasl->fa.trap_boty = pcc->y + height;
+	pcc->x += width;
+	pcc->float_align_left += width;
+	fasl->next = pcc->fasl;
+	pcc->fasl = fasl;
+	return;
+}
+
+void UnsetFloatAlignLeft(PhotoComposeContext *pcc)
+{
+	struct _FloatAlignStackRec * next_fasl;
+
+	if (!pcc->fasl)		/* nothing in stack */
+		return;
+
+	if (pcc->y <= pcc->fasl->fa.trap_boty) { /*not yet */
+		return;
+	}
+/* we are after the trap: adjust margin/offset */
+	pcc->x -= pcc->fasl->fa.offsetx; 	/*decr x. */
+	pcc->cur_line_width += pcc->fasl->fa.offsetx; /* incr width */
+	pcc->float_align_left -= pcc->fasl->fa.offsetx;
+	next_fasl = pcc->fasl->next;
+	free(pcc->fasl);
+	pcc->fasl = next_fasl;
+	UnsetFloatAlignLeft(pcc);		/* recursive align */
+}	
+
+void SetFloatAlignRight(PhotoComposeContext *pcc, int width, int height)
+{
+	struct _FloatAlignStackRec * fasr;
+
+	fasr = (struct _FloatAlignStackRec *) calloc(1,
+			sizeof(struct _FloatAlignStackRec));
+
+	fasr->fa.offsetx = width;
+	fasr->fa.ret_topy = pcc->y;
+	fasr->fa.trap_boty = pcc->y + height;
+	pcc->cur_line_width -= width;
+	pcc->float_align_right += width;
+	fasr->next = pcc->fasr;
+	pcc->fasr = fasr;
+	return;
+}
+
+void UnsetFloatAlignRight(PhotoComposeContext *pcc)
+{
+	struct _FloatAlignStackRec * next_fasr;
+
+	if (!pcc->fasr)		/* nothing in stack */
+		return;
+
+	if (pcc->y <= pcc->fasr->fa.trap_boty) { /*not yet */
+		return;
+	}
+/* we are after the trap: adjust margin/offset */
+	pcc->cur_line_width += pcc->fasr->fa.offsetx; /* incr width */
+	pcc->float_align_right -= pcc->fasr->fa.offsetx;
+	next_fasr = pcc->fasr->next;
+	free(pcc->fasr);
+	pcc->fasr = next_fasr;
+	UnsetFloatAlignRight(pcc);		/* recursive align */
+}	
+
 /* GD ########## */
 /* Set the formatted element into the format list. 
  * If hw->html.cur_elem_to_format is initialised to NULL each time
@@ -119,10 +192,10 @@ struct ele_rec * CreateElement( HTMLWidget hw, ElementType type, XFontStruct *fp
 	eptr->valignment = VALIGN_BOTTOM;
 	eptr->halignment = HALIGN_LEFT;
 /* 
-       if(pcc->div == DIV_ALIGN_TOP) eptr->valignment = VALIGN_TOP;
-       else if(pcc->div == DIV_ALIGN_MIDDLE) eptr->valignment = VALIGN_MIDDLE;
-       else if(pcc->div == DIV_ALIGN_CENTER) eptr->halignment = HALIGN_CENTER;
-       else if(pcc->div == DIV_ALIGN_RIGHT) eptr->halignment = HALIGN_RIGHT;
+       if(pcc->div == HALIGN_TOP) eptr->valignment = VALIGN_TOP;
+       else if(pcc->div == HALIGN_MIDDLE) eptr->valignment = VALIGN_MIDDLE;
+       else if(pcc->div == HALIGN_CENTER) eptr->halignment = HALIGN_CENTER;
+       else if(pcc->div == HALIGN_RIGHT) eptr->halignment = HALIGN_RIGHT;
 */
 	eptr->selected = False;
 	eptr->indent_level = pcc->indent_level;
@@ -375,12 +448,12 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		if (mark->is_end) {
 			LineBreak(hw,*mptr,pcc);
 			/* ###PopDiv(pcc); */
-			pcc->div = DIV_ALIGN_LEFT;
+			pcc->div = HALIGN_LEFT;
 		} else {
 			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
 			/* ###PushDiv(pcc); */
-			pcc->div = DIV_ALIGN_CENTER;
+			pcc->div = HALIGN_CENTER;
 		}
 		pcc->processing_text = False;
 		break;
@@ -388,21 +461,21 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		if (mark->is_end) {
 			LineBreak(hw,*mptr,pcc);
 			/* ###PopDiv(pcc); */
-			pcc->div = DIV_ALIGN_LEFT;
+			pcc->div = HALIGN_LEFT;
 			pcc->processing_text = False;
 			break;
 		}
 		LineBreak(hw,*mptr,pcc);
 		LinefeedPlace(hw,*mptr,pcc);
 		/* ###PushDiv(pcc); */
-		pcc->div = DIV_ALIGN_LEFT;
+		pcc->div = HALIGN_LEFT;
 		tptr = ParseMarkTag(mark->start, MT_DIV, "ALIGN");
 		if ( tptr && !strcasecmp(tptr, "CENTER"))
 			/* ###Pushdiv( ... ) */
-			pcc->div = DIV_ALIGN_CENTER;
+			pcc->div = HALIGN_CENTER;
 		if ( tptr && !strcasecmp(tptr, "RIGHT"))
 			/* ###Pushdiv( ... ) */
-			pcc->div = DIV_ALIGN_RIGHT;
+			pcc->div = HALIGN_RIGHT;
 		if ( tptr && !strcasecmp(tptr, "LEFT"))
 			/* ###Pushdiv( ...... ) */
 			;
@@ -418,19 +491,19 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		if (mark->is_end) {
 			LineBreak(hw,*mptr,pcc);
 			LinefeedPlace(hw,*mptr,pcc);
-			pcc->div = DIV_ALIGN_LEFT;
+			pcc->div = HALIGN_LEFT;
 		} else {
 			LineBreak(hw,*mptr,pcc);
 			if (pcc->processing_text){ /* end the paragraph */
 				LinefeedPlace(hw,*mptr,pcc);
-				pcc->div = DIV_ALIGN_LEFT;
+				pcc->div = HALIGN_LEFT;
 			}
-			pcc->div = DIV_ALIGN_LEFT;
+			pcc->div = HALIGN_LEFT;
 			tptr = ParseMarkTag(mark->start, MT_PARAGRAPH, "ALIGN");
 			if ( tptr && !strcasecmp(tptr, "CENTER"))
-				pcc->div = DIV_ALIGN_CENTER;
+				pcc->div = HALIGN_CENTER;
 			if ( tptr && !strcasecmp(tptr, "RIGHT"))
-				pcc->div = DIV_ALIGN_RIGHT;
+				pcc->div = HALIGN_RIGHT;
 			if(tptr)
 				free(tptr);
 		}
@@ -589,7 +662,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 	case M_BODY:
 		if (!mark->is_end) {
 /*##### */
-			static char *atts[]={"text","bgcolor","alink","vlink","link",NULL};
+			static const char *atts[]={"text","bgcolor","alink","vlink","link",NULL};
 			char *tmp=NULL;
 			int i;
 
@@ -766,7 +839,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 			LineBreak(hw,*mptr,pcc);
 			if (pcc->processing_text){ /* end the paragraph */
 				LinefeedPlace(hw,*mptr,pcc);
-				pcc->div = DIV_ALIGN_LEFT;
+				pcc->div = HALIGN_LEFT;
 			}
 			dptr = (DescRec *)calloc(1, sizeof(DescRec));
 /* Save the old state, and start a new */
@@ -1103,7 +1176,7 @@ int FormatAll(HTMLWidget hw, int Fwidth, Boolean save_obj)
 				/* initial value is WidthOfViewablePart */
 	pcc.pf_lf_state = 0;	/* linefeed state. Hack for preformat */
 	pcc.preformat = 0;
-	pcc.div = DIV_ALIGN_LEFT;
+	pcc.div = HALIGN_LEFT;
 
 	MMResetWidgetColorStack (hw);
 	pcc.fg_text = hw->html.color_stack_fg->pixel;	/* def_res and bottom */
@@ -1129,6 +1202,10 @@ int FormatAll(HTMLWidget hw, int Fwidth, Boolean save_obj)
 	pcc.in_select = False;
 	pcc.processing_text = False;
 	pcc.strikeout = False;
+	pcc.fasl = NULL;
+	pcc.fasr = NULL;
+	pcc.float_align_left = 0;
+	pcc.float_align_right = 0;
 
 /* Initialize local variables, some from the widget */
 	DescType = &BaseDesc;
@@ -1319,7 +1396,7 @@ struct ele_rec * LocateElement( HTMLWidget hw, int x, int y, int *pos)
  * It concatonates the passed string to the current string, managing
  * both the current string length, and the total buffer length.
  */
-void strcpy_or_grow( char **str, int *slen, int *blen, char *add)
+static void strcpy_or_grow( char **str, int *slen, int *blen, const char *add)
 {
 	int newlen;
 	int addlen;

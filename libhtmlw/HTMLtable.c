@@ -28,6 +28,8 @@
 #define TBL_CELL_DEFAULT_PADDING 1
 #define TBL_CELL_DEFAULT_SPACING 2
 
+#define SHADOW_LINE_WIDTH 1
+
 #if 0
 static void TableDump( TableInfo *t);
 #endif
@@ -145,7 +147,7 @@ static void UpdateColList( ColumnList ** col_list, int td_count,
 	*col_list = cl;
 }
 
-void AddPadAtEndColList(ColumnList ** cl, int toadd, int first_free)
+static void AddPadAtEndColList(ColumnList ** cl, int toadd)
 {
 	int i;
 
@@ -384,7 +386,7 @@ static void UpdateRowList(RowList ** row_list, int tr_count,
 		}
 	}
 	if (ncell_for_this_cl< n_rl_free_cell){
-		AddPadAtEndColList(cl,n_rl_free_cell - ncell_for_this_cl,first_free_cell); 
+		AddPadAtEndColList(cl,n_rl_free_cell - ncell_for_this_cl); 
 	}
 	if (ncell_for_this_cl > n_rl_free_cell){
 #ifdef HTMLTRACE
@@ -535,25 +537,25 @@ static TableInfo * FirstPasseTable(HTMLWidget hw, struct mark_up *mptr,
 		printf("[MakeTable] %s not yet implemented\n","ALIGN");
 #endif
 /* ##########
-           if(strcasecmp(tptr,"LEFT") == 0) halignment=HALIGN_LEFT;
+           if(strcasecmp(tptr,"LEFT") == 0) halignment=HALIGN_LEFT_FLOAT;
                else
            if(strcasecmp(tptr,"CENTER") == 0) halignment=HALIGN_CENTER;
                else
-           if(strcasecmp(tptr,"RIGHT") == 0)  halignment=HALIGN_RIGHT;
+           if(strcasecmp(tptr,"RIGHT") == 0)  halignment=HALIGN_RIGHT_FLOAT;
 		free(tptr);
 /* #######--- INHERITED value ? ---
 	if(halignment == ALIGN_NONE)
-	{if(pcc->div == DIV_ALIGN_LEFT) halignment = HALIGN_LEFT;
+	{if(pcc->div == HALIGN_LEFT) halignment = HALIGN_LEFT;
 	else
-	if(pcc->div == DIV_ALIGN_CENTER) halignment = HALIGN_CENTER;
+	if(pcc->div == HALIGN_CENTER) halignment = HALIGN_CENTER;
 	else
-	if(pcc->div == DIV_ALIGN_RIGHT) halignment = HALIGN_RIGHT;
+	if(pcc->div == HALIGN_RIGHT) halignment = HALIGN_RIGHT;
 	}else
-	{if(halignment == HALIGN_LEFT) pcc->div = DIV_ALIGN_LEFT;
+	{if(halignment == HALIGN_LEFT) pcc->div = HALIGN_LEFT;
 	else
-	if(halignment == HALIGN_CENTER) pcc->div = DIV_ALIGN_CENTER;
+	if(halignment == HALIGN_CENTER) pcc->div = HALIGN_CENTER;
 	else
-	if(halignment == HALIGN_RIGHT) pcc->div = DIV_ALIGN_RIGHT;
+	if(halignment == HALIGN_RIGHT) pcc->div = HALIGN_RIGHT;
 	}
 	lt.halignment = halignment;
 ####### */
@@ -930,6 +932,7 @@ static void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext 
 	int line_max_w ;
 	int estimate_height;
 	int h_row=0;
+	int shadow_line_width = 0;
 
 	deb_pcc = *orig_pcc;
 	deb_pcc.cw_only = True;
@@ -946,6 +949,9 @@ static void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext 
 	deb_pcc.cur_baseline = orig_pcc->cur_baseline;
 	deb_pcc.cur_line_height = orig_pcc->cur_line_height;
 
+	if(t->borders)
+		shadow_line_width = SHADOW_LINE_WIDTH;
+
 	t->col_max_w = (int*) calloc(t->num_col, sizeof(int));
 	t->col_min_w = (int*) calloc(t->num_col, sizeof(int));
 	t->col_w = (int*) calloc(t->num_col, sizeof(int));
@@ -955,7 +961,7 @@ static void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext 
 		t->col_w[i] = 0;
 	}
 
-	estimate_height = t->num_row * 2 * (t->cellPadding + 2)
+	estimate_height = t->num_row * 2 * (t->cellPadding + shadow_line_width)
 		+ (t->num_row + 1) * t->cellSpacing + 2 * t->borders;
 
 	for(i=0; i< t->num_row; i++){
@@ -973,7 +979,7 @@ static void EstimateMinMaxTable(HTMLWidget hw, TableInfo *t,PhotoComposeContext 
 			assert(cell.colspan >0);
 			for(k = 0; k < cell.colspan; k++){
 				line[j].min_width = 
-					1+fin_pcc.computed_min_x/cell.colspan;
+					fin_pcc.computed_min_x/cell.colspan;
 				line[j].max_width = 
 					1+fin_pcc.computed_max_x/cell.colspan;
 				if (t->col_min_w[j] < line[j].min_width)
@@ -1021,11 +1027,11 @@ Quand 'attribut color n'est pas la il faut prendre le <body text=color> par defa
  *	s the cellSpacing      
  *
  *	bbbbs|pccccp|s|pccccp|s|pccccp|sbbbb
- *	  bbbbs|pppppp|s|pppppp|
+ *	bbbbs|pppppp|s|pppppp|
  *	bbbbs--------s--------
  *	bbbbssssssssssssssssss
 */ 
-	line_min_w = t->num_col * 2 * (t->cellPadding + 1)
+	line_min_w = t->num_col * 2 * (t->cellPadding + shadow_line_width)
 		+ (t->num_col + 1) * t->cellSpacing + 2 * t->borders;
 	line_max_w = line_min_w;
 	for(i=0;i<t->num_col;i++){     
@@ -1057,6 +1063,7 @@ void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc,
 	int w_in_cell;
 	int to_add_col;
 	int wanted_w;
+	int shadow_line_width = SHADOW_LINE_WIDTH;
 
         if ((*mptr)->is_end)            /* end of table */
                 return;
@@ -1139,6 +1146,8 @@ void TablePlace(HTMLWidget hw, struct mark_up **mptr, PhotoComposeContext * pcc,
 Caluler maintenant t->col_w[i] suivant ces trois cas.
 
 */
+	if(t->borders == 0) 
+		shadow_line_width = 0;
 	if (t->min_width >= pcc->cur_line_width){	/* cas 1 */
 		for(i=0; i<t->num_col;i++){
 			t->col_w[i] = t->col_min_w[i];
@@ -1161,7 +1170,7 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 	}
 
 /* maintenant on peut calculer la largeur de la table */
-	w_table = t->num_col * 2 * (t->cellPadding + 1)
+	w_table = t->num_col * 2 * (t->cellPadding + shadow_line_width)
 		+ (t->num_col + 1) * t->cellSpacing + 2 * t->borders;
 	for(i=0; i<t->num_col;i++){
 		w_table += t->col_w[i];
@@ -1223,13 +1232,13 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 			work_pcc = line_pcc;	/* en prendre un pour travailler*/
 /* what is the type of this cell */
 			add_offset = w_in_cell +
-				t->cellSpacing  + 2 + 2 * t->cellPadding;
+				t->cellSpacing  + 2 * (t->cellPadding+shadow_line_width);
 			cell.width = w_in_cell +
-				 2 * (t->cellPadding + 1);
+				 2 * (t->cellPadding + shadow_line_width);
 			cell.y = line_pcc.y; 
 			cell.height = work_pcc.cur_line_height
-				+ 2 * (t->cellPadding + 1);
-			cell.line_bottom = line_pcc.y+ t->cellPadding + 1 +
+				+ 2 * (t->cellPadding + shadow_line_width);
+			cell.line_bottom = line_pcc.y+ t->cellPadding + shadow_line_width +
                                                 line_pcc.cur_line_height;
 			switch (cell.cell_type){
 			case M_TD_CELL_PAD:
@@ -1248,14 +1257,14 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 					w_in_cell = w_in_cell + t->col_w[j+k];
 				}
 				w_in_cell += (cell.colspan -1)*
-				    (t->cellSpacing + 2 + 2 * t->cellPadding)+1;
-				work_pcc.left_margin = t->cellPadding + 1;
-				work_pcc.right_margin = t->cellPadding + 1;
+				    (t->cellSpacing + 2 * (t->cellPadding+shadow_line_width));
+				work_pcc.left_margin = t->cellPadding + shadow_line_width;
+				work_pcc.right_margin = t->cellPadding + shadow_line_width;
 				work_pcc.cur_line_width = w_in_cell;
 				work_pcc.eoffsetx = line_pcc.eoffsetx+cell_offset;
 				work_pcc.x = work_pcc.eoffsetx + 
 					     work_pcc.left_margin;
-				work_pcc.y = line_pcc.y + t->cellPadding + 1;
+				work_pcc.y = line_pcc.y + t->cellPadding + shadow_line_width;
 				work_pcc.have_space_after = 0;
 				if(cell.cell_type == M_TH){
 /* ########### faire un push font 
@@ -1288,14 +1297,14 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 /*difference des pcc pour determiner la hauteur*/
 				cell.x = cell_offset + line_pcc.eoffsetx;
 				cell.width = w_in_cell +
-					   2 * (t->cellPadding + 1);
+					   2 * (t->cellPadding + shadow_line_width);
 				cell.y = line_pcc.y; 
 				cell.height = work_pcc.y - line_pcc.y
 					/* + line_pcc.cur_font->ascent/2 */
-					+ t->cellPadding + 1;
+					+ t->cellPadding + shadow_line_width;
 				cell.line_bottom = work_pcc.y
 					/* + line_pcc.cur_font->ascent/2 */
-					+ t->cellPadding + 1;
+					+ t->cellPadding + shadow_line_width;
 				break;
 			default:
 				assert(0);
@@ -1379,7 +1388,7 @@ Caluler maintenant t->col_w[i] suivant ces trois cas.
 
         pcc->x += table_eptr->width;
 	pcc->y += table_eptr->height;
-	pcc->div = DIV_ALIGN_LEFT;
+	pcc->div = HALIGN_LEFT;
 /* do a linefeed */
 	LinefeedPlace(hw,t->tb_end_mark,pcc);
 

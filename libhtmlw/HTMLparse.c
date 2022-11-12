@@ -18,7 +18,7 @@
 #define DEFAULT_FRAME_MARGIN_WIDTH    5
 
 typedef struct amp_esc_rec {
-	char *tag;
+	const char *tag;
 	char value;
 } AmpEsc;
 
@@ -160,8 +160,7 @@ static AmpEsc AmpEscapes[] = {
 };
 
 static MarkType ParseMarkType(char *str);
-static void AddMap(ParserContext *pc, struct mark_up * map_start,
-	struct mark_up * map_end, int area_count);
+static void AddMap(ParserContext *pc, struct mark_up *map_start, int area_count);
 
 static void FreeMarkup( struct mark_up *mptr)
 {
@@ -1122,7 +1121,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 				return REMOVE_TAG;
 			}
 			/* mptr is on </MAP> */
-			AddMap(pc, pc->map_start, mptr, pc->n_area);
+			AddMap(pc, pc->map_start, pc->n_area);
 			*sop = SOP_POP;
 			return GOOD_TAG; /* next state will be upper block*/
 		default:		 /* only <area> is authorized */
@@ -2050,8 +2049,7 @@ int * CoordVals(char *coords, int n)
 
 /*--- HTML 4.01, 13.6.1 Client-side image maps: the MAP and AREA elements  ---*/                                
 /* Add a <MAP> to contexte */
-static MapRec * CreateMap(ParserContext *pc, struct mark_up * map_start,
-        struct mark_up * map_end, int area_count)
+static MapRec * CreateMap(struct mark_up * map_start, int area_count)
 {
 	char *map_name = 0, *coords;
 	MapRec *cur_map = NULL;  
@@ -2151,12 +2149,11 @@ static MapRec * CreateMap(ParserContext *pc, struct mark_up * map_start,
 	return cur_map;
 }
 
-static void AddMap(ParserContext *pc, struct mark_up * map_start,
-	struct mark_up * map_end, int area_count)
+static void AddMap(ParserContext *pc, struct mark_up * map_start, int area_count)
 {
 	MapRec * new_map;
 
-	new_map = CreateMap(pc, map_start, map_end, area_count);
+	new_map = CreateMap(map_start, area_count);
 	if (! new_map)
 		return;
 	if (!pc->map_count) {
@@ -2527,7 +2524,7 @@ static char * AnchorTag( char **ptrp, char **startp, char **endp)
  * If the passed tag is not found, return NULL.
  * If the passed tag is found but has no value, return "".
  */
-char* ParseMarkTag(char *text, char *mtext, char *mtag)
+char* ParseMarkTag(char *text, const char *mtext, const char *mtag)
 {
 	char *ptr;
 	char *start;

@@ -242,7 +242,7 @@ static void CountColors( unsigned char *data, XColor *colrs, int *color_used)
 
 static int FindTarget( int *tptr)
 {
-	int range, i, indx;
+	int range, i, indx=0;
 
 	range = 0;
 	for (i=0; i<BoxCount; i++) {
@@ -367,7 +367,7 @@ static void SplitColors( int e_cnt)
 static void ConvertData( unsigned char *data, XColor *colrs, int *colors_used)
 {
 	unsigned char *dptr;
-	register int i/*, j*/;
+	register int i;
 	int red, green, blue;
 	register struct color_rec *hash_ptr;
 	int pixel_map[256];
@@ -529,7 +529,7 @@ static int highbit( unsigned long ul)
         return i;
 }
 
-/* Make am image of appropriate depth for display from image data.
+/* Make an image of appropriate depth for display from image data.
  */
 static XImage * MakeImage( Display *d, unsigned char *data, int width, int height,
 	int depth, ImageInfo *img_info, int clip)
@@ -874,7 +874,7 @@ void MMPreParseImageBody(mo_window * win, ImageInfo *picd, struct mark_up *mptr)
 	lpicd.src = ParseMarkTag(mptr->start, MT_BODY,"background");
 
         lpicd.alt_text = NULL;       
-        lpicd.align = ALIGN_NONE;      
+        lpicd.align = HALIGN_NONE;      
         lpicd.height = 0;              
         lpicd.req_height = -1;  /* no req_height */
         lpicd.width = 0;               
@@ -929,7 +929,6 @@ void MMPreParseInputTagImage(mo_window * win, ImageInfo *picd, struct mark_up *m
 
 	lpicd.src = ParseMarkTag(mptr->start, MT_INPUT, "SRC");
         lpicd.alt_text = altPtr;       
-        lpicd.align = ALIGN_NONE;      
         lpicd.height = 0;              
         lpicd.req_height = -1;  /* no req_height */
         lpicd.width = 0;               
@@ -957,6 +956,10 @@ void MMPreParseInputTagImage(mo_window * win, ImageInfo *picd, struct mark_up *m
         lpicd.clip = None;             
 	lpicd.internal_numeo = -1;
         lpicd.cw_only = -1;
+/*##################################### */
+/*--- HTML 4.01, 13.7.4 Alignment ---*/
+	lpicd.align = VALIGN_BOTTOM;
+/*        #########lpicd.align = ALIGN_NONE;      ### a virer */
 
 	if (alignPtr) {
 		if ( !strcasecmp(alignPtr, "TOP")) {
@@ -966,14 +969,14 @@ void MMPreParseInputTagImage(mo_window * win, ImageInfo *picd, struct mark_up *m
 		} else if (!strcasecmp(alignPtr, "BOTTOM")){
 			lpicd.align = VALIGN_BOTTOM; 
 		} else if (!strcasecmp(alignPtr, "LEFT")){
-			lpicd.align = HALIGN_LEFT;
+			lpicd.align = HALIGN_LEFT_FLOAT;
 		} else if (!strcasecmp(alignPtr, "RIGHT")) {
-			lpicd.align = HALIGN_RIGHT;
+			lpicd.align = HALIGN_RIGHT_FLOAT;
 		}		/* don't know how to center img */
 		free(alignPtr);
 	}
 
-	if ( heightPtr ) {             
+	if ( heightPtr ) {
 		lpicd.req_height = atoi(heightPtr);
 		free(heightPtr);       
 		if (lpicd.req_height < 1 )      /* too small ... */
@@ -1104,7 +1107,6 @@ void MMPreParseImageTag(mo_window * win, ImageInfo *picd, struct mark_up *mptr)
 
 	lpicd.src = ParseMarkTag(mptr->start, MT_IMAGE, "SRC");
         lpicd.alt_text = altPtr;       
-        lpicd.align = ALIGN_NONE;      
         lpicd.height = 0;              
         lpicd.req_height = -1;  /* no req_height */
         lpicd.width = 0;               
@@ -1133,6 +1135,11 @@ void MMPreParseImageTag(mo_window * win, ImageInfo *picd, struct mark_up *mptr)
 	lpicd.internal_numeo = -1;
         lpicd.cw_only = -1;
 
+/*################# */
+/*--- HTML 4.01, 13.7.4 Alignment ---*/
+	lpicd.align = VALIGN_BOTTOM;
+/*        ###### lpicd.align = ALIGN_NONE;       */
+
 	if (alignPtr) {
 		if ( !strcasecmp(alignPtr, "TOP")) {
 			lpicd.align = VALIGN_TOP;
@@ -1141,9 +1148,9 @@ void MMPreParseImageTag(mo_window * win, ImageInfo *picd, struct mark_up *mptr)
 		} else if (!strcasecmp(alignPtr, "BOTTOM")){
 			lpicd.align = VALIGN_BOTTOM; 
 		} else if (!strcasecmp(alignPtr, "LEFT")){
-			lpicd.align = HALIGN_LEFT;
+			lpicd.align = HALIGN_LEFT_FLOAT;
 		} else if (!strcasecmp(alignPtr, "RIGHT")) {
-			lpicd.align = HALIGN_RIGHT;
+			lpicd.align = HALIGN_RIGHT_FLOAT;
 		}		/* don't know how to center img */
 		free(alignPtr);
 	}
@@ -1281,7 +1288,7 @@ static unsigned char nums[]={ 1, 2, 4, 8, 16, 32, 64, 128 };
  *	image = None; clip = None;
  *	internal_numeo = -1; cw_only = -1;
  * Called because we have data from some www protocol.
- * we try to make an image we the data in fname. 
+ * we try to make an image with the data in fname. 
  */
 
 void MMPreloadImage(mo_window *win, struct mark_up *mptr, MimeHeaderStruct *mhs,
@@ -1294,7 +1301,7 @@ void MMPreloadImage(mo_window *win, struct mark_up *mptr, MimeHeaderStruct *mhs,
 	unsigned char * bit_data;
 	int width,height;
 	XColor colrs[256];
-	unsigned short bg_red, bg_green, bg_blue;
+	unsigned short bg_red=0, bg_green=0, bg_blue=0;
 	unsigned char * bg_map;
 	int bg;
 	int i,j, cnt,bcnt;

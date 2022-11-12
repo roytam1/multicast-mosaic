@@ -81,7 +81,7 @@ extern String 		ParseTextToPSString(HTMLWidget hw,
                            	char *url, char *time_str);
 
 extern void		hw_do_body_bgima(HTMLWidget, struct mark_up *mptr);
-extern void		hw_do_body_color(HTMLWidget,char*,char*,PhotoComposeContext * pcc);
+extern void		hw_do_body_color(HTMLWidget,const char*,char*,PhotoComposeContext * pcc);
 
 extern void 		TablePlace(HTMLWidget hw, struct mark_up **mptr, 
 				PhotoComposeContext * pcc, Boolean save_obj);

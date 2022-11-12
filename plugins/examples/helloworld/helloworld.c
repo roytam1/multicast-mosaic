@@ -3,6 +3,7 @@
 #include <X11/StringDefs.h>
 #include <Xm/Label.h>
 
+#include "HTMLparse.h"
 #include "mplugin.h"
 
 /* call by mMosaic in Pre-Parse html phase,  you can set 

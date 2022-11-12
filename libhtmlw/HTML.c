@@ -27,7 +27,8 @@
 #define	CLICK_TIME		500
 #define	SELECT_THRESHOLD	3
 #define	MAX_UNDERLINES		3
-#define DEFAULT_INCREMENT       18
+#define X_DEFAULT_INCREMENT       18
+#define Y_DEFAULT_INCREMENT       18
 
 #define VERT_SCROLL_WIDTH 14
 #define HORIZ_SCROLL_HEIGHT 14
@@ -290,7 +291,7 @@ void hw_do_body_bgima(HTMLWidget hw, struct mark_up *mptr)
 	XSetFillStyle(XtDisplay(hw), hw->html.bgimgGC, FillTiled);
 }
 
-void hw_do_body_color(HTMLWidget hw, char *att, char *cname,
+void hw_do_body_color(HTMLWidget hw, const char *att, char *cname,
 	PhotoComposeContext * pcc)
 {
 	XColor col ;
@@ -677,10 +678,10 @@ static void ConfigScrollBars( HTMLWidget hw)
 		XtSetArg(arg[argcnt], XmNmaximum, maxv); argcnt++;
 		XtSetArg(arg[argcnt], XmNvalue, hw->html.scroll_y); argcnt++;
 		XtSetArg(arg[argcnt], XmNsliderSize, ss); argcnt++;
-                XtSetArg(arg[argcnt], XmNincrement, DEFAULT_INCREMENT); argcnt++;
+                XtSetArg(arg[argcnt], XmNincrement, Y_DEFAULT_INCREMENT); argcnt++;
                 XtSetArg(arg[argcnt], XmNpageIncrement, 
-                         hw->html.view_height > DEFAULT_INCREMENT ? 
-                           hw->html.view_height - DEFAULT_INCREMENT :1); argcnt++;
+                         hw->html.view_height > Y_DEFAULT_INCREMENT ? 
+                           hw->html.view_height - Y_DEFAULT_INCREMENT :1); argcnt++;
 		XtSetValues(hw->html.vbar, arg, argcnt);
 #ifdef HTMLTRACE
 		XtVaGetValues(hw->html.vbar, XmNsliderSize, &ss, NULL);
@@ -739,10 +740,10 @@ static void ConfigScrollBars( HTMLWidget hw)
 		XtSetArg(arg[argcnt], XmNmaximum, maxv); argcnt++;
 		XtSetArg(arg[argcnt], XmNvalue, hw->html.scroll_x); argcnt++;
 		XtSetArg(arg[argcnt], XmNsliderSize, ss); argcnt++;
-                XtSetArg(arg[argcnt], XmNincrement, DEFAULT_INCREMENT); argcnt++;
+                XtSetArg(arg[argcnt], XmNincrement, X_DEFAULT_INCREMENT); argcnt++;
                 XtSetArg(arg[argcnt], XmNpageIncrement, 
-                         hw->html.view_width > DEFAULT_INCREMENT ? 
-                         hw->html.view_width - DEFAULT_INCREMENT : 1); argcnt++;
+                         hw->html.view_width > X_DEFAULT_INCREMENT ? 
+                         hw->html.view_width - X_DEFAULT_INCREMENT : 1); argcnt++;
 		XtSetValues(hw->html.hbar, arg, argcnt);
 	}
 #ifdef HTMLTRACE
@@ -1096,7 +1097,7 @@ void ViewClearAndRefresh( HTMLWidget hw)
 	ViewRedisplay(hw, 0, 0, 
 			hw->html.view_width, hw->html.view_height);
 /* This is a fake deal to make an Expose event tocall Redisplay
-* to redraw the shadow around the view area
+ * to redraw the shadow around the view area
 */
 /*	XClearArea(XtDisplay(hw),XtWindow(hw->html.view),0,0,1,1,True); */
 }

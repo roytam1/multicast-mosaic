@@ -16,6 +16,8 @@
 #include "HTMLP.h"
 #include "HTMLPutil.h"
 
+#define HTAB_WIDTH 8
+
 #define SKIPWHITE(s)    while( (((unsigned char)*s) < 128) && (isspace(*s)) ) s++
 #define SKIPNONWHITE(s) while( (((unsigned char)*s) > 127) ||  \
 			       ((!isspace(*s))&&(*s )) )s++
@@ -42,21 +44,28 @@ void LinefeedPlace(HTMLWidget hw, struct mark_up * mptr,
 	/* We need to center or right adjust the element here. */
 	/* compute the total with and the remaining x offset to center. */
 
-	if ((pcc->div == DIV_ALIGN_CENTER) || (pcc->div == DIV_ALIGN_RIGHT)) {
+	if ((pcc->div == HALIGN_CENTER) || (pcc->div == HALIGN_RIGHT)) {
 		adjx = pcc->cur_line_width - 
 			(pcc->x - pcc->eoffsetx - pcc->left_margin) ;
-		if(pcc->div == DIV_ALIGN_CENTER)
+		if(pcc->div == HALIGN_CENTER)
 			adjx = adjx/2;
 	}
 
 	if (pcc->cw_only) {	/* compute width only , dont create Element*/
 		if (pcc->x > pcc->computed_max_x)
 			pcc->computed_max_x = pcc->x;
-		pcc->y = pcc->y + pcc->cur_line_height;
-		pcc->have_space_after = 0;
-		pcc->x = pcc->left_margin + pcc->eoffsetx;
+		pcc->y = pcc->y + pcc->cur_line_height;	 /* LF equiv. */
+		pcc->x = pcc->left_margin + pcc->eoffsetx +
+			pcc->float_align_left;		 /* CR equiv. */
+/* look at float object */
+		UnsetFloatAlignLeft(pcc); /* test pcc->fasl->fa->trap_boty > pcc->y */
+					/* alors on change pcc->float_align_left */
+
+		UnsetFloatAlignRight(pcc); /* test pcc->fasr->fa->trap_boty > pcc->y */
 		pcc->cur_baseline = pcc->cur_font->ascent;
-		pcc->cur_line_height=pcc->cur_font->ascent+pcc->cur_font->descent;
+/* ###		pcc->cur_line_height=0;		/* #### */
+		pcc->cur_line_height=pcc->cur_font->ascent+pcc->cur_font->descent; /* ##### */
+		pcc->have_space_after = 0;
 		pcc->is_bol = 1;
 		return;
 #ifdef REMEMBER
@@ -88,11 +97,15 @@ if (pcc->cw_only) {	/* compute width only , dont create Element*/
 	if( pcc->x  > pcc->max_width_return )
 		pcc->max_width_return = pcc->x ;
 
-	pcc->y = pcc->y + pcc->cur_line_height;
+	pcc->y = pcc->y + pcc->cur_line_height;		/* LF equiv. */
+	pcc->x = pcc->left_margin + pcc->eoffsetx +
+			pcc->float_align_left;		 /* CR equiv. */
+	UnsetFloatAlignLeft(pcc); /* test pcc->fasl->fa->trap_boty > pcc->y */
+	UnsetFloatAlignRight(pcc);/* test pcc->fasr->fa->trap_boty > pcc->y */
 	pcc->have_space_after = 0;
-	pcc->x = pcc->left_margin + pcc->eoffsetx;
 	pcc->cur_baseline = pcc->cur_font->ascent;
-	pcc->cur_line_height = pcc->cur_font->ascent+pcc->cur_font->descent;
+/*###	pcc->cur_line_height=0;		/* #### */
+	pcc->cur_line_height=pcc->cur_font->ascent+pcc->cur_font->descent;
 	pcc->is_bol = 1;
 	/* CR is at begin of line */
 	eptr = CreateElement(hw, E_CR, pcc->cur_font,
@@ -453,7 +466,7 @@ void PartOfPreTextPlace(HTMLWidget hw, 	/* the widget */
 		 * Break on linefeeds, they must be done separately
 		 */
 		if (*end == '\t') {
-			tmp_cnt= ((char_cnt/8) + 1) * 8;
+			tmp_cnt= ((char_cnt/HTAB_WIDTH) + 1) * HTAB_WIDTH;
 			ntab = tmp_cnt - char_cnt;
 			char_cnt += ntab;
 			if (char_cnt +1 > line_str_len) {

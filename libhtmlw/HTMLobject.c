@@ -18,6 +18,7 @@
 #include <X11/Xlib.h>
 #endif
 
+#include "HTMLparse.h"
 #include "HTMLP.h"
 #include "HTMLPutil.h"
 #include <Xm/XmAll.h>

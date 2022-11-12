@@ -31,6 +31,20 @@
 #include "bitmaps/iconify.xbm"
 #include "bitmaps/iconify_mask.xbm"
 
+#ifdef JAVASCRIPT
+/* include the JS engine API header */
+#include "jsapi.h"
+
+  /*set up global JS variables, including global and custom objects */
+
+JSVersion js_version;
+JSRuntime *js_rt;
+JSContext *js_cx;
+JSObject  *js_glob, *js_it;
+JSBool js_result;
+
+#endif
+
 #ifdef SOLARIS
 #ifdef  __cplusplus             
 extern "C" {
@@ -522,6 +536,48 @@ works on my linux box, hopefully on solaris, too */
 #ifdef MULTICAST
 	McInit(win);	/* Initialize the multicast database listen mode*/
 #endif                               
+
+#ifdef JAVASCRIPT
+	version = JSVERSION_DEFAULT;
+	rt = JS_NewRuntime(8L * 1024L * 1024L);
+	if (!rt) {
+		fprintf(stderr,"JS_NewRuntime: does not success\n");
+		exit(1);
+	}
+
+	cx = JS_NewContext(rt, 8192);
+	if (!cx) {
+		fprintf(stderr,"JS_NewContext:does not success\n");
+		exit(1);
+	}
+	JS_SetBranchCallback(cx, my_BranchCallback);
+	JS_SetErrorReporter(cx, my_ErrorReporter);
+
+glob = JS_NewObject(cx, &global_class, NULL, NULL);
+    if (!glob)
+        return 1;   
+    if (!JS_InitStandardClasses(cx, glob))
+        return 1;
+    if (!JS_DefineFunctions(cx, glob, shell_functions))
+        return 1;
+    
+    /* Set version only after there is a global object. */
+    if (version != JSVERSION_DEFAULT)
+        JS_SetVersion(cx, version);
+    
+    it = JS_DefineObject(cx, glob, "it", &its_class, NULL, 0);
+    if (!it)
+        return 1;
+    if (!JS_DefineProperties(cx, it, its_props))
+        return 1;
+
+/*
+	                                      
+    JS_DestroyContext(cx);            
+    JS_DestroyRuntime(rt);           
+    JS_ShutDown();
+*/
+#endif
 
 /* we have build an empty mo_window. Now we need to fill it with an HTML doc. */
 /* PAF this request */

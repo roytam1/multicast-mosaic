@@ -12,6 +12,7 @@
 #include <X11/StringDefs.h>
 #include <Xm/Label.h>
 
+#include "HTMLparse.h"
 #include "mplugin.h"
 
 /* #define MTVP_PATH "/usr/local/bin/mtvp" */

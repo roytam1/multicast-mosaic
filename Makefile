@@ -10,7 +10,7 @@
 #	- NetWinder (StrongArm based machine)
 #	- SGI Irix 6.5 (MIPSPro)
 
-MCVER=3.7.1
+MCVER=3.7.2
 
 ##
 ## -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
@@ -42,6 +42,8 @@ CC = cc
 
 # GCC : Linux Intel optimised (does not work well)
 #prereleaseflags = -O3 -fomit-frame-pointer -funroll-loops -finline-functions -m486 -malign-double
+# GCC : Linux Intel optimised 
+#prereleaseflags = -Wall -pipe  -O2 -g  -march=pentium -mcpu=pentium
 # GCC : Linux, FreeBSD, NetBSD compiler flags (recommended)
 #prereleaseflags = -Wall -g
 # Qnx
@@ -298,7 +300,7 @@ ARCHIVEDIR = /enst/ftp/pub/mbone/mMosaic
 CFLAGS = $(sysconfigflags) $(prereleaseflags) $(mcflag) $(plugflags) $(customflags)
 
 all: libhtmlw libnut $(mclib) $(explugdir) src
-	@echo \*\*\* Welcome to mMosaic.
+	@echo \*\*\* Welcome to mMosaic-$(MCVER)
 
 
 libhtmlw::

@@ -232,6 +232,7 @@ void HTMLInitColors(Widget w, unsigned int nc)
 					color.green = floor( cur_g);
 					color.red = floor( cur_r);
 					color.flags = DoRed | DoGreen |DoBlue;
+					color.pad =0;
 					if ( !XAllocColor(Dpy, Cmap, &color)) {
 						status = 0;
 						break;

@@ -13,6 +13,7 @@
 #include <Xm/PushB.h>
 #include <Xm/Label.h>
 
+#include "HTMLparse.h"
 #include "mplugin.h"
  
 #define GIFV_PATH "/usr/local/bin/gifview"
