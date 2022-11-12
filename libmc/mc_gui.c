@@ -233,6 +233,100 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
 
 /* parse the text */
 	htinfo = HTMLParseRepair(text);
+	win->htinfo = htinfo;
+	if (htinfo->nframes) { /* I am a frameset */
+		assert(0);		/* ####################### */
+/* determine combien de frame a attendre....; */
+/* ######################################################################### */
+/*        if (win->frame_type ==  FRAMESET_TYPE) { /* dewrap old */
+/*                int i;
+/*                        
+/*                for(i = 0; i < win->frame_sons_nbre; i++) {
+/*                        MMDestroySubWindow(win->frame_sons[i]);
+/*                        win->frame_sons[i] = NULL; /* sanity */
+/*                }                      
+/*                free(win->frame_sons);
+/*                HTMLUnsetFrameSet (win->scrolled_win);
+/* ###################################################################### */
+/*              FreeHtmlTextInfo(win->htinfo); don't free here but in nav. */
+/* ###################################################################### */
+/*        
+/*                win->frame_type = NOTFRAME_TYPE;
+/*        }
+/* ###################################################################### */
+/*	if (htinfo->nframes) { /* this is a frameset */
+/*                mo_window *sub_win=NULL;
+/*                Widget htmlw;
+/*                char *url = NULL , *frame_name;
+/*                RequestDataStruct rds;
+/*                Widget * htmlw_tabs;  /* html widgets return by HTMLSetHTMLmark */                int i;
+/*                         
+/* cas ou on charge un frameset */
+/*                pafd->win->frame_type = FRAMESET_TYPE;
+/*                docid =0;    /* ##### docid = HTMLGetDocId(win->scrolled_win); */
+/*                         
+/* Remarque: la requete (partie HTML) est termine et on a change de current_node*//* mlist mhs html_text title aurl_wa aurl  must be free in navigation stuff */
+/* afficher le texte. le mettre dans la Widget. id come from back and forward */
+/*                         
+/*                docid = 0;              /* we are not in back or forward */
+/*                spafd = *pafd;          /* why??? ############### */
+/*                         
+/* win->scrolled_win est le framset contenant les frame*/
+/* htmlw_tabs est un tableau de widget frame qui va contenir les frames*/
+/*                                       
+/*                HTMLSetFrameSet (win->scrolled_win, htinfo->mlist, pafd->aurl,
+/*                        htinfo->nframes, htinfo->frameset_info, &htmlw_tabs);
+/*                                       
+/* on met a jour immediatement la partie navigation. Car on doit avoir un
+ * current_node qui memorise tout la requete. Title is always allocated. */
+/*                MMUpdNavigationOnNewURL(win, pafd->aurl_wa, pafd->aurl,
+/*                        pafd->goto_anchor, pafd->html_text, pafd->mhs, docid,
+/*                        htinfo);       
+/*                                       
+/*                mo_set_win_headers(win, spafd.aurl_wa, title);
+/*                MMUpdateGlobalHistory(spafd.aurl);
+/*                XFlush(XtDisplay(win->scrolled_win));
+/*                                       
+/* init parent FRAMESET */             
+/*                win->frame_name = NULL;
+/*                win->frame_parent =NULL;
+/*                win->frame_sons = NULL;
+/*                win->frame_sons_nbre =  htinfo->nframes;
+/*                win->number_of_frame_loaded = 0;
+/*                win->frame_sons = (mo_window **) calloc( win->frame_sons_nbre , sizeof(mo_window *));                    
+/* use htmlw_tabs */
+/* creer les sub_mo_window et demarer la requete pour */
+/* htinfo->frameset_info->frames[i].frame_src; */
+/*                for(i = 0 ; i < htinfo->nframes; i++ )  {
+/*                        htmlw = htmlw_tabs[i];
+/*                        url = strdup(htinfo->frameset_info->frames[i].frame_src);
+/*                        frame_name = htinfo->frameset_info->frames[i].frame_name;
+/*                        sub_win = MMMakeSubWindow(win, htmlw, url, frame_name);
+/*                        sub_win->frame_sons_nbre = 0;
+/*                        sub_win->frame_dot_index = i;
+/*                        win->frame_sons[i] = sub_win;
+/*                        rds.ct = rds.post_data = NULL;
+/*                        rds.is_reloading = False;
+/*                        rds.req_url = url;
+/*                        rds.gui_action = FRAME_LOADED_FROM_FRAMSET;
+/*                        sub_win->navigation_action = NAVIGATE_NEW;
+/*                        MMPafLoadHTMLDocInWin (sub_win, &rds);
+/*                        free(url);     
+/*                }
+/*                                       
+/*################################ */  
+/*en finir avec pafd du frameset , quand tous les frames sont loader. */
+/* determine combien de frameset a attendre....;  */
+/* ne detruire le pafd du frameset qu'a la fin du chargement des frames */
+/*################################ */  
+/*                                       
+/*                return;                
+/*                                       
+/*        } 
+/*###################################################################### */  
+/* */
+
+	}
 	mlist = htinfo->mlist;
 
 	if (!htinfo->base_url)
@@ -244,7 +338,8 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
 		title = htinfo->title;
 	else
 		title = strdup(aurl);
-	free(htinfo);
+/* ######################################################################## */
+/*	free(htinfo); */
 
 /* ### scan the mlist and bind href or frame to depend-moid... #### */
 /* ### we can do that because parsing on both side is the same #### */
@@ -351,8 +446,12 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
  *              case M_APROG:    must become OBJECT
  *                      parse for something=
  */                                   
-/*		case M_FRAME: for frame we have a callback... */
+/* ######################################################################## */
+		case M_FRAME:  /* for frame we have a callback... */
+			assert(0);
+			break;
 		case M_FRAMESET:
+			assert(0);
 			s->frameset_moid = start_moid;
 			s->frameset_dot_count = 0;
 			break;
@@ -375,6 +474,7 @@ static void McPreParseAndBindTopObject(Source *s, int start_moid,
 	*top_ret = topinfo;
 }
 
+#if 0
 XmxCallback (mc_frame_callback) 
 {
 	Source *s;
@@ -397,70 +497,27 @@ XmxCallback (mc_frame_callback)
 	int frame_count;
 	int frameset_moid;
 
-        if (!cbs) { 
-#ifdef DEBUG_MULTICAST
-                fprintf(stderr, "mc_frame_callback: NULL call_data\n");
-#endif
-                return;
-        }
 	memset(&topinfo,0,sizeof(McHtmlTopInfoWindow));
-        switch (cbs->reason) {
-        case XmCR_HTML_FRAMEDONE:
-#ifdef DEBUG_FRAME                    
-                fprintf(stderr, "mc_frame_callback: reason: XmCR_HTML_FRAMEDONE\n");                                     
-#endif          
-                break;                
-        case XmCR_HTML_FRAMEDESTROY:  
-#ifdef DEBUG_FRAME                    
-                fprintf(stderr, "mc_frame_callback: reason: XmCR_HTML_FRAMEDESTROY\n");                                  
-#endif          
-                break;                
-        case XmCR_HTML_FRAMECREATE:   
-#ifdef DEBUG_FRAME                    
-                fprintf(stderr, "mc_frame_callback: reason: XmCR_HTML_FRAMECREATE\n");                                   
-#endif          
-                break;                
-        case XmCR_HTML_FRAMESETDESTROY:
-#ifdef DEBUG_FRAME
-                fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMESETDESTROY\n"); 
-#endif
-                parent = win;
-                free(parent->frame_sons) ;
-                win->frame_name = NULL; 
-                win->frame_parent =NULL;
-                win->frame_sons = NULL; 
-                win->frame_sons_nbre =0;
-                win->number_of_frame_loaded = 0;
-                break;
-        case XmCR_HTML_FRAMESET_INIT: 
-#ifdef DEBUG_FRAME
-                fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMESET_INIT\n");
-#endif 
-                win->frame_name = NULL; 
-                win->frame_parent =NULL; 
-                win->frame_sons = NULL; 
-/*                win->frame_sons_nbre =0;  */
-/*??? = cbs.nframe */ 
-                win->frame_sons_nbre =  cbs->nframe ;
-                win->number_of_frame_loaded = 0;
-                parent = win;
-                parent->frame_sons = (mo_window **) realloc(parent->frame_sons,
-                        (parent->frame_sons_nbre) * sizeof(mo_window *));
-                break; 
-        default:                      
-                fprintf(stderr, "mc_frame_callback: reason: Unknowed...\n");
-		assert(0);
-                break;                
-        }                             
-        if (cbs->reason != XmCR_HTML_FRAMEDONE ){
-                return;         /* just for test now */
-        }                             
-#ifdef DEBUG_FRAME                    
-        fprintf(stderr,"cbs.event = %08x\n cbs.src = %s\n cbs.name = %s\n",
-                cbs->event, cbs->src, cbs->name);
-        fprintf(stderr,"bs.html = %08x\n cbs.doit = %d\n",
-                cbs->html, cbs->doit);
-#endif
+
+/* ############################case XmCR_HTML_FRAMESETDESTROY: */
+        parent = win;
+        free(parent->frame_sons) ;
+        win->frame_name = NULL; 
+        win->frame_parent =NULL;
+        win->frame_sons = NULL; 
+        win->frame_sons_nbre =0;
+        win->number_of_frame_loaded = 0;
+
+/* ########################### case XmCR_HTML_FRAMESET_INIT:  */
+        win->frame_name = NULL; 
+        win->frame_parent =NULL; 
+        win->frame_sons = NULL; 
+        win->frame_sons_nbre =  cbs->nframe ;
+        win->number_of_frame_loaded = 0;
+        parent = win;
+        parent->frame_sons = (mo_window **) realloc(parent->frame_sons,
+                (parent->frame_sons_nbre) * sizeof(mo_window *));
+
 /* reason = XmCR_HTML_FRAMEDONE */    
         parent = win;                 
         htmlw = cbs->html;            
@@ -503,15 +560,8 @@ XmxCallback (mc_frame_callback)
                                        
         HTMLSetHTMLmark (sub_win->scrolled_win, mlist, docid, goto_anchor, aurl);
         XFlush(XtDisplay(sub_win->scrolled_win));
-
-/* use in MMUpdNavigationOnNewURL */
-/* ###if(info.aurl) free(info->aurl);	#### */
-/* ###if(info.base_url) free(info->base_url);	#### */
-/* ### if(info.base_target) free(info->base_target);	#### */
-/* ### if(info.title) free(info->title);	#### */
-/* ### if(info.html_text) free(info->html_text);	#### */
-
 }
+#endif
 
 /* we can do that only if depend object is in multicast cache */
 /* we have check for this before */
@@ -553,15 +603,15 @@ void McDoWindowText(Source *s, unsigned int state_id)
 /* on met a jour immediatement la partie navigation. Car on doit avoir un
 /* current_node qui memorise tout la requete */
 /* title is alway allocated. */
-	MMUpdNavigationOnNewURL(s->win, aurl, aurl, goto_anchor, base_url,
-		base_target, title, html_text, mhs, docid, mlist);
+	MMUpdNavigationOnNewURL(s->win, aurl, aurl, goto_anchor, html_text,
+		mhs, docid, s->win->htinfo);
 /* Remarque: la requete (partie HTML) est termine et on a change de current_node*/
 /* mlist mhs html_text title aurl_wa aurl  must be free in navigation stuff */
 /* afficher le texte. le mettre dans la Widget. id come from back and forward */
 
 	HTMLSetHTMLmark (s->win->scrolled_win, mlist, docid, goto_anchor, aurl);
         XFlush(XtDisplay(s->win->scrolled_win));
-        mo_set_win_headers(s->win, aurl);
+        mo_set_win_headers(s->win, aurl, title);
         
 	s->last_valid_state_id = state_id;
 	s->current_state_id_in_window = state_id;

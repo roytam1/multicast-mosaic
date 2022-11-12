@@ -807,7 +807,6 @@ void HideWidgets( HTMLWidget hw)
 	/*
 	 * Make sure all expose events have been dealt with first.
 	 */
-	XmUpdateDisplay((Widget)hw);
 	wptr = hw->html.widget_list;
 	while (wptr != NULL) {
 		if ((wptr->w != NULL)&&(wptr->mapped == True)) {
@@ -818,6 +817,7 @@ void HideWidgets( HTMLWidget hw)
 	}
 				/* Force the exposure events into the queue */
 	XSync(XtDisplay(hw), False);
+	XmUpdateDisplay((Widget)hw);
 				/* Remove all Expose events for the view window */
 	while (XCheckWindowEvent(XtDisplay(hw->html.view),
 		XtWindow(hw->html.view), ExposureMask, &event) == True)

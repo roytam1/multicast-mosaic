@@ -8,7 +8,9 @@
 #include <Xm/ToggleBG.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <assert.h>
 
+#include "../libhtmlw/HTMLparse.h"
 #include "../libhtmlw/HTML.h"
 #include "mosaic.h"
 #include "../libhtmlw/HTMLP.h"
@@ -542,13 +544,10 @@ static void mo_read_hotlist(mo_hotlist *list, FILE *fp)
 
 /* parse the HTML document */
 	htinfo = HTMLParseRepair(text);
+        if (htinfo->nframes) { /* I am a frameset */
+		assert(0); 	/* Y a pas de frameset dans une hotlist */
+        }
 	hot_mark_up = htinfo->mlist;
-	free(htinfo->title);free(htinfo->base_url);free(htinfo->base_target);
-	htinfo->title = NULL;		/* sanity */
-	htinfo->base_url = NULL;		/* sanity */
-	htinfo->base_target = NULL;		/* sanity */
-
-	free(htinfo);
 	free(text);
 
 /* some pre-processing to see if this is in hotlist format or if this is a
@@ -625,7 +624,7 @@ static void mo_read_hotlist(mo_hotlist *list, FILE *fp)
 		list->desc = desc;
 		mo_parse_hotlist_list(list, &mptr);
 	}
-	FreeMarkUpList(hot_mark_up);
+	FreeHtmlTextInfo(htinfo);
 	return;
 }
 
@@ -1868,7 +1867,7 @@ mo_status mo_post_hotlist_win (mo_window *win)
 mo_status mo_add_node_to_current_hotlist (mo_window *win)
 {
   	return mo_add_item_to_hotlist (mMosaicHotList, mo_t_url,
-				 win->current_node->title,
+				 win->current_node->htinfo->title,
 				 win->current_node->aurl,
 				 NULL, 0);
 }

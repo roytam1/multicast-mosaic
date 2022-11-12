@@ -1,5 +1,5 @@
 # Toplevel Makefile for mMosaic.
-#This Release 3.5.1 compile on:
+#This Release 3.5.2 compile on:
 #	- a Linux debian 2.1.8.1 sparc with Lesstif
 #	- Solaris 2.5.1 sparc with Motif
 #	- NetBSD 1.4 sparc
@@ -7,7 +7,7 @@
 #	- Mandrake6.1
 #	- NetWinder (StrongArm based machine)
 
-MCVER=3.5.1
+MCVER=3.5.2
 
 # -------------------------- CUSTOMIZABLE OPTIONS ----------------------------
 
@@ -168,9 +168,9 @@ krbflags  = $(krb4flags) $(krb5flags)
 krblibs   = $(krb4libs) $(krb5libs) 
 
 #### MULTICAST support
-mcdir = $(PWD)/libmc
-mcflag = -I$(mcdir) -DMULTICAST
-mclib = $(mcdir)/libmc.a
+#mcdir = $(PWD)/libmc
+#mcflag = -I$(mcdir) -DMULTICAST
+#mclib = $(mcdir)/libmc.a
 
 #### APROG support (obsolete)
 #adir = $(PWD)/libaprog
@@ -234,7 +234,6 @@ clean:
 	cd libnut; $(MAKE) clean
 	cd libmc; $(MAKE) clean
 	cd src; $(MAKE) clean MOSAIC="Mosaic"
-	cd libaprog; $(MAKE) clean
 	rm -f *.core core
 	@echo "Done cleaning..."
 

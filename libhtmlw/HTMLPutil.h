@@ -3,7 +3,6 @@
 #define LIBHTMLW_HTMLP_UTIL_H
 
 
-extern void 		FreeMarkUpList(struct mark_up *List);
 extern void 		FreeLineList(struct ele_rec *, HTMLWidget );
 extern int 		ElementLessThan(struct ele_rec *s, struct ele_rec *e,
 				int start_pos, int end_pos);
@@ -94,8 +93,7 @@ extern String 		ParseTextToPSString(HTMLWidget hw,
 
 
 
-extern void		hw_do_body_bgima(HTMLWidget, PhotoComposeContext *,
-				struct mark_up *mptr);
+extern void		hw_do_body_bgima(HTMLWidget, struct mark_up *mptr);
 extern void		hw_do_body_color(HTMLWidget,char*,char*,PhotoComposeContext * pcc);
 
 extern void 		TablePlace(HTMLWidget hw, struct mark_up **mptr, 

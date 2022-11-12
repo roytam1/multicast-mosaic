@@ -43,44 +43,8 @@ extern HTMLClassRec htmlClassRec;
 #define D_ULIST         4
 #define D_DESC_LIST_START 5
 
-/*****  
-* Possible types of frame sizes
-*****/               
-typedef enum{   
-        FRAME_SIZE_FIXED = 1,                 /* size specified in pixels    */
-        FRAME_SIZE_RELATIVE,                  /* size is relative */
-        FRAME_SIZE_OPTIONAL                   /* size is optional */
-}FrameSize;             
-                                
-/***** 
-* What type of scrolling a frame should employ.
-*****/                                
-typedef enum{                         
-        FRAME_SCROLL_NONE = 1,        
-        FRAME_SCROLL_AUTO,            
-        FRAME_SCROLL_YES              
-}FrameScrolling; 
+/* To allow arbitrary nesting of lists */
 
-/*****  
-* Possible Frame layout policies
-*****/  
-typedef enum{
-        FRAMESET_LAYOUT_ROWS = 1,  /* rows only */      
-        FRAMESET_LAYOUT_COLS = 2,  /* columns only */      
-        FRAMESET_LAYOUT_ROW_COLS = 4    /* left to right, top to bottom */
-}FramesetLayout;
-
-#define	NOTFRAME_TYPE 0	/* Not a frame, this is a 'normal' html widget*/
-#define	FRAME_TYPE    1	/* this is a frame with html inside */
-#define	FRAMESET_TYPE 2	/* html begin with frameset tag */
-/* remarque:
-	A frameset may have the FRAME_TYPE because son of frameset
-	The upper level frameset does not set the FRAME_TYPE
-*/
-
-/*
- * To allow arbitrary nesting of lists
- */
 typedef struct dtype_rec {
         int type;               /* D_NONE, D_TITLE, D_TEXT, D_OLIST, D_ULIST */
         int count;
@@ -256,72 +220,48 @@ typedef struct _HTMLPart {
         XtCallbackList		pointer_motion_callback;
 
 	/* PRIVATE */
-	Dimension		max_pre_width;
-	Dimension		view_width;
-	Dimension		view_height;
-	int			doc_width;
-	int			doc_height;
-	int			scroll_x;
-	int			scroll_y;
-	Boolean			use_hbar;
-	Boolean			use_vbar;
-	struct ele_rec		*formatted_elements;
-	struct ele_rec		*select_start;
-	struct ele_rec		*select_end;
-	int			sel_start_pos;
-	int			sel_end_pos;
-	struct ele_rec		*new_start;
-	struct ele_rec		*new_end;
-	int			new_start_pos;
-	int			new_end_pos;
-	struct ele_rec		*active_anchor;
-	GC			drawGC;
-	GC			bgimgGC;
-	int			press_x;
-	int			press_y;
-	Time			but_press_time;
-	Time			selection_time;
-	struct mark_up		*html_objects;
-	WidgetInfo		*widget_list;
-	FormInfo		*form_list;
-	MapInfo                 *map_list;
-        Boolean                 obscured;
-	struct ele_rec		*last_formatted_elem;
-	struct ele_rec		*cur_elem_to_format;
+	Dimension	max_pre_width;
+	Dimension	view_width;
+	Dimension	view_height;
+	int		doc_width;
+	int		doc_height;
+	int		scroll_x;
+	int		scroll_y;
+	Boolean		use_hbar;
+	Boolean		use_vbar;
+	struct ele_rec	*formatted_elements;
+	struct ele_rec	*select_start;
+	struct ele_rec	*select_end;
+	int		sel_start_pos;
+	int		sel_end_pos;
+	struct ele_rec	*new_start;
+	struct ele_rec	*new_end;
+	int		new_start_pos;
+	int		new_end_pos;
+	struct ele_rec	*active_anchor;
+	GC		drawGC;
+	GC		bgimgGC;
+	int		press_x;
+	int		press_y;
+	Time		but_press_time;
+	Time		selection_time;
+	struct mark_up	*html_objects;
+	WidgetInfo	*widget_list;
+	FormInfo	*form_list;
+	MapInfo         *map_list;
+        Boolean         obscured;
+	struct ele_rec	*last_formatted_elem;
+	struct ele_rec	*cur_elem_to_format;
 
 /* frame ressource */
-	int		frame_type;	/* FRAMESET_TYPE, FRAME_TYPE,
-						   NOTFRAME_TYPE */
-	HTMLWidget	*frames;	/* a frame is a HTMLWidget */
+	int		frame_type;	/* FRAMESET_TYPE, FRAME_TYPE, NOTFRAME_TYPE */
 					/* FRAMESET_TYPE is a container for FRAME */
+	HTMLWidget	*frames;	/* a frame is a HTMLWidget */
 	int		nframe;		/* number of frame in FRAMESET_TYPE */
+	TopFrameSetInfo *topframeset_info; /* when i am the top frameset */
 
-/* if i am a frame , i have attribute. i am also childs of FRAMESET_TYPE */
-	FrameScrolling	frame_scroll_type;    /* frame scrolling */
-	int             frame_border;   /* add a border to the frames? */
-        int		frame_x;        /* computed frame x-position */
-        int		frame_y;        /* computed frame y-position */
-        Dimension	frame_width;    /* computed frame width */
-        Dimension	frame_height;   /* computed frame height */
-	Dimension       frame_size_s;		/* saved frame size */
-	FrameSize       frame_size_type;	/* horizontal frame size specification */
-        String   	frame_src;      /* source document */
-        String   	frame_name;     /* internal frame name */
-        Dimension	frame_margin_width;   /* frame margin width */
-        Dimension	frame_margin_height;  /* frame margin height */
-        Boolean  	frame_resize;   /* may we resize this frame? */
-        Widget		frame_wid;      /* Widget id for this frame */
-
-/* Frame resizing */
-        int            frame_drag_x;      /* Amount dragged in x-direction */
-        int            frame_drag_y;      /* Amount dragged in y-direction */
-     
-	HTMLWidget	frame_parent_frameset; /* parent frameset, if any */
-        HTMLWidget 	frame_next;  /* next frame child, if any  */
-        HTMLWidget 	frame_prev;  /* prev. frame child, if any    */
-        HTMLWidget 	frame_children;    /* list of frames */
-        FramesetLayout  frame_layout; /* frameset layout policy */
-	XtCallbackList  frame_callback;
+/*      String   	frame_src;      /* source document */
+/*      String   	frame_name;     /* internal frame name */
 
 	FontStack	*font_stack;	/* Widget have font stack */
 	XFontStruct	*default_font;	/* start with this font */
@@ -379,4 +319,9 @@ extern void MMResetWidgetColorStack(HTMLWidget hw);
 
 extern void HTMLDrawBackgroundImage(HTMLWidget w, int x, int y, int width, 
 				    int height);
+extern void _XmHTMLFrameAdjustConstraints( HTMLWidget w, TopFrameSetInfo *tfsi);
+extern HTMLWidget _XmHTMLFrameCreate(HTMLWidget w, FrameInfo * fi);
+extern void _XmHTMLReconfigureFrames(HTMLWidget w, TopFrameSetInfo *tfsi);
+extern void _XmHTMLMapFrames(HTMLWidget w);
+extern void _XmHTMLDestroyFrames(HTMLWidget w);
 #endif /* HTMLP_H */

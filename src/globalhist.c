@@ -154,6 +154,7 @@ void MMInitHistory (char* mmosaic_root_dir)
 	struct mark_up * mptr;
 	time_t t, ldate;
 	char *href, *sldate;
+	HtmlTextInfo * htinfo;
 
 /* creer le fichier ~/.mMosaic/history.html */
 
@@ -176,7 +177,8 @@ void MMInitHistory (char* mmosaic_root_dir)
 	close(lfd_history);
 
 /* read the data base */
-	mptr = mlist = HTMLLexem(data);
+	htinfo = HTMLParseRepair(data);
+	mptr = mlist = htinfo->mlist;
 	t = time(NULL);
 	lhistoryttl = mMosaicAppData.urlExpired*86400;
 
@@ -197,7 +199,7 @@ void MMInitHistory (char* mmosaic_root_dir)
 		}
 		mptr = mptr->next;
 	}
-	FreeMarkUpList(mlist);
+	FreeHtmlTextInfo(htinfo);
 	free(data);
 }
 

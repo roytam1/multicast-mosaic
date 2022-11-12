@@ -11,9 +11,7 @@
 #include <Xm/XmAll.h>
 
 #include "../libnut/mipcf.h"
-#include "../src/mosaic.h"
 #include "../libhtmlw/HTML.h"
-#include "../libhtmlw/HTMLparse.h"
 
 #include "mc_mosaic.h"
 #include "../src/img.h"

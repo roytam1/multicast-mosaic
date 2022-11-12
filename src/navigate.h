@@ -9,7 +9,6 @@
 #define __HISTORY_H__
 
 mo_status mo_add_node_to_history (mo_window *, mo_node *);
-char *mo_grok_title (mo_window *, char *, char *);
 extern void mo_back (Widget w, XtPointer clid, XtPointer calld);
 extern void mo_forward (Widget w, XtPointer clid, XtPointer calld);
 mo_status mo_visit_position (mo_window *, int);
@@ -20,8 +19,8 @@ extern void mo_back_impossible(mo_window *);
 extern void mo_back_possible(mo_window *);
 extern void mo_forward_impossible (mo_window *);
 extern void mo_forward_possible (mo_window *win);
-extern void MMUpdNavigationOnNewURL(mo_window *win, char *aurl_wa, char *aurl,
-	char *goto_anchor, char *base_url, char* base_target, char *title, char *text,
-	MimeHeaderStruct * mhs, int docid, struct mark_up * mlist);
+extern void MMUpdNavigationOnNewURL( mo_window *win, char * aurl_wa, char *aurl,
+        char *goto_anchor, char *text, MimeHeaderStruct *mhs, int docid,
+        HtmlTextInfo * htinfo);
 
 #endif

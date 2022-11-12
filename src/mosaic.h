@@ -28,12 +28,12 @@
 typedef struct _MimeHeaderStruct *MimeHeaderStructPtr;
 
 typedef enum {
-	HTML_LOAD_CALLBACK,
-	FRAME_CALLBACK
+	HTML_LOAD_CALLBACK = 1,
+	FRAME_LOADED_FROM_FRAMESET
 } GuiActionType;
 
 typedef enum {
-        MC_MO_TYPE_UNICAST,
+        MC_MO_TYPE_UNICAST=1,
         MC_MO_TYPE_MAIN,         /* only the Main can send */
         MC_MO_TYPE_RCV_URL_ONLY,
         MC_MO_TYPE_RCV_ALL
@@ -178,7 +178,7 @@ typedef enum {
 
 /* -------------------------------- MACROS -------------------------------- */
 
-#define MO_VERSION_STRING "3.5.1"
+#define MO_VERSION_STRING "3.5.2"
 #define MO_HELP_ON_VERSION_DOCUMENT \
 	mo_assemble_help_url ("help-on-version-2.7b5.html")
 #define MO_DEVELOPER_ADDRESS "mMosaic-dev@tsi.enst.fr"
@@ -329,7 +329,8 @@ typedef enum _NavigationType {
 	NAVIGATE_NEW=1,
 	NAVIGATE_OVERWRITE=2,
 	NAVIGATE_BACK=3, 
-	NAVIGATE_FORWARD=4 } NavigationType;
+	NAVIGATE_FORWARD=4 
+} NavigationType;
 
 /* mo_window contains everything related to a single Document View
  * window, including subwindow details. */
@@ -338,12 +339,15 @@ typedef struct _mo_window {
 	int mode;
     
 /* frame */
+	FrameType	frame_type;
 	char * frame_name;
 	struct _mo_window * frame_parent;
 	struct _mo_window ** frame_sons;
 	int frame_sons_nbre;
 	int frame_dot_index;
 	int number_of_frame_loaded;
+
+	HtmlTextInfo *htinfo;
 
 	NavigationType navigation_action;	/* how we navigate */
 /* Subwindows. */
@@ -555,21 +559,19 @@ typedef struct {
    mo_node will never be effective across multiple mo_window's;
    each window has its own linear history list. */
 typedef struct mo_node {
-	char *title;
 	char *aurl_wa;	/* the full absolute url with anchor */
 	char *aurl;	/* THE absolute url of this document */
 	char *base_url;	/* a tag <BASE> is dectect, else aurl */
 	char *goto_anchor;	/* #target in url */
-	char *base_target;	/* <BASE target="..." */
 	char *last_modified;
 	char *expires;
 	char *text;	/* a copy of html text , need to be freed */
 			/* when the node is released */
-	struct mark_up * m_list;
 	int position;	 /* Position in the list, starting at 1; last item is*/
 			  /* effectively 0 (according to the XmList widget). */
 	int docid; 	/* This is returned from HTMLPositionToId. */
 	struct _MimeHeaderStruct * mhs;
+	HtmlTextInfo * htinfo;	/* hyperText info */
 
 	int authType; 	/* Type of authorization */
 	struct mo_node *previous;
@@ -657,13 +659,14 @@ extern void InitChildProcessor();
 extern mo_status mo_edit_source(mo_window *win);
 extern mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t);
 extern mo_window *MMMakeSubWindow( mo_window *parent, Widget htmlw,
-                        char *url, char *frame_name);
+	char *url, char *frame_name);
+extern void MMDestroySubWindow( mo_window *swin);
 
 extern void System(char *cmd, char *title);
 extern mo_window *mo_main_next_window (mo_window *win);
 extern mo_status mo_source_date(mo_window *win);
-extern void ShowNoProxyDialog(mo_window *win);
-extern void ShowProxyDialog(mo_window *win);
+extern void PopNoproxyDialog();
+extern void PopProxyDialog();
 
 mo_status mo_save_window(mo_window *win, char *fname,
                                         mo_format_token save_format);

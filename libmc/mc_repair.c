@@ -9,8 +9,6 @@
 #include <assert.h>
 
 #include <Xm/XmAll.h>
-#include "../libnut/mipcf.h"
-#include "../src/mosaic.h"
 
 #include "mc_mosaic.h"
 #include "mc_rtp.h"

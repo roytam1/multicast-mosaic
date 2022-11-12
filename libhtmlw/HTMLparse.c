@@ -138,8 +138,50 @@ static void FreeMarkup( struct mark_up *mptr)
 		free(mptr->start);
 	if (mptr->pcdata)
 		free(mptr->pcdata);
+        if (mptr->end != NULL)
+		free((char *)mptr->end);
+	if ( (!mptr->is_end) && (mptr->type == M_ANCHOR) ) {
+		if (mptr->anc_name)
+			free(mptr->anc_name);
+		if (mptr->anc_href)
+			free(mptr->anc_href);
+		if (mptr->anc_title)
+			free(mptr->anc_title);
+	}
+#ifdef APROG
+	if (mptr->s_aps){       /* aprog */
+		_FreeAprogStruct(mptr->s_aps);
+	}
+#endif
+#ifdef APPLET
+	if (mptr->s_ats){       /* applet */
+		_FreeAppletStruct(mptr->s_ats);
+	}
+#endif
+/*	if (mptr->t_p1){        /* table */
+/*		_FreeTableStruct(mptr->t_p1);
+/*	}
+*/
 	free(mptr);
 }
+
+/* Free up the passed linked list of parsed elements, freeing
+ * all memory associates with each element.
+ */
+static void FreeMarkUpList(struct mark_up *List)
+{
+        struct mark_up *current;
+        struct mark_up *mptr;
+ 
+        current = List;
+        while (current != NULL) {
+                mptr = current;
+                current = current->next;
+                mptr->next = NULL;
+		FreeMarkup(mptr);
+        }
+}
+
 
 /* Clean up the white space in a string. Remove all leading and trailing
  * whitespace, and turn all internal whitespace into single spaces separating
@@ -582,7 +624,7 @@ typedef struct _ParserStack{
 ParserStack BaseStck =  { M_INIT_STATE, NULL }; /* never write here */
 
 typedef struct _ParserContext {
-	ParserStack *base_stk;	/* stack base point */
+	ParserStack *base_stk;			/* stack base point */
 	ParserStack *top_stk; 			/* actual stack */
 	int has_head;				/* head seen */
 	int has_title;				/* title seen */
@@ -592,6 +634,8 @@ typedef struct _ParserContext {
 	int has_base;				/* base seen */
 	int has_frameset;			/* frameset seen */
 	int frameset_depth;			/* nested frameset */
+	int nframes;				/* number of frame (at top level)*/
+	struct mark_up * frameset_mark;		/* FIRST <FRAMESET> */
 } ParserContext;
 
 static  ParserContext Pcxt = {
@@ -599,9 +643,14 @@ static  ParserContext Pcxt = {
 	NULL,		/* top_stk */
 	0,		/* has_head */
 	0,		/* has_body */
+	NULL,		/* title_text */
+	NULL,		/* title_mark */
+	0,		/* has_body */
 	0,		/* has_base */
 	0,		/* has_frameset */
-	0		/* frameset_depth */
+	0,		/* frameset_depth */
+	0,		/* nframe */
+	NULL		/* frameset_mark */
 };
 
 static struct mark_up begin_mark;
@@ -746,6 +795,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 			if (pc->has_frameset)
 				return REMOVE_TAG;
 			pc->has_frameset = 1;
+			pc->frameset_mark = mptr;
 			*sop = SOP_PUSH;
 			return GOOD_TAG;
 		default:
@@ -874,6 +924,10 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 				return REMOVE_TAG;
 			return REMOVE_TAG;	/* maybe something to repair...*/
 		case M_FRAME:
+			if (mptr->is_end) {
+				return REMOVE_TAG;
+			}
+			pc->nframes++;
 			return GOOD_TAG;
 		case M_FRAMESET:
 			if (mptr->is_end) { /* match the open FRAMESET */
@@ -888,6 +942,15 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 			pc->frameset_depth++;
 			*sop = SOP_PUSH;
 			return GOOD_TAG;
+		case M_END_STATE:		/* check depth */
+						/* close FRAMESET cleanly */
+			if (pc->frameset_depth >= 0 ) {
+				tmptr = HTMLLexem("</FRAMESET>");
+				*im_ret = tmptr; /* close the FRAMESET */
+				return INSERT_TAG;
+			}
+			*sop = SOP_POP_END;
+			return END_STATE_TAG;
 		default:
 			return REMOVE_TAG;	/* all other is an error */
 		}
@@ -1251,7 +1314,7 @@ static int ParseElement(ParserContext *pc, struct mark_up *mptr,
 	return REMOVE_TAG ;
 }
 
-void PushParserStack(ParserContext *pc, MarkType id) 
+static void PushParserStack(ParserContext *pc, MarkType id) 
 { 
         ParserStack *stmp;
  
@@ -1261,7 +1324,7 @@ void PushParserStack(ParserContext *pc, MarkType id)
         pc->top_stk = stmp;    
 }      
 
-MarkType PopParserStack(ParserContext *pc)
+static MarkType PopParserStack(ParserContext *pc)
 {
 	MarkType id;
 	ParserStack *stmp;
@@ -1355,6 +1418,462 @@ static void RecurHTMLParseRepair(ParserContext *pc,
 	}
 }
 
+/* ########################################### */
+/* ########################################### */
+
+/* stack of framesets */
+        
+typedef struct _FrameStack{
+        FrameSetInfo *frame_set;
+        struct _FrameStack *next;
+}FrameStack; 
+        
+static FrameSetInfo *frame_sets = NULL; /* list of all framesets processed */
+static FrameStack *frame_stack = NULL;
+
+static void recursiveDestroyFrameset(FrameSetInfo *fset)
+{                                      
+	if ( fset == NULL)
+		return;
+
+	assert(fset->type == FRAMESET_TYPE);
+
+	recursiveDestroyFrameset(fset->fs_next_frameset);
+
+	free(fset->fs_child_sizes);
+	free(fset->fs_child_size_types);
+	free(fset->fs_childs);
+
+	free(fset);           
+}    
+
+static void FreeTopFrameSetInfo(HtmlTextInfo * hti)
+{
+	TopFrameSetInfo * top;
+	FrameSetInfo *ffsi;
+
+	top = hti->frameset_info;
+	ffsi = top->frameset_info;
+
+	recursiveDestroyFrameset(ffsi);
+	free(top->frames);
+	free(top);
+}
+
+void FreeHtmlTextInfo(HtmlTextInfo * htinfo)
+{
+	if (htinfo->nframes)
+		FreeTopFrameSetInfo(htinfo);
+
+	if (htinfo->title)	free(htinfo->title);
+	if (htinfo->base_url)	free(htinfo->base_url);
+	if (htinfo->base_target)free(htinfo->base_target);
+	if (htinfo->mlist)
+		FreeMarkUpList(htinfo->mlist);
+	
+	free(htinfo);
+}
+
+                                      
+static void pushFrameSet(FrameSetInfo *frame_set)
+{
+        FrameStack *tmp;              
+        
+        tmp = (FrameStack*)calloc(1, sizeof(FrameStack));
+        tmp->frame_set = frame_set;
+        tmp->next = frame_stack;
+        frame_stack = tmp;
+}
+
+/* Name:                 popFrameSet
+* Return Type:  frameSet*
+* Description:  pops a frameset of the stack
+* Returns:
+*       the next frameset on the stack, or NULL when stack is empty
+*/                                
+static FrameSetInfo* popFrameSet(void)    
+{                                     
+        FrameStack *tmp;              
+        FrameSetInfo *frame_set;          
+                                      
+        if(frame_stack->next) {       
+                tmp = frame_stack;    
+                frame_stack = frame_stack->next;
+                frame_set = tmp->frame_set;
+                free(tmp);            
+                return(frame_set);    
+        }                             
+        return(NULL);                 
+}
+
+
+/* Description:
+*	 creates and fills a frameSet structure with the info in it's
+*        attributes
+* In:     
+*       attributes:     attributes for this frameset
+* Returns:
+*       a newly created frameset.
+* Note:              
+*       this routine inserts each frameset it creates in a linked list which
+*       is used for stack purposes.
+*/  
+static FrameSetInfo * doFrameSet(char * attributes)
+{
+        FrameSetInfo *list, *tmp;
+        char *chPtr, *tmpPtr, *ptr;
+        int i;          
+
+        /* create new entry */
+        list = (FrameSetInfo*)calloc(1,sizeof(FrameSetInfo));
+
+        list->fs_layout_type = FRAMESET_LAYOUT_ROWS;
+
+        if((chPtr = ParseMarkTag(attributes, MT_FRAMESET,  "rows")) == NULL) {
+                if((chPtr = ParseMarkTag(attributes, MT_FRAMESET, "cols")) == NULL) {     
+                        list->fs_layout_type = FRAMESET_LAYOUT_ROWS;
+                } else
+                        list->fs_layout_type = FRAMESET_LAYOUT_COLS;
+        }
+ 
+        /*
+        * count how many childs this frameset has: the no of childs is given by
+        * the no of entries within the COLS or ROWS tag
+        * Note that childs can be frames and/or framesets as well.
+        */
+        for(tmpPtr = chPtr; tmpPtr && *tmpPtr != '\0'; tmpPtr++)
+                if(*tmpPtr == ',')
+                        list->fs_nchilds++;
+        list->fs_nchilds++;
+
+        list->fs_child_sizes = (int*)calloc(list->fs_nchilds, sizeof(int));
+        list->fs_child_size_types = (FrameSize*)calloc(list->fs_nchilds, sizeof(FrameSize));
+/* a Child is either a Frame or a Frameset */
+        list->fs_childs = (FrameChildInfo*)calloc(list->fs_nchilds, sizeof(FrameChildInfo));
+         /*      
+        * get dimensions: when we encounter a ``*'' in a size definition it
+        * means we are free to choose any size we want. When its a number
+        * followed by a ``%'' we must choose the size relative against the total
+        * width of the render area. When it's a number not followed by anything
+        * we have an absolute size.    
+        */                             
+        tmpPtr = ptr = chPtr;          
+        i = 0;                         
+        list->fs_child_size_types[i] = FRAME_SIZE_OPTIONAL;
+        while(tmpPtr){                 
+                if(*tmpPtr == ',' || *tmpPtr == '\0') {
+                        if(*(tmpPtr-1) == '*')
+                                list->fs_child_size_types[i] = FRAME_SIZE_OPTIONAL;
+                        else if(*(tmpPtr-1) == '%')
+                                list->fs_child_size_types[i] = FRAME_SIZE_RELATIVE;
+                        else           
+                                list->fs_child_size_types[i] = FRAME_SIZE_FIXED;
+                                       
+                        list->fs_child_sizes[i++] = atoi(ptr);
+                                       
+                        if(*tmpPtr == '\0') 
+                                break; 
+                        ptr = tmpPtr+1;
+                }                      
+                tmpPtr++;              
+                /* sanity */           
+                if(i == list->fs_nchilds) 
+                        break;         
+        }                              
+        if (chPtr) free(chPtr);        
+                                       
+/* insert this new frame in the overal frameset list. */
+        if(frame_sets == NULL) {
+                frame_sets = list;     
+        } else {                         
+                for(tmp = frame_sets; tmp != NULL && tmp->fs_next_frameset != NULL;
+                        tmp = tmp->fs_next_frameset);
+                tmp->fs_next_frameset = list;      
+        }                              
+                                       
+/* create actual representation of frameset */
+	list->type = FRAMESET_TYPE ;
+        return(list);                  
+}
+
+/*
+* Description:  inserts a child frameset in it's parent list
+* In:
+*       parent:         parent of this frameset
+*       child:          obvious
+*/
+static void insertFrameSetChild(FrameSetInfo *parent, FrameSetInfo *child)
+{
+        int idx = parent->fs_childs_done;
+        FrameSetInfo *dad, *son;
+	FrameChildInfo *c;
+ 
+        assert(parent);
+ 
+        child->fs_parent_fs = parent;
+        child->fs_insert_pos = idx;
+ 
+        dad = parent;
+        son = child;
+ 
+        son->fs_size_s = parent->fs_child_sizes[child->fs_insert_pos];
+        son->fs_size_type = parent->fs_child_size_types[child->fs_insert_pos];
+ 
+        if(son->fs_size_s == 0)
+                son->fs_size_type = FRAME_SIZE_OPTIONAL;
+ 
+        for(c = dad->fs_fc_children ; c != NULL ; c = c->fai.any_fc_next_child)
+                if(!c->fai.any_fc_next_child)
+                        break;
+        if(c)
+                c->fai.any_fc_next_child = (FrameChildInfo *)son;
+        else
+                dad->fs_fc_children = (FrameChildInfo *)son ;
+
+        son->fs_fc_prev_child = c ;
+        son->fs_parent_fs = dad ;
+
+        parent->fs_childs[parent->fs_childs_done] = *((FrameChildInfo*)child);
+        parent->fs_childs_done++;
+}
+
+     
+/* Description:  fills a HTML frame structure with data from it's attributes
+* In:
+*       topfs:          The Top level Frameset
+*       attributes:     frame attributes
+*	idx:		numero du frame % au top level
+* Returns:
+*       updated frame
+* Note:
+*       this routine takes the frame to update from an already allocated list
+*       of frames .
+*****/
+ 
+static FrameInfo * doFrame(TopFrameSetInfo *topfs, char *attributes, int idx)
+{
+        FrameInfo *frame;
+        char *chPtr;
+ 
+        frame = &topfs->frames[idx];
+ 
+/* default frame sizing & scrolling */
+        frame->frame_size_type = FRAME_SIZE_FIXED;
+        frame->frame_scroll_type = FRAME_SCROLL_AUTO;
+ 
+/* get frame name, default to _frame if not present */
+        if(!attributes || (frame->frame_name = ParseMarkTag(attributes, MT_FRAME, "name")) == NULL) {
+                char buf[24];
+
+                sprintf(buf, "_frame%i", idx);
+                frame->frame_name = strdup(buf);
+        }
+ 
+        /* pick up all remaining frame attributes */
+        if(attributes) {
+        	frame->frame_border = 2;
+        	if((chPtr = ParseMarkTag(attributes, MT_FRAME, "frameborder")) != NULL){            
+         
+/* frameset definition allows a tag to have a textvalue or a number. */
+                	if(!(strcasecmp(chPtr, "no")) || *chPtr == '0')
+                        	frame->frame_border = 0;
+                	else
+                        	frame->frame_border = atoi(chPtr);
+                	free(chPtr);         
+        	} 
+/* disable resizing if we don't have a border */
+        	if(!frame->frame_border)
+                	frame->frame_resize = 0;
+
+                frame->frame_src = ParseMarkTag(attributes,MT_FRAME,"src");
+                frame->frame_margin_width = 5;
+                if (chPtr = ParseMarkTag(attributes, MT_FRAME, "marginwidth")){
+                        frame->frame_margin_width = atoi(chPtr);
+                        free(chPtr);
+                }
+                frame->frame_margin_height = 5;
+                if (chPtr = ParseMarkTag(attributes, MT_FRAME, "marginheight")){
+                        frame->frame_margin_height = atoi(chPtr);
+                        free(chPtr);
+                }
+
+ 
+/* inherit margins from parent if we'd gotten an invalid spec */
+                if(!frame->frame_margin_width)
+                        frame->frame_margin_width = topfs->def_margin_width;
+                if(!frame->frame_margin_height)
+                        frame->frame_margin_height =topfs->def_margin_height;                                       
+/*                                     
+ * This is useless as we don't support frame resizing. I think this is
+ * a thing the caller must be able to do. A possible way could be to
+ * overlay the render area with a PanedWidget and store these HTML
+ * widgets as childs of this paned widget.  
+ */                                    
+                if (chPtr = ParseMarkTag(attributes, MT_FRAME, "noresize")){
+                        frame->frame_resize = 0;
+                        free(chPtr);   
+                }                      
+/* what about scrolling? */            
+                if(chPtr = ParseMarkTag(attributes, MT_FRAME,"scrolling")){
+                        if(!(strcasecmp(chPtr, "yes")))
+                                frame->frame_scroll_type = FRAME_SCROLL_YES;
+                        else if(!(strcasecmp(chPtr, "no")))
+                                frame->frame_scroll_type = FRAME_SCROLL_NONE;                        free(chPtr);   
+                }                      
+        } else {                       
+                frame->frame_src           = NULL;
+                frame->frame_margin_width  = 5;
+                frame->frame_margin_height = 5;
+                frame->frame_resize        = 1;
+        }                              
+                                       
+#ifdef DEBUG_FRAME
+fprintf(stderr,"doFrame, frame %i created\n\tname: %s\n\tsrc : %s\n"         
+                "\tmargin width : %i\n\tmargin height: %i\n\tresize: %s\n"
+                "\tscrolling    : %s\n",
+                idx, frame->frame_name,
+                frame->frame_src ? frame->html.frame_src : "<none>",
+                frame->frame_margin_width, frame->frame_margin_height,
+                frame->frame_resize ? "yes" : "no",
+                frame->frame_scroll_type == FRAME_SCROLL_AUTO ? "auto" :
+                (frame->frame_scroll_type == FRAME_SCROLL_YES ? "always" : "none")));                               
+#endif   
+/* Actual widget creation is postponed until the very last moment
+ * of _XmHTMLCreateFrames       
+ */                             
+        return(frame);                 
+}
+
+
+/* Description:  sets the geometry constraints on a HTML frame
+* In:
+*       frame_set:      frameset parent of this frame;
+*       frame:          frame for which to set the constraints
+* Returns:
+*       nothing, but frame is updated.
+*/
+static void insertFrameChild(FrameSetInfo *frame_set, FrameInfo *frame)
+{
+        FrameChildInfo *c;
+	FrameSetInfo *dad;
+        int insert_pos = frame_set->fs_childs_done;
+ 
+        frame->frame_size_s = frame_set->fs_child_sizes[insert_pos];
+        frame->frame_size_type = frame_set->fs_child_size_types[insert_pos];
+ 
+        if(frame->frame_size_s == 0)
+                frame->frame_size_type = FRAME_SIZE_OPTIONAL;
+ 
+        dad = frame_set;
+        for(c = dad->fs_fc_children ; c != NULL ; c = c->fai.any_fc_next_child)
+                if(!c->fai.any_fc_next_child)
+                        break;
+        if(c)
+                c->fai.any_fc_next_child = (FrameChildInfo *) frame;
+        else                          
+                dad->fs_fc_children = (FrameChildInfo *) frame;
+        frame->frame_fc_prev_child = c;
+        frame->frame_parent_fs = dad;
+
+        frame_set->fs_childs_done++;     
+}                                     
+     
+/* mptr is a pointer to the first frameset mark*/
+static TopFrameSetInfo * makeFramesetInfo(struct mark_up * mptr, int o_nframe)
+{
+	struct mark_up *tmp;
+	FrameSetInfo *current_set = NULL;
+	FrameSetInfo *parent_set = NULL;
+	TopFrameSetInfo *top_set = NULL;
+	FrameInfo * frame_info = NULL;
+	int idx = 0;
+ 
+/* mptr is a pointer to the first frameset mark*/
+	assert(mptr->type == M_FRAMESET);
+
+	frame_stack = NULL;
+	frame_sets = NULL;
+
+	top_set = (TopFrameSetInfo*) calloc(1, sizeof(TopFrameSetInfo));
+	top_set->n_allo_frames = o_nframe;
+	top_set->frames = (FrameInfo*) calloc(o_nframe, sizeof(FrameInfo));
+
+	pushFrameSet(current_set); 
+	parent_set = frame_stack->frame_set;
+	top_set->frameset_info = current_set = doFrameSet(mptr->start);
+	mptr = mptr->next;
+	
+	for(tmp = mptr; tmp != NULL; tmp = tmp->next) {
+		switch(tmp->type) {
+		case M_FRAMESET:
+			if(tmp->is_end) { 	/* end frameset  pop stack*/
+				current_set = popFrameSet();
+/* no more sets on the stack : we've reached end of outermost frameset tag */
+				if(current_set == NULL) {
+					top_set->nframes = idx;
+					return top_set;
+				}
+			} else { /* A new frameset, push current frameset */
+				pushFrameSet(current_set); 
+				parent_set = frame_stack->frame_set;
+/* Check if we still have room for this thing.*/
+				if( parent_set->fs_childs_done < parent_set->fs_nchilds) {
+						/* create a new frameset */
+					current_set = doFrameSet(tmp->start);
+					insertFrameSetChild(parent_set, current_set);
+				} else {
+/* No more room available, this is an unspecified
+* frameset, kill it and all childs it might have. 
+*/
+					int depth = 1;
+					for(tmp = tmp->next; tmp != NULL; tmp = tmp->next) {
+						if(tmp->type == M_FRAMESET) {
+							if(tmp->is_end) {
+								if(--depth == 0)
+									break;
+							} else /*child frameset*/
+								depth++;
+						}
+					}
+#ifdef DEBUG_FRAME
+	fprintf(sdterr,"makeFrameset: Bad <FRAMESET>: missing COLS/ROWS attribute on parent set\n    Skipped all frame declarations\n");
+#endif 
+				}
+			}
+			break;
+
+		case M_FRAME:
+					/* check if we have room left */
+			if(current_set->fs_childs_done < current_set->fs_nchilds) {
+					/* insert child in current frameset */
+				frame_info = doFrame(top_set, tmp->start, idx);
+				insertFrameChild(current_set, frame_info);
+				idx++;
+			} else {
+#ifdef DEBUG_FRAME
+	fprintf(sdterr,"makeFrameset: Bad <FRAME> tag: missing COLS or ROWS attribute\n    on parent set, skipped.");
+#endif
+				; /* do nothing : skip FRAME */
+			}
+
+/* </FRAME> doesn't exist. The parser is smart enough to kick these out.
+ */
+		default:
+			break;		/* skip unknow tag */
+		}	/* switch */
+
+		if(idx == top_set->n_allo_frames){
+			while (current_set)
+				current_set = popFrameSet();
+			top_set->nframes = idx;
+			return top_set;		/* reach the number, so return */
+		}
+	}
+	assert(0);		/* never goes here, else parser error... */
+}
+
+/* ########################################### */
+/* ########################################### */
 /* Parser of HTML text.  Takes raw text, and produces a linked
  * list of mark objects SUITABLE FOR GRAPHIC PROCESSING.
  * It call HTMLLexem and analyze the stream of markup return by HTMLLexem.
@@ -1372,6 +1891,7 @@ HtmlTextInfo * HTMLParseRepair( char *str)
 	char * base_url;
 	char * base_target =NULL;
 	HtmlTextInfo *htinfo;
+	TopFrameSetInfo *fs_info = NULL;
 
 	if (str == NULL)
 		return(NULL);
@@ -1393,6 +1913,8 @@ HtmlTextInfo * HTMLParseRepair( char *str)
 	Pcxt.has_base = 0;
 	Pcxt.has_frameset = 0;
 	Pcxt.frameset_depth = 0;
+	Pcxt.nframes = 0;
+	Pcxt.frameset_mark = NULL;
 	RecurHTMLParseRepair(&Pcxt, pmptr, mptr, M_INIT_STATE);
 
         mptr = begm.next;
@@ -1412,13 +1934,24 @@ HtmlTextInfo * HTMLParseRepair( char *str)
                 }                      
                 mptr = mptr->next;     
         }
+	if (Pcxt.nframes) {	/* have frameset check the valid set */
+				/* flatten frame */
+		fs_info = makeFramesetInfo(Pcxt.frameset_mark, Pcxt.nframes);
+		if (! fs_info) {	/* error */
+			Pcxt.nframes = 0;
+		} else {
+			Pcxt.nframes = fs_info->nframes;
+		}
+	}
 	htinfo = (HtmlTextInfo *) calloc(1,sizeof(HtmlTextInfo));
-	if (!Pcxt.title_text) 
+	if (!Pcxt.title_text)
 		Pcxt.title_text = strdup("Untitled");
 	htinfo->title = Pcxt.title_text;
 	htinfo->base_url = base_url;
 	htinfo->base_target = base_target;
 	htinfo->mlist = begm.next;
+	htinfo->nframes = Pcxt.nframes;	/* if not null, it's a frameset */
+	htinfo->frameset_info = fs_info;
 	return htinfo ;
 }
 

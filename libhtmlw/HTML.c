@@ -20,7 +20,6 @@
 
 #include "HTMLP.h"
 #include "HTMLPutil.h"
-#include "HTMLframe.h"
 
 #define DEBUG_REFRESH 0
 
@@ -62,7 +61,6 @@ static Boolean          SetValues(HTMLWidget current, HTMLWidget request,
 				HTMLWidget nw);
 static XtGeometryResult GeometryManager(Widget w, XtWidgetGeometry *request,
 				XtWidgetGeometry *reply);
-static Dimension        VbarWidth(HTMLWidget hw);
 static void		ViewRedisplay(HTMLWidget hw, int x, int y,
 				int width, int height);
 void             	ViewClearAndRefresh(HTMLWidget hw);
@@ -131,10 +129,6 @@ static XtResource resources[] = {
 	},
 	{ WbNsubmitFormCallback, XtCCallback, XtRCallback, sizeof(XtCallbackList),
 	  XtOffset (HTMLWidget, html.form_callback), XtRImmediate, (caddr_t) NULL
-	},
-	{ WbNframeCallback, XtCCallback, XtRCallback, sizeof (XtCallbackList),
-	  XtOffset (HTMLWidget, html.frame_callback),
-	  XtRImmediate, (caddr_t) NULL
 	},
 	{ WbNbodyColors, WbCBodyColors, XtRBoolean, sizeof (Boolean),
 	  XtOffset (HTMLWidget, html.body_colors), XtRString, "True"
@@ -276,8 +270,7 @@ WidgetClass htmlWidgetClass = (WidgetClass)&htmlClassRec;
 static Cursor in_anchor_cursor = (Cursor)NULL;
 
 
-void hw_do_body_bgima(HTMLWidget hw, PhotoComposeContext * pcc,
-	struct mark_up *mptr) 
+void hw_do_body_bgima(HTMLWidget hw, struct mark_up *mptr) 
 {
 	ImageInfo lpicd;
 
@@ -605,14 +598,14 @@ static void Realize(Widget ww, XtValueMask *valueMask, XSetWindowAttributes *att
 } /* End Realize */ 
 
 /* Return the width of the vertical scrollbar */
-static Dimension VbarWidth( HTMLWidget hw)
+static Dimension VbarWidth( /*HTMLWidget hw*/)
 {
 	return(VERT_SCROLL_WIDTH);
 }
 
 /* Return the height of the horizontal scrollbar */
 
-Dimension HbarHeight( HTMLWidget hw)
+Dimension HbarHeight( /*HTMLWidget hw*/)
 {
 	return(HORIZ_SCROLL_HEIGHT);
 }
@@ -776,8 +769,8 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
 /* Find the current scrollbar sizes, and shadow thickness and format
  * the document to the current window width (assume a vertical scrollbar)
  */
-	swidth = VbarWidth(hw);
-	sheight = HbarHeight(hw);
+	swidth = VbarWidth();
+	sheight = HbarHeight();
 	st = hw->manager.shadow_thickness;
 	if (hw->core.width <= swidth+2*st)
 		hw->core.width = swidth + 10 + 2*st;
@@ -785,7 +778,7 @@ void ReformatWindow( HTMLWidget hw, Boolean save_obj)
 	temp = FormatAll(hw, new_width,save_obj);
 
 /* if height is too height tell the wiget to use the vbar */
-	if ( temp > hw->core.height - HbarHeight(hw) ){
+	if ( temp > hw->core.height - HbarHeight() ){
 		hw->html.use_vbar = True;
 	} else { 
 		hw->html.use_vbar = False;
@@ -925,17 +918,8 @@ static void Initialize( HTMLWidget request, HTMLWidget nw)
 	nw->html.nframe = 0;
 	nw->html.frame_type = NOTFRAME_TYPE;
 	nw->html.frames = NULL;
-	nw->html.frame_src = NULL;
-	nw->html.frame_name = NULL;
-	nw->html.frame_wid = NULL;
-	nw->html.frame_parent_frameset = NULL;
-	nw->html.frame_next = NULL;
-	nw->html.frame_prev = NULL;
-	nw->html.frame_children = NULL;
-	nw->html.frame_callback = NULL;
 
 /* Find the max width of a preformatted line in this document. */
-/* #### we only know the max_pre_width when we set html_object #### */
 	nw->html.max_pre_width = 0;
 
 	nw->html.drawGC = NULL; 	/* Initialize private widget resources */
@@ -1108,9 +1092,8 @@ void ViewRedisplay( HTMLWidget hw, int x, int y, int width, int height)
 
 void ViewClearAndRefresh( HTMLWidget hw)
 {
-	int r,b;
 
-/* Only refresh if we have a window already. (if we have a GC we have a window) */
+/* Only refresh if we have a window already. */
 	if (!XtIsRealized((Widget)hw))
 		return;
 
@@ -1165,7 +1148,7 @@ static void Resize( HTMLWidget hw)
 		hw->html.view_width= hw->core.width;
 		hw->html.view_height = hw->core.height;
 		/*ConfigScrollBars(hw);*/
-		_XmHTMLReconfigureFrames(hw);
+		_XmHTMLReconfigureFrames(hw, hw->html.topframeset_info);
 		return;
 	}
 	ResetWidgetsOnResize(hw);
@@ -3110,6 +3093,7 @@ void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 	hw->html.html_objects = mlist;
 				/* Reformat the new text */
 	hw->html.max_pre_width = 0;
+	hw->html.formatted_elements = NULL;
 	ReformatWindow(hw,False); /* here we rescan all tag and make all */
 
 	/* If a target anchor is passed, override the element id
@@ -3166,6 +3150,83 @@ void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 	hw->html.new_start_pos = 0;
 	hw->html.new_end_pos = 0;
 	hw->html.active_anchor = NULL;
+}
+
+void HTMLUnsetFrameSet (Widget w)
+{
+	HTMLWidget hw = (HTMLWidget) w;
+
+	assert(hw->html.frame_type == FRAMESET_TYPE);
+
+	_XmHTMLDestroyFrames(hw);
+        hw->html.frames = NULL;
+	hw->html.nframe = 0;
+	hw->html.frame_type = NOTFRAME_TYPE;
+	hw->html.html_objects = NULL;
+}
+
+/* Convenience function to create container for frame.
+ * We change the type of current HTMLwidget to be a frameset, and we create
+ * enought HTMLwidget for nframes.
+ *
+ * Returns:
+ *	tset_ret	Allocated vector of HTMLWidget
+ */
+void HTMLSetFrameSet(Widget w, struct mark_up *mlist,
+	char * base_url, int nframes, TopFrameSetInfo *tset_info,
+	Widget ** thw_ret)
+{
+	HTMLWidget hw = (HTMLWidget)w;
+	HTMLWidget *thw;
+	int i, vx, vy;
+
+	hw->html.base_url = base_url;
+	if (mlist == NULL)
+		assert(0);
+	ResetBody(hw); /*init body stuff. in case they have no body tag*/
+
+	HideWidgets(hw); 		/* Hide any old widgets */
+	HTMLFreeWidgetInfo(hw->html.widget_list);
+	hw->html.widget_list = NULL;
+	hw->html.form_list = NULL;
+
+	if( hw->html.frame_type == FRAMESET_TYPE)
+		assert(0);	/* call HTMLUnsetFrameSet first */
+
+	hw->html.frame_type = FRAMESET_TYPE;
+	thw = (HTMLWidget *) calloc(nframes, sizeof(HTMLWidget));
+        hw->html.frames = thw;
+	hw->html.nframe = nframes;
+	hw->html.topframeset_info = tset_info;
+	hw->html.html_objects = mlist;
+	hw->html.formatted_elements = NULL;
+
+	hw->html.use_vbar = False;
+	hw->html.use_hbar = False;
+	hw->html.view_height = hw->core.height;
+	hw->html.view_width = hw->core.width;
+	XtUnmapWidget(hw->html.vbar);
+	XtUnmapWidget(hw->html.hbar);
+
+/* Move and size the viewing area */
+        vx = hw->manager.shadow_thickness;
+        vy = hw->manager.shadow_thickness;
+	XtMoveWidget(hw->html.view, vx, vy);
+	XtResizeWidget(hw->html.view, hw->html.view_width, hw->html.view_height,
+                hw->html.view->core.border_width);
+
+	_XmHTMLFrameAdjustConstraints(hw, tset_info);
+
+/* and now create all frames */
+	for(i = 0; i < nframes; i++) {
+                thw[i] = _XmHTMLFrameCreate(hw, &tset_info->frames[i]);
+        }
+/* erase a few glitches by calling adjustConstraints again */
+        _XmHTMLReconfigureFrames(hw,tset_info);
+
+        _XmHTMLMapFrames(hw);			 /* and now map them to screen */
+	*thw_ret = (Widget *)thw;
+
 }
 
 /* Allows us to jump to the bottom of a document (or very close).  */

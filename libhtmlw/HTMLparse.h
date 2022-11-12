@@ -207,18 +207,141 @@ struct mark_up {
 	char * pcdata;		/* #pcdata for tag such <title> */
 };
 
+/* frame type */
+
+typedef enum {
+	NOTFRAME_TYPE = 1,	/* Not a frame, this is a 'normal' html widget*/
+	FRAME_TYPE,		/* this is a frame with html inside */
+	FRAMESET_TYPE		/* html begin with frameset tag */
+} FrameType;
+
+/* What type of scrolling a frame should employ. */
+
+typedef enum{
+        FRAME_SCROLL_NONE = 1,
+        FRAME_SCROLL_AUTO,
+        FRAME_SCROLL_YES
+}FrameScrollType;
+
+/* Possible Frame layout policies */
+
+typedef enum{
+        FRAMESET_LAYOUT_ROWS = 1,  	/* rows only */
+        FRAMESET_LAYOUT_COLS = 2,  	/* columns only */
+        FRAMESET_LAYOUT_ROW_COLS = 4    /* left to right, top to bottom */
+}FramesetLayout;                      
+  
+
+/* Possible types of frame sizes */
+
+typedef enum{
+        FRAME_SIZE_FIXED = 1,                 /* size specified in pixels    */
+        FRAME_SIZE_RELATIVE,                  /* size is relative */
+        FRAME_SIZE_OPTIONAL                   /* size is optional */
+}FrameSize;
+
+
+/* definition of a HTML frameset */
+
+typedef struct _FrameSetInfo{
+	FrameType	type;
+        struct _FrameSetInfo *fs_parent_fs; /*parent frameset of this frameset*/
+	union  _FrameChildInfo *fs_fc_next_child;	/* next child */
+				/* list chaine. Le pointeur de depart est */
+				/* fs_fc_children. il n'existe que dans un */
+				/* frameset */
+	union _FrameChildInfo *fs_fc_prev_child;	/* prev child */
+	int	box_x;		/* position in parent window */
+	int	box_y;
+	int	box_width;
+	int	box_height;
+/* I am possibly also childs of FRAMESET_TYPE */
+/* I get size from my parent FRAMESET */
+	FrameSize fs_size_type;   /* frameset size specification for me.*/
+	int	fs_size_s;        /* saved frameset size */
+
+
+        FramesetLayout fs_layout_type; /* type of this set, either ROW or COL */
+
+        int 	*fs_child_sizes;       /* array of child sizes */
+        FrameSize *fs_child_size_types;/* array of size specifications */
+
+        int 	fs_nchilds;            /* max no of childs */
+        int 	fs_childs_done;        /* no of childs processed so far */
+        int 	fs_insert_pos;         /* insertion position of current child */
+        union  _FrameChildInfo *fs_childs;  /* array of childs, Frameset or frame */
+        struct _FrameSetInfo *fs_next_frameset;    /* ptr to next frameSet */
+
+	union _FrameChildInfo *fs_fc_children; /*list of childs. start pointer*/
+
+}FrameSetInfo;
+
+typedef struct _FrameInfo {
+	FrameType 	type;
+	FrameSetInfo	*frame_parent_fs;	/* my container */
+	union _FrameChildInfo *frame_fc_next_child;	/* next child */
+	union _FrameChildInfo *frame_fc_prev_child;	/* prev child */
+	int	box_x;		/* position in parent window */
+	int	box_y;
+	int	box_width;
+	int	box_height;
+	FrameSize frame_size_type;
+	int	frame_size_s;
+
+	FrameScrollType	frame_scroll_type;
+	char *		frame_name;		/* internal frame name */
+	char *		frame_src;		/* the url to get */
+	int		frame_margin_width;
+	int		frame_margin_height;
+	int		frame_resize;		/* may we resize this frame? */
+        int 		frame_border;             /* frame border value */
+} FrameInfo;
+
+typedef struct _FrameAnyInfo {			/* common part Frame/Frameset */
+	FrameType 	type;
+	FrameSetInfo	*any_parent_fs;	/* my container */
+	union _FrameChildInfo *any_fc_next_child;	/* next child */
+	union _FrameChildInfo *any_fc_prev_child;	/* prev child */
+	int	box_x;		/* position in parent window */
+	int	box_y;
+	int	box_width;
+	int	box_height;
+	FrameSize any_size_type;
+	int	any_size_s;
+} FrameAnyInfo;
+
+typedef union _FrameChildInfo {
+	FrameType 	type;
+	FrameAnyInfo	fai;
+	FrameSetInfo 	fsi;
+	FrameInfo	fi;
+} FrameChildInfo;
+
+typedef struct _TopFrameSetInfo {
+	int	n_allo_frames;		/* number of allocated frames */
+	struct _FrameInfo * frames;	/* array of frames (final result)*/
+	int 	nframes;		/* final result counter */
+	int	def_margin_width;	/* init some default */
+	int	def_margin_height;
+	struct _FrameSetInfo *frameset_info;	/* pointer to info */
+} TopFrameSetInfo;
+
 typedef struct _HtmlTextInfo {
 	char * title;
 	char * base_url;
 	char * base_target;
 	struct mark_up *mlist;
+	int    nframes;		/* if not null, it's a frameset */
+	TopFrameSetInfo *frameset_info;	/* info if it is a frameset */
 } HtmlTextInfo;
 
 
 extern void 		clean_white_space(char *txt);
-extern HtmlTextInfo * HTMLParseRepair(char *str);
-extern struct mark_up * HTMLLexem( const char *str);
+extern HtmlTextInfo 	*HTMLParseRepair(char *str);
+extern struct mark_up 	*HTMLLexem( const char *str);
 extern char * 		ParseMarkTag(char *text, char *mtext, char *mtag);
+
+extern void		FreeHtmlTextInfo(HtmlTextInfo * htinfo);
 
 
 #endif /* HTML_PARSE_H */

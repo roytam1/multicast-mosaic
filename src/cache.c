@@ -126,6 +126,7 @@ void MMCacheInit( char * root_dirname)
 	struct mark_up * mptr;
 	DIR *dirp;
 	struct dirent *direntp;
+	HtmlTextInfo * htinfo;
 
 	lroot_dirname = strdup(root_dirname);
 
@@ -164,7 +165,8 @@ void MMCacheInit( char * root_dirname)
 	close(lfd_cachedb);
 
 	/* read the data base cache.db */
-	mptr = mlist = HTMLLexem(data);
+	htinfo = HTMLParseRepair(data);
+	mptr = mlist = htinfo->mlist;
 	t = time(NULL);
 	hcid =0;
 
@@ -235,7 +237,7 @@ void MMCacheInit( char * root_dirname)
 		mptr = mptr->next;
 	}
 
-	FreeMarkUpList(mlist);	
+	FreeHtmlTextInfo(htinfo);	
 	free(data);
 
 	/* read the dir cache and look for valid entry. */

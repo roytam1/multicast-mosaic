@@ -764,12 +764,6 @@ void mo_reload_document_and_object(Widget w, XtPointer clid, XtPointer calld)
 
 	mo_reload_document(w, (XtPointer) win, NULL);
 }
-void mo_refresh_document(Widget w, XtPointer clid, XtPointer calld)
-{
-	mo_window * win = (mo_window*) clid;
-
-	mo_refresh_window_text (win);
-}
 
 void mo_new_window(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -979,13 +973,13 @@ void mo_proxy(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	ShowProxyDialog(win);
+	PopProxyDialog();
 }
 void mo_no_proxy(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	ShowNoProxyDialog(win);
+	PopNoproxyDialog();
 }
 void mo_exit_program(Widget w, XtPointer clid, XtPointer calld)
 {
@@ -1121,7 +1115,9 @@ void mo_expand_object_current(Widget w, XtPointer clid, XtPointer calld)
 {
 	mo_window * win = (mo_window*) clid;
 
-	mo_refresh_window_text (win);
+	/* ########################### */
+	/* mo_refresh_window_text (win); */
+	/* ########################### */
 }
 
 void mo_delay_object_loads(Widget w, XtPointer clid, XtPointer calld)
@@ -1216,7 +1212,6 @@ static XmxMenubarStruct file_menuspec[30] = {
 
         { "Reload Current", 'R',mo_reload_document,NULL, NULL},
         { "Reload Images", 'a',	mo_reload_document_and_object, NULL, NULL},
-        { "Refresh Current", 'f', mo_refresh_document,NULL, NULL},
 	{ "----",	 '\0', 	NULL, 		NULL, NULL },	/* spacer */
 
         { "Find In Current", 'I', mo_search,	NULL, NULL},

@@ -74,11 +74,6 @@ extern XmxCallback (mc_frame_callback);
 #define SLAB_VIEW 4
 #define SLAB_GLOBE 5
 
-
-/* ######## */
-extern mo_status mo_do_window_text (mo_window *win, char *url, struct mark_up *mlist,
-                int register_visit, char *last_modified, char *expires);
-
 /* SWP -- Spoof Agent stuff */
 extern int 	selectedAgent;
 extern char 	**agent;
@@ -325,7 +320,7 @@ static XmxCallback (icon_pressed_cb)
 	if (win->pafd->paf_child) { /* a embedded object in progress */
 /* if we stop a child , we have a mark_up list in parent. Update view */
 		HTMLSetHTMLmark (win->scrolled_win,
-			win->current_node->m_list,
+			win->current_node->htinfo->mlist,
 			win->current_node->docid,
 			win->current_node->goto_anchor,
 			win->current_node->aurl);
@@ -431,26 +426,14 @@ static mo_window * get_frame_target( mo_window *win, char *base_target, char* ta
 	}
 	if ( !strcmp(target, "_top") ) {
 		pwin = win->frame_parent;
-		pwin->frame_name = NULL;
-		pwin->frame_parent =NULL;
-		pwin->frame_sons = NULL;
-		pwin->frame_sons_nbre = 0;
 		return pwin;
 	}
 	if ( !strcmp(target, "_blank") ) {     /* like top */
 		pwin = win->frame_parent;
-		pwin->frame_name = NULL;
-		pwin->frame_parent =NULL;
-		pwin->frame_sons = NULL;
-		pwin->frame_sons_nbre = 0;
 		return pwin;
 	}
 	if ( !strcmp(target, "_parent") ) {	/* like top */
 		pwin = win->frame_parent;
-		pwin->frame_name = NULL;
-		pwin->frame_parent =NULL;
-		pwin->frame_sons = NULL;
-		pwin->frame_sons_nbre = 0;
 		return pwin;
 	}
 
@@ -462,10 +445,6 @@ static mo_window * get_frame_target( mo_window *win, char *base_target, char* ta
 		}
 	}
 /* not found=> equiv to top */
-	pwin->frame_name = NULL;
-	pwin->frame_parent =NULL;
-	pwin->frame_sons = NULL;
-	pwin->frame_sons_nbre = 0;
 	return pwin;
 }
 
@@ -503,33 +482,29 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 	else
 		href = strdup ("Unlinked");
 
+#ifdef WINFRIED
 	if ( *href == '#' ) {	/* anchor in doc */
-/* ##### old code */
-/*		HTMLGotoAnchor(w, href + 1);
- *		free(href);
- *		return;
- */
 /* #### new code by winfried 14 Mar 2000 */
 /* this works for Unicast, it register an anchor in navigation */
 /* But MUST be review for MULTICAST. It does not send the anchor (state) */
 /* #### Must be review */
+/* ################################################################### */
+/* because the management of navigation change on 3.5.2(G.Dauphin) */
 		mo_node *node=win->current_node;
 		char *anchor_url =
 			mo_url_canonicalize_keep_anchor(href, node->base_url);
 
 		win->navigation_action=NAVIGATE_NEW;
-		MMUpdNavigationOnNewURL(win,anchor_url,node->aurl,
-			node->goto_anchor,node->base_url,
-			node->base_target,node->title,node->text,node->mhs,
-			node->docid,node->m_list);
-		mo_do_window_text(win,anchor_url,node->m_list,FALSE,
-			node->last_modified,node->expires);
 		HTMLGotoAnchor(w, href + 1);
+		MMUpdNavigationOnOnlyAnchor(win,anchor_url/*or href??*/,node->aurl,
+			node->goto_anchor, node->text, node->mhs,
+			node->docid, win->htinfo);
 		free(anchor_url);
 		free(href);
 		return;
 /* #### end new code */
 	}
+#endif
 
 /* it is a mailto: anchor */
 	if (!strncasecmp (href, "mailto:", 7)){ /* mailto:user@... */
@@ -579,9 +554,15 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 	if (!force_newwin){
 		rds.req_url = href;
 		rds.gui_action = HTML_LOAD_CALLBACK;
-		win = get_frame_target(win, win->current_node->base_target, wacd->target);
+		rds.req_url = mo_url_canonicalize_keep_anchor(href,
+				win->current_node->base_url);
+		win = get_frame_target(win, win->current_node->htinfo->base_target, wacd->target);
 		win->navigation_action = NAVIGATE_NEW;
-		MMPafLoadHTMLDocInWin (win, &rds);
+		if (win->frame_type != FRAME_TYPE) {
+			MMPafLoadHTMLDocInWin (win, &rds);
+		} else {	/* clic in FRAME */
+			MMPafLoadHTMLDocInFrame(win, &rds);
+		}
 	} else {
 		if (is_shifted) {
 			char * url = mo_url_canonicalize(href,
@@ -807,99 +788,6 @@ XmxCallback (submit_form_callback)
 		free (query);
 }
 
-XmxCallback (frame_callback)
-{
-	mo_window *win = (mo_window*) client_data;
-	mo_window *sub_win=NULL, *parent;
-	Widget htmlw;
-	char *url = NULL , *frame_name;
-	XmHTMLFrameCallbackStruct *cbs = (XmHTMLFrameCallbackStruct *)call_data;
-	RequestDataStruct rds;
-
-	if (!cbs) {
-#ifdef DEBUG_FRAME
-		fprintf(stderr, "frame_callback: NULL call_data\n");
-#endif
-		return;
-	}
-	switch (cbs->reason) {
-	case XmCR_HTML_FRAMEDONE:
-#ifdef DEBUG_FRAME
-		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMEDONE\n");
-#endif
-		break;
-	case XmCR_HTML_FRAMEDESTROY:
-#ifdef DEBUG_FRAME
-		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMEDESTROY\n");
-#endif
-		break;
-	case XmCR_HTML_FRAMECREATE:
-#ifdef DEBUG_FRAME
-		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMECREATE\n");
-#endif
-		break;
-	case XmCR_HTML_FRAMESETDESTROY:
-#ifdef DEBUG_FRAME
-		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMESETDESTROY\n");
-#endif
-		parent = win;
-		free(parent->frame_sons) ;
-                win->frame_name = NULL;
-                win->frame_parent =NULL;
-                win->frame_sons = NULL;
-		win->frame_sons_nbre =0;
-		win->number_of_frame_loaded = 0;
-		break;
-	case XmCR_HTML_FRAMESET_INIT:
-#ifdef DEBUG_FRAME
-		fprintf(stderr, "frame_callback: reason: XmCR_HTML_FRAMESET_INIT\n");
-#endif
-                win->frame_name = NULL;
-                win->frame_parent =NULL;
-                win->frame_sons = NULL;
-/*		win->frame_sons_nbre =0; */
-/*??? = cbs.nframe */
-		win->frame_sons_nbre =  cbs->nframe ;
-		win->number_of_frame_loaded = 0;
-		parent = win;
-		parent->frame_sons = (mo_window **) realloc(parent->frame_sons,
-			(parent->frame_sons_nbre) * sizeof(mo_window *));
-		break;
-	default:
-		assert(0);
-#ifdef DEBUG_FRAME
-		fprintf(stderr, "frame_callback: reason: Unknowed...\n");
-#endif
-		break;
-	}
-	if (cbs->reason != XmCR_HTML_FRAMEDONE ){
-		return;		/* just for test now */
-	}
-#ifdef DEBUG_FRAME
-	fprintf(stderr,"cbs.event = %08x\n cbs.src = %s\n cbs.name = %s\n",
-		cbs->event, cbs->src, cbs->name);
-	fprintf(stderr,"bs.html = %08x\n cbs.doit = %d\n",
-		cbs->html, cbs->doit);
-#endif
-/* reason = XmCR_HTML_FRAMEDONE */
-	parent = win;
-	htmlw = cbs->html;
-	url = strdup(cbs->src);
-	frame_name = cbs->name;
-	sub_win = MMMakeSubWindow(parent, htmlw, url, frame_name);
-
-	sub_win->frame_sons_nbre = 0;
-	sub_win->frame_dot_index = cbs->index;
-	parent->frame_sons[cbs->index] = sub_win;
-	
-	rds.ct = rds.post_data = NULL;
-	rds.is_reloading = False;
-	rds.req_url = url;
-	rds.gui_action = FRAME_CALLBACK;
-	sub_win->navigation_action = NAVIGATE_NEW;
-	MMPafLoadHTMLDocInWin (sub_win, &rds);
-	free(url);
-}
 /* Exported to libwww2. */
 void mo_gui_notify_progress (char *msg, mo_window * win)
 {
@@ -1174,7 +1062,9 @@ static void mo_view_keypress_handler(Widget w, XtPointer clid,
           mo_reload_document(w, (XtPointer) win, NULL);
           break;
       case XK_R: /* Refresh */
-          mo_refresh_window_text (win);
+	/* ########################### */
+        /*  mo_refresh_window_text (win); */
+	/* ########################### */
           break;
       case XK_S: /* Search. */
       case XK_s:
@@ -1757,6 +1647,7 @@ static mo_status mo_fill_window (mo_window *win)
 	XtAddCallback (win->scrolled_win, WbNanchorCallback, anchor_cb, win);
 	XtAddCallback (win->scrolled_win, WbNsubmitFormCallback,
 					submit_form_callback, win);
+#if 0
 #ifdef MULTICAST
 	if ( win->mc_type == MC_MO_TYPE_RCV_ALL) {
 		XtAddCallback (win->scrolled_win, WbNframeCallback,
@@ -1767,6 +1658,7 @@ static mo_status mo_fill_window (mo_window *win)
                         frame_callback, win);
 #ifdef MULTICAST
 	}
+#endif
 #endif
 	XtVaGetValues(win->scrolled_win, WbNview, (long)(&win->view), NULL);
 	XtAddEventHandler(win->view, KeyPressMask, False, 
@@ -2120,6 +2012,7 @@ static XmxCallback (delete_cb)
 	- frame_name: the frame name (attribute of frame tag)
 */
 
+
 mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	char *url, char *frame_name)
 {
@@ -2138,13 +2031,7 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 #endif
 	swin->frame_name = strdup(frame_name);
 	swin->frame_parent =parent;
-/*
-	swin->frame_dot_index = parent->frame_sons_nbre;
-	parent->frame_sons = (mo_window **) realloc(parent->frame_sons,
-		(parent->frame_sons_nbre + 1) * sizeof(mo_window *));
-	parent->frame_sons[parent->frame_sons_nbre] = swin;
-	parent->frame_sons_nbre++ ;
-*/
+	swin->frame_type = FRAME_TYPE;	/* c'est le seul cas */
 
  	swin->navigation_action = NAVIGATE_NEW;
 	swin->source_win = 0;
@@ -2157,13 +2044,10 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
  *	win->print_win = 0;
  *	win->history_win = win->history_list = 0;
  *	win->hotlist_win = win->hotlist_list = 0;
- *	win->techsupport_win = win->techsupport_text = 0;
  *	win->mailto_win = win->mailto_text = 0;
  *	win->mailto_form_win = win->mailto_form_text = 0;
  *	win->post_data=0;
- *	win->news_win = 0;
  *	win->links_win = 0;
- *	win->news_fsb_win = 0;
  *	win->mail_fsb_win = 0;
  *	win->search_win = win->search_win_text = 0;
  *	win->src_search_win=0;
@@ -2191,8 +2075,8 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	swin->font_family = parent->font_family;
 
 /*********************** SLAB_GLOBE ****************************/
-	swin->logo = parent->logo;
-	swin->biglogo = parent->biglogo;
+	swin->logo = NULL;	/* a frame have no logo */
+	swin->biglogo = NULL;
 
 	swin->scrolled_win= htmlw;
 /*######	WbNpreviouslyVisitedTestFunction, anchor_visited_predicate, */
@@ -2202,6 +2086,7 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 	XtAddCallback (swin->scrolled_win, WbNanchorCallback, anchor_cb, swin);
 	XtAddCallback (swin->scrolled_win, WbNsubmitFormCallback,
 					submit_form_callback, swin);
+#if 0
 #ifdef MULTICAST
 	if ( swin->mc_type == MC_MO_TYPE_RCV_ALL) {
 		XtAddCallback (swin->scrolled_win, WbNframeCallback,
@@ -2212,6 +2097,7 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
                         frame_callback, swin);
 #ifdef MULTICAST
 	}
+#endif
 #endif
 	XtVaGetValues(swin->scrolled_win, WbNview, (long)(&swin->view), NULL);
 	XtAddEventHandler(swin->view, KeyPressMask, False, 
@@ -2245,6 +2131,15 @@ mo_window * MMMakeSubWindow(mo_window *parent, Widget htmlw,
 /* init paf data */
 	swin->pafd = NULL;
 	return swin;
+}
+
+void  MMDestroySubWindow( mo_window *swin)
+{
+	free(swin->search_start);
+	free(swin->search_end);
+	free(swin->frame_name);
+	free(swin);
+	/* ### mo_unmake_popup(swin); */
 }
 
 /* purpose: Make a new window from scratch.
@@ -2292,7 +2187,9 @@ mo_window *mo_make_window ( mo_window *parent, McMoWType mc_t)
 	win->frame_parent =NULL;
 	win->frame_sons = NULL;
 	win->frame_sons_nbre = 0;
+	win->number_of_frame_loaded = 0;
 	win->frame_dot_index = -1;
+	win->frame_type = NOTFRAME_TYPE;	/* peut devenir FRAMESET_TYPE*/
 
 #ifdef MULTICAST
 	win->mc_type = mc_t;
@@ -2573,7 +2470,9 @@ void mo_process_external_directive (char *directive, char *url)
 		return;
 	}
 	if (!strncmp (directive, "refresh", 7)) {
-		mo_refresh_window_text (win);
+		/* ############################ */
+		/* mo_refresh_window_text (win); */
+		/* ############################ */
 		XFlush(mMosaicDisplay);
 		return;
 	}

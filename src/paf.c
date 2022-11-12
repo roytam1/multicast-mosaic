@@ -28,24 +28,51 @@
 extern mo_window * mc_send_win;
 #endif
 
+/* #define DEBUG_STOP 1 */
+
 static void MMPafLoadEmbeddedObjInDoc(PafDocDataStruct * paf_child);
+static void LateEndPafDoc(PafDocDataStruct * pafd);
+
+static void MMStopTwirl(PafDocDataStruct * pafd)
+{
+	mo_window * win = pafd->win;
+
+	if (win->frame_type == FRAME_TYPE) 
+		return;
+
+	assert(win->frame_type == FRAMESET_TYPE || win->frame_type == NOTFRAME_TYPE);
+	XtRemoveTimeOut(pafd->twirl_struct->time_id);
+	free(pafd->twirl_struct);
+	pafd->twirl_struct = NULL;
+}
 
 /* Winfried */
 static void FreePafDocDataStruct(PafDocDataStruct * pafd)
 {
-	if(pafd->aurl) 		free(pafd->aurl);
-	if(pafd->aurl_wa) 	free(pafd->aurl_wa);
+	assert(pafd->twirl_struct == NULL);
+	assert(pafd->www_con_type == NULL);
+
+/* Must be freed in navigation */
+	assert(pafd->mhs == NULL);
+	assert(pafd->aurl == NULL);
+	assert(pafd->aurl_wa == NULL);
+
 	if(pafd->goto_anchor) 	free(pafd->goto_anchor);
 	if(pafd->post_ct) 	free(pafd->post_ct);
 	if(pafd->post_data) 	free(pafd->post_data);
 	if(pafd->html_text) 	free(pafd->html_text);
 	if(pafd->embedded_object_tab) free(pafd->embedded_object_tab);
-	if(pafd->twirl_struct) 	free(pafd->twirl_struct);
 	if(pafd->format_in) 	free(pafd->format_in);
-	if(pafd->www_con_type) 	free(pafd->www_con_type);
 	if(pafd->sps.accept) 	free(pafd->sps.accept);
-	if(pafd->proxent) 	free(pafd->proxent);
+
+	pafd->proxent = NULL;
+
 	if(pafd->iobs.iobuf) 	free(pafd->iobs.iobuf);
+/* un frameset peut ou pas avoir de fname suivant comment on charge les frames */
+	if(pafd->fname) {
+		unlink(pafd->fname);
+		free(pafd->fname);
+	}
 	memset(pafd,0,sizeof(PafDocDataStruct));     /* sanity */
 	free(pafd);
 }
@@ -84,7 +111,7 @@ static void McAddDependFrame(mo_window * topw, int moid, int index)
 
 #endif
 
-static XmxCallback (icon_pressed_cb)
+static XmxCallback (icon_pressed_save_cb)
 {
 	mo_window * win = (mo_window*) client_data;
 
@@ -103,11 +130,9 @@ void MMFinishPafSaveData(PafDocDataStruct * pafd)
 	assert(pafd->fd >=0 ); 		/* let me know */
 	close(pafd->fd);
 	pafd->fd = -1;
-	free(pafd->fname);
-	free(pafd->aurl);
 
 /* stop the twirl */                  
-	XtRemoveTimeOut(pafd->twirl_struct->time_id);
+	MMStopTwirl(pafd);
 	FreePafDocDataStruct(pafd);
 	win->pafd = NULL;
 	XtPopdown(win->base);
@@ -125,12 +150,8 @@ void MMErrorPafSaveData(PafDocDataStruct * pafd, char * reason)
 	assert(pafd->fd >=0 ); 		/* let me know */
 	close(pafd->fd);
 	pafd->fd = -1;
-	unlink(pafd->fname);
-/*	free(pafd->fname);	*/
-/*	free(pafd->aurl);	*/
 
 	FreePafDocDataStruct(pafd);
-/*	free(pafd);		*/
 	XtPopdown(win->base);
 	XtDestroyWidget(win->base);
 	free(win);
@@ -140,26 +161,21 @@ void MMStopPafSaveData(PafDocDataStruct * pafd)
 {
 	mo_window * win = pafd->win;
 
-	XtRemoveTimeOut(pafd->twirl_struct->time_id);
-
+	MMStopTwirl(pafd);
 	if (pafd->www_con_type && pafd->www_con_type->call_me_on_stop_cb ) {
                 (*pafd->www_con_type->call_me_on_stop_cb)(pafd);
         }
 	
-/*        pafd->www_con_type = NULL;	*/
-
 	assert(pafd->fd >= 0); 	/* let me know */
 
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
-/*	free(pafd->fname);	*/
 /* free(pafd->mhs);	### FIXME */
 	FreeMimeStruct(pafd->mhs);
 	pafd->mhs = NULL;	/* sanity */
 
 	FreePafDocDataStruct(pafd);
-/*	free(pafd); */
 	win->pafd = NULL;
 	XtPopdown(win->base);
 	XtDestroyWidget(win->base);
@@ -212,6 +228,7 @@ void MMPafSaveData(Widget top, char * aurl, char * fname)
 
 	win->base = XtCreatePopupShell("mMosaic: Load to disk",
 		topLevelShellWidgetClass, top, Xmx_wargs, Xmx_n);
+	win->frame_type = NOTFRAME_TYPE;
 	Xmx_n = 0;
 
 	form = XmxMakeForm(win->base);
@@ -227,7 +244,7 @@ void MMPafSaveData(Widget top, char * aurl, char * fname)
 
 	win->tracker_widget = XmxMakeLabel(form, "Requesting Connection...");
 	sep = XmxMakeHorizontalSeparator(form);
-	win->logo = XmxMakePushButton( form, "Stop", icon_pressed_cb, (XtPointer)win);
+	win->logo = XmxMakePushButton( form, "Stop", icon_pressed_save_cb, (XtPointer)win);
 	XmxApplyPixmapToLabelWidget(win->logo, IconPix[0]);
 
 /* update pafd */
@@ -327,7 +344,7 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 				assert(0);
                         } 
 			break;
-		case FRAME_CALLBACK:
+		case FRAME_LOADED_FROM_FRAMESET:
 			McAddDependFrame(win->frame_parent, moid_ret, win->frame_dot_index);
 			win->frame_parent->number_of_frame_loaded++;
 			if (win->frame_parent->frame_sons_nbre == win->frame_parent->number_of_frame_loaded ) {
@@ -345,15 +362,11 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 				(*mc_send_win->mc_callme_on_new_state)(
 					win, win->moid_ref, win->dot, win->n_do);
 					/* stop the twirl */
-				XtRemoveTimeOut(pafd->twirl_struct->time_id);                                     
-/*				free(pafd->sps.accept);			*/
+				MMStopTwirl(pafd);
 				assert(pafd->fd == -1 ); /* let me know */
-				unlink(pafd->fname);
-/*				free(pafd->fname);			*/
 				FreePafDocDataStruct(pafd);
 				free(pafd);
 				win->pafd = NULL;
-					/* securityType=HTAA_UNKNOWN; */
 				return;	/* ### hum!!! */
 			}
 			break;
@@ -364,25 +377,38 @@ void MMErrorPafDocData (PafDocDataStruct * pafd, char *reason)
 #endif
 	XmxMakeErrorDialog(win->base, reason , "Net Error");
 /* stop the twirl */
-/*#################################*/
-/* traite le cas d'un frame */
-	XtRemoveTimeOut(pafd->twirl_struct->time_id);
-/*	free(pafd->twirl_struct);			*/
+/* target is maybe FRAMESET_TYPE or NOTFRAME_TYPE */
+	if (win->frame_type == NOTFRAME_TYPE || win->frame_type== FRAMESET_TYPE)
+		MMStopTwirl(pafd);
 
 	assert(pafd->fd >= 0);
 
 	close(pafd->fd);
 	pafd->fd = -1;
 	unlink(pafd->fname);
-/*	free(pafd->fname);			*/
-/*	FreeMimeStruct(pafd->mhs);		*/
-	pafd->mhs = NULL;	/* sanity */
-
+	pafd->aurl =NULL; pafd->aurl_wa = NULL; pafd->mhs = NULL; /* sanity */
 	FreePafDocDataStruct(pafd);
-
-/*	free(pafd);				*/
 	win->pafd = NULL;
-/* securityType=HTAA_UNKNOWN; */
+
+/* traite le cas d'un frame */
+	if (win->frame_type == FRAME_TYPE){	/* guess end of frameset? */
+						/* if yes, stop frameset... */
+		mo_window * winset = win->frame_parent;
+
+		winset->number_of_frame_loaded++; /* one more is (error) loaded */
+		assert(winset->number_of_frame_loaded <=winset->frame_sons_nbre);
+		if(winset->number_of_frame_loaded == winset->frame_sons_nbre ) {
+					/* Is it the last ? */
+			MMStopTwirl(winset->pafd); /* finir avec le frameset */
+
+			assert( winset->pafd->fd == -1 );/* finnish doc: fd is closed*/
+			winset->pafd->aurl =NULL; winset->pafd->aurl_wa = NULL;
+			winset->pafd->mhs = NULL; /* sanity */
+			FreePafDocDataStruct(winset->pafd);
+			winset->pafd = NULL;
+			return; /* it is finished!!! */
+		}
+	}
 }
 
 /* top-> down procedure */
@@ -391,46 +417,50 @@ void MMStopPafDocData(PafDocDataStruct * pafd)
 	mo_window * win = pafd->win;
 
 /* stop the twirl */
-	XtRemoveTimeOut(pafd->twirl_struct->time_id);
-/*	free(pafd->twirl_struct); 		*/
 
+        if (win->frame_type != FRAME_TYPE){	/* frameset or html */
+                MMStopTwirl(win->pafd);     
+        }
+
+	if (win->frame_type == FRAMESET_TYPE) { /* stop frame sons */
+		int i;
+
+		for(i = 0; i< win->frame_sons_nbre; i++) {
+			mo_window *winf = win->frame_sons[i];
+
+			if(winf->pafd) {
+				(*winf->pafd->call_me_on_stop)(winf->pafd);
+				winf->pafd = NULL;
+			}
+		}
+	}
+/* if win have a pafd and is stopped, considere it as loaded */
+	if (win->frame_type == FRAME_TYPE) {
+		win->frame_parent->number_of_frame_loaded++;
+	}
 	if (pafd->paf_child) { /* a embedded object in progress */
 		(*pafd->paf_child->call_me_on_stop)(pafd->paf_child);
 	}
 	pafd->paf_child =NULL;
 
 /* if a http connection is in progress for html page, abort it */
-	if (pafd->www_con_type && pafd->www_con_type->call_me_on_stop_cb ) {
+	if (pafd->www_con_type /*&& pafd->www_con_type->call_me_on_stop_cb*/ ) {
 		(*pafd->www_con_type->call_me_on_stop_cb)(pafd);
 		assert( pafd->fd > 0);	/* finnish doc : fd is open*/
 					/* else let me know */
 		close(pafd->fd);
 		pafd->fd = -1;
-		unlink(pafd->fname);
-		free(pafd->fname);
-		pafd->fname = NULL;	/*sanity */
 	}
-/*	pafd->www_con_type = NULL;		*/
-/*						*/
-/*	if (pafd->post_ct && pafd->post_data){	*/
-/*		free(pafd->post_data);		*/
-/*		free(pafd->post_ct);		*/
-/*		pafd->post_ct = NULL;		*/
-/*		pafd->post_data = NULL;		*/
-/*	}					*/
-/*	free(pafd->sps.accept);			*/
-/*	free(pafd->aurl_wa);			*/
-/*	free(pafd->aurl);			*/
-/*	if (pafd->goto_anchor)			*/
-/*		free(pafd->goto_anchor);	*/
 
 	assert( pafd->fd == -1 ) ;	/* finnish doc : fd is closed*/
 
-/*	FreeMimeStruct(pafd->mhs); ########## */
-	pafd->mhs = NULL;	/* sanity */
 
+#ifdef DEBUG_STOP
+	if (pafd->aurl_wa)
+		printf("MMStopPafDocData: %s must be stooped\n", pafd->aurl_wa);
+#endif
+	pafd->aurl =NULL; pafd->aurl_wa = NULL; pafd->mhs = NULL; /* sanity */
 	FreePafDocDataStruct(pafd);
-/*	free(pafd);				*/
 	win->pafd = NULL;
 /* securityType=HTAA_UNKNOWN; */
 }
@@ -567,7 +597,9 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		assert(0);
 		/* envoyer un message d'erreur */
 	}
+
 	if ( strcmp(presentation, MMOSAIC_PRESENT) ){
+/* la presentation n'est pas pour mMosaic : envoie la commande... */
 		int l = strlen(presentation) + strlen(pafd->fname)+10;
 		char * command = (char*)malloc(6*l);
 		char * cmd = (char*)malloc(10*l);
@@ -582,21 +614,42 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 			sprintf(cmd, "((cat %s | %s); /bin/rm -f %s) &",
 				pafd->fname, presentation, pafd->fname);
 		}
-			
-		
 		system(cmd);
 		free(command);
 		free(cmd);
 		win = pafd->win;
-/* stop the twirl */                   
-		XtRemoveTimeOut(pafd->twirl_struct->time_id);
-/*		free(pafd->twirl_struct);	*/
-/*		free(pafd->sps.accept);		*/
+/* on est la parceque :
+ *	- soit on a clicque sur une url dans une page html
+ *	- soit un src d'un frameset y fait reference
+ *	- soit on a clique dans un frame sur une url
+ */
+/* target is maybe FRAMESET_TYPE or NOTFRAME_TYPE */
+		if (win->frame_type == NOTFRAME_TYPE || win->frame_type== FRAMESET_TYPE)
+			MMStopTwirl(pafd);
 		assert(pafd->fd == -1);
-/*		free(pafd->fname);     
+		pafd->aurl = NULL; pafd->aurl_wa = NULL; pafd->mhs = NULL;
 		FreePafDocDataStruct(pafd);
-/*		free(pafd)			*/
 		win->pafd = NULL;      
+
+/* traite le cas d'un frame */
+		if (win->frame_type == FRAME_TYPE){ /* guess end of frameset? */
+						/* if yes, stop frameset... */
+			mo_window * winset = win->frame_parent;
+
+			winset->number_of_frame_loaded++; /* one more is (external) loaded */
+			assert(winset->number_of_frame_loaded <=winset->frame_sons_nbre);
+			if(winset->number_of_frame_loaded == winset->frame_sons_nbre ) {
+					/* Is it the last ? */
+				MMStopTwirl(winset->pafd); /* finir avec le frameset */
+
+				assert( winset->pafd->fd == -1 );/* finnish doc: fd is closed*/
+				winset->pafd->aurl = NULL; winset->pafd->aurl_wa = NULL; winset->pafd->mhs = NULL;
+				FreePafDocDataStruct(winset->pafd);
+				winset->pafd = NULL;
+/* securityType=HTAA_UNKNOWN; */
+				return; /* it is finished!!! */
+			}
+		}
 /* securityType=HTAA_UNKNOWN; */       
 		return; /* it is finished!!! */
 	} 
@@ -629,31 +682,165 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		pafd->mhs->content_type = strdup("text/html");
 		pafd->mhs->content_length = len_ret;
 	}
-	pafd->html_text = data;
+
+	if (win->frame_type ==  FRAMESET_TYPE) { /* dewrap old */
+		int i;
+
+		for(i = 0; i < win->frame_sons_nbre; i++) {
+			MMDestroySubWindow(win->frame_sons[i]);
+			win->frame_sons[i] = NULL; /* sanity */
+		}
+		free(win->frame_sons);
+		win->frame_sons = NULL;
+		HTMLUnsetFrameSet (win->scrolled_win);
+/* ###################################################################### */
+/*		FreeHtmlTextInfo(win->htinfo); don't free here but in nav. */
+/* ###################################################################### */
+
+		win->frame_type = NOTFRAME_TYPE;
+	}
 
 /* dans le fichier decompresse (eventuellement) on a de l'HTML */
 /* Faire un Parse pour le decomposer en objet */
+	pafd->html_text = data;
 	htinfo = HTMLParseRepair(data);
+
 	pafd->mlist = mlist = htinfo->mlist;
-/* detecter les frames et dans ce cas ajouter un niveau d'indirection */
-
-/* Faire une liste des embedded object */
-/* initialiser et seulement initialiser ces objects */
-
 	mptr = mlist;
 	pafd->num_of_eo = 0;
 	base_url = htinfo->base_url;
-	eo_tab = (EmbeddedObjectEntry *) calloc(1,sizeof(EmbeddedObjectEntry));
-			/* alloc one */
-/* recuperer le reste des embedded objects (si necessaire)*/
-/* relancer la bete pour les embedded objets si il y en a */
 	if (!htinfo->title)
 		title = strdup(pafd->aurl_wa);
 	else
 		title = htinfo->title;
-	free(htinfo->base_target);
-	htinfo->base_target = NULL;	/* sanity */
-	free(htinfo);
+	win->htinfo = htinfo;
+
+/* detecter les frames et dans ce cas ajouter un niveau d'indirection */
+
+/* ici, on ne peut avoir que FRAME_TYPE ou NOTFRAME_TYPE */
+	assert(win->frame_type == NOTFRAME_TYPE || win->frame_type == FRAME_TYPE);
+
+	if ( (pafd->win->frame_type == FRAME_TYPE) && htinfo->nframes) {
+			/* Un framset est charge dans un frame. */
+			/* mMosaic n'accepte qu'un seul niveau de topframeset */
+		char buf[8000];
+		char * s;
+
+		FreeHtmlTextInfo(htinfo); /* free here because it's an error */
+
+		s="<HTML><BODY><P>A FRAMESET in a FRAME is not acceptable, click <a href=%s > here </a> on button 2 to see page</BODY></HTML>";
+		sprintf(buf, s, pafd->aurl_wa);
+		pafd->html_text = strdup(buf);
+		htinfo = HTMLParseRepair(pafd->html_text);
+		pafd->mlist = mlist = htinfo->mlist;
+		mptr = mlist;
+		pafd->num_of_eo = 0;
+		base_url = htinfo->base_url;
+		if (!htinfo->title)
+			title = strdup(pafd->aurl_wa);
+		else
+			title = htinfo->title;
+		win->htinfo = htinfo;
+
+			/* ou peut etre : finir la demande et abort la requete */
+			/* ne pas charger l'html dans le frame */
+			/*call error.... peut etre */
+			/*return; */
+
+        } else if (htinfo->nframes) { /* this is a frameset */
+		mo_window *sub_win=NULL;
+		Widget htmlw;
+		char *url = NULL , *frame_name;
+		RequestDataStruct rds;
+		Widget * htmlw_tabs;  /* html widgets return by HTMLSetHTMLmark */
+		int i;
+
+/* cas ou on charge un frameset */
+		pafd->win->frame_type = FRAMESET_TYPE;
+		docid =0;    /* ##### docid = HTMLGetDocId(win->scrolled_win); */
+
+/* Remarque: la requete (partie HTML) est termine et on a change de current_node*/
+/* mlist mhs html_text title aurl_wa aurl  must be free in navigation stuff */
+/* afficher le texte. le mettre dans la Widget. id come from back and forward */
+
+		docid = 0;		/* we are not in back or forward */
+		spafd = *pafd;		/* why??? ############### */
+
+/* win->scrolled_win est le framset contenant les frame*/
+/* htmlw_tabs est un tableau de widget frame qui va contenir les frames*/
+
+		HTMLSetFrameSet (win->scrolled_win, htinfo->mlist, pafd->aurl,
+			htinfo->nframes, htinfo->frameset_info, &htmlw_tabs);
+
+/* on met a jour immediatement la partie navigation. Car on doit avoir un
+ * current_node qui memorise tout la requete. Title is always allocated. */
+		MMUpdNavigationOnNewURL(win, pafd->aurl_wa, pafd->aurl,
+			pafd->goto_anchor, pafd->html_text, pafd->mhs, docid,
+			htinfo);
+
+		mo_set_win_headers(win, spafd.aurl_wa, title);
+		MMUpdateGlobalHistory(spafd.aurl);
+		XFlush(XtDisplay(win->scrolled_win));
+
+/* init parent FRAMESET */
+		win->frame_name = NULL;
+		win->frame_parent =NULL;
+		win->frame_sons = NULL;
+		win->frame_sons_nbre =  htinfo->nframes;
+		win->number_of_frame_loaded = 0;
+		win->frame_sons = (mo_window **) calloc( win->frame_sons_nbre , sizeof(mo_window *));
+/* use htmlw_tabs */
+/* creer les sub_mo_window et demarer la requete pour */
+/* htinfo->frameset_info->frames[i].frame_src; */
+		for(i = 0 ; i < htinfo->nframes; i++ )	{
+			htmlw = htmlw_tabs[i];
+			url = strdup(htinfo->frameset_info->frames[i].frame_src);
+			frame_name = htinfo->frameset_info->frames[i].frame_name;
+			sub_win = MMMakeSubWindow(win, htmlw, url, frame_name);
+			sub_win->frame_sons_nbre = 0;
+			sub_win->frame_dot_index = i;
+			win->frame_sons[i] = sub_win;
+			rds.ct = rds.post_data = NULL;
+			rds.is_reloading = False;
+			rds.req_url = url;
+			rds.gui_action = FRAME_LOADED_FROM_FRAMESET;
+			sub_win->navigation_action = NAVIGATE_NEW;
+			MMPafLoadHTMLDocInWin (sub_win, &rds); 
+			free(url);
+		}
+
+/*################################ */
+/*en finir avec pafd du frameset , quand tous les frames sont loader. */
+/* determine combien de frameset a attendre....;  */
+/* ne detruire le pafd du frameset qu'a la fin du chargement des frames */
+/*################################ */
+
+		return;
+
+/* ##### where to destroy FRAMSET?? ##### */
+/*              parent = win;
+/*              free(parent->frame_sons) ;
+/*              win->frame_name = NULL; 
+/*              win->frame_parent =NULL;
+/*              win->frame_sons = NULL;
+/*              win->frame_sons_nbre =0;
+/*              win->number_of_frame_loaded = 0;
+###### */
+	}
+
+/* ici, on ne peut avoir que FRAME_TYPE ou NOTFRAME_TYPE */
+	assert(win->frame_type == NOTFRAME_TYPE || win->frame_type == FRAME_TYPE);
+
+/* le html est une page 'normal' , ne contient pas de framset */
+/*###########*/
+
+/* Faire une liste des embedded object */
+/* initialiser et seulement initialiser ces objects */
+
+	eo_tab = (EmbeddedObjectEntry *) calloc(1,sizeof(EmbeddedObjectEntry));
+			/* alloc one */
+/* recuperer le reste des embedded objects (si necessaire)*/
+/* relancer la bete pour les embedded objets si il y en a */
 	while (mptr != NULL){
 		char * tptr;
 		ImageInfo * picd;
@@ -755,137 +942,46 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 		}
 		mptr = mptr->next;
 	}
+	pafd->embedded_object_tab = eo_tab; /* une selection de mlist*/
 
 /* ##### docid = HTMLGetDocId(win->scrolled_win); */
 	docid =0;
 /* on met a jour immediatement la partie navigation. Car on doit avoir un 
- * current_node qui memorise tout la requete 
- * title is always allocated.
+ * current_node qui memorise tout la requete. title is always allocated.
  */
-	MMUpdNavigationOnNewURL(win, pafd->aurl_wa, pafd->aurl, pafd->goto_anchor, base_url,
-		base_target, title,
-		pafd->html_text, pafd->mhs, docid, mlist); 
+
+/* ici, on ne peut avoir que FRAME_TYPE ou NOTFRAME_TYPE */
+	assert(win->frame_type == NOTFRAME_TYPE || win->frame_type == FRAME_TYPE);
+
+/* si c'est un Frame faire une navigation 'speciale' */
+	MMUpdNavigationOnNewURL(win, pafd->aurl_wa, pafd->aurl,
+		pafd->goto_anchor, pafd->html_text, pafd->mhs, docid,
+		win->htinfo); 	/* ce n'est pas un FRAMESET */
+
 /* Remarque: la requete (partie HTML) est termine et on a change de current_node*/
 /* mlist mhs html_text title aurl_wa aurl  must be free in navigation stuff */
 
 /* afficher le texte. le mettre dans la Widget. id come from back and forward */
 	docid = 0;			/* we are not in back or forward */
 	spafd = *pafd;
-	HTMLSetHTMLmark (win->scrolled_win, mlist, docid, pafd->goto_anchor,
-		pafd->aurl);
+	HTMLSetHTMLmark (win->scrolled_win, mlist, docid,
+		pafd->goto_anchor, pafd->aurl);
 	XFlush(XtDisplay(win->scrolled_win));
 
-	mo_set_win_headers(win, spafd.aurl_wa);
+	if ( win->frame_type == NOTFRAME_TYPE){
+		mo_set_win_headers(win, spafd.aurl_wa, title);
+	}
 
 /* MAJ de l'history etc... */
 	MMUpdateGlobalHistory(spafd.aurl);
 
 	if (spafd.num_of_eo == 0 ){	/* no embedded object it is the end */
-#ifdef MULTICAST
-		if (mc_send_win && ( mc_send_win == win || mc_send_win == win->frame_parent)) {/* A multicast send window */
-			if (win->frame_sons_nbre == 0) { /* frame or top html */
-				(*mc_send_win->mc_callme_on_new_object)(
-					pafd->mc_fname_save, pafd->aurl,
-			 		pafd->mhs,  win->dot ,
-					win->n_do, &moid_ret);
-				win->moid_ref = moid_ret; /* info for state */
-				free(pafd->mc_fname_save);
-			} else {	/* a top frameset */
-				return; /* let pafd alive */
-			  /* the announce of top frameset object is */
-			  /* done at later time. When a frame */
-			  /* child will be loaded and */
-			  /* all child is loaded */
-			  /* save some data to be send later */
-			}
-/* this is done in mo_window */
-/*### gui_action: indique pour un frame si on clique dedans ou si
- *### on charge un frameset...
- *### je dois dectecter si ca vient de l'init d'un frameset
- *### ou si ca vient de ce que je clique dans une href d'un frame
- *### soit de framecallback ou de anchor callback
- *### dans le cas href d'un frame, utiliser frame_dot_index...
-*/
-			switch(pafd->gui_action) {
-			case HTML_LOAD_CALLBACK:
-				if (win->frame_parent != NULL) { /* click in frame*/
-/* a html text change in a frame: do a new state */
-					McChangeDepend(win->frame_parent, win,
-						win->frame_dot_index, moid_ret);
-					(*mc_send_win->mc_callme_on_new_state)(
-						win->frame_parent,
-						win->frame_parent->moid_ref,
-						win->frame_parent->dot,
-						win->frame_parent->n_do);
-				} else if (win->frame_sons_nbre == 0) {
-/* a html text by itself at top level */
-						(*mc_send_win->mc_callme_on_new_state)(
-							win, win->moid_ref, NULL, 0);
-				}
-				break;
-			case FRAME_CALLBACK:
-				McAddDependFrame(win->frame_parent, moid_ret, win->frame_dot_index);
-				win->frame_parent->number_of_frame_loaded++;
-				if (win->frame_parent->frame_sons_nbre == win->frame_parent->number_of_frame_loaded ) {
-/* late send state of frameset */
-					PafDocDataStruct * pafd = win->frame_parent->pafd;
-					mo_window *win = pafd->win;
-					int moid_ret;
-
-					(*mc_send_win->mc_callme_on_new_object)(
-						pafd->mc_fname_save, pafd->aurl,
-						pafd->mhs,  win->dot ,
-						win->n_do, &moid_ret);
-                               		win->moid_ref = moid_ret; /* info for state */
-                               		free(pafd->mc_fname_save);
-					pafd->mc_fname_save = NULL; /* sanity */
-					(*mc_send_win->mc_callme_on_new_state)(
-						win, win->moid_ref, win->dot, win->n_do);
-						/* stop the twirl */
-					XtRemoveTimeOut(pafd->twirl_struct->time_id);
-/*					free(pafd->twirl_struct);		*/
-/*					free(pafd->sps.accept);			*/
-
-					assert(pafd->fd == -1);
-
-					unlink(pafd->fname); 
-/*					free(pafd->fname);			*/
-					FreePafDocDataStruct(pafd);
-/*					free(pafd);			*/
-					win->pafd = NULL;
-						/* securityType=HTAA_UNKNOWN; */
-				}
-				break;
-			default:
-				assert(0);
-			}
-		}
-#endif
-		free(eo_tab);
-/* en finir avec la requete de pafd. */
-        	win = pafd->win;
-/* don't do this: registered in navigation */
-/*###		free(pafd->aurl); free(pafd->aurl_wa); free(pafd->mhs); */
-		pafd->aurl = NULL;	 /* sanity */
-		pafd->aurl_wa = NULL;	 /* sanity */
-		pafd->mhs = NULL;	 /* sanity */
- 
-/* stop the twirl */
-		XtRemoveTimeOut(pafd->twirl_struct->time_id);
-/*		free(pafd->twirl_struct);		*/
-/*		free(pafd->sps.accept);		*/
-		assert( pafd->fd == -1 ) ;	/* finnish doc : fd is closed*/
-		unlink(pafd->fname); 
-/*		free(pafd->fname);		*/
-/*		free(pafd);			*/
-		FreePafDocDataStruct(pafd);
-		win->pafd = NULL;
-/* securityType=HTAA_UNKNOWN; */
+		LateEndPafDoc(pafd);	/* en finir avec la requete de pafd. */
 		return; /* it is finished!!! */
 	}
+
 /* sinon c'est pas fini... recuprer les embedded objects */
 /* the next step is to process embedded object */
-	pafd->embedded_object_tab = eo_tab; /* une selection de mlist*/
 	pafd->cur_processing_eo = 0;		/* demande le premier */
 /* a paf child inherit some data from its father */
 	pafd->paf_child = (PafDocDataStruct *) calloc(1, sizeof(PafDocDataStruct));
@@ -893,13 +989,12 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 	pafc = pafd->paf_child;
 	pafc->mhs = (MimeHeaderStruct*) calloc(1, sizeof(MimeHeaderStruct));
 /* inherit from parent */
-/*        pafc->twirl_struct = pafd->twirl_struct; */
 	pafc->twirl_struct = NULL;	/* only top twirl */
 /* don't inherit from parent */
-        pafc->proxent = NULL;;
         pafc->pragma_no_cache = False;  /* pafd->pragma_no_cache ; */  
 	pafc->post_ct = NULL;
 	pafc->post_data = NULL;
+	pafc->proxent = NULL;
 
 /* #### plus tard */                   
 	MMPafLoadEmbeddedObjInDoc( pafd->paf_child);
@@ -914,6 +1009,78 @@ void MMFinishPafDocData(PafDocDataStruct * pafd)
 /* le prochain appelle est, si tout est correct, MMFinishEmbedded... */
 }
 
+
+/* ##########################################*/
+/* user clic on an anchor in frame. On doit reconstituer le pafd du
+ * du FRAMESET pour faire tourner le twirl, et pouvoir stopper un/les
+ * fils du framset quand c'est necessaire
+ */
+/* ##########################################*/
+void MMPafLoadHTMLDocInFrame(mo_window * fwin, RequestDataStruct * rds)
+{
+	PafDocDataStruct * fs_pafd = NULL;
+	PafDocDataStruct * ofs_pafd = NULL;
+	PafDocDataStruct * opafd = NULL;
+	mo_window * fs_win = NULL;
+
+	assert(fwin->frame_type == FRAME_TYPE);
+
+	opafd = fwin->pafd;	/* Is a previous load in progress */
+	if (opafd) {		/* if YES stop the previous request */
+		MMStopPafDocData(opafd);
+	}
+
+	fs_win = fwin->frame_parent;
+
+	assert(fs_win->frame_type == FRAMESET_TYPE);
+
+	ofs_pafd = fs_win->pafd;
+	if (ofs_pafd) {	/* frame in frameset is loading */
+		fs_win->number_of_frame_loaded--;
+
+		assert(fs_win->number_of_frame_loaded >= 0);
+
+		MMPafLoadHTMLDocInWin(fwin, rds);	/* load frame */
+		return;
+	}
+
+/* frameset is completly loaded, recreate a pafd for it */
+
+	fs_pafd = (PafDocDataStruct *) calloc(1, sizeof(PafDocDataStruct));
+	fs_pafd->gui_action = HTML_LOAD_CALLBACK;
+	fs_pafd->mhs = NULL;
+	fs_pafd->www_con_type = NULL;
+	fs_pafd->fname = NULL;
+	fs_pafd->fd = -1;
+	fs_pafd->aurl_wa = NULL;
+	fs_pafd->aurl = NULL;
+	fs_pafd->goto_anchor = NULL;
+	fs_pafd->http_status = 0;
+	fs_pafd->win = fs_win;
+	fs_pafd->n_redirect = 0;
+	fs_win->pafd = fs_pafd;
+	fs_pafd->call_me_on_succes = MMFinishPafDocData;
+ 	fs_pafd->call_me_on_error = MMErrorPafDocData;
+	fs_pafd->call_me_on_stop = MMStopPafDocData;
+	fs_pafd->sps.accept = NULL;
+	fs_pafd->pragma_no_cache = False;
+	fs_pafd->paf_child =NULL;
+	fs_pafd->post_ct = NULL;
+	fs_pafd->post_data = NULL;
+	fs_pafd->proxent = NULL;
+
+	fs_pafd->twirl_struct = (TwirlStruct*) calloc(1,sizeof(TwirlStruct));
+	fs_pafd->twirl_struct->logo_widget = fs_win->logo;
+	fs_pafd->twirl_struct->logo_count = 0;
+	fs_pafd->twirl_struct->time_id = XtAppAddTimeOut(mMosaicAppContext,
+		100L, twirl_icon_cb, fs_pafd->twirl_struct);
+
+	fs_win->number_of_frame_loaded--;
+
+	assert(fs_win->number_of_frame_loaded >= 0);
+
+	MMPafLoadHTMLDocInWin(fwin, rds);	/* load frame */
+}
 
 /* #########################################*/
 /*if(win->links_win) /* vvv HREF ListBox Stuff -- BJS 10/2/95 */ 
@@ -1039,12 +1206,13 @@ void MMPafLoadHTMLDocInWin( mo_window * win, RequestDataStruct * rds)
 	}
 
 /* #### plus tard */
-	pafd->twirl_struct = (TwirlStruct*) calloc(1,sizeof(TwirlStruct));
-	pafd->twirl_struct->logo_widget = win->logo;
-	pafd->twirl_struct->logo_count = 0;
-	pafd->twirl_struct->time_id = XtAppAddTimeOut(mMosaicAppContext,
-		100L, twirl_icon_cb, pafd->twirl_struct);
-
+	if (win->frame_type != FRAME_TYPE) { /* a frame have no logo */
+		pafd->twirl_struct = (TwirlStruct*) calloc(1,sizeof(TwirlStruct));
+		pafd->twirl_struct->logo_widget = win->logo;
+		pafd->twirl_struct->logo_count = 0;
+		pafd->twirl_struct->time_id = XtAppAddTimeOut(mMosaicAppContext,
+			100L, twirl_icon_cb, pafd->twirl_struct);
+	}
 /* Next get the document as per protocol: http,file,ftp,news/nntp,gopher */
 /* send a request via www-con */
 /* activate the state machine to load the document */
@@ -1062,24 +1230,19 @@ void MMStopPafEmbeddedObject(PafDocDataStruct * pafc)
 	PafDocDataStruct * ppaf;
 	ppaf = pafc->parent_paf;
 
-	if ( pafc->www_con_type && pafc->www_con_type->call_me_on_stop_cb) {
+	if ( pafc->www_con_type /*&& pafc->www_con_type->call_me_on_stop_cb*/) {
 		(*pafc->www_con_type->call_me_on_stop_cb)(pafc);
 	}
-	pafc->www_con_type = NULL;
-	pafc->twirl_struct = NULL;	/* stop father */
+
 	assert(pafc->fd >0 );		/* let me know */
 
 	close(pafc->fd);
 	pafc->fd = -1;
-	unlink(pafc->fname);
-/*	free(pafc->sps.accept);		*/
-/*	free(pafc->aurl);		*/
-/*	free(pafc->aurl_wa);		*/
-/*	free(pafc->fname);		*/
-	/*free(pafc->mhs);	### FIXME */
+#ifdef DEBUG_STOP
+	printf("MMStopPafEmbeddedObject: %s must be stooped\n", pafc->aurl_wa);
+#endif
 	FreeMimeStruct(pafc->mhs);
-	pafc->mhs=NULL;		/* sanity */
-/*	free(pafc);			*/
+	pafc->aurl = NULL; pafc->aurl_wa = NULL; pafc->mhs = NULL;
 	FreePafDocDataStruct(pafc);
 	ppaf->paf_child = NULL;
 }
@@ -1137,105 +1300,13 @@ void MMErrorPafEmbeddedObject (PafDocDataStruct * pafc, char *reason)
 
 	ppaf->cur_processing_eo++;
 	if ( ppaf->cur_processing_eo >= ppaf->num_of_eo) {
-#ifdef MULTICAST
-/* reprendre le fichier sauver plus haut.Faire les dependances des objets */
-/* pour cet objet chaque objet a un MOID.Voir si cet objet decrit un */
-/* parfaitement un etat : win->frame_parent == NULL ??? */
-		if (mc_send_win && (mc_send_win == ppaf->win || mc_send_win == ppaf->win->frame_parent)) {/* A multicast send window */
-
-                        if (ppaf->win->frame_sons_nbre == 0) { /* frame or top html */
-                                (*mc_send_win->mc_callme_on_new_object)(
-                                        ppaf->mc_fname_save, ppaf->aurl,
-                                        ppaf->mhs,  ppaf->win->dot ,
-                                        ppaf->win->n_do, &moid_ret);
-                                ppaf->win->moid_ref = moid_ret; /* info for state */
-                                free(ppaf->mc_fname_save);
-                        } else {        /* a top frameset */
-                                if (ppaf->win->number_of_frame_loaded == ppaf->win->frame_sons_nbre) {
-                                        (*mc_send_win->mc_callme_on_new_object)(
-                                                ppaf->mc_fname_save, ppaf->aurl,
-                                                ppaf->mhs,  ppaf->win->dot ,
-                                        
-                                                ppaf->win->n_do, &moid_ret);
-                                        ppaf->win->moid_ref = moid_ret; /* info
-for state */
-                                        free(ppaf->mc_fname_save);
-                                } else {
-                                        assert(0);
-                                }
-                        }
-			switch(ppaf->gui_action) {
-			case HTML_LOAD_CALLBACK:
-				if (ppaf->win->frame_parent != NULL) { /* in frameset*/                              
-/* a html text change in a frame: do a new state */
-					McChangeDepend(ppaf->win->frame_parent, ppaf->win,
-						ppaf->win->frame_dot_index, moid_ret);
-					(*mc_send_win->mc_callme_on_new_state)(
-						ppaf->win->frame_parent,
-						ppaf->win->frame_parent->moid_ref,
-						ppaf->win->frame_parent->dot,
-						ppaf->win->frame_parent->n_do);
-				} else {
-					if (ppaf->win->frame_sons_nbre == 0)
-/* a html text by itself at top level */
-						(*mc_send_win->mc_callme_on_new_state)(
-							ppaf->win, ppaf->win->moid_ref, NULL, 0);
-					else if (ppaf->win->frame_sons_nbre == ppaf->win->number_of_frame_loaded) /* The top frameset */
-						(*mc_send_win->mc_callme_on_new_state)(
-							ppaf->win, ppaf->win->moid_ref, ppaf->win->dot, ppaf->win->n_do);
-					else
-						assert(0);
-				}    
-				break;
-			case FRAME_CALLBACK:
-				McAddDepend(ppaf->win->frame_parent, moid_ret);
-                                ppaf->win->frame_parent->number_of_frame_loaded++;
-				if (ppaf->win->frame_parent->frame_sons_nbre == ppaf->win->frame_parent->number_of_frame_loaded) {
-					int lfs_moid_ret;
-					assert(0);
-/*	(*mc_send_win->mc_callme_on_new_object)(
-/*		ppaf->win->frame_parent->lfs_mc_fname_save,
-/*		ppaf->win->frame_parent->lfs_aurl,
-/*		ppaf->win->frame_parent->lfs_mhs,
-/*		ppaf->win->frame_parent->dot ,
-/*		ppaf->win->frame_parent->n_do,
-/*		&lfs_moid_ret);
-/*     		ppaf->win->frame_parent->moid_ref = lfs_moid_ret; /* info for state */
-/*	unlink(ppaf->win->frame_parent->lfs_mc_fname_save);
-/*     		free(ppaf->win->frame_parent->lfs_mc_fname_save);
-/*	free(ppaf->win->frame_parent->lfs_aurl);
-/*	free(ppaf->win->frame_parent->lfs_mhs);
-/*	(*mc_send_win->mc_callme_on_new_state)(
-/*		ppaf->win->frame_parent,
-/*		ppaf->win->frame_parent->moid_ref,
-/*		ppaf->win->frame_parent->dot,
-/*		ppaf->win->frame_parent->n_do); */
-				}
-				break;
-			default:     
-				assert(0);
-			}
-		}
-#endif
 /* we have all embedded and doc */
 /* get the current id  #### */
 		elem_id = 0;
 		HTMLSetHTMLmark (ppaf->win->scrolled_win, ppaf->mlist, elem_id, ppaf->goto_anchor, ppaf->aurl);
 		free(ppaf->paf_child); /*### et le reste de paf_child*/
-/* en finir avec la requete de pafd. */
         	win = ppaf->win;
-/* stop the twirl */
-        	XtRemoveTimeOut(ppaf->twirl_struct->time_id);
-/*        	free(ppaf->embedded_object_tab);	*/
-/*       	free(ppaf->twirl_struct);		*/
-/*        	free(ppaf->sps.accept);			*/
-		assert(ppaf->fd == -1); /* parent is close */
-        	unlink(ppaf->fname);
-/*       	free(ppaf->fname);			*/
-/*        	free(ppaf);				*/
-		FreePafDocDataStruct(ppaf);
-        	win->pafd = NULL;
-/* securityType=HTAA_UNKNOWN; */
+		LateEndPafDoc(ppaf); /* en finir avec la requete de pafd. */
 		return;	/* it is really the end !!! */
 	}
 
@@ -1327,100 +1398,13 @@ void MMFinishPafEmbeddedObject(PafDocDataStruct * pafc)
 
 /*------------ ALL EMBEDDED OBJECTS DONE ? ------------*/
 	if ( ppaf->cur_processing_eo >= ppaf->num_of_eo) {
-
-#ifdef MULTICAST
-/* reprendre le fichier sauver plus haut.Faire les dependances des objets */
-/* pour cet objet chaque objet a un MOID.Voir si cet objet decrit un */
-/* parfaitement un etat : win->frame_parent == NULL ??? */
-		if (mc_send_win && (mc_send_win == ppaf->win || mc_send_win == ppaf->win->frame_parent)) {/* A multicast send window */
-
-                        if (ppaf->win->frame_sons_nbre == 0) { /* frame or top html */
-                                (*mc_send_win->mc_callme_on_new_object)(
-                                        ppaf->mc_fname_save, ppaf->aurl,
-                                        ppaf->mhs,  ppaf->win->dot ,
-                                        ppaf->win->n_do, &moid_ret);
-                                ppaf->win->moid_ref = moid_ret; /* info for state
-*/
-                                free(ppaf->mc_fname_save);
-                        } else {        /* a top frameset */
-				/* a top frameset never have embedded obj*/
-                              assert(0);
-                        }
-			switch(ppaf->gui_action) {
-                        case HTML_LOAD_CALLBACK:
-                                if (ppaf->win->frame_parent != NULL) { 
-/* a html text change in a frame: do a new state */
-                                        McChangeDepend(ppaf->win->frame_parent, ppaf->win,
-                                                ppaf->win->frame_dot_index, moid_ret);
-                                        (*mc_send_win->mc_callme_on_new_state)(
-                                                ppaf->win->frame_parent,
-                                                ppaf->win->frame_parent->moid_ref,
-                                                ppaf->win->frame_parent->dot,
-                                                ppaf->win->frame_parent->n_do);
-                                } else if (ppaf->win->frame_sons_nbre == 0) {
-/* a html text by itself at top level */
-					(*mc_send_win->mc_callme_on_new_state)(
-						ppaf->win, ppaf->win->moid_ref, NULL, 0);
-                                }     
-                                break;
-                        case FRAME_CALLBACK:
-                                McAddDependFrame(ppaf->win->frame_parent, moid_ret, ppaf->win->frame_dot_index);
-				ppaf->win->frame_parent->number_of_frame_loaded++;
-				if (ppaf->win->frame_parent->frame_sons_nbre == ppaf->win->frame_parent->number_of_frame_loaded) {
-					PafDocDataStruct * pafd = ppaf->win->frame_parent->pafd;                               
-					mo_window *win = pafd->win;
-					int moid_ret;
-
-					(*mc_send_win->mc_callme_on_new_object)(
-						pafd->mc_fname_save, pafd->aurl,
-						pafd->mhs,  win->dot ,
-						win->n_do, &moid_ret);
-					win->moid_ref = moid_ret; /* info for state */                                   
-					free(pafd->mc_fname_save);
-					(*mc_send_win->mc_callme_on_new_state)(
-						win, win->moid_ref, win->dot, win->n_do);
-						/* stop the twirl */
-					XtRemoveTimeOut(pafd->twirl_struct->time_id);
-/*					free(pafd->twirl_struct);	*/
-/*					free(pafd->sps.accept);	*/
-
-					assert( pafd->fd == -1);
-
-					unlink(pafd->fname); 
-/*					free(pafd->fname);	*/
-/*					free(pafd);	*/
-					FreePafDocDataStruct(pafd);
-					win->pafd = NULL;
-						/* securityType=HTAA_UNKNOWN; */
-				}
-                                break;
-                        default:      
-                                assert(0);
-                        }
-		}
-#endif
 /* we have all embedded and doc */
 /* get the current id  #### */
 		elem_id = 0;
 		HTMLSetHTMLmark (ppaf->win->scrolled_win, ppaf->mlist, elem_id, ppaf->goto_anchor, ppaf->aurl);
 		free(ppaf->paf_child); /*### et le reste de paf_child*/
-/* en finir avec la requete de pafd. */
         	win = ppaf->win;
-/* stop the twirl */
-        	XtRemoveTimeOut(ppaf->twirl_struct->time_id);
-/*        	free(ppaf->twirl_struct);			*/
-/*        	free(ppaf->sps.accept);				*/
-/*        	free(ppaf->embedded_object_tab);		*/
-
-/* parent paf is closed when load is complete */
-		assert(ppaf->fd == -1);
-
-        	unlink(ppaf->fname);
-/*        	free(ppaf->fname);				*/
-/*        	free(ppaf);					*/
-		FreePafDocDataStruct(ppaf);
-        	win->pafd = NULL;
-/* securityType=HTAA_UNKNOWN; */
+		LateEndPafDoc(ppaf); /* en finir avec la requete de pafd. */
 		return;	/* it is really the end !!! */
 	}
 
@@ -1511,43 +1495,131 @@ void PrintPafStruct(char *file,int line,PafDocDataStruct *pafd)
 	fprintf(stderr,"pafd->lfcrlf_type         '%s'\n",pafd->lfcrlf_type);
 	fprintf(stderr,"pafd->format_in           '%s'\n",pafd->format_in);
 	fprintf(stderr,"pafd->www_con_type        '%p'\n",pafd->www_con_type);
-	fprintf(stderr,"pafd->proxent             '%p'\n",pafd->proxent);
 	fprintf(stderr,"pafd->mc_fname_save       '%s'\n",pafd->mc_fname_save);
 	fprintf(stderr,"pafd->sps.accept          '%s'\n",pafd->sps.accept);
 	fprintf(stderr,"pafd->iobs.iobuf          '%p'\n",pafd->iobs.iobuf);
+	fprintf(stderr,"pafd->proxent             '%p'\n",pafd->proxent);
 	fputc('\n',stderr);              
 } 
 #endif
 
+/* Il faut defaire et nettoyer le pafd quand tous les embedded sont charges */
+/* Un pafd existe tant que des objects 'fils' sont en train d'etre charges */
+/* Procedure commune pour les FRAME et HTML */
+/* Le pafd d'un frameset est libere quanf tous les frames sont charge */
+/* en finir avec la requete de pafd. */
 
-/* qques lignes de code pour les news ##### 
- * if(!strncmp(url,"news:",4)) {       
- * int p,n,pt,nt,f;            
- * news_status(url,&pt,&nt,&p,&n,&f);
- * mo_tool_state(&(win->tools[BTN_PTHR]), pt?XmxSensitive:XmxNotSensitive,BTN_PTHR);
- * XmxRSetSensitive (win->menubar, (XtPointer)mo_news_prevt, pt?XmxSensitive:XmxNotSensitive);
- * mo_tool_state(&(win->tools[BTN_NTHR]), nt?XmxSensitive:XmxNotSensitive,BTN_NTHR);
- * XmxRSetSensitive (win->menubar, (XtPointer)mo_news_nextt, nt?XmxSensitive:XmxNotSensitive);
- * mo_tool_state(&(win->tools[BTN_PART]), p?XmxSensitive:XmxNotSensitive,BTN_PART);
- * XmxRSetSensitive (win->menubar, (XtPointer)mo_news_prev, p?XmxSensitive:XmxNotSensitive);
- * mo_tool_state(&(win->tools[BTN_NART]), n?XmxSensitive:XmxNotSensitive,BTN_NART);
- * XmxRSetSensitive (win->menubar, (XtPointer)mo_news_next, n?XmxSensitive:XmxNotSensitive);
- * mo_tool_state(&(win->tools[BTN_POST]),XmxSensitive,BTN_POST);
- * mo_tool_state(&(win->tools[BTN_FOLLOW]), f?XmxSensitive:XmxNotSensitive,BTN_FOLLOW);
- * XmxRSetSensitive(win->menubar, (XtPointer)mo_news_follow, f?XmxSensitive:XmxNotSensitive);
-/* set the popup too */                     
-/*mo_popup_set_something("Previous Thread", pt?XmxSensitive:XmxNotSensitive, NULL);
- * mo_popup_set_something("Next Thread", nt?XmxSensitive:XmxNotSensitive, NULL);
- * mo_popup_set_something("Previous Article", p?XmxSensitive:XmxNotSensitive, NULL);
- * mo_popup_set_something("Next Article", n?XmxSensitive:XmxNotSensitive, NULL);
- * mo_popup_set_something("Followup", f?XmxSensitive:XmxNotSensitive, NULL);
- * newmode = moMODE_NEWS;      
- * }
- */
-/* If news: URL, then we need to auto-scroll to the >>> marker if it
- * is here. We use a hacked version of the searching function here
- * which will need to be updated when we rewrite. --SWP */
-/*if (win->current_node && win->current_node->url && !strncmp(win->current_node->url,"news:",5)) {
- *mo_search_window(win,">>>",0,1,1);
- *}                         
-*/
+static void LateEndPafDoc(PafDocDataStruct * pafd)
+{
+	mo_window * win;
+	mo_window * winset=NULL;
+#ifdef MULTICAST
+	int moid_ret;
+#endif
+
+	win = pafd->win;
+
+	assert(win->frame_type != FRAMESET_TYPE); /*cannot be Frameset */
+        assert( pafd->fd == -1 ) ;      /* finnish doc : fd is closed*/
+
+/* stop the twirl if only HTML*/                   
+	if (win->frame_type == NOTFRAME_TYPE)
+		MMStopTwirl(pafd);
+
+#ifdef MULTICAST
+        if (mc_send_win && (mc_send_win==win || mc_send_win==win->frame_parent)){
+				/* The top window is a multicast sender */
+                (*mc_send_win->mc_callme_on_new_object)(
+                        pafd->mc_fname_save, pafd->aurl,
+                        pafd->mhs,  win->dot , win->n_do, &moid_ret);
+                win->moid_ref = moid_ret;      /* info for state */
+                free(pafd->mc_fname_save);
+		pafd->mc_fname_save = NULL;	/* sanity */
+
+                if (win->frame_type == NOTFRAME_TYPE) { /* top html */
+			(*mc_send_win->mc_callme_on_new_state)( win,
+				win->moid_ref, win->dot, win->n_do);
+		}
+	}
+#endif
+        if (win->frame_type == NOTFRAME_TYPE) { /* top html */
+/* Must be freed in navigation */
+		pafd->aurl = pafd->aurl_wa = NULL; pafd->mhs = NULL;  /* sanity */
+        	FreePafDocDataStruct(pafd);  
+        	win->pafd = NULL;      
+		return;		/* END of (only) html page */
+	}
+
+/* Traitement du type FRAME_TYPE */
+/* dans le cas d'un frame , mettre a jour le framset */
+
+	winset = win->frame_parent; /* the frameset */
+	winset->number_of_frame_loaded++; /* one more is loaded */
+
+	assert(winset->number_of_frame_loaded <=winset->frame_sons_nbre);
+
+#ifdef MULTICAST
+        if (mc_send_win && (mc_send_win==win || mc_send_win==win->frame_parent)){
+
+/* gui_action: indique pour un frame si on clique dedans ou si on charge un
+ * frameset...  */      
+		switch(pafd->gui_action) {
+
+/* loaded frame in frameset because a frameset is loaded */
+/* the announce of top frameset obj is done at later time. When the last frame */
+/* child will be loaded and all child is loaded.Save some data to be send later */
+
+		case FRAME_LOADED_FROM_FRAMESET:
+			McAddDependFrame(winset, moid_ret, win->frame_dot_index);
+			break;
+
+/* load a html in a frame because of clic in a anchor */ 
+/* a html text change in a frame: do a new state */
+		case HTML_LOAD_CALLBACK:
+			McChangeDepend(winset,win,win->frame_dot_index,moid_ret);
+			break;
+		}
+	}
+#endif
+
+	if(winset->number_of_frame_loaded == winset->frame_sons_nbre ) {
+				/* Last Frame Loaded */
+		PafDocDataStruct * fs_pafd = winset->pafd;
+
+		assert(fs_pafd->fd == -1 );
+
+		MMStopTwirl(fs_pafd); /* en finir avec le frameset */
+
+#ifdef MULTICAST
+        	if (mc_send_win && (mc_send_win==win || mc_send_win==win->frame_parent)){
+			int fs_moid_ret;
+/* late send state of frameset */
+			if (pafd->gui_action == FRAME_LOADED_FROM_FRAMESET) {
+				(*mc_send_win->mc_callme_on_new_object)(
+					fs_pafd->mc_fname_save,
+					fs_pafd->aurl, fs_pafd->mhs, winset->dot,
+					winset->n_do, &fs_moid_ret);
+				winset->moid_ref=fs_moid_ret; /* info for state */
+				free(fs_pafd->mc_fname_save);
+				fs_pafd->mc_fname_save = NULL; /* sanity */
+			}
+			(*mc_send_win->mc_callme_on_new_state)(
+				winset, winset->moid_ref,
+				winset->dot, winset->n_do);
+		}
+#endif
+
+/* free parent frameset */
+/* Must be freed in navigation */
+		fs_pafd->aurl = fs_pafd->aurl_wa = NULL;
+		fs_pafd->mhs = NULL; 			/*sanity*/
+		FreePafDocDataStruct(fs_pafd);
+		winset->pafd = NULL;
+	}
+/*free frame */
+/* Must be freed in navigation */
+	pafd->aurl = pafd->aurl_wa = NULL; pafd->mhs = NULL;  /* sanity */
+       	FreePafDocDataStruct(pafd);  
+       	win->pafd = NULL;      
+	return;		/* END of frame page */
+}

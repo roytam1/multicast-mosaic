@@ -124,5 +124,6 @@ typedef struct _PafDocDataStruct {
 
 extern void MMPafSaveData(Widget top, char * aurl, char * fname);
 extern void MMPafLoadHTMLDocInWin( mo_window * win, RequestDataStruct * rds);
+extern void MMPafLoadHTMLDocInFrame(mo_window * win, RequestDataStruct * rds);
 extern void MMFinishPafSaveData(PafDocDataStruct * pafd);
 extern void MMFinishPafDocData(PafDocDataStruct * pafd);

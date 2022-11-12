@@ -8,9 +8,7 @@
 #ifndef __GUIDOCUMENTS_H__
 #define __GUIDOCUMENTS_H__
 
-mo_status mo_set_win_current_node (mo_window *, mo_node *);
 extern void mo_reload_document(Widget w, XtPointer clid, XtPointer calld);
-mo_status mo_refresh_window_text (mo_window *);
-void mo_set_win_headers (mo_window *win, char* aurl_wa);
+void mo_set_win_headers (mo_window *win, char* aurl_wa, char * title);
 
 #endif

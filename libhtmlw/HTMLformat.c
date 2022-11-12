@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include <Xm/Frame.h>
 #include <Xm/DrawingA.h>
@@ -22,7 +23,6 @@
 #include "../src/mosaic.h"
 
 #include "HTMLform.h"
-#include "HTMLframe.h"
 
 
 static struct mark_up NULL_ANCHOR = {
@@ -563,7 +563,8 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 		pcc->processing_text = False;
 		break;
 	case M_FRAMESET:
-		_XmHTMLCreateFrameSet(hw, hw, mptr, pcc);
+		assert(0);
+		/*_XmHTMLCreateFrameSet(hw, hw, mptr, pcc);*/
 		pcc->processing_text = False;
 		break;
 	case M_BODY:
@@ -585,7 +586,7 @@ static void TriggerMarkChanges(HTMLWidget hw, struct mark_up **mptr,
 				}
 			}
 			if (hw->html.body_images && mark->s_picd) {
-				hw_do_body_bgima(hw,pcc,mark);
+				hw_do_body_bgima(hw,mark);
 			}
 		        InDocHead = 0;   /* end <head> section */
 			pcc->ignore = 0;

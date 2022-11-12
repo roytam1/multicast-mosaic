@@ -66,21 +66,18 @@ void mo_forward_impossible (mo_window *win)
  * the text itself. */
 void mo_free_node_data (mo_node *node)
 {
-	free (node->title);
+	FreeHtmlTextInfo(node->htinfo);
 	free (node->aurl_wa);
 	free (node->aurl);
 	free (node->base_url);
 	free (node->text);
 	if(node->goto_anchor)
 		free (node->goto_anchor);
-	node->title = NULL; 			/* sanity */
 	node->aurl_wa = NULL; 			/* sanity */
 	node->aurl = NULL; 			/* sanity */
 	node->base_url = NULL; 			/* sanity */
 	node->text = NULL; 			/* sanity */
 	node->goto_anchor = NULL;		/* sanity */
-	FreeMarkUpList(node->m_list);
-	node->m_list = NULL;		/* sanity */
 	FreeMimeStruct(node->mhs);
 	node->mhs = NULL;		/* sanity */
 	memset(node,0,sizeof(mo_node)); /* sanity */
@@ -116,31 +113,31 @@ static void mo_kill_node_descendents (mo_window *win, mo_node *node)
 /* Add a new node to the navigation's history */
 
 void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
-	char *goto_anchor, char * base_url, char * base_target,
-	char *title, char *text, MimeHeaderStruct * mhs, int docid,
-	struct mark_up * mlist)
-{
-	mo_node *node;
-	NavigationType nt = win->navigation_action;
+	char *goto_anchor, char *text, MimeHeaderStruct *mhs, int docid,
+	HtmlTextInfo * htinfo)
 
+{
+	NavigationType nt = win->navigation_action;
+	mo_node *node;
+
+/* allocate node */
 	node = (mo_node *)calloc (1, sizeof (mo_node));
-	node->aurl_wa = strdup(aurl_wa); /* aurl with anchor */
-	node->aurl = strdup(aurl);	/* THE absolute url of doc. */
+	node->aurl_wa = aurl_wa; 	/* aurl with anchor */
+	node->aurl = aurl;		/* THE absolute url of doc. */
+	node->docid = 1;
+	node->htinfo = htinfo;
+
 	if(goto_anchor)
 		node->goto_anchor = strdup(goto_anchor);
-	if (base_url) {
-		node->base_url = strdup(base_url); /* detect a tag <BASE> */
+
+	if (htinfo->base_url) {
+		node->base_url = strdup(htinfo->base_url); /* detect a tag <BASE> */
 	} else {
 		node->base_url = strdup(aurl);
 	}
-	node->m_list = mlist;
-	node->docid = 1;
 	if(text)
 		node->text = strdup(text);	/* ### where to free ? ### */
-	if(title)
-		node->title = strdup(title);
-	if(base_target)	
-		node->base_target = strdup(base_target);
+
 	node->mhs = mhs;
 
 	/* If there is no current node, this is our first time through. */
@@ -151,7 +148,8 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 		node->position = 1;
 /* if we are here then win->current_node is NULL */
 		win->current_node = node;
-		if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) */
+		if ( win->frame_type == FRAME_TYPE) {
+				/* ###FIXME (win is a frame , a sub_win) */
 				/* try to enable navigation in frame..*/
 			return;
 		}
@@ -169,7 +167,9 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 /* position in the history list widget */
 			node->position = Cur->position + 1;
 			win->current_node = node; /* Current node now becomes new node. */
-			if ( win->menubar == NULL) { /* ###FIXME (win is a frame , a sub_win) try to enable navigation in frame..*/
+			if ( win->frame_type == FRAME_TYPE) {
+				 /* ###FIXME (win is a frame , a sub_win)
+				 *  try to enable navigation in frame..*/
 				return;
 			}
 			mo_forward_impossible (win);
@@ -204,7 +204,8 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 				win->current_node = node;
 				mo_free_node_data(Old);
 				free(Old);
-				if (win->menubar == NULL) { /* FIXME (win is a frame)*/
+				if (win->frame_type == FRAME_TYPE) {
+					/* FIXME (win is a frame)*/
 					return;
 				}
 				if (node->previous == NULL)
@@ -225,7 +226,8 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 				mo_free_node_data(Old);
 				free(Old);
 
-				if (win->menubar == NULL) { /* FIXME (win is a frame)*/
+				if (win->frame_type == FRAME_TYPE ) {
+					/* FIXME (win is a frame)*/
 					return;
 				}
 				if (node->next == NULL)
@@ -238,152 +240,15 @@ void MMUpdNavigationOnNewURL(mo_window *win, char * aurl_wa, char *aurl,
 		}
 	}
 	if (win->history_list) {
-		XmString xmstr = XmxMakeXmstrFromString(node->title);
+		XmString xmstr = XmxMakeXmstrFromString(node->htinfo->title);
 		XmListAddItemUnselected(win->history_list, xmstr, node->position);
 		XmStringFree (xmstr);
 	}
 /* This may or may not be filled in later! (AF) */
-  	mo_add_to_rbm_history(win, node->aurl_wa, node->title);
+  	mo_add_to_rbm_history(win, node->aurl_wa, node->htinfo->title);
 }
 
 /* ################## */
-
-
-/* ---------------------------- mo_grok_title ----------------------------- */
-
-/* Make up an appropriate title for a document that does not otherwise
-   have one associated with it. */
-static char *mo_grok_alternate_title (char *url, char *ref)
-{
-	char *title, *foo1, *foo2;
-
-	if (!strncmp (url, "gopher:", 7)) { /* It's a gopher server. */
-		if (ref) {	 /* Do we have a ref? */
-			char *tmp = ref;
-
-			while (*tmp && (*tmp == ' ' || *tmp == '\t'))
-				tmp++;
-			title = strdup (tmp);
-			goto done;
-		} else { /* Nope, no ref.  Make up a title. */
-			foo1 = url + 9;
-			foo2 = strstr (foo1, ":");
-/* If there's a trailing colon (always should be.. ??)... */
-			if (foo2) {
-				char *server =(char *) malloc ((foo2 - foo1 + 2));
-
-				memcpy(server, foo1, (foo2 - foo1));
-				server[(foo2 - foo1)] = '\0';
-				title = (char *) malloc ((strlen (server) + 32) * sizeof (char));
-				sprintf (title, "%s %s", "Gopher server at" , server);
-/* OK, we got a title... */
-				free (server);
-				goto done;
-			} else { /* Aw hell... */
-				title = strdup ("Gopher server" );
-				goto done;
-			}
-		}
-	}
-/* If we got here, assume we should use 'ref' if possible
- * for the WAIS title. */
-	if (!strncmp (url, "wais:", 5) ) {
-/* It's a WAIS server. */
-		if (ref) { /* Do we have a ref? */
-			title = strdup (ref);
-			goto done;
-		} else { /* Nope, no ref.  Make up a title. */
-			foo1 = url + 7;
-			foo2 = strstr (foo1, ":");
-/* If there's a trailing colon (always should be.. ??)... */
-			if (foo2) {
-				char *server = (char *)malloc ((foo2 - foo1 + 2));
-
-				memcpy(server, foo1, (foo2 - foo1));
-				server[(foo2 - foo1)] = '\0';
-				title = (char *) malloc ((strlen (server) + 32) * sizeof (char));
-				sprintf (title, "%s %s", "WAIS server at",server);
-/* OK, we got a title... */
-				free (server);
-				goto done;
-			} else { /* Aw hell... */
-				title = strdup ("WAIS server" );
-				goto done;
-			}
-		}
-	}
-
-	if (!strncmp (url, "news:", 5)) { /* It's a news source. */
-		if (strstr (url, "@")) { /* It's a news article. */
-			foo1 = url + 5;
-			title = (char *)malloc ((strlen (foo1) + 32) * sizeof (char));
-			sprintf (title, "%s %s", "USENET article" , foo1);
-			goto done;
-		} else { /* It's a newsgroup. */
-			foo1 = url + 5;
-			title = (char *)malloc ((strlen (foo1) + 32) * sizeof (char));
-			sprintf (title, "%s %s", "USENET newsgroup" , foo1);
-			goto done;
-		}
-	}
-
-	if (!strncmp (url, "file:", 5)) { 	/* It's a file. */
-		if (strncmp (url, "file:///", 8) == 0) { /* It's a local file. */
-			foo1 = url + 7;
-			title = (char *)malloc ((strlen (foo1) + 32) * sizeof (char));
-			sprintf (title, "%s %s", "Local file" , foo1);
-			goto done;
-		} else if (strncmp (url, "file://localhost/", 17) == 0) {
-						/* It's a local file. */
-			foo1 = url + 16;
-			title = (char *)malloc ((strlen (foo1) + 32) * sizeof (char));
-			sprintf (title, "%s %s", "Local file" , foo1);
-			goto done;
-		} else { /* It's a remote file. */
-			foo1 = url + 7;
-			title = (char *)malloc ((strlen (foo1) + 32) * sizeof (char));
-			sprintf (title, "%s %s", "Remote file" , foo1);
-			goto done;
-		}
-	}
-	if (!strncmp (url, "ftp:", 4)) {	 /* It's a remote file. */
-		foo1 = url + 6;
-		title = (char *)malloc ((strlen (foo1) + 32) * sizeof (char));
-		sprintf (title, "%s %s", "Remote file" , foo1);
-		goto done;
-	}
-/* Punt... */
-	title = (char *) malloc ((strlen (url) + 24) * sizeof (char));
-	sprintf (title, "%s %s", "Untitled" , url);
-done:
-	return title;
-}
-
-/* Figure out a title for the given URL.  'ref', if it exists,
-   was the text used for the anchor that pointed us to this URL;
-   it is not required to exist. */
-char *mo_grok_title (mo_window *win, char *url, char *ref)
-{
-	char *title, *t;
-
-	title = win->current_node->title;
-	if (!title)
-		t = mo_grok_alternate_title (url, ref);
-	else if (!strcmp (title, "Document"))
-		t = mo_grok_alternate_title (url, ref);
-	else {
-		char *tmp = title;
-
-		while (*tmp && (*tmp == ' ' || *tmp == '\t'))
-			tmp++;
-		if (*tmp)
-			t = strdup (tmp);
-		else
-			t = mo_grok_alternate_title (url, ref);
-	}
-	mo_convert_newlines_to_spaces (t);
-	return t;
-}
 
 /* ------------------------- navigation functions ------------------------- */
 
@@ -412,7 +277,6 @@ void mo_back (Widget w, XtPointer clid, XtPointer calld)
         MMPafLoadHTMLDocInWin(win, &rds);
 	win->navigation_action = NAVIGATE_NEW; /* reset to default */
 /*  mo_gui_apply_default_icon(win); */
-/*  mo_set_win_current_node (win, win->current_node->previous); */
 }
 
 /* Go forward a node. */
@@ -440,7 +304,6 @@ void mo_forward (Widget w, XtPointer clid, XtPointer calld)
         MMPafLoadHTMLDocInWin(win, &rds);
 	win->navigation_action = NAVIGATE_NEW; /* reset to default */
 /*  mo_gui_apply_default_icon(win); */
-/*  mo_set_win_current_node (win, win->current_node->next); */
 }
 
 /* Visit an arbitrary position.  This is called when a history
@@ -454,7 +317,40 @@ mo_status mo_visit_position (mo_window *win, int pos)
   
   for (node = win->first_node; node != NULL; node = node->next) {
       if (node->position == pos) {
-          mo_set_win_current_node (win, node);
+          /*mo_set_win_current_node (win, node); */
+/* #################################### */
+             
+/* name:    mo_set_win_current_node
+ * purpose: Given a window and a node, set the window's current node.
+ *          This assumes node is already all put together, in the history
+ *          list for the window, etc. 
+ * inputs:  
+ *   - mo_window *win: The current window.
+ *   - mo_node  *node: The node to use.
+ * returns:                            
+ *   Result of calling mo_do_window_text.
+ * remarks:                            
+ *   This routine is meant to be used to move forward, backward,
+ *   and to arbitrarily locations in the history list.
+ */
+/*mo_status mo_refresh_window_text (mo_window *win)                
+/*{
+/*       int id = win->current_node->docid;   
+/*      mo_node *node = win->current_node; 
+/* 
+/*     mo_snarf_scrollbar_values (win);
+/*    win->current_node = node;
+/* 
+/*       mo_set_win_headers (win, win->current_node->aurl_wa, win->current_node->title);
+/*      HTMLSetHTMLmark(win->scrolled_win, win->current_node->m_list,id, 
+/*             win->current_node->goto_anchor,win->current_node->base_url); 
+/*    mo_gui_done_with_icon (win);
+/*   return 0; 
+/*}       
+*/
+/* #################################### */
+    
+	assert(0);
           goto done;
         }
     }
@@ -480,7 +376,7 @@ static void mo_load_history_list (mo_window *win, Widget list)
   
   for (node = win->first_node; node != NULL; node = node->next) {
       XmString xmstr = 
-	XmxMakeXmstrFromString (node->title);
+	XmxMakeXmstrFromString (node->htinfo->title);
       XmListAddItemUnselected (list, xmstr, 0);
       XmStringFree (xmstr);
     }
@@ -534,7 +430,7 @@ static XmxCallback (mailhist_win_cb0)
 	fprintf (fp, "<DL>\n");
 	for (node = win->first_node; node != NULL; node = node->next) {
 		fprintf (fp, "<DT>%s\n<DD><A HREF=\"%s\">%s</A>\n", 
-			node->title, node->aurl_wa, node->aurl_wa);
+			node->htinfo->title, node->aurl_wa, node->aurl_wa);
 	}
 	fprintf (fp, "</DL>\n");
 	fprintf (fp, "</HTML>\n");

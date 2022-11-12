@@ -14,54 +14,6 @@
  * make up a page of a formatted document.
  */
 
-/* Free up the passed linked list of parsed elements, freeing
- * all memory associates with each element.
- */
-void FreeMarkUpList(struct mark_up *List)
-{
-	struct mark_up *current;
-	struct mark_up *mptr;
-
-	current = List;
-	while (current != NULL) {
-		mptr = current;
-		current = current->next;
-		mptr->next = NULL;
-		if (mptr->start != NULL)
-			free((char *)mptr->start);
-		if (mptr->text != NULL)
-			free((char *)mptr->text);
-		if (mptr->end != NULL)
-			free((char *)mptr->end);
-		if ( (!mptr->is_end) && (mptr->type == M_ANCHOR) ) {
-			if (mptr->anc_name){
-				free(mptr->anc_name);
-			}
-			if (mptr->anc_href){
-				free(mptr->anc_href);
-			}
-			if (mptr->anc_title){
-				free(mptr->anc_title);
-			}
-		}
-
-#ifdef APROG
-		if (mptr->s_aps){	/* aprog */
-			_FreeAprogStruct(mptr->s_aps);
-		}
-#endif
-#ifdef APPLET
-		if (mptr->s_ats){	/* applet */
-			_FreeAppletStruct(mptr->s_ats);
-		}
-#endif
-		if (mptr->t_p1){	/* table */
-			_FreeTableStruct(mptr->t_p1);
-		}
-		free((char *)mptr);
-	}
-}
-
 /* Free up the passed linked list of formatted elements, freeing
  * all memory associates with each element.
  */
@@ -95,12 +47,6 @@ void FreeLineList( struct ele_rec *list, HTMLWidget w)
  *			}
  *			free(eptr->pic_data);
  *		}
- *		if(eptr->type == E_APPLET){
- * this is done in FreeMarkUpList */
-/*		}
- *		if(eptr->type == E_APROG){
- * this is done in FreeMarkUpList */
-/*		}
  *        	if(eptr->pic_data->fptr != NULL) {###don't know what to do #### */
 /*			typedef struct form_rec {
  *			} FormInfo;
@@ -112,7 +58,6 @@ void FreeLineList( struct ele_rec *list, HTMLWidget w)
  *
  *		}
  *      	if(eptr->table_data != NULL) {
- * do nothing . This is done in FreeMarkUpList  */
 /*		}
  *      	if(eptr->font != NULL) {
  *			XFontStruct *font;

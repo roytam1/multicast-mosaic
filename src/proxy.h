@@ -9,16 +9,12 @@ struct Proxy {
 	char *scheme;
 	char *address;
 	char *port;
-	char *transport;
 	int alive;
 };
-
-extern char * mMosaicProxyFileName;
-extern char * mMosaicNoProxyFileName;
 
 /* added function prototypes - DXP */
 
 extern void ReadProxies(char *rootdir);
 extern void ReadNoProxies(char *rootdir);
 extern struct Proxy * GetProxy(char *acc);
-extern struct Proxy * GetNoProxy(char *access, char *site);
+extern int GetNoProxy(char *access, char *site);

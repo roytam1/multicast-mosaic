@@ -11,6 +11,7 @@
 #include <Xm/XmAll.h>
 
 #include "../libnut/mipcf.h"
+#include "../libhtmlw/HTMLparse.h"
 #include "../src/mosaic.h"
 #include "../src/gui-documents.h"
 

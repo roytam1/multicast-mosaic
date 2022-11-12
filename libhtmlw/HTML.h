@@ -57,6 +57,10 @@ extern void HTMLClearSelection (Widget w);
 extern void HTMLSetSelection (Widget w, ElementRef *start, ElementRef *end);
 extern void HTMLSetHTMLmark(Widget w, struct mark_up *mlist, int element_id,
 	char *target_anchor, char * base_url);
+extern void HTMLSetFrameSet(Widget w, struct mark_up *mlist,
+        char * base_url, int nframes, TopFrameSetInfo *tset_info,
+        Widget ** thw_ret);
+extern void HTMLUnsetFrameSet(Widget w);
 
 extern int HTMLSearchText (Widget w, char *pattern,
 	ElementRef *m_start, ElementRef *m_end, int backward, int caseless);
@@ -96,11 +100,6 @@ typedef struct fcall_rec {
 *****/
 enum{
         XmCR_HTML_FORM,                 /* XmNformCallback            */
-        XmCR_HTML_FRAMEDONE,            /* XmNframeCallback           */
-        XmCR_HTML_FRAMECREATE,          /* XmNframeCallback           */
-        XmCR_HTML_FRAMEDESTROY,         /* XmNframeCallback           */
-        XmCR_HTML_FRAMESETDESTROY,      /* XmNframeCallback           */
-	XmCR_HTML_FRAMESET_INIT,	/* XmNframeCallback */
         XmCR_HTML_IMAGEMAPACTIVATE,     /* XmNimagemapCallback        */
         XmCR_HTML_IMAGEMAP,             /* XmNimagemapCallback        */
         XmCR_HTML_LINK,                 /* XmNlinkCallback            */
@@ -110,29 +109,6 @@ enum{
         XmCR_HTML_OBJECTCREATE,         /* XmNobjectCallback          */
         XmCR_HTML_OBJECTDESTROY         /* XmNobjectCallback          */
 };
-/*****
-* XmNframeCallback callback structure.
-* This callback is activated when one of the following events occurs:
-* 1. XmHTML wants to create a frame, reason = XmCR_HTML_FRAMECREATE
-*    can be veto'd by setting doit to False and supplying a HTML widget
-*    id yourself;
-* 2. XmHTML wants to destroy a frame, reason = XmCR_HTML_FRAMEDESTROY
-*    can be veto'd by setting doit to False (widget reuse).
-* 3. XmHTML has finished creating a frame, reason = XmCR_HTML_FRAME.
-*    This is the time to attach callbacks and set additional resources on the
-*    newly created XmHTMLWidget.
-*****/ 
-typedef struct _XmHTMLFrameCallbackStruct
-{ 
-        int reason;                     /* the reason the callback was called           */
-        XEvent *event;          /* event structure that triggered callback      */
-        String src;                     /* requested document                                           */
-        String name;            /* frame name                                                           */
-        Widget html;            /* XmHTML widget id                                                     */
-        Boolean doit;           /* destroy/create vetoing flag         */
-	int nframe;
-	int index;
-} XmHTMLFrameCallbackStruct;
 
 typedef struct form_rec {
 	Widget hw;
@@ -484,7 +460,6 @@ struct ele_rec {
 */
 #define	WbNanchorCallback	"anchorCallback"
 #define	WbNsubmitFormCallback	"submitFormCallback"
-#define	WbNframeCallback	"frameCallback"
 #define	WbNpreviouslyVisitedTestFunction "previouslyVisitedTestFunction"
 #define WbNmaxColorsInImage	"maxColorsInImage"
 
