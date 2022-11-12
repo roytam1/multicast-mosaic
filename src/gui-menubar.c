@@ -1154,7 +1154,7 @@ void mo_multicast_send_tog(Widget w, XtPointer clid, XtPointer calld)
 	if(mc_send_win){ /* j'emets. Faut que j'arrete */
 		XmxRSetToggleState(mc_send_win->menubar, (XtPointer)mo_multicast_send_tog,
 			XmxNotSet);
-/*		McStopSendHyperText(win); */
+		McStopSendHyperText(win);
 		mc_send_win = NULL;
 	} else { 	/* je n'emets pas. Il faut */
 		XmxRSetToggleState(win->menubar, (XtPointer)mo_multicast_send_tog,

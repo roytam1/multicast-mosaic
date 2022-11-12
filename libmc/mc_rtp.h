@@ -292,5 +292,4 @@ struct bvchdr {
  */
 
 /* retified by Gilles Dauphin for mMosaic 21 Jan 1997 */
-/* inspired de weboard from inria ((Tie.Liao@inria.fr) */
 /* RTP Control Protocol version 2 (RFC 1889). */

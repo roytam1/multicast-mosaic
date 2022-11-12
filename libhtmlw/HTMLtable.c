@@ -1630,11 +1630,6 @@ h=%d\n"
 						, ltopGC, segT, iseg);
 					iseg = 0;
 				}
-				if ( cell.have_bgcolor ) {
-					XSetForeground(dsp, colorGC, cell.bgcolor);
-					XFillRectangle(dsp, XtWindow(hw->html.view), colorGC,
-						cx, cy, cw1, ch1);
-				}
 			}
 		}
 	}

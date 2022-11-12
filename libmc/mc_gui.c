@@ -21,9 +21,10 @@
 #include "../src/img.h"
 #include "../src/navigate.h"
  
+GuiEntry * mc_gui_member_list;
+
 static Widget mc_member_list_top_win; /* toplevel widget */
 static Widget mc_member_list_rc_w;
-static GuiEntry * mc_gui_member_list;
 static int mc_gui_member_count = 0;
 
 void McPopdownMemberList(void)
@@ -87,6 +88,8 @@ void McCreateMemberlist(void)
                  NULL);
 
 	mc_gui_member_count = 1;
+	XmxAdjustLabelText(mc_gui_member_list[0].toggle, mMosaicAppData.author_full_name);
+	XmxAdjustLabelText(mc_gui_member_list[0].label, "Xmit Off");
 	XtManageChild(mc_gui_member_list[0].form);
 	XtManageChild(mc_member_list_rc_w);
 	XtManageChild(sw);
@@ -99,7 +102,9 @@ void PopUpOrDownMMosaicUser(Widget w, XtPointer clid, XtPointer calld)
 	Source *s = (Source*) clid;
 	mo_window * win;
 
+#ifdef DEBUG_MULTICAST
 	fprintf(stderr,"PopUpOrDownMMosaicUser\n");
+#endif
 	if (!s->mute) {
 /*		sinon destruction de la fenetre pour cette source */
 		s->mute = True;
@@ -155,10 +160,6 @@ GuiEntry * CreateMemberGuiEntry(Source *s)
 	XtRealizeWidget(mc_gui_member_list[mc_gui_member_count].form);
         mc_gui_member_list[mc_gui_member_count].source = s;
 	mc_gui_member_list[mc_gui_member_count].nu = mc_gui_member_count;
-/*
-        XmxAdjustLabelText(mc_wulst[nu].toggle,u->alias);
-        XmxAdjustLabelText(mc_wulst[nu].label,u->url);
-*/
         XtAddCallback(mc_gui_member_list[mc_gui_member_count].toggle,
 		XmNvalueChangedCallback, PopUpOrDownMMosaicUser,s);
         mc_gui_member_count++;
@@ -399,7 +400,9 @@ XmxCallback (mc_frame_callback)
 	int frameset_moid;
 
         if (!cbs) { 
+#ifdef DEBUG_MULTICAST
                 fprintf(stderr, "mc_frame_callback: NULL call_data\n");
+#endif
                 return;
         }
         switch (cbs->reason) {
@@ -446,8 +449,8 @@ XmxCallback (mc_frame_callback)
                         (parent->frame_sons_nbre) * sizeof(mo_window *));
                 break; 
         default:                      
-		abort();
                 fprintf(stderr, "mc_frame_callback: reason: Unknowed...\n");
+		abort();
                 break;                
         }                             
         if (cbs->reason != XmCR_HTML_FRAMEDONE ){

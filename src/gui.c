@@ -73,6 +73,10 @@ extern XmxCallback (mc_frame_callback);
 #define SLAB_GLOBE 5
 
 
+/* ######## */
+extern mo_status mo_do_window_text (mo_window *win, char *url, struct mark_up *mlist,
+                int register_visit, char *last_modified, char *expires);
+
 /* SWP -- Spoof Agent stuff */
 extern int 	selectedAgent;
 extern char 	**agent;
@@ -333,7 +337,7 @@ static XmxCallback (security_pressed_cb)
 	mo_window *win = (mo_window *)client_data;
 	char buf[BUFSIZ];
 
-	if (!win || !win->current_node || !win->current_node)
+	if (!win || !win->current_node || !win->current_node->authType)
 		return;
 	mo_gui_check_security_icon_in_win(win->current_node->authType,win);
 
@@ -412,12 +416,12 @@ static mo_window * get_frame_target( mo_window *win, char *base_target, char* ta
 	if ( target == NULL)
 		target = default_target;
 /* _self   : load the document in the same frame as the element that refers
-             to this target
-/* _blank  : load doc. in a new , unamed window
-/* _parent : load doc. into the immediate FRAMESET parent if the current frame.
-             equiv. to _self if current frame has no parent
-/* _top    : load doc. into full, original window (canceling all other frames).
-             equiv to _self if current frame has no parent
+ *           to this target
+ * _blank  : load doc. in a new , unamed window
+ * _parent : load doc. into the immediate FRAMESET parent if the current frame.
+ *           equiv. to _self if current frame has no parent
+ * _top    : load doc. into full, original window (canceling all other frames).
+ *           equiv to _self if current frame has no parent
 */
 	if ( !strcmp(target, "_self") ) {
 		return win;
@@ -497,9 +501,31 @@ static void anchor_cb(Widget w, XtPointer client_data, XtPointer call_data)
 		href = strdup ("Unlinked");
 
 	if ( *href == '#' ) {	/* anchor in doc */
+/* ##### old code */
+/*		HTMLGotoAnchor(w, href + 1);
+ *		free(href);
+ *		return;
+ */
+/* #### new code by winfried 14 Mar 2000 */
+/* this works for Unicast, it register an anchor in navigation */
+/* But MUST be review for MULTICAST. It does not send the anchor (state) */
+/* #### Must be review */
+		mo_node *node=win->current_node;
+		char *anchor_url =
+			mo_url_canonicalize_keep_anchor(href, node->base_url);
+
+		win->navigation_action=NAVIGATE_NEW;
+		MMUpdNavigationOnNewURL(win,anchor_url,node->aurl,
+			node->goto_anchor,node->base_url,
+			node->base_target,node->title,node->text,node->mhs,
+			node->docid,node->m_list);
+		mo_do_window_text(win,anchor_url,node->m_list,FALSE,
+			node->last_modified,node->expires);
 		HTMLGotoAnchor(w, href + 1);
+		free(anchor_url);
 		free(href);
 		return;
+/* #### end new code */
 	}
 
 /* it is a mailto: anchor */
@@ -611,13 +637,35 @@ static void pointer_motion_callback (Widget w, XtPointer clid, XtPointer calld)
 
 #ifdef MULTICAST
 		/* Si je suis l'emetteur */
-	if (mc_send_win) {
+	if (mc_send_win && pmcbs->ev->type == MotionNotify) {
 		if (mc_send_win == win || win->frame_parent == mc_send_win ) {
 			XEvent *ev = pmcbs->ev;
 				/* - recuperer x et y du pointeur */
-				/* - translater les coordonee because les frames */
+				/* - translater les coordonees because les frames */
 				/* - envoyer en multicast */
-			McEmitCursor(mc_send_win, ev);
+			if (mc_send_win == win ) { /* no frame */
+#ifdef DEBUG_CURSOR
+				fprintf(stderr,"Curseur pos is Not framed\n");
+#endif
+				McEmitCursor(mc_send_win, ev);
+			} else {		/* framed */
+				Window coord_w, receive_w, dummy_w;
+				XEvent mev = *ev;
+				int ret_x, ret_y;
+
+				coord_w = XtWindow(mc_send_win->scrolled_win);
+				receive_w = mev.xmotion.window;
+				XTranslateCoordinates(mev.xmotion.display, receive_w,
+					coord_w, mev.xmotion.x, mev.xmotion.y,
+					&ret_x, &ret_y, &dummy_w);
+#ifdef DEBUG_CURSOR
+                                fprintf(stderr,"Curseur pos is Translated to x=%d, y=%d\n", ret_x,ret_y);
+#endif
+				mev.xmotion.window = coord_w;
+				mev.xmotion.x = ret_x;
+				mev.xmotion.y = ret_y;
+				McEmitCursor(mc_send_win, &mev);
+			}
 		}
 	}
 #endif

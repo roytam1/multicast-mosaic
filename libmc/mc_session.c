@@ -244,7 +244,9 @@ int McRcvrSrcCheckBufferStateWithData(Source *s, int is_end, int state_id,
 #endif
 	status = PutPacketInChkBuf(s->states[state_id].chkbuf, is_end, offset,
 		d, d_len);
+#ifdef DEBUG_MULTICAST
 	fprintf(stderr,"McRcvrSrcCheckBufferStateWithData: putting state_id %d, offset %d, d_len %d, is_end %d status %d\n", state_id, offset, d_len, is_end, status);
+#endif
         if (status == COMPLETE_BUFFER) {
 		int len;
 
@@ -482,7 +484,9 @@ static int McRcvrSrcCheckBufferObjectWithData(Source *s, int is_end, int moid,
 		return PARSED_ALL_DEPEND_BUFFER;
 	status = PutPacketInChkBuf(s->objects[moid].chkbuf, is_end, offset,
 		d, d_len);
+#ifdef DEBUG_MULTICAST
 	fprintf(stderr,"McRcvrSrcCheckBufferObjectWithData: putting moid %d, offset %d, d_len %d, is_end %d status %d\n", moid, offset, d_len, is_end, status);
+#endif
 	if (status == COMPLETE_BUFFER) {
 		len = ChkBufToBuf(s->objects[moid].chkbuf, &s->objects[moid].buffer);
 		s->objects[moid].chkbuf = NULL;		/* sanity */
@@ -643,7 +647,9 @@ void McUpdateDataSourceWithObject(Source *s, int is_end, u_int16_t seqn,
 		return;
 	if (s->cur_seq != ((seqn -1 ) & 0xffff) ) { /* rutpure de sequence */
 						/* packet lost */
+#ifdef DEBUG_MULTICAST
 		fprintf(stderr, "DO something for retrieve\n");
+#endif
 		try_retrieve = 1;
 	} else {
 		s->last_valid_seq = seqn;

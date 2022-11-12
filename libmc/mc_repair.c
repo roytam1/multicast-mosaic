@@ -313,10 +313,12 @@ void UcSendRepair(Source *s, int type, int id, int offset, int lend)
 	if(cnt != len){
 		perror("UcSendRepair:sendto:");
 	}
+#ifdef DEBUG_MULTICAST
 	fprintf(stderr,"UcSendRepair to %08x %04x\n",
 		ntohl(s->uc_rtp_ipaddr), ntohs(s->uc_rtcp_port));
 	fprintf(stderr,"UcSendRepair: %d %d %d %d\n",
 		type, id, offset, lend);
+#endif
 }
 
 typedef struct _McQueueStateRepairQuery {
@@ -375,7 +377,9 @@ static void McSendStateRepairAnswerCb(XtPointer clid, XtIntervalId * id)
 			query_len = data_size - query_offset;
 		}
 		if ( query_offset + query_len > data_size) { /* adjust len */
+#ifdef DEBUG_MULTICAST
 			fprintf(stderr, "BUG len adjust \007\n");
+#endif
 			query_len = data_size - query_offset;
 		}
 		if (query_len <= 0 ) {
@@ -632,7 +636,9 @@ static void McSendObjectRepairAnswerCb(XtPointer clid, XtIntervalId * id)
                         query_len = data_size - query_offset;
                 }
                 if ( query_offset + query_len > data_size) { /* adjust len */
+#ifdef DEBUG_MULTICAST
                         fprintf(stderr, "BUG len adjust \007\n");
+#endif
                         query_len = data_size - query_offset;
                 }
                 if (query_len <= 0 ) {
@@ -741,8 +747,8 @@ static void McSendObjectRepairAnswerCb(XtPointer clid, XtIntervalId * id)
                         mc_write_rtp_data_next_time,
                         McSendRtpDataTimeOutCb, NULL);
         }
-#ifdef MULTICAST
-fprintf(stderr, "McSendObjectRepairAnswerCb: DESACTIVATE timer\n");
+#ifdef DEBUG_MULTICAST
+	fprintf(stderr, "McSendObjectRepairAnswerCb: DESACTIVATE timer\n");
 #endif
 }
 

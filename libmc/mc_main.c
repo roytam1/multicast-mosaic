@@ -337,6 +337,8 @@ void McStartSender(mo_window * main_win)
 /* we reload, and via McSendNewState and McSendNewObject , on est prevenu
  * qu'une nouvelle doc ou objet est chargee */
 	mo_reload_document (main_win->scrolled_win, (XtPointer) main_win, NULL);
+
+	XmxAdjustLabelText(mc_gui_member_list[0].label, "Xmit On");
 #ifdef DEBUG_MULTICAST
 	printf(" in McStartSendHyperText ... setting is_send... 0\n");
 #endif
@@ -344,6 +346,11 @@ void McStartSender(mo_window * main_win)
 	All socket for multicast are open
 	A new callback is added
 */
+}
+
+void McStopSendHyperText(mo_window * main_win)
+{
+	XmxAdjustLabelText(mc_gui_member_list[0].label, "Xmit Off");
 }
 
 static void McSendNewState(mo_window * win, int moid_ref, DependObjectTab dot, int ndo)
@@ -415,8 +422,9 @@ static void McSendNewObject(char *fname, char *aurl, MimeHeaderStruct *mhs,
 
 void RegisterSender(Source * s, RtpPacket *rs)
 {                       
+#ifdef DEBUG_MULTICAST
         fprintf(stderr, "RegisterSender\n");
-                        
+#endif
         s->is_sender = True;
 }
 
